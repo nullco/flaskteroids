@@ -72,10 +72,15 @@ class Model:
     def find(cls, id):
         s = session()
         base = cls._base()
-        return s.execute(
+        found = s.execute(
             select(base).
             where(base.id == id)
         ).scalars().first()
+        if not found:
+            return None
+        res = cls()
+        res._base_instance = found
+        return res
 
     @classmethod
     def find_or_fail(cls, id):
@@ -113,5 +118,5 @@ class Model:
 
     def destroy(self):
         s = session()
-        s.remove(self._base_instance)
+        s.delete(self._base_instance)
         s.flush()
