@@ -21,7 +21,7 @@ class Model:
         base = self._base()
         self._base_instance = base(**kwargs)
 
-    def getattr(self, name):
+    def __getattr__(self, name):
         return getattr(self._base_instance, name)
 
     @classmethod
