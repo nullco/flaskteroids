@@ -8,27 +8,46 @@ class ModelNotFoundException(Exception):
 
 class Model:
 
-    __basecls__ = None
+    __base_cls__ = None
 
-    def __getattr__(self, name: str):
-        if not self.__basecls__:
-            raise Exception("""
-                Model not configured properly.
-                Make sure your class is inside app.models folder
-            """)
-        return getattr(self.__basecls__, name)
+    @classmethod
+    def __init_base__(cls, base):
+        cls.__base_cls__ = base
+
+    def __init__(self, **kwargs):
+        base = self._base()
+        self._instance = base(**kwargs)
+
+    def getattr(self, name):
+        return getattr(self._instance, name)
+
+    @classmethod
+    def _base(cls):
+        if not cls.__base_cls__:
+            raise Exception('Model not configured properly, make sure you have put it inside app.models folder')
+        return cls.__base_cls__
+
+    @classmethod
+    def create(cls, **kwargs):
+        instance = cls(**kwargs)
+        s = session()
+        s.add(instance._instance)
+        s.commit()
+        return instance
 
     @classmethod
     def all(cls):
+        base = cls._base()
         s = session()
-        return s.execute(select(cls.__basecls__)).scalars().all()
+        return s.execute(select(base)).scalars().all()
 
     @classmethod
     def find(cls, id):
         s = session()
+        base = cls._base()
         return s.execute(
-            select(cls.__basecls__).
-            where(cls.__basecls__.id == id)
+            select(base).
+            where(base.id == id)
         ).scalars().first()
 
     @classmethod

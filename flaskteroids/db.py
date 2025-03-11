@@ -25,7 +25,7 @@ def configure(app):
     Base.prepare()
     for table_name, model in models.items():
         if hasattr(Base.classes, table_name):
-            setattr(model, '__basecls__', getattr(Base.classes, table_name))
+            model.__init_base__(getattr(Base.classes, table_name))
 
     @app.before_request
     def _():
