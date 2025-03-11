@@ -1,5 +1,8 @@
-from sqlalchemy import select
+import logging
+from sqlalchemy import select, inspect
 from flaskteroids.db import session
+
+_logger = logging.getLogger(__name__)
 
 
 class ModelNotFoundException(Exception):
@@ -28,11 +31,8 @@ class Model:
         return cls.__base_cls__
 
     @classmethod
-    def create(cls, **kwargs):
+    def new(cls, **kwargs):
         instance = cls(**kwargs)
-        s = session()
-        s.add(instance._base_instance)
-        s.commit()
         return instance
 
     @classmethod
@@ -56,3 +56,22 @@ class Model:
         if not res:
             raise ModelNotFoundException("Instance not found")
         return res
+
+    def update(self, **kwargs):
+        for field, value in kwargs.items():
+            setattr(self._base_instance, field, value)
+        return self.save()
+
+    def save(self):
+        try:
+            s = session()
+            if not self.is_persisted():
+                s.add(self._base_instance)
+            s.flush()
+            return True
+        except Exception:
+            _logger.exception('Error storing model instance')
+            return False
+
+    def is_persisted(self):
+        return inspect(self._base_instance).persistent

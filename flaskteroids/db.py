@@ -37,6 +37,8 @@ def configure(app):
         _logger.debug('closing session for request')
         if exception:
             g.db_session.rollback()
+        else:
+            g.db_session.commit()
         g.db_session.close()
 
 
