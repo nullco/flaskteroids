@@ -16,10 +16,10 @@ class Model:
 
     def __init__(self, **kwargs):
         base = self._base()
-        self._instance = base(**kwargs)
+        self._base_instance = base(**kwargs)
 
     def getattr(self, name):
-        return getattr(self._instance, name)
+        return getattr(self._base_instance, name)
 
     @classmethod
     def _base(cls):
@@ -31,7 +31,7 @@ class Model:
     def create(cls, **kwargs):
         instance = cls(**kwargs)
         s = session()
-        s.add(instance._instance)
+        s.add(instance._base_instance)
         s.commit()
         return instance
 
