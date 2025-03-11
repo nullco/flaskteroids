@@ -3,4 +3,11 @@ name = "flaskteroids"
 version = "0.1.0"
 description = "Flask on steroids"
 readme = "README.md"
-dependencies = ["Flask"]
+dependencies = [
+	"Flask", 
+	"sqlalchemy"
+]
+
+
+[tool.flake8]
+max-line-length = 120
