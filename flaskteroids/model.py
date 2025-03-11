@@ -25,6 +25,8 @@ def validate(field, **kwargs):
 
 
 def _get_rules(name, rules):
+    if not rules:
+        return []
     return [r for key, r in rules if key == name]
 
 
