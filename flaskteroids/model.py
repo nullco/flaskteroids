@@ -75,3 +75,8 @@ class Model:
 
     def is_persisted(self):
         return inspect(self._base_instance).persistent
+
+    def destroy(self):
+        s = session()
+        s.remove(self._base_instance)
+        s.flush()
