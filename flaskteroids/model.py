@@ -9,9 +9,29 @@ class ModelNotFoundException(Exception):
     pass
 
 
+class ModelValidationException(Exception):
+    pass
+
+
+def validate(field, **kwargs):
+    def _validate(instance):
+        errors = []
+        value = getattr(instance, field) if hasattr(instance, field) else None
+        if kwargs.get('required'):
+            if value is None:
+                errors.append((f'{field}.required', f"Field {field} is required"))
+        return errors
+    return 'validate', _validate
+
+
+def _get_rules(name, rules):
+    return [r for key, r in rules if key == name]
+
+
 class Model:
 
     __base_cls__ = None
+    __rules__ = None
 
     @classmethod
     def __init_base__(cls, base):
@@ -19,7 +39,12 @@ class Model:
 
     def __init__(self, **kwargs):
         base = self._base()
+        self._errors = []
         self._base_instance = base(**kwargs)
+
+    @property
+    def errors(self):
+        return self._errors
 
     def __getattr__(self, name):
         return getattr(self._base_instance, name)
@@ -62,8 +87,16 @@ class Model:
             setattr(self._base_instance, field, value)
         return self.save()
 
-    def save(self):
+    def save(self, validate=True):
         try:
+            if validate:
+                validate_rules = _get_rules('validate', self.__rules__)
+                self._errors = []
+                for vr in validate_rules:
+                    self._errors.extend(vr(self))
+                if self._errors:
+                    return False
+
             s = session()
             if not self.is_persisted():
                 s.add(self._base_instance)
