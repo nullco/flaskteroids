@@ -1,12 +1,8 @@
-import logging
 from flask.app import Flask
 from importlib import import_module
 import flaskteroids.route as route
 import flaskteroids.db as db
 import flaskteroids.model as model
-
-
-logging.basicConfig(level=logging.DEBUG)
 
 
 def create_app(import_name, config_dict=None):
