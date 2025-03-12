@@ -1,6 +1,6 @@
-# Flasteroids
+# Flaskteroids
 
-Flasteroids is a lightweight and powerful Python MVC framework that enhances Flask with a structured and elegant abstraction. Inspired by the APIs of Ruby on Rails and Laravel, it simplifies web application development while leveraging the robustness of Flask.
+Flaskteroids is a lightweight and powerful Python MVC framework that enhances Flask with a structured and elegant abstraction. Inspired by the APIs of Ruby on Rails and Laravel, it simplifies web application development while leveraging the robustness of Flask.
 
 ## Features
 
@@ -15,7 +15,7 @@ Flasteroids is a lightweight and powerful Python MVC framework that enhances Fla
 ## Installation
 
 ```sh
-pip install flasteroids
+pip install flaskteroids
 ```
 
 ## Project Structure
@@ -35,4 +35,4 @@ my_project/
 
 ## License
 
-Flasteroids is open-source and released under the MIT License.
+Flaskteroids is open-source and released under the MIT License.
