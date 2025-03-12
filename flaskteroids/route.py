@@ -1,5 +1,11 @@
+import logging
+from flask import request
 from flask import render_template
 from importlib import import_module
+from flaskteroids import params
+
+
+_logger = logging.getLogger(__name__)
 
 
 def init(app):
@@ -37,7 +43,10 @@ class Routes:
         def view_func(*args, **kwargs):
             controller_instance = ccls()
             action = getattr(controller_instance, caction)
-            res = action(*args, **kwargs)
+            _logger.debug(f'view_func(args={args}, kwargs={kwargs}')
+            params.update(request.form.to_dict(True))
+            params.update(kwargs)  # looks like url template params come here
+            res = action()
             if res:
                 return res
             view_template = render_template(f'{cname}/{caction}.html', **controller_instance.__dict__)

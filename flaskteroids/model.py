@@ -1,6 +1,7 @@
 import logging
 from sqlalchemy import select, inspect
 from flaskteroids.db import session
+import flaskteroids.registry as registry
 
 _logger = logging.getLogger(__name__)
 
@@ -9,35 +10,24 @@ class ModelNotFoundException(Exception):
     pass
 
 
-class ModelValidationException(Exception):
-    pass
-
-
-def validate(field, **kwargs):
-    def _validate(instance):
-        errors = []
-        value = getattr(instance, field) if hasattr(instance, field) else None
-        if kwargs.get('required'):
-            if value is None:
-                errors.append((f'{field}.required', f"Field {field} is required"))
-        return errors
-    return 'validate', _validate
-
-
-def _get_rules(name, rules):
-    if not rules:
-        return []
-    return [r for key, r in rules if key == name]
+def validate(field, *, required=False):
+    def setup_rule(cls):
+        def _validate(instance):
+            errors = []
+            value = getattr(instance, field) if hasattr(instance, field) else None
+            if required:
+                if value is None:
+                    errors.append((f'{field}.required', f"Field {field} is required"))
+                    return errors
+            return errors
+        ns = registry.get(cls)
+        if 'validate' not in ns:
+            ns['validate'] = []
+        ns['validate'].append(_validate)
+    return setup_rule
 
 
 class Model:
-
-    __base_cls__ = None
-    __rules__ = None
-
-    @classmethod
-    def __init_base__(cls, base):
-        cls.__base_cls__ = base
 
     def __init__(self, **kwargs):
         base = self._base()
@@ -53,9 +43,18 @@ class Model:
 
     @classmethod
     def _base(cls):
-        if not cls.__base_cls__:
+        base = registry.get(cls).get('base_class')
+        if not base:
             raise Exception('Model not configured properly, make sure you have put it inside app.models folder')
-        return cls.__base_cls__
+        return base
+
+    @classmethod
+    def _from_base_instance(cls, base_instance):
+        if base_instance is None:
+            return None
+        res = cls()
+        res._base_instance = base_instance
+        return res
 
     @classmethod
     def new(cls, **kwargs):
@@ -66,21 +65,18 @@ class Model:
     def all(cls):
         base = cls._base()
         s = session()
-        return s.execute(select(base)).scalars().all()
+        return [cls._from_base_instance(r) for r in s.execute(select(base)).scalars().all()]
 
     @classmethod
     def find(cls, id):
         s = session()
         base = cls._base()
-        found = s.execute(
-            select(base).
-            where(base.id == id)
-        ).scalars().first()
-        if not found:
-            return None
-        res = cls()
-        res._base_instance = found
-        return res
+        return cls._from_base_instance(
+            s.execute(
+                select(base).
+                where(base.id == id)
+            ).scalars().first()
+        )
 
     @classmethod
     def find_or_fail(cls, id):
@@ -97,7 +93,7 @@ class Model:
     def save(self, validate=True):
         try:
             if validate:
-                validate_rules = _get_rules('validate', self.__rules__)
+                validate_rules = registry.get(self.__class__).get('validate')
                 self._errors = []
                 for vr in validate_rules:
                     self._errors.extend(vr(self))
@@ -110,7 +106,7 @@ class Model:
             s.flush()
             return True
         except Exception:
-            _logger.exception('Error storing model instance')
+            _logger.exception(f'Error storing {self.__name__} instance')
             return False
 
     def is_persisted(self):

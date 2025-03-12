@@ -6,8 +6,9 @@ from flask import g
 import logging
 import pkgutil
 import inspect
+import flaskteroids.registry as registry
 
-_logger = logging.getLogger('flaskteroids.db')
+_logger = logging.getLogger(__name__)
 
 
 def session():
@@ -25,7 +26,8 @@ def configure(app):
     Base.prepare()
     for table_name, model in models.items():
         if hasattr(Base.classes, table_name):
-            model.__init_base__(getattr(Base.classes, table_name))
+            ns = registry.get(model)
+            ns['base_class'] = getattr(Base.classes, table_name)
 
     @app.before_request
     def _():
@@ -34,11 +36,13 @@ def configure(app):
 
     @app.teardown_request
     def _(exception=None):
-        _logger.debug('closing session for request')
         if exception:
+            _logger.debug('rolling transaction due to error')
             g.db_session.rollback()
         else:
+            _logger.debug('committing transaction')
             g.db_session.commit()
+        _logger.debug('closing session for request')
         g.db_session.close()
 
 
