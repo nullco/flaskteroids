@@ -27,7 +27,7 @@ class Routes:
         self._register_view_func(path, to, ['POST'])
 
     def put(self, path, *, to):
-        self._register_view_func(path, to, ['PUT'])
+        self._register_view_func(path, to, ['POST', 'PUT'])
 
     def delete(self, path, *, to):
         self._register_view_func(path, to, ['DELETE'])
