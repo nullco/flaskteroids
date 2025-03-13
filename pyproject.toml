@@ -4,10 +4,16 @@ version = "0.1.0"
 description = "Flask on steroids"
 readme = "README.md"
 dependencies = [
-	"Flask", 
-	"sqlalchemy"
+	"alembic>=1.15.1",
+	"Flask",
+	"sqlalchemy",
 ]
 
 
 [tool.flake8]
 max-line-length = 120
+
+[dependency-groups]
+dev = [
+    "ruff>=0.10.0",
+]
