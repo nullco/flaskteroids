@@ -73,10 +73,18 @@ class Model:
         return instance
 
     @classmethod
+    def create(cls, **kwargs):
+        instance = cls.new(**kwargs)
+        instance.save()
+        return instance
+
+    @classmethod
     def all(cls):
         base = cls._base()
         s = session()
-        return [_build(cls, r) for r in s.execute(select(base)).scalars().all()]
+        res = s.execute(select(base)).scalars()
+        for r in res:
+            yield _build(cls, r)
 
     @classmethod
     def find(cls, id):
