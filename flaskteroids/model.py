@@ -1,4 +1,5 @@
 import logging
+from functools import partial
 from sqlalchemy import select, inspect
 from flaskteroids.db import session
 import flaskteroids.registry as registry
@@ -12,19 +13,29 @@ class ModelNotFoundException(Exception):
 
 def validate(field, *, required=False):
     def setup_rule(cls):
-        def _validate(instance):
-            errors = []
-            value = getattr(instance, field) if hasattr(instance, field) else None
-            if required:
-                if value is None:
-                    errors.append((f'{field}.required', f"Field {field} is required"))
-                    return errors
-            return errors
         ns = registry.get(cls)
         if 'validate' not in ns:
             ns['validate'] = []
-        ns['validate'].append(_validate)
+        ns['validate'].append(partial(_validate, field=field, required=required))
     return setup_rule
+
+
+def _validate(*, instance, field, required):
+    errors = []
+    value = getattr(instance, field) if hasattr(instance, field) else None
+    if required:
+        if value is None:
+            errors.append((f'{field}.required', f"Field {field} is required"))
+            return errors
+    return errors
+
+
+def _build(cls, base_instance):
+    if base_instance is None:
+        return None
+    res = cls()
+    res._base_instance = base_instance
+    return res
 
 
 class Model:
@@ -65,25 +76,22 @@ class Model:
     def all(cls):
         base = cls._base()
         s = session()
-        return [cls._from_base_instance(r) for r in s.execute(select(base)).scalars().all()]
+        return [_build(cls, r) for r in s.execute(select(base)).scalars().all()]
 
     @classmethod
     def find(cls, id):
         s = session()
         base = cls._base()
-        return cls._from_base_instance(
+        found = _build(
+            cls,
             s.execute(
                 select(base).
                 where(base.id == id)
             ).scalars().first()
         )
-
-    @classmethod
-    def find_or_fail(cls, id):
-        res = cls.find(id)
-        if not res:
+        if not found:
             raise ModelNotFoundException("Instance not found")
-        return res
+        return found
 
     def update(self, **kwargs):
         for field, value in kwargs.items():
@@ -96,7 +104,7 @@ class Model:
                 validate_rules = registry.get(self.__class__).get('validate')
                 self._errors = []
                 for vr in validate_rules:
-                    self._errors.extend(vr(self))
+                    self._errors.extend(vr(instance=self))
                 if self._errors:
                     return False
 
@@ -106,7 +114,7 @@ class Model:
             s.flush()
             return True
         except Exception:
-            _logger.exception(f'Error storing {self.__name__} instance')
+            _logger.exception(f'Error storing {self.__class__.__name__} instance')
             return False
 
     def is_persisted(self):

@@ -1,5 +1,7 @@
 from collections.abc import Mapping
-from flask import g
+from flask import g, redirect
+
+from flaskteroids.exceptions import Redirect
 
 
 class Params(Mapping):
@@ -38,3 +40,7 @@ class Params(Mapping):
 
 
 params = Params()
+
+
+def redirect_to(url):
+    raise Redirect(redirect(url))

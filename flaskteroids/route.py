@@ -3,6 +3,7 @@ from flask import request
 from flask import render_template
 from importlib import import_module
 from flaskteroids import params
+from flaskteroids.exceptions import Redirect
 
 
 _logger = logging.getLogger(__name__)
@@ -46,11 +47,14 @@ class Routes:
             _logger.debug(f'to={to} view_func(args={args}, kwargs={kwargs}')
             params.update(request.form.to_dict(True))
             params.update(kwargs)  # looks like url template params come here
-            res = action()
-            if res:
-                return res
-            view_template = render_template(f'{cname}/{caction}.html', **controller_instance.__dict__)
-            return view_template
+            try:
+                res = action()
+                if res:
+                    return res
+                view_template = render_template(f'{cname}/{caction}.html', **controller_instance.__dict__)
+                return view_template
+            except Redirect as r:
+                return r.response
 
         view_func_name = f"{cname}_{caction}"
         if prefix:
