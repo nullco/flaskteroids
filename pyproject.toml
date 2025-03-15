@@ -15,5 +15,6 @@ max-line-length = 120
 
 [dependency-groups]
 dev = [
+    "pytest>=8.3.5",
     "ruff>=0.10.0",
 ]
