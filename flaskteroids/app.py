@@ -3,6 +3,7 @@ from importlib import import_module
 import flaskteroids.route as route
 import flaskteroids.db as db
 import flaskteroids.model as model
+from flaskteroids.generators import generator
 
 
 def create_app(import_name, config_dict=None):
@@ -13,6 +14,7 @@ def create_app(import_name, config_dict=None):
     _register_routes(app)
     _configure_database(app)
     _register_error_handlers(app)
+    _register_cli_commands(app)
 
     return app
 
@@ -33,3 +35,7 @@ def _register_error_handlers(app):
         return '400 Error, sorry masamorry'
 
     app.register_error_handler(model.ModelNotFoundException, handle_4xx)
+
+
+def _register_cli_commands(app):
+    app.cli.add_command(generator.cli)
