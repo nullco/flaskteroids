@@ -1,5 +1,5 @@
 import re
-from flaskteroids.generators import cmd_parser
+from flaskteroids.cli.generators import cmd_parser
 
 
 _cmd_patterns = {

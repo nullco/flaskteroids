@@ -1,5 +1,5 @@
 import pytest
-from flaskteroids.generators.migrations import cmd_parser
+from flaskteroids.cli.generators.migrations import cmd_parser
 
 
 @pytest.mark.parametrize('cmd, expected', [
