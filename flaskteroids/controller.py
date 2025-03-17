@@ -1,12 +1,19 @@
-def before_action(method_name, *, only=None):
-    def setup_rule(controller):
-        before_action_ = getattr(controller, method_name)
-        if not only:
-            assert False, 'Not supported yet'
+from flaskteroids import registry
 
-        for action_name in only:
-            action = getattr(controller, action_name)
-            setattr(controller, action_name, _chain(before_action_, action))
+
+def before_action(method_name, *, only=None):
+    def setup_rule(controller_cls):
+        before_action_ = getattr(controller_cls, method_name)
+        actions = only if only else None
+        if not actions:
+            ns = registry.get(controller_cls)
+            actions = ns['actions']
+            print('setting up rule for before action')
+            print(actions)
+
+        for action_name in actions:
+            action = getattr(controller_cls, action_name)
+            setattr(controller_cls, action_name, _chain(before_action_, action))
     return setup_rule
 
 

@@ -2,7 +2,7 @@ import logging
 from flask import request
 from flask import render_template
 from importlib import import_module
-from flaskteroids import params
+from flaskteroids import params, registry
 from flaskteroids.exceptions import Redirect
 
 
@@ -33,15 +33,22 @@ class Routes:
     def delete(self, path, *, to):
         self._register_view_func(path, to, ['DELETE'])
 
+    def _get_controller_name(self, cname):
+        return f'app.controllers.{cname}_controller.{cname.title()}Controller'
+
     def _get_controller_class(self, cname):
         controller_module = import_module(f'app.controllers.{cname}_controller')
         return getattr(controller_module, f'{cname.title()}Controller')
 
     def _register_view_func(self, path, to, methods=None, prefix=''):
         cname, caction = to.split('#')
-        ccls = self._get_controller_class(cname)
+        ns = registry.get(self._get_controller_name(cname))
+        if 'actions' not in ns:
+            ns['actions'] = []
+        ns['actions'].append(caction)
 
         def view_func(*args, **kwargs):
+            ccls = self._get_controller_class(cname)
             controller_instance = ccls()
             action = getattr(controller_instance, caction)
             _logger.debug(f'to={to} view_func(args={args}, kwargs={kwargs}')

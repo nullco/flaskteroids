@@ -1,8 +1,9 @@
 _registry = {}
 
 
-def get(cls):
-    namespace = _get_namespace(cls)
+def get(namespace):
+    if isinstance(namespace, type):
+        namespace = _get_namespace(namespace)
     if namespace not in _registry:
         _registry[namespace] = {}
     return _registry[namespace]
