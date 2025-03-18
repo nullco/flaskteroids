@@ -1,8 +1,9 @@
 import os
+from datetime import datetime
+from flask import current_app
 from alembic import command
-from alembic.operations import ops
 from alembic.config import Config as AlembicConfig
-import sqlalchemy as sa
+from flaskteroids.cli.generators.migrations import cmd_parser
 
 
 class Config(AlembicConfig):
@@ -25,25 +26,22 @@ def migration(cmd, args):
     directory = 'migrations'
     config = Config()
     config.config_file_name = os.path.join(directory, 'alembic.ini')
+    config.set_main_option('revision_environment', 'true')
     config.set_main_option('script_location', directory)
-    config.set_main_option('sqlalchemy.url', 'sqlite:///database.db')
-    up_ops, down_ops = _get_ops(cmd, args)
-    command.revision(config, process_revision_directives=gen_process_revision_directives(up_ops, down_ops))
+    config.set_main_option('sqlalchemy.url', current_app.config['DATABASE_URL'])
+    res = cmd_parser.parse(cmd, args)
+    up_ops = res['parsed']['ops']
+    command.revision(
+        config,
+        message=res['normalized_cmd'].replace('_', ' '),
+        rev_id=datetime.now().strftime("%Y%m%d%H%M%S"),
+        process_revision_directives=gen_process_revision_directives(up_ops, [])
+    )
 
 
 def _get_ops(cmd, args):
-    up = [
-        # ops.CreateTableOp(
-        #     'organization',
-        #     [
-        #         sa.Column('id', sa.Integer(), primary_key=True),
-        #         sa.Column('name', sa.String(50), nullable=False)
-        #     ]
-        # )
-    ]
-    down = [
-        # ops.DropTableOp('organization')
-    ]
+    up = cmd_parser.parse(cmd, args)['parsed']['ops']
+    down = []
     return up, down
 
 
