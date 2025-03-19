@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 from functools import partial
 from sqlalchemy import select, inspect
 from flaskteroids.db import session
@@ -11,21 +12,21 @@ class ModelNotFoundException(Exception):
     pass
 
 
-def validate(field, *, required=False):
+def validates(field, *, presence=False):
     def setup_rule(cls):
         ns = registry.get(cls)
-        if 'validate' not in ns:
-            ns['validate'] = []
-        ns['validate'].append(partial(_validate, field=field, required=required))
+        if 'validates' not in ns:
+            ns['validates'] = []
+        ns['validates'].append(partial(_validates, field=field, presence=presence))
     return setup_rule
 
 
-def _validate(*, instance, field, required):
+def _validates(*, instance, field, presence):
     errors = []
     value = getattr(instance, field) if hasattr(instance, field) else None
-    if required:
+    if presence:
         if value is None:
-            errors.append((f'{field}.required', f"Field {field} is required"))
+            errors.append((f'{field}.presence', f"Field {field} is missing"))
             return errors
     return errors
 
@@ -109,7 +110,7 @@ class Model:
     def save(self, validate=True):
         try:
             if validate:
-                validate_rules = registry.get(self.__class__).get('validate')
+                validate_rules = registry.get(self.__class__).get('validates')
                 self._errors = []
                 for vr in validate_rules:
                     self._errors.extend(vr(instance=self))
@@ -117,8 +118,11 @@ class Model:
                     return False
 
             s = session()
+            now = datetime.now(timezone.utc)
             if not self.is_persisted():
+                self._base_instance.created_at = now
                 s.add(self._base_instance)
+            self._base_instance.updated_at = now
             s.flush()
             return True
         except Exception:
