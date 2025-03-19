@@ -6,6 +6,7 @@ readme = "README.md"
 dependencies = [
 	"alembic>=1.15.1",
 	"Flask",
+	"python-dotenv>=1.0.1",
 	"sqlalchemy",
 ]
 
