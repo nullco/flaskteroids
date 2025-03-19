@@ -3,7 +3,8 @@ from importlib import import_module
 import flaskteroids.route as route
 import flaskteroids.db as db
 import flaskteroids.model as model
-from flaskteroids.cli.generators import generator
+from flaskteroids.cli.generators import generator as generate_cmd
+from flaskteroids.cli.db import db as db_cmd
 
 
 def create_app(import_name, config_dict=None):
@@ -38,5 +39,6 @@ def _register_error_handlers(app):
 
 
 def _register_cli_commands(app):
-    app.cli.add_command(generator.init_migrations)
-    app.cli.add_command(generator.generate)
+    app.cli.add_command(generate_cmd.generate)
+    app.cli.add_command(db_cmd.init)
+    app.cli.add_command(db_cmd.migrate)

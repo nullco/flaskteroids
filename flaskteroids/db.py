@@ -21,7 +21,7 @@ def configure(app):
     metadata = MetaData()
 
     models = _discover_models('app.models')
-    metadata.reflect(engine, only=list(models.keys()))
+    metadata.reflect(engine)
     Base = automap_base(metadata=metadata)
     Base.prepare()
     for table_name, model in models.items():

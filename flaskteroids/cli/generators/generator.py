@@ -3,12 +3,6 @@ from flask.cli import with_appcontext
 import flaskteroids.cli.generators.migrations.generator as migrations
 
 
-@click.command('init')
-@with_appcontext
-def init_migrations():
-    migrations.init()
-
-
 @click.group('generate')
 @with_appcontext
 def generate():
