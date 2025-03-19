@@ -14,6 +14,7 @@ def create_app(import_name, config_dict=None):
 
     _register_routes(app)
     _configure_database(app)
+    _prepare_shell_context(app)
     _register_error_handlers(app)
     _register_cli_commands(app)
 
@@ -27,7 +28,7 @@ def _register_routes(app):
 
 
 def _configure_database(app):
-    db.configure(app)
+    db.init(app)
 
 
 def _register_error_handlers(app):
@@ -42,3 +43,13 @@ def _register_cli_commands(app):
     app.cli.add_command(generate_cmd.generate)
     app.cli.add_command(db_cmd.init)
     app.cli.add_command(db_cmd.migrate)
+
+
+def _prepare_shell_context(app):
+    @app.shell_context_processor
+    def _():
+        db = app.extensions['flaskteroids.db']
+        return {
+            **db.models,
+            'reload': db.init_models
+        }
