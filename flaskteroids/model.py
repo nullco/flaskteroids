@@ -136,3 +136,11 @@ class Model:
         s = session()
         s.delete(self._base_instance)
         s.flush()
+
+    def __repr__(self) -> str:
+        return str(self)
+
+    def __str__(self) -> str:
+        columns = self._base_instance.__table__.columns.keys()
+        values = {c: getattr(self._base_instance, c) for c in columns}
+        return f'<{self.__class__.__name__} {id(self)} {values}>'
