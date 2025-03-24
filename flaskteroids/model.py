@@ -50,6 +50,10 @@ class Model:
     def errors(self):
         return self._errors
 
+    @property
+    def column_names(self):
+        return list(self._base_instance.__table__.columns.keys())
+
     def __getattr__(self, name):
         return getattr(self._base_instance, name)
 
@@ -138,9 +142,5 @@ class Model:
         s.flush()
 
     def __repr__(self) -> str:
-        return str(self)
-
-    def __str__(self) -> str:
-        columns = self._base_instance.__table__.columns.keys()
-        values = {c: getattr(self._base_instance, c) for c in columns}
-        return f'<{self.__class__.__name__} {id(self)} {values}>'
+        values = {c: getattr(self._base_instance, c) for c in self.column_names}
+        return f'<{self.__class__.__name__}:{hex(id(self))} {values}>'
