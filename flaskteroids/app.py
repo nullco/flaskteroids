@@ -3,6 +3,7 @@ from importlib import import_module
 import flaskteroids.route as route
 import flaskteroids.db as db
 import flaskteroids.model as model
+from flaskteroids.forms import form_with
 from flaskteroids.cli.generators import generator as generate_cmd
 from flaskteroids.cli.db import db as db_cmd
 
@@ -17,6 +18,7 @@ def create_app(import_name, config_dict=None):
     _prepare_shell_context(app)
     _register_error_handlers(app)
     _register_cli_commands(app)
+    _setup_forms(app)
 
     return app
 
@@ -53,3 +55,7 @@ def _prepare_shell_context(app):
             **db.models,
             'reload': db.init_models
         }
+
+
+def _setup_forms(app):
+    app.jinja_env.globals['form_with'] = form_with
