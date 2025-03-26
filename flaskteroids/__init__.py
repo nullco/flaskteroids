@@ -30,6 +30,10 @@ class Params(Mapping):
         self._ensure_params()
         g.params.update(values)
 
+    def pop(self, key, default):
+        self._ensure_params()
+        g.params.pop(key, default)
+
     def _ensure_params(self):
         if not hasattr(g, 'params'):
             g.params = {}

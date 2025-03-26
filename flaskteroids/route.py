@@ -54,6 +54,7 @@ class Routes:
             _logger.debug(f'to={to} view_func(args={args}, kwargs={kwargs}')
             params.update(request.form.to_dict(True))
             params.update(kwargs)  # looks like url template params come here
+            params.pop('csrf_token', None)
             try:
                 res = action()
                 if res:

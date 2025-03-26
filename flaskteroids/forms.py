@@ -1,14 +1,53 @@
 import textwrap
 from markupsafe import Markup, escape
+from flask import request, abort
 from flaskteroids.model import Model
+from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
+
+
+_serializer = URLSafeTimedSerializer("")
+_salt = 'csrf-token'
+
+
+def init(app):
+    app.jinja_env.globals['form_with'] = form_with
+    app.jinja_env.globals['csrf_token'] = _generate_csrf_token
+    secret_key = app.config.get('SECRET_KEY') or ''
+
+    global _serializer
+    _serializer = URLSafeTimedSerializer(secret_key)
+
+    @app.before_request
+    def _():
+        if _should_validate_csrf_token():
+            _validate_csrf_token()
+
+
+def _generate_csrf_token():
+    return _serializer.dumps('csrf-token', salt=_salt)
+
+
+def _validate_csrf_token():
+    token = request.form.get('csrf_token') or request.headers.get('X-CSRF-TOKEN')
+    if not token:
+        abort(400, 'Missing CSRF token.')
+    try:
+        _serializer.loads(token, salt=_salt, max_age=3600)
+    except SignatureExpired:
+        abort(400, 'CSRF token has expired.')
+    except BadSignature:
+        abort(400, 'Invalid CSRF token.')
+
+
+def _should_validate_csrf_token():
+    return request.method not in ['GET', 'HEAD', 'OPTIONS', 'TRACE']
 
 
 def form_with(model: Model, caller):
     form = Form(model)
-    # TODO: Implement support for CSRF tokens
     return textwrap.dedent(f"""
         <form action="{''}" method="POST">
-           <input type="hidden" name="csrf_token" value="TBD">
+           <input type="hidden" name="csrf_token" value="{_generate_csrf_token()}">
            {caller(form)}
         </form>
     """)
