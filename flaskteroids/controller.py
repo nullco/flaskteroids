@@ -8,8 +8,6 @@ def before_action(method_name, *, only=None):
         if not actions:
             ns = registry.get(controller_cls)
             actions = ns['actions']
-            print('setting up rule for before action')
-            print(actions)
 
         for action_name in actions:
             action = getattr(controller_cls, action_name)
