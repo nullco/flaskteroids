@@ -35,7 +35,12 @@ class Routes:
         return f'app.controllers.{cname}_controller.{cname.title()}Controller'
 
     def _get_controller_class(self, cname):
-        controller_module = import_module(f'app.controllers.{cname}_controller')
+        if cname.startswith('flaskteroids/'):
+            cname = cname.replace('flaskteroids/', '')
+            cpath = 'flaskteroids.controllers'
+        else:
+            cpath = 'app.controllers'
+        controller_module = import_module(f'{cpath}.{cname}_controller')
         return getattr(controller_module, f'{cname.title()}Controller')
 
     def _register_view_func(self, path, to, methods=None, as_=None):
