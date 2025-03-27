@@ -1,9 +1,7 @@
 import logging
 from flask import request
-from flask import render_template
 from importlib import import_module
 from flaskteroids import params, registry
-from flaskteroids.exceptions import Redirect
 
 
 _logger = logging.getLogger(__name__)
@@ -45,24 +43,18 @@ class Routes:
         ns = registry.get(self._get_controller_name(cname))
         if 'actions' not in ns:
             ns['actions'] = []
-        ns['actions'].append(caction)
+        if caction not in ns['actions']:
+            ns['actions'].append(caction)
 
         def view_func(*args, **kwargs):
             ccls = self._get_controller_class(cname)
             controller_instance = ccls()
-            action = getattr(controller_instance, caction)
+            action = getattr(controller_instance, f'invoke_{caction}')
             _logger.debug(f'to={to} view_func(args={args}, kwargs={kwargs}')
             params.update(request.form.to_dict(True))
             params.update(kwargs)  # looks like url template params come here
             params.pop('csrf_token', None)
-            try:
-                res = action()
-                if res:
-                    return res
-                view_template = render_template(f'{cname}/{caction}.html', **controller_instance.__dict__)
-                return view_template
-            except Redirect as r:
-                return r.response
+            return action()
 
         view_func_name = f"{cname}_{caction}"
         if prefix:

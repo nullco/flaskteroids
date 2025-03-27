@@ -1,17 +1,25 @@
+from collections import defaultdict
+import logging
+from flask import render_template
 from flaskteroids import registry
+
+
+_logger = logging.getLogger(__name__)
 
 
 def before_action(method_name, *, only=None):
     def setup_rule(controller_cls):
-        before_action_ = getattr(controller_cls, method_name)
         actions = only if only else None
+        ns = registry.get(controller_cls)
+
+        if 'before_action' not in ns:
+            ns['before_action'] = defaultdict(lambda: [])
         if not actions:
-            ns = registry.get(controller_cls)
-            actions = ns['actions']
+            actions = ns['actions'] if 'actions' in ns else []
 
         for action_name in actions:
-            action = getattr(controller_cls, action_name)
-            setattr(controller_cls, action_name, _chain(before_action_, action))
+            _logger.debug(f'before_action: setting {method_name} before {action_name} on {controller_cls.__name__}')
+            ns['before_action'][action_name].append(method_name)
     return setup_rule
 
 
@@ -24,3 +32,25 @@ def _chain(*actions):
                 break
         return res
     return wrapper
+
+
+class ActionController:
+
+    def __getattr__(self, name):
+        if name.startswith('invoke_'):
+            name = name.replace('invoke_', '')
+
+            def wrapper(*args, **kwargs):
+                ns = registry.get(self.__class__)
+                before_action = [ba for ba in ns.get('before_action', {}).get(name, [])]
+                before_action = [getattr(self, ba) for ba in before_action]
+                action = _chain(*before_action, getattr(self, name))
+                res = action(*args, **kwargs)
+                if res:
+                    return res
+                cname = self.__class__.__name__.replace("Controller", "").lower()
+                view_template = render_template(f'{cname}/{name}.html', **self.__dict__)
+                return view_template
+            return wrapper
+
+        raise AttributeError(f"{self.__class__.__name__} does not have attribute {name}")
