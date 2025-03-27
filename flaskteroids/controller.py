@@ -8,7 +8,7 @@ _logger = logging.getLogger(__name__)
 
 
 def before_action(method_name, *, only=None):
-    def setup_rule(controller_cls):
+    def register(controller_cls):
         actions = only if only else None
         ns = registry.get(controller_cls)
 
@@ -20,7 +20,7 @@ def before_action(method_name, *, only=None):
         for action_name in actions:
             _logger.debug(f'before_action: setting {method_name} before {action_name} on {controller_cls.__name__}')
             ns['before_action'][action_name].append(method_name)
-    return setup_rule
+    return register
 
 
 def _chain(*actions):
