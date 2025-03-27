@@ -2,6 +2,10 @@ from collections.abc import Mapping
 from flask import g, redirect
 
 from flaskteroids.exceptions import Redirect
+from importlib.metadata import version
+
+
+__version__ = version("flaskteroids")
 
 
 class Params(Mapping):

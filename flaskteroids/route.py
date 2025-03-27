@@ -15,6 +15,7 @@ class Routes:
 
     def __init__(self, app):
         self._app = app
+        self._paths = set()
 
     def root(self, *, to, as_='root'):
         self._register_view_func('/', to, as_=as_)
@@ -31,6 +32,9 @@ class Routes:
     def delete(self, path, *, to, as_=None):
         self._register_view_func(path, to, ['DELETE'], as_=as_)
 
+    def has_path(self, path):
+        return path in self._paths
+
     def _get_controller_name(self, cname):
         return f'app.controllers.{cname}_controller.{cname.title()}Controller'
 
@@ -44,6 +48,7 @@ class Routes:
         return getattr(controller_module, f'{cname.title()}Controller')
 
     def _register_view_func(self, path, to, methods=None, as_=None):
+        self._paths.add(path)
         cname, caction = to.split('#')
         ns = registry.get(self._get_controller_name(cname))
         if 'actions' not in ns:

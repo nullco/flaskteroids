@@ -28,6 +28,8 @@ def _register_routes(app):
     rr = route.init(app)
     routes = import_module('app.config.routes')
     routes.register(rr)
+    if not rr.has_path('/'):
+        rr.root(to='flaskteroids/welcome#show')
 
 
 def _configure_database(app):
