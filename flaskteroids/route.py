@@ -32,6 +32,24 @@ class Routes:
     def delete(self, path, *, to, as_=None):
         self._register_view_func(path, to, ['DELETE'], as_=as_)
 
+    def resources(self, name, *, only=None):
+        only = only or ['index', 'new', 'create', 'show', 'edit', 'update', 'destroy']
+        cfg = {
+            'index': (self.get, '/{name}/', '{name}#index'),
+            'new': (self.get, '/{name}/new/', '{name}#new'),
+            'create': (self.post, '/{name}/', '{name}#create'),
+            'show': (self.get, '/{name}/<int:id>/', '{name}#show'),
+            'edit': (self.get, '/{name}/<int:id>/edit/', '{name}#edit'),
+            'update': (self.put, '/{name}/<int:id>/', '{name}#update'),
+            'destroy': (self.delete, '/{name}/<int:id>/', '{name}#destroy'),
+        }
+        for action in only:
+            action_cfg = cfg[action]
+            method, path, to = action_cfg
+            path = path.format(name=name)
+            to = to.format(name=name)
+            method(path, to=to)
+
     def has_path(self, path):
         return path in self._paths
 
