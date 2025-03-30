@@ -18,3 +18,10 @@ def migrate():
     config = get_config()
     revision = 'head'
     command.upgrade(config, revision=revision)
+
+
+@click.command('db:rollback')
+def rollback():
+    config = get_config()
+    revision = '-1'
+    command.downgrade(config, revision=revision)

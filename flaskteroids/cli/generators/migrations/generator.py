@@ -7,12 +7,13 @@ from flaskteroids.cli.db.config import get_config
 def migration(cmd, args):
     config = get_config()
     res = cmd_parser.parse(cmd, args)
-    up_ops = res['parsed']['ops']
+    up_ops = res['parsed']['ops']['up']
+    down_ops = res['parsed']['ops']['down']
     command.revision(
         config,
         message=res['normalized_cmd'].replace('_', ' '),
         rev_id=datetime.now().strftime("%Y%m%d%H%M%S"),
-        process_revision_directives=gen_process_revision_directives(up_ops, [])
+        process_revision_directives=gen_process_revision_directives(up_ops, down_ops)
     )
 
 

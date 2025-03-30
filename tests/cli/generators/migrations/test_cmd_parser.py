@@ -13,23 +13,25 @@ from datetime import datetime, timezone
             'normalized_cmd': 'create_products',
             'parsed': {
                 'cmd': 'create_table',
-                'ops': [
-                    ops.CreateTableOp(
-                        'products',
-                        [
-                            sa.Column('id', sa.Integer(), primary_key=True, autoincrement=True),
-                            sa.Column('created_at', sa.DateTime(), default=lambda: datetime.now(timezone.utc)),
-                            sa.Column(
-                                'updated_at',
-                                sa.DateTime(),
-                                default=lambda: datetime.now(timezone.utc),
-                                onupdate=lambda: datetime.now(timezone.utc),
-                            ),
-                            sa.Column('name', sa.String(255), nullable=True)
-                        ]
-                    )
+                'ops': {
+                    'up': [
+                        ops.CreateTableOp(
+                            'products',
+                            [
+                                sa.Column('id', sa.Integer(), primary_key=True, autoincrement=True),
+                                sa.Column('created_at', sa.DateTime(), default=lambda: datetime.now(timezone.utc)),
+                                sa.Column(
+                                    'updated_at',
+                                    sa.DateTime(),
+                                    default=lambda: datetime.now(timezone.utc),
+                                    onupdate=lambda: datetime.now(timezone.utc),
+                                ),
+                                sa.Column('name', sa.String(255), nullable=True)
+                            ]
+                        )
 
-                ]
+                    ]
+                }
             }
         }
     ),
@@ -38,8 +40,8 @@ def test_create_table(cmd, args, expected):
     res = cmd_parser.parse(cmd, args)
     assert res['normalized_cmd'] == expected['normalized_cmd']
     assert res['parsed']['cmd'] == expected['parsed']['cmd']
-    ops = res['parsed']['ops']
-    expected_ops = expected['parsed']['ops']
+    ops = res['parsed']['ops']['up']
+    expected_ops = expected['parsed']['ops']['up']
     for op, expected_op in zip(ops, expected_ops):
         assert type(op) is type(expected_op)
         assert op.table_name == expected_op.table_name
@@ -58,13 +60,14 @@ def test_create_table(cmd, args, expected):
             'normalized_cmd': 'add_price_to_products',
             'parsed': {
                 'cmd': 'add_columns_to_table',
-                'ops': [
-                    ops.AddColumnOp(
-                        'products',
-                        sa.Column('price', sa.Float(), nullable=True)
-                    )
-
-                ]
+                'ops': {
+                    'up': [
+                        ops.AddColumnOp(
+                            'products',
+                            sa.Column('price', sa.Float(), nullable=True)
+                        )
+                    ]
+                }
             }
         }
     ),
@@ -75,17 +78,19 @@ def test_create_table(cmd, args, expected):
             'normalized_cmd': 'add_price_and_total_to_products',
             'parsed': {
                 'cmd': 'add_columns_to_table',
-                'ops': [
-                    ops.AddColumnOp(
-                        'products',
-                        sa.Column('price', sa.Float(), nullable=True)
-                    ),
-                    ops.AddColumnOp(
-                        'products',
-                        sa.Column('total', sa.Integer(), nullable=True)
-                    )
+                'ops': {
+                    'up': [
+                        ops.AddColumnOp(
+                            'products',
+                            sa.Column('price', sa.Float(), nullable=True)
+                        ),
+                        ops.AddColumnOp(
+                            'products',
+                            sa.Column('total', sa.Integer(), nullable=True)
+                        )
 
-                ]
+                    ]
+                }
             }
         }
     )
@@ -94,8 +99,8 @@ def test_add_columns_to_table(cmd, args, expected):
     res = cmd_parser.parse(cmd, args)
     assert res['normalized_cmd'] == expected['normalized_cmd']
     assert res['parsed']['cmd'] == expected['parsed']['cmd']
-    ops = res['parsed']['ops']
-    expected_ops = expected['parsed']['ops']
+    ops = res['parsed']['ops']['up']
+    expected_ops = expected['parsed']['ops']['up']
     for op, expected_op in zip(ops, expected_ops):
         assert type(op) is type(expected_op)
         assert op.table_name == expected_op.table_name
@@ -110,9 +115,7 @@ def test_add_columns_to_table(cmd, args, expected):
             'normalized_cmd': 'remove_price_from_products',
             'parsed': {
                 'cmd': 'remove_columns_from_table',
-                'ops': [
-                    ops.DropColumnOp('products', 'price')
-                ]
+                'ops': {'up': [ops.DropColumnOp('products', 'price')]}
             }
         }
     ),
@@ -123,10 +126,12 @@ def test_add_columns_to_table(cmd, args, expected):
             'normalized_cmd': 'remove_price_and_total_from_products',
             'parsed': {
                 'cmd': 'remove_columns_from_table',
-                'ops': [
-                    ops.DropColumnOp('products', 'price'),
-                    ops.DropColumnOp('products', 'total'),
-                ]
+                'ops': {
+                    'up': [
+                        ops.DropColumnOp('products', 'price'),
+                        ops.DropColumnOp('products', 'total'),
+                    ]
+                }
             }
         }
     )
@@ -135,8 +140,8 @@ def test_remove_columns_from_table(cmd, args, expected):
     res = cmd_parser.parse(cmd, args)
     assert res['normalized_cmd'] == expected['normalized_cmd']
     assert res['parsed']['cmd'] == expected['parsed']['cmd']
-    ops = res['parsed']['ops']
-    expected_ops = expected['parsed']['ops']
+    ops = res['parsed']['ops']['up']
+    expected_ops = expected['parsed']['ops']['up']
     for op, expected_op in zip(ops, expected_ops):
         assert type(op) is type(expected_op)
         assert op.table_name == expected_op.table_name
