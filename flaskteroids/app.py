@@ -5,6 +5,7 @@ import flaskteroids.route as route
 import flaskteroids.db as db
 import flaskteroids.model as model
 from flaskteroids.extensions.forms import FormsExtension
+from flaskteroids.extensions.celery import CeleryExtension
 from flaskteroids.cli.generators import generator as generate_cmd
 from flaskteroids.cli.db import db as db_cmd
 
@@ -70,4 +71,4 @@ def _setup_forms(app):
 
 
 def _setup_jobs(app):
-    pass
+    CeleryExtension(app)
