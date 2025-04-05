@@ -4,7 +4,7 @@ from flaskteroids.exceptions import Redirect
 import flaskteroids.route as route
 import flaskteroids.db as db
 import flaskteroids.model as model
-import flaskteroids.forms as forms
+from flaskteroids.extensions.forms import FormsExtension
 from flaskteroids.cli.generators import generator as generate_cmd
 from flaskteroids.cli.db import db as db_cmd
 
@@ -20,6 +20,7 @@ def create_app(import_name, config_dict=None):
     _register_error_handlers(app)
     _register_cli_commands(app)
     _setup_forms(app)
+    _setup_jobs(app)
 
     return app
 
@@ -65,4 +66,8 @@ def _prepare_shell_context(app):
 
 
 def _setup_forms(app):
-    forms.init(app)
+    FormsExtension(app)
+
+
+def _setup_jobs(app):
+    pass

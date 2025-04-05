@@ -5,52 +5,55 @@ from flaskteroids.model import Model
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 
 
-_serializer = URLSafeTimedSerializer("")
-_salt = 'csrf-token'
+class FormsExtension:
 
+    def __init__(self, app):
+        self._serializer = URLSafeTimedSerializer("")
+        self._salt = 'csrf-token'
+        if app:
+            self.init_app(app)
 
-def init(app):
-    app.jinja_env.globals['form_with'] = form_with
-    app.jinja_env.globals['csrf_token'] = _generate_csrf_token
-    secret_key = app.config.get('SECRET_KEY') or ''
+    def init_app(self, app):
+        app.jinja_env.globals['form_with'] = self._form_with
+        app.jinja_env.globals['csrf_token'] = self._generate_csrf_token
+        secret_key = app.config.get('SECRET_KEY') or ''
 
-    global _serializer
-    _serializer = URLSafeTimedSerializer(secret_key)
+        self._serializer = URLSafeTimedSerializer(secret_key)
 
-    @app.before_request
-    def _():
-        if _should_validate_csrf_token():
-            _validate_csrf_token()
+        @app.before_request
+        def _():
+            if self._should_validate_csrf_token():
+                self._validate_csrf_token()
 
+        if not hasattr(app, "extensions"):
+            app.extensions = {}
+        app.extensions["flaskteroids_forms"] = self
 
-def _generate_csrf_token():
-    return _serializer.dumps('csrf-token', salt=_salt)
+    def _generate_csrf_token(self):
+        return self._serializer.dumps('csrf-token', salt=self._salt)
 
+    def _validate_csrf_token(self):
+        token = request.form.get('csrf_token') or request.headers.get('X-CSRF-TOKEN')
+        if not token:
+            abort(400, 'Missing CSRF token.')
+        try:
+            self._serializer.loads(token, salt=self._salt, max_age=3600)
+        except SignatureExpired:
+            abort(400, 'CSRF token has expired.')
+        except BadSignature:
+            abort(400, 'Invalid CSRF token.')
 
-def _validate_csrf_token():
-    token = request.form.get('csrf_token') or request.headers.get('X-CSRF-TOKEN')
-    if not token:
-        abort(400, 'Missing CSRF token.')
-    try:
-        _serializer.loads(token, salt=_salt, max_age=3600)
-    except SignatureExpired:
-        abort(400, 'CSRF token has expired.')
-    except BadSignature:
-        abort(400, 'Invalid CSRF token.')
+    def _should_validate_csrf_token(self):
+        return request.method not in ['GET', 'HEAD', 'OPTIONS', 'TRACE']
 
-
-def _should_validate_csrf_token():
-    return request.method not in ['GET', 'HEAD', 'OPTIONS', 'TRACE']
-
-
-def form_with(model: Model, caller):
-    form = Form(model)
-    return textwrap.dedent(f"""
-        <form action="{''}" method="POST">
-           <input type="hidden" name="csrf_token" value="{_generate_csrf_token()}">
-           {caller(form)}
-        </form>
-    """)
+    def _form_with(self, model: Model, caller):
+        form = Form(model)
+        return textwrap.dedent(f"""
+            <form action="{''}" method="POST">
+               <input type="hidden" name="csrf_token" value="{self._generate_csrf_token()}">
+               {caller(form)}
+            </form>
+        """)
 
 
 class Form:
