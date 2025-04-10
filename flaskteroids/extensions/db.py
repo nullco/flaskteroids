@@ -15,7 +15,6 @@ _logger = logging.getLogger(__name__)
 
 class ORMExtension:
 
-
     def __init__(self, app):
         if app:
             self.init_app(app)
@@ -75,7 +74,6 @@ class ORMExtension:
             if hasattr(Base.classes, table_name):
                 ns = registry.get(model)
                 ns['base_class'] = getattr(Base.classes, table_name)
-
 
     @staticmethod
     def _pluralize(name):
