@@ -2,10 +2,10 @@ from flask.app import Flask
 from importlib import import_module
 from flaskteroids.exceptions import Redirect
 import flaskteroids.route as route
-import flaskteroids.db as db
 import flaskteroids.model as model
 from flaskteroids.extensions.forms import FormsExtension
 from flaskteroids.extensions.celery import CeleryExtension
+from flaskteroids.extensions.db import ORMExtension
 from flaskteroids.cli.generators import generator as generate_cmd
 from flaskteroids.cli.db import db as db_cmd
 
@@ -16,7 +16,7 @@ def create_app(import_name, config_dict=None):
         app.config.update(config_dict)
 
     _register_routes(app)
-    _configure_database(app)
+    _configure_orm(app)
     _prepare_shell_context(app)
     _register_error_handlers(app)
     _register_cli_commands(app)
@@ -34,8 +34,8 @@ def _register_routes(app):
         rr.root(to='flaskteroids/welcome#show')
 
 
-def _configure_database(app):
-    db.init(app)
+def _configure_orm(app):
+    ORMExtension(app)
 
 
 def _register_error_handlers(app):
