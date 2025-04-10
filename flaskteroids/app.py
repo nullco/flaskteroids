@@ -10,11 +10,11 @@ from flaskteroids.cli.generators import generator as generate_cmd
 from flaskteroids.cli.db import db as db_cmd
 
 
-def create_app(import_name, config_dict=None):
-    app = Flask(import_name, template_folder='app/views/')
-    if config_dict:
-        app.config.update(config_dict)
+def create_app(import_name, config=None):
+    config = _config(config)
+    app = Flask(import_name, template_folder=config['VIEWS_FOLDER'])
 
+    _attach_config(app, config)
     _register_routes(app)
     _configure_orm(app)
     _prepare_shell_context(app)
@@ -24,6 +24,26 @@ def create_app(import_name, config_dict=None):
     _setup_jobs(app)
 
     return app
+
+
+def _config(overwrites):
+    cfg = {
+        'MODELS_PACKAGE': 'app.models',
+        'JOBS_PACKAGE': 'app.jobs',
+        'VIEWS_FOLDER': 'app/views/',
+        'DATABASE_URL': 'sqlite:///database.db',
+        'JOBS': {
+            'CELERY_BROKER_URL': 'sqla+sqlite:///jobs_database.db'
+        }
+    }
+    if overwrites:
+        cfg.update(overwrites)
+    return cfg
+
+
+def _attach_config(app, config):
+    if config:
+        app.config.update(config)
 
 
 def _register_routes(app):
