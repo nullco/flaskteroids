@@ -1,13 +1,12 @@
 from flask.app import Flask
-from importlib import import_module
 from flaskteroids.exceptions import Redirect
 import flaskteroids.model as model
 from flaskteroids.extensions.forms import FormsExtension
 from flaskteroids.extensions.celery import CeleryExtension
 from flaskteroids.extensions.db import SQLAlchemyExtension
 from flaskteroids.extensions.routes import RoutesExtension
-from flaskteroids.cli.generators import generator as generate_cmd
-from flaskteroids.cli.db import db as db_cmd
+from flaskteroids.cli.generators import commands as generate_commands
+from flaskteroids.cli.db import commands as db_commands
 
 
 def create_app(import_name, config=None):
@@ -48,7 +47,7 @@ def _attach_config(app, config):
 
 
 def _register_routes(app):
-    rr = RoutesExtension(app)
+    RoutesExtension(app)
 
 
 def _configure_orm(app):
@@ -68,9 +67,9 @@ def _register_error_handlers(app):
 
 
 def _register_cli_commands(app):
-    app.cli.add_command(generate_cmd.generate)
-    app.cli.add_command(db_cmd.init)
-    app.cli.add_command(db_cmd.migrate)
+    app.cli.add_command(generate_commands.generate)
+    app.cli.add_command(db_commands.init)
+    app.cli.add_command(db_commands.migrate)
 
 
 def _prepare_shell_context(app):

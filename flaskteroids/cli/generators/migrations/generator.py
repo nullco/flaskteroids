@@ -13,11 +13,11 @@ def migration(cmd, args):
         config,
         message=res['normalized_cmd'].replace('_', ' '),
         rev_id=datetime.now().strftime("%Y%m%d%H%M%S"),
-        process_revision_directives=gen_process_revision_directives(up_ops, down_ops)
+        process_revision_directives=_gen_process_revision_directives(up_ops, down_ops)
     )
 
 
-def gen_process_revision_directives(upgrade_ops, downgrade_ops):
+def _gen_process_revision_directives(upgrade_ops, downgrade_ops):
     def fn(context, revision, directives):
         script, *_ = directives
         script.upgrade_ops.ops[:] = upgrade_ops
