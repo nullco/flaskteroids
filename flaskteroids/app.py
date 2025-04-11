@@ -31,9 +31,9 @@ def _config(overwrites):
         'MODELS_PACKAGE': 'app.models',
         'JOBS_PACKAGE': 'app.jobs',
         'VIEWS_FOLDER': 'app/views/',
-        'SQLALCHEMY_URL': 'sqlite:///database.db',
+        'SQLALCHEMY_URL': 'sqlite:///db/database.db',
         'JOBS': {
-            'CELERY_BROKER_URL': 'sqla+sqlite:///jobs_database.db'
+            'CELERY_BROKER_URL': 'sqla+sqlite:///db/jobs_database.db'
         }
     }
     if overwrites:

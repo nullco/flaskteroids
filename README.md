@@ -1,6 +1,6 @@
 # Flaskteroids
 
-Flaskteroids (or Flask on steroids) is a lightweight and powerful Python MVC framework that enhances Flask with a structured and elegant abstraction. Inspired by the APIs of Ruby on Rails and Laravel, it simplifies web application development while leveraging the robustness of Flask.
+Flaskteroids (or Flask on steroids) is a lightweight and powerful Python MVC framework that enhances Flask with a structured and elegant abstraction. Inspired by the APIs of Ruby on Rails, it simplifies web application development while leveraging the robustness of Flask.
 
 ## Features
 
@@ -11,6 +11,7 @@ Flaskteroids (or Flask on steroids) is a lightweight and powerful Python MVC fra
 - **Templating Engine** – Works effortlessly with Jinja2 for dynamic views.
 - **RESTful API Support** – Easy-to-define API routes with JSON responses.
 - **Flask Compatibility** – Retains the full power of Flask and its ecosystem.
+- **Background jobs** – Integrated with celery for background jobs execution
 
 ## Installation
 
