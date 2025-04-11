@@ -49,7 +49,7 @@ class CeleryExtension:
 
         if not hasattr(app, "extensions"):
             app.extensions = {}
-        app.extensions["celery"] = self
+        app.extensions["flaskteroids.celery"] = self
 
     def _discover_jobs(self):
         jobs_package = 'app.jobs'
@@ -70,7 +70,6 @@ class CeleryExtension:
                     jobs[name] = obj
         _logger.debug(f'discovered {len(jobs)} job classes')
         return jobs
-
 
     def __getattr__(self, name):
         return getattr(self._celery, name)
