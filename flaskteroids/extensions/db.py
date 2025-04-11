@@ -13,14 +13,14 @@ from flaskteroids.model import Model
 _logger = logging.getLogger(__name__)
 
 
-class ORMExtension:
+class SQLAlchemyExtension:
 
     def __init__(self, app):
         if app:
             self.init_app(app)
 
     def init_app(self, app):
-        self._engine = create_engine(app.config['DATABASE_URL'])
+        self._engine = create_engine(app.config['SQLALCHEMY_URL'])
         self._metadata = MetaData()
         self._session_factory = scoped_session(sessionmaker(bind=self._engine))
         if not hasattr(app, 'extensions'):

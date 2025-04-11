@@ -5,7 +5,7 @@ import flaskteroids.route as route
 import flaskteroids.model as model
 from flaskteroids.extensions.forms import FormsExtension
 from flaskteroids.extensions.celery import CeleryExtension
-from flaskteroids.extensions.db import ORMExtension
+from flaskteroids.extensions.db import SQLAlchemyExtension
 from flaskteroids.cli.generators import generator as generate_cmd
 from flaskteroids.cli.db import db as db_cmd
 
@@ -31,7 +31,7 @@ def _config(overwrites):
         'MODELS_PACKAGE': 'app.models',
         'JOBS_PACKAGE': 'app.jobs',
         'VIEWS_FOLDER': 'app/views/',
-        'DATABASE_URL': 'sqlite:///database.db',
+        'SQLALCHEMY_URL': 'sqlite:///database.db',
         'JOBS': {
             'CELERY_BROKER_URL': 'sqla+sqlite:///jobs_database.db'
         }
@@ -55,7 +55,7 @@ def _register_routes(app):
 
 
 def _configure_orm(app):
-    ORMExtension(app)
+    SQLAlchemyExtension(app)
 
 
 def _register_error_handlers(app):

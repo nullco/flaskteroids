@@ -17,5 +17,5 @@ def get_config():
     config.config_file_name = os.path.join(_directory, 'alembic.ini')
     config.set_main_option('revision_environment', 'true')
     config.set_main_option('script_location', _directory)
-    config.set_main_option('sqlalchemy.url', current_app.config['DATABASE_URL'])
+    config.set_main_option('sqlalchemy.url', current_app.config['SQLALCHEMY_URL'])
     return config
