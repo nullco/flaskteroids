@@ -7,15 +7,23 @@ from flaskteroids import params, registry
 _logger = logging.getLogger(__name__)
 
 
-def init(app):
-    return Routes(app)
-
-
-class Routes:
+class RoutesExtension:
 
     def __init__(self, app):
+        if app:
+            self.init_app(app)
+
+    def init_app(self, app):
         self._app = app
         self._paths = set()
+        routes = import_module(app.config['ROUTES_PACKAGE'])
+        routes.register(self)
+        if not self.has_path('/'):
+            self.root(to='flaskteroids/welcome#show')
+
+        if not hasattr(app, "extensions"):
+            app.extensions = {}
+        app.extensions["flaskteroids.routes"] = self
 
     def root(self, *, to, as_='root'):
         self._register_view_func('/', to, as_=as_)

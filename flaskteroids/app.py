@@ -1,11 +1,11 @@
 from flask.app import Flask
 from importlib import import_module
 from flaskteroids.exceptions import Redirect
-import flaskteroids.route as route
 import flaskteroids.model as model
 from flaskteroids.extensions.forms import FormsExtension
 from flaskteroids.extensions.celery import CeleryExtension
 from flaskteroids.extensions.db import SQLAlchemyExtension
+from flaskteroids.extensions.routes import RoutesExtension
 from flaskteroids.cli.generators import generator as generate_cmd
 from flaskteroids.cli.db import db as db_cmd
 
@@ -28,6 +28,7 @@ def create_app(import_name, config=None):
 
 def _config(overwrites):
     cfg = {
+        'ROUTES_PACKAGE': 'app.config.routes',
         'MODELS_PACKAGE': 'app.models',
         'JOBS_PACKAGE': 'app.jobs',
         'VIEWS_FOLDER': 'app/views/',
@@ -47,11 +48,7 @@ def _attach_config(app, config):
 
 
 def _register_routes(app):
-    rr = route.init(app)
-    routes = import_module('app.config.routes')
-    routes.register(rr)
-    if not rr.has_path('/'):
-        rr.root(to='flaskteroids/welcome#show')
+    rr = RoutesExtension(app)
 
 
 def _configure_orm(app):
