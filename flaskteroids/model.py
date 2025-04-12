@@ -31,18 +31,59 @@ def _validates(*, instance, field, presence):
     return errors
 
 
-def _build(cls, base_instance):
+def _build(model_cls, base_instance):
     if base_instance is None:
         return None
-    res = cls()
+    res = model_cls()
     res._base_instance = base_instance
     return res
+
+
+def _base(model_cls):
+    base = registry.get(model_cls).get('base_class')
+    if not base:
+        raise Exception('Model not configured properly, make sure you have put it inside app.models folder')
+    return base
+
+
+class ModelQuery:
+    def __init__(self, model_cls):
+        self._model_cls = model_cls
+        self._model_base = _base(model_cls)
+        self._query = select(self._model_base)
+
+    def where(self, **kwargs):
+        self._query = self._query.filter_by(**kwargs)
+        return self
+
+    def first(self):
+        s = session()
+        res = s.execute(self._query).scalars().first()
+        if not res:
+            return None
+        return _build(self._model_cls, res)
+
+    def order(self, **kwargs):
+        for k, v in kwargs.items():
+            field = getattr(self._model_base, k)
+            clause = field.desc() if v == 'desc' else field.asc()
+            self._query = self._query.order_by(clause)
+        return self
+
+    def __iter__(self):
+        s = session()
+        res = s.execute(self._query).scalars()
+        for r in res:
+            yield _build(self._model_cls, r)
+
+    def __repr__(self):
+        return repr([r for r in self])
 
 
 class Model:
 
     def __init__(self, **kwargs):
-        base = self._base()
+        base = _base(self.__class__)
         self._errors = []
         self._base_instance = base(**kwargs)
 
@@ -58,21 +99,6 @@ class Model:
         return getattr(self._base_instance, name)
 
     @classmethod
-    def _base(cls):
-        base = registry.get(cls).get('base_class')
-        if not base:
-            raise Exception('Model not configured properly, make sure you have put it inside app.models folder')
-        return base
-
-    @classmethod
-    def _from_base_instance(cls, base_instance):
-        if base_instance is None:
-            return None
-        res = cls()
-        res._base_instance = base_instance
-        return res
-
-    @classmethod
     def new(cls, **kwargs):
         instance = cls(**kwargs)
         return instance
@@ -85,23 +111,11 @@ class Model:
 
     @classmethod
     def all(cls):
-        base = cls._base()
-        s = session()
-        res = s.execute(select(base)).scalars()
-        for r in res:
-            yield _build(cls, r)
+        return ModelQuery(cls)
 
     @classmethod
     def find(cls, id):
-        s = session()
-        base = cls._base()
-        found = _build(
-            cls,
-            s.execute(
-                select(base).
-                where(base.id == id)
-            ).scalars().first()
-        )
+        found = ModelQuery(cls).where(id=id).first()
         if not found:
             raise ModelNotFoundException("Instance not found")
         return found
