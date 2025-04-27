@@ -1,13 +1,8 @@
-import logging
-import inspect
-import pkgutil
-import flaskteroids.registry as registry
 from celery import Celery
-from importlib import import_module
 from celery.signals import setup_logging
-
-
-_logger = logging.getLogger(__name__)
+import flaskteroids.registry as registry
+from flaskteroids.extensions.utils import discover_classes
+from flaskteroids.jobs.job import Job
 
 
 class JobsExtension:
@@ -36,7 +31,7 @@ class JobsExtension:
 
         self._celery.Task = AppContextTask
 
-        self._jobs = self._discover_jobs()
+        self._jobs = discover_classes('app.jobs', Job)
         for job_name, job_class in self._jobs.items():
             self.register_job(f'app.jobs.{job_name}', job_class)
         if not hasattr(app, "extensions"):
@@ -52,26 +47,6 @@ class JobsExtension:
 
         ns = registry.get(job_class)
         ns['task'] = task_wrapper
-
-    def _discover_jobs(self):
-        jobs_package = 'app.jobs'
-        try:
-            package = import_module(jobs_package)
-        except ModuleNotFoundError:
-            _logger.debug('No jobs module detected... ignoring')
-            return {}
-        package_path = package.__path__
-        jobs = {}
-        job = import_module('flaskteroids.jobs.job')
-        for _, job_name, _ in pkgutil.iter_modules(package_path):
-            absolute_name = f"{jobs_package}.{job_name}"
-            module = import_module(absolute_name)
-            for name, obj in inspect.getmembers(module, inspect.isclass):
-                if issubclass(obj, job.Job) and \
-                        obj is not job.Job:
-                    jobs[name] = obj
-        _logger.debug(f'discovered {len(jobs)} job classes')
-        return jobs
 
     def __getattr__(self, name):
         return getattr(self._celery, name)

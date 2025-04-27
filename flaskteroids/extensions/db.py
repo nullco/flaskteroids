@@ -1,11 +1,9 @@
+import logging
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy import create_engine, MetaData
 from sqlalchemy.orm import sessionmaker, scoped_session
-from importlib import import_module
 from flask import g
-import logging
-import pkgutil
-import inspect
+from flaskteroids.extensions.utils import discover_classes
 import flaskteroids.registry as registry
 from flaskteroids.model import Model
 
@@ -42,21 +40,6 @@ class SQLAlchemyExtension:
                 _logger.debug('closing session')
                 db_session.close()
 
-    def _discover_models(self):
-        models_package = 'app.models'
-        package = import_module(models_package)
-        package_path = package.__path__
-        models = {}
-        for _, model_name, _ in pkgutil.iter_modules(package_path):
-            absolute_name = f"{models_package}.{model_name}"
-            module = import_module(absolute_name)
-            for name, obj in inspect.getmembers(module, inspect.isclass):
-                if issubclass(obj, Model) and \
-                        obj is not Model:
-                    models[name] = obj
-        _logger.debug(f'discovered {len(models)} model classes')
-        return models
-
     def create_session(self):
         return self._session_factory()
 
@@ -65,7 +48,7 @@ class SQLAlchemyExtension:
         return self._models
 
     def init_models(self):
-        self._models = self._discover_models()
+        self._models = discover_classes('app.models', Model)
         self._metadata.reflect(self._engine)
         Base = automap_base(metadata=self._metadata)
         Base.prepare()
