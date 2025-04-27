@@ -1,8 +1,9 @@
 from flask.app import Flask
 from flaskteroids.exceptions import Redirect
+from flaskteroids.extensions.mail import MailExtension
 import flaskteroids.model as model
 from flaskteroids.extensions.forms import FormsExtension
-from flaskteroids.extensions.celery import CeleryExtension
+from flaskteroids.extensions.jobs import JobsExtension
 from flaskteroids.extensions.db import SQLAlchemyExtension
 from flaskteroids.extensions.routes import RoutesExtension
 from flaskteroids.cli.generators import commands as generate_commands
@@ -21,6 +22,7 @@ def create_app(import_name, config=None):
     _register_cli_commands(app)
     _setup_forms(app)
     _setup_jobs(app)
+    _setup_mailers(app)
 
     return app
 
@@ -34,7 +36,8 @@ def _config(overwrites):
         'SQLALCHEMY_URL': 'sqlite:///db/database.db',
         'JOBS': {
             'CELERY_BROKER_URL': 'sqla+sqlite:///db/jobs_database.db'
-        }
+        },
+        'MAIL_ENABLED': False
     }
     if overwrites:
         cfg.update(overwrites)
@@ -87,4 +90,8 @@ def _setup_forms(app):
 
 
 def _setup_jobs(app):
-    CeleryExtension(app)
+    JobsExtension(app)
+
+
+def _setup_mailers(app):
+    MailExtension(app)

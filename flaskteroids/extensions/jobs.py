@@ -10,7 +10,7 @@ from celery.signals import setup_logging
 _logger = logging.getLogger(__name__)
 
 
-class CeleryExtension:
+class JobsExtension:
 
     def __init__(self, app=None):
 
@@ -38,18 +38,20 @@ class CeleryExtension:
 
         self._jobs = self._discover_jobs()
         for job_name, job_class in self._jobs.items():
-
-            @self._celery.task(name=f'app.jobs.{job_name}')
-            def task_wrapper(*args, **kwargs):
-                job_instance = job_class()
-                job_instance.perform(*args, **kwargs)
-
-            ns = registry.get(job_class)
-            ns['task'] = task_wrapper
-
+            self.register_job(f'app.jobs.{job_name}', job_class)
         if not hasattr(app, "extensions"):
             app.extensions = {}
-        app.extensions["flaskteroids.celery"] = self
+        app.extensions["flaskteroids.jobs"] = self
+
+    def register_job(self, job_name, job_class):
+
+        @self._celery.task(name=job_name)
+        def task_wrapper(*args, **kwargs):
+            job_instance = job_class()
+            job_instance.perform(*args, **kwargs)
+
+        ns = registry.get(job_class)
+        ns['task'] = task_wrapper
 
     def _discover_jobs(self):
         jobs_package = 'app.jobs'
