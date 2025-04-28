@@ -1,10 +1,8 @@
-from abc import ABC, abstractmethod
 import flaskteroids.registry as registry
 
 
-class Job(ABC):
+class Job:
 
-    @abstractmethod
     def perform(self, *args, **kwargs):
         pass
 

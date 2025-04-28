@@ -1,8 +1,11 @@
+import logging
 from celery import Celery
 from celery.signals import setup_logging
 import flaskteroids.registry as registry
 from flaskteroids.extensions.utils import discover_classes
 from flaskteroids.jobs.job import Job
+
+_logger = logging.getLogger(__name__)
 
 
 class JobsExtension:
@@ -47,6 +50,7 @@ class JobsExtension:
 
         ns = registry.get(job_class)
         ns['task'] = task_wrapper
+        _logger.debug(f'registered task for job {job_class}')
 
     def __getattr__(self, name):
         return getattr(self._celery, name)
