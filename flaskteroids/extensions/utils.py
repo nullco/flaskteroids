@@ -23,3 +23,10 @@ def discover_classes(module_name, cls):
                 entries[name] = obj
     _logger.debug(f'discovered {len(entries)} classes in {module_name}')
     return entries
+
+
+def discover_methods(cls):
+    return [
+        name for name, member in inspect.getmembers(cls)
+        if inspect.isfunction(member) and not name.startswith('_')
+    ]

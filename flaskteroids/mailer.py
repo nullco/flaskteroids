@@ -2,48 +2,52 @@ import logging
 import smtplib
 import ssl
 from email.message import EmailMessage
-from flask import current_app
+from flask import current_app, render_template
+import flaskteroids.registry as registry
 from flaskteroids.jobs.job import Job
 
 _logger = logging.getLogger(__name__)
 
 
 class _MailerScheduler:
-    def __init__(self, mailer_cls, action):
+    def __init__(self, mailer_cls):
         self._mailer_cls = mailer_cls
-        self._action = action
+
+    def __getattr__(self, name):
+        getattr(self._mailer_cls, name)
+        self._action = name
+        return self
 
     def deliver_now(self, *args, **kwargs):
+        assert self._action, 'Action not set'
         kwargs['_action'] = self._action
         mailer = self._mailer_cls()
         return mailer.perform(*args, **kwargs)
 
     def deliver_later(self, *args, **kwargs):
+        assert self._action, 'Action not set'
         kwargs['_action'] = self._action
         mailer = self._mailer_cls()
         mailer.perform_later(*args, **kwargs)
 
 
-class _MailerMeta(type):
-
-    def __getattribute__(self, name):
-        attr = super().__getattribute__(name)
-        if isinstance(self, type):
-            if callable(attr):
-                return _MailerScheduler(self, name)
-        return attr
-
-
-class Mailer(Job, metaclass=_MailerMeta):
+class Mailer(Job):
 
     def __init__(self):
         self._msg = EmailMessage()
+        self._action = None
+
+    @classmethod
+    def builder(cls):
+        return _MailerScheduler(cls)
 
     def perform(self, *args, **kwargs):
-        action = kwargs.pop('_action')
-        getattr(self, action)(*args, **kwargs)
+        self._action = kwargs.pop('_action')
+        getattr(self, self._action)(*args, **kwargs)
 
     def mail(self, *, to, subject):
+        # ns = registry.get(self.__class__)
+        # view_template = render_template(f'{ns["name"]}/{self._action}.html', **self.__dict__)
         self._msg['Subject'] = subject
         self._msg['From'] = 'no-reply@flaskteroids.me'
         self._msg['To'] = to

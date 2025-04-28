@@ -1,5 +1,6 @@
 from flaskteroids.extensions.utils import discover_classes
 from flaskteroids.mailer import Mailer
+import flaskteroids.registry as registry
 
 
 class MailExtension:
@@ -16,6 +17,8 @@ class MailExtension:
         self._mailers = discover_classes('app.mailers', Mailer)
 
         for mailer_name, mailer_class in self._mailers.items():
+            ns = registry.get(mailer_class)
+            ns['name'] = mailer_name
             jobs_extension.register_job(mailer_name, mailer_class)
 
         app.extensions["flaskteroids.mail"] = self
