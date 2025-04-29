@@ -3,7 +3,7 @@ import smtplib
 import ssl
 from email.message import EmailMessage
 from flask import current_app, render_template
-import flaskteroids.registry as registry
+from flaskteroids import str_utils
 from flaskteroids.jobs.job import Job
 
 _logger = logging.getLogger(__name__)
@@ -37,17 +37,30 @@ class Mailer(Job):
         self._msg = EmailMessage()
         self._action = None
 
+    def __getattr__(self, name):
+        if name.startswith('invoke_'):
+            name = name.replace('invoke_', '')
+
+            def wrapper(*args, **kwargs):
+                action = getattr(self, name)
+                self._action = name
+                return action(*args, **kwargs)
+            return wrapper
+
+        raise AttributeError(f"{self.__class__.__name__} does not have attribute {name}")
+
     @classmethod
-    def builder(cls):
+    def schedule(cls):
         return _MailerScheduler(cls)
 
     def perform(self, *args, **kwargs):
-        self._action = kwargs.pop('_action')
-        getattr(self, self._action)(*args, **kwargs)
+        action = kwargs.pop('_action')
+        getattr(self, f'invoke_{action}')(*args, **kwargs)
 
     def mail(self, *, to, subject):
-        # ns = registry.get(self.__class__)
-        # view_template = render_template(f'{ns["name"]}/{self._action}.html', **self.__dict__)
+        # mailer_template = render_template(
+        #     f'{str_utils.camel_to_snake(self.__class__.__name__)}/{self._action}.html', **self.__dict__
+        # )
         self._msg['Subject'] = subject
         self._msg['From'] = 'no-reply@flaskteroids.me'
         self._msg['To'] = to

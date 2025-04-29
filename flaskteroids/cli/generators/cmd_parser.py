@@ -1,18 +1,13 @@
-import re
+from flaskteroids import str_utils
 
 
 def parse(cmd, args, cmds):
-    normalized_cmd = _normalize(cmd)
+    normalized_cmd = str_utils.camel_to_snake(cmd)
     return {
         'cmd': cmd,
         'normalized_cmd': normalized_cmd,
         'parsed': _parse(normalized_cmd, args, cmds)
     }
-
-
-def _normalize(cmd):
-    # Makes commands in CamelCase as snake_case
-    return re.sub(r'(?<!^)(?=[A-Z])', '_', cmd).lower()
 
 
 def _parse(cmd, args, cmds):
