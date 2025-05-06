@@ -1,6 +1,5 @@
 import logging
 import smtplib
-import ssl
 from email.message import EmailMessage
 from flask import current_app, render_template
 from jinja2 import TemplateNotFound
