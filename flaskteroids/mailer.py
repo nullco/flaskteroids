@@ -3,7 +3,9 @@ import smtplib
 import ssl
 from email.message import EmailMessage
 from flask import current_app, render_template
+from jinja2 import TemplateNotFound
 from flaskteroids import str_utils
+from flaskteroids.exceptions import ProgrammerError
 from flaskteroids.jobs.job import Job
 
 _logger = logging.getLogger(__name__)
@@ -58,14 +60,27 @@ class Mailer(Job):
         getattr(self, f'invoke_{action}')(*args, **kwargs)
 
     def mail(self, *, to, subject):
-        # mailer_template = render_template(
-        #     f'{str_utils.camel_to_snake(self.__class__.__name__)}/{self._action}.html', **self.__dict__
-        # )
         self._msg['Subject'] = subject
         self._msg['From'] = 'no-reply@flaskteroids.me'
         self._msg['To'] = to
-        self._msg.set_content("Test email")
+        txt = self._render_content(self._build_template_path(type_='txt'))
+        html = self._render_content(self._build_template_path(type_='html'))
+        if not txt:
+            raise ProgrammerError('Make sure you at least have a text/plain template for the mail')
+        self._msg.set_content(txt)
+        if html:
+            self._msg.add_alternative(html, subtype='html')
         self._send()
+
+    def _build_template_path(self, type_: str):
+        return f'{str_utils.camel_to_snake(self.__class__.__name__)}/{self._action}.{type_}'
+
+    def _render_content(self, path: str):
+        try:
+            return render_template(path, **self.__dict__)
+        except TemplateNotFound:
+            _logger.debug(f'template at <{path}> not found')
+            return None
 
     def _send(self):
         if not current_app.config.get('MAIL_ENABLED', True):
@@ -76,8 +91,7 @@ class Mailer(Job):
         username = current_app.config['MAIL_USERNAME']
         password = current_app.config['MAIL_PASSWORD']
 
-        context = ssl.create_default_context()
-
-        with smtplib.SMTP_SSL(host, port, context=context) as server:
+        with smtplib.SMTP(host, port) as server:
+            server.starttls()
             server.login(username, password)
             server.send_message(self._msg)
