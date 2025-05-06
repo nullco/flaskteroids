@@ -6,6 +6,7 @@ from jinja2 import TemplateNotFound
 from flaskteroids import str_utils
 from flaskteroids.exceptions import ProgrammerError
 from flaskteroids.jobs.job import Job
+from flaskteroids.actions import ParamsProxy, invoke_action
 
 _logger = logging.getLogger(__name__)
 
@@ -32,7 +33,7 @@ class _MailerScheduler:
         mailer.perform_later(*args, **kwargs)
 
 
-class Mailer(Job):
+class ActionMailer(Job):
 
     def __init__(self):
         self._msg = EmailMessage()
@@ -41,14 +42,13 @@ class Mailer(Job):
     def __getattr__(self, name):
         if name.startswith('invoke_'):
             name = name.replace('invoke_', '')
+            action = invoke_action(self, name)
 
             def wrapper(*args, **kwargs):
-                action = getattr(self, name)
                 self._action = name
                 return action(*args, **kwargs)
             return wrapper
-
-        raise AttributeError(f"{self.__class__.__name__} does not have attribute {name}")
+        return getattr(super(), name)
 
     @classmethod
     def schedule(cls):
@@ -94,3 +94,6 @@ class Mailer(Job):
             server.starttls()
             server.login(username, password)
             server.send_message(self._msg)
+
+
+params = ParamsProxy()

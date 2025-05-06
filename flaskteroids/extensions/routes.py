@@ -2,6 +2,9 @@ import logging
 from flask import request
 from importlib import import_module
 from flaskteroids import params, registry
+from flaskteroids.controller import ActionController
+from flaskteroids.extensions.utils import discover_classes, discover_methods
+from flaskteroids.rules import bind_rules
 
 
 _logger = logging.getLogger(__name__)
@@ -16,10 +19,16 @@ class RoutesExtension:
     def init_app(self, app):
         self._app = app
         self._paths = set()
+        self._controllers = discover_classes('app.controllers', ActionController)
+        self._controllers.update(discover_classes('flaskteroids.controllers', ActionController))
         routes = import_module(app.config['ROUTES_PACKAGE'])
         routes.register(self)
         if not self.has_path('/'):
             self.root(to='flaskteroids/welcome#show')
+        for c in self._controllers.values():
+            ns = registry.get(c)
+            ns['actions'] = discover_methods(c, ignore=set(discover_methods(ActionController)))
+            bind_rules(c)
 
         if not hasattr(app, "extensions"):
             app.extensions = {}
@@ -61,9 +70,6 @@ class RoutesExtension:
     def has_path(self, path):
         return path in self._paths
 
-    def _get_controller_name(self, cname):
-        return f'app.controllers.{cname}_controller.{cname.title()}Controller'
-
     def _get_controller_class(self, cname):
         if cname.startswith('flaskteroids/'):
             cname = cname.replace('flaskteroids/', '')
@@ -74,16 +80,11 @@ class RoutesExtension:
         return getattr(controller_module, f'{cname.title()}Controller')
 
     def _register_view_func(self, path, to, methods=None, as_=None):
-        self._paths.add(path)
         cname, caction = to.split('#')
-        ns = registry.get(self._get_controller_name(cname))
-        if 'actions' not in ns:
-            ns['actions'] = []
-        if caction not in ns['actions']:
-            ns['actions'].append(caction)
+        ccls = self._get_controller_class(cname)
+        self._paths.add(path)
 
         def view_func(*args, **kwargs):
-            ccls = self._get_controller_class(cname)
             controller_instance = ccls()
             action = getattr(controller_instance, f'invoke_{caction}')
             _logger.debug(f'to={to} view_func(args={args}, kwargs={kwargs}')

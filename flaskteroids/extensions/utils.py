@@ -25,8 +25,9 @@ def discover_classes(module_name, cls):
     return entries
 
 
-def discover_methods(cls):
+def discover_methods(cls, ignore=None):
     return [
         name for name, member in inspect.getmembers(cls)
         if inspect.isfunction(member) and not name.startswith('_')
+        and (not ignore or name not in ignore)
     ]

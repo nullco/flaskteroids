@@ -6,6 +6,7 @@ from flask import g
 from flaskteroids.extensions.utils import discover_classes
 import flaskteroids.registry as registry
 from flaskteroids.model import Model
+from flaskteroids.rules import bind_rules
 
 
 _logger = logging.getLogger(__name__)
@@ -57,6 +58,7 @@ class SQLAlchemyExtension:
             if hasattr(Base.classes, table_name):
                 ns = registry.get(model)
                 ns['base_class'] = getattr(Base.classes, table_name)
+            bind_rules(model)
 
     @staticmethod
     def _pluralize(name):
