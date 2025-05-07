@@ -1,8 +1,9 @@
 import logging
 from flask import request
 from importlib import import_module
-from flaskteroids import params, registry
+from flaskteroids import params, registry, str_utils
 from flaskteroids.controller import ActionController
+from flaskteroids.exceptions import ProgrammerError
 from flaskteroids.extensions.utils import discover_classes, discover_methods
 from flaskteroids.rules import bind_rules
 
@@ -20,7 +21,7 @@ class RoutesExtension:
         self._app = app
         self._paths = set()
         self._controllers = discover_classes('app.controllers', ActionController)
-        self._controllers.update(discover_classes('flaskteroids.controllers', ActionController))
+        self._internal_controllers = discover_classes('flaskteroids.controllers', ActionController)
         routes = import_module(app.config['ROUTES_PACKAGE'])
         routes.register(self)
         if not self.has_path('/'):
@@ -70,14 +71,17 @@ class RoutesExtension:
     def has_path(self, path):
         return path in self._paths
 
-    def _get_controller_class(self, cname):
-        if cname.startswith('flaskteroids/'):
-            cname = cname.replace('flaskteroids/', '')
-            cpath = 'flaskteroids.controllers'
+    def _get_controller_class(self, action_name):
+        if action_name.startswith('flaskteroids/'):
+            action_name = action_name.replace('flaskteroids/', '')
+            controllers = self._internal_controllers
         else:
-            cpath = 'app.controllers'
-        controller_module = import_module(f'{cpath}.{cname}_controller')
-        return getattr(controller_module, f'{cname.title()}Controller')
+            controllers = self._controllers
+        controller_name = f'{str_utils.snake_to_camel(action_name)}Controller'
+        controller = controllers.get(controller_name)
+        if not controller:
+            raise ProgrammerError(f'Controller not found for <{action_name}>')
+        return controller
 
     def _register_view_func(self, path, to, methods=None, as_=None):
         cname, caction = to.split('#')
