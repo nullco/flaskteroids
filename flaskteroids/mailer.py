@@ -34,6 +34,7 @@ class ActionMailer:
                 to=to,
                 subject=subject,
                 template_path=str_utils.camel_to_snake(self.__class__.__name__),
+                template_params=self.__dict__
             )
         )
 

@@ -98,6 +98,9 @@ class Model:
     def __getattr__(self, name):
         return getattr(self._base_instance, name)
 
+    def __json__(self):
+        return {c: getattr(self._base_instance, c) for c in self.column_names}
+
     @classmethod
     def new(cls, **kwargs):
         instance = cls(**kwargs)
