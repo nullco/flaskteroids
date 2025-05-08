@@ -13,12 +13,12 @@ class ModelNotFoundException(Exception):
 
 
 def validates(field, *, presence=False):
-    def register(model_cls):
+    def bind(model_cls):
         ns = registry.get(model_cls)
         if 'validates' not in ns:
             ns['validates'] = []
         ns['validates'].append(partial(_validates, field=field, presence=presence))
-    return register
+    return bind
 
 
 def _validates(*, instance, field, presence):
