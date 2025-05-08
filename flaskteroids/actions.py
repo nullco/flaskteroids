@@ -10,12 +10,12 @@ from flaskteroids.exceptions import InvalidParameter, MissingParameter, Programm
 _logger = logging.getLogger(__name__)
 
 
-def invoke_action(instance, name):
+def invoke_action(instance, action_fn):
     def wrapper(*args, **kwargs):
         ns = registry.get(instance.__class__)
-        before_action = [ba for ba in ns.get('before_action', {}).get(name, [])]
+        before_action = [ba for ba in ns.get('before_action', {}).get(action_fn.__name__, [])]
         before_action = [getattr(instance, ba) for ba in before_action]
-        action = _chain_actions(*before_action, getattr(instance, name))
+        action = _chain_actions(*before_action, action_fn)
         return action(*args, **kwargs)
     return wrapper
 

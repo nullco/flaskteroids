@@ -3,6 +3,7 @@ from celery import Celery
 from celery.signals import setup_logging
 import flaskteroids.registry as registry
 from flaskteroids.extensions.utils import discover_classes
+from flaskteroids.mailer import MessageDeliveryJob
 from flaskteroids.jobs.job import Job
 
 _logger = logging.getLogger(__name__)
@@ -37,6 +38,7 @@ class JobsExtension:
         self._jobs = discover_classes('app.jobs', Job)
         for job_name, job_class in self._jobs.items():
             self.register_job(f'app.jobs.{job_name}', job_class)
+        self.register_job(MessageDeliveryJob.__name__, MessageDeliveryJob)
         if not hasattr(app, "extensions"):
             app.extensions = {}
         app.extensions["flaskteroids.jobs"] = self

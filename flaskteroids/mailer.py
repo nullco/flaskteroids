@@ -4,84 +4,95 @@ from email.message import EmailMessage
 from flask import current_app, render_template
 from jinja2 import TemplateNotFound
 from flaskteroids import str_utils
-from flaskteroids.exceptions import ProgrammerError
 from flaskteroids.jobs.job import Job
 from flaskteroids.actions import ParamsProxy, invoke_action
+import flaskteroids.registry as registry
 
 _logger = logging.getLogger(__name__)
 
 
-class _MailerScheduler:
-    def __init__(self, mailer_cls):
-        self._mailer_cls = mailer_cls
+class ActionMailer:
 
-    def __getattr__(self, name):
-        getattr(self._mailer_cls, name)
-        self._action = name
-        return self
+    def __getattribute__(self, name):
+        if name in {'__class__'}:
+            return super().__getattribute__(name)
 
-    def deliver_now(self, *args, **kwargs):
-        assert self._action, 'Action not set'
-        kwargs['_action'] = self._action
-        mailer = self._mailer_cls()
-        return mailer.perform(*args, **kwargs)
+        ns = registry.get(self.__class__)
+        if 'actions' not in ns or name not in ns['actions']:
+            return super().__getattribute__(name)
 
-    def deliver_later(self, *args, **kwargs):
-        assert self._action, 'Action not set'
-        kwargs['_action'] = self._action
-        mailer = self._mailer_cls()
-        mailer.perform_later(*args, **kwargs)
+        action = invoke_action(self, super().__getattribute__(name))
+
+        def wrapper(*args, **kwargs):
+            message_delivery = action(*args, **kwargs)
+            assert message_delivery, 'Actions must return a MessageDelivery object'
+            builder = message_delivery.builder
+            if not builder.template_name:
+                builder.template_name = name
+            return message_delivery
+        return wrapper
+
+    def mail(self, *, from_=None, to, subject):
+        return MessageDelivery(
+            MessageBuilder(
+                from_=from_,
+                to=to,
+                subject=subject,
+                template_path=str_utils.camel_to_snake(self.__class__.__name__),
+            )
+        )
 
 
-class ActionMailer(Job):
+class MessageBuilder:
+    def __init__(self, *,
+                 from_, to, subject,
+                 template_path=None,
+                 template_name=None,
+                 template_params=None):
+        self.from_ = from_ or 'no-reply@flaskteroids.me'  # TODO: Make it configurable
+        self.to = to
+        self.subject = subject
+        self.template_path = template_path
+        self.template_name = template_name
+        self.template_params = template_params or {}
 
-    def __init__(self):
-        self._msg = EmailMessage()
-        self._action = None
-
-    def __getattr__(self, name):
-        if name.startswith('invoke_'):
-            name = name.replace('invoke_', '')
-            action = invoke_action(self, name)
-
-            def wrapper(*args, **kwargs):
-                self._action = name
-                return action(*args, **kwargs)
-            return wrapper
-        return getattr(super(), name)
-
-    @classmethod
-    def schedule(cls):
-        return _MailerScheduler(cls)
-
-    def perform(self, *args, **kwargs):
-        action = kwargs.pop('_action')
-        getattr(self, f'invoke_{action}')(*args, **kwargs)
-
-    def mail(self, *, to, subject):
-        self._msg['Subject'] = subject
-        self._msg['From'] = 'no-reply@flaskteroids.me'
-        self._msg['To'] = to
-        txt = self._render_content(self._build_template_path(type_='txt'))
-        html = self._render_content(self._build_template_path(type_='html'))
-        if not txt:
-            raise ProgrammerError('Make sure you at least have a text/plain template for the mail')
-        self._msg.set_content(txt)
+    def build(self):
+        msg = EmailMessage()
+        msg['Subject'] = self.subject
+        msg['From'] = self.from_
+        msg['To'] = self.to
+        txt = self._render_content(type_='txt')
+        html = self._render_content(type_='html')
+        if txt:
+            msg.set_content(txt)
         if html:
-            self._msg.add_alternative(html, subtype='html')
-        self._send()
+            msg.add_alternative(html, subtype='html')
+        return msg
 
-    def _build_template_path(self, type_: str):
-        return f'{str_utils.camel_to_snake(self.__class__.__name__)}/{self._action}.{type_}'
-
-    def _render_content(self, path: str):
+    def _render_content(self, type_: str):
         try:
-            return render_template(path, **self.__dict__)
+            path = f'{self.template_path}/{self.template_name}.{type_}'
+            return render_template(path, **self.template_params)
         except TemplateNotFound:
             _logger.debug(f'template at <{path}> not found')
             return None
 
-    def _send(self):
+    def to_dict(self):
+        return self.__dict__
+
+    @classmethod
+    def from_dict(cls, d):
+        return cls(**d)
+
+
+class MessageDeliveryJob(Job):
+
+    def perform(self, *args, **kwargs):
+        message_builder = MessageBuilder.from_dict(kwargs['message_builder'])
+        msg = message_builder.build()
+        if not msg:
+            _logger.debug('Nothing to send, ignoring...')
+            return
         if not current_app.config.get('MAIL_ENABLED', True):
             _logger.debug('sending mail is disabled, ignoring...')
             return
@@ -93,7 +104,19 @@ class ActionMailer(Job):
         with smtplib.SMTP(host, port) as server:
             server.starttls()
             server.login(username, password)
-            server.send_message(self._msg)
+            server.send_message(msg)
+
+
+class MessageDelivery:
+
+    def __init__(self, builder: MessageBuilder) -> None:
+        self.builder = builder
+
+    def deliver_now(self, *args, **kwargs):
+        MessageDeliveryJob().perform(*args, message_builder=self.builder.to_dict(), **kwargs)
+
+    def deliver_later(self, *args, **kwargs):
+        MessageDeliveryJob().perform_later(*args, message_builder=self.builder.to_dict(), **kwargs)
 
 
 params = ParamsProxy()

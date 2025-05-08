@@ -8,7 +8,7 @@ class ActionController:
     def __getattr__(self, name):
         if name.startswith('invoke_'):
             name = name.replace('invoke_', '')
-            action = invoke_action(self, name)
+            action = invoke_action(self, getattr(self, name))
 
             def wrapper(*args, **kwargs):
                 res = action(*args, **kwargs)
