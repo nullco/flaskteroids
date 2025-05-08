@@ -90,7 +90,7 @@ class RoutesExtension:
 
         def view_func(*args, **kwargs):
             controller_instance = ccls()
-            action = getattr(controller_instance, f'invoke_{caction}')
+            action = getattr(controller_instance, caction)
             _logger.debug(f'to={to} view_func(args={args}, kwargs={kwargs}')
             params.update(request.form.to_dict(True))
             params.update(kwargs)  # looks like url template params come here

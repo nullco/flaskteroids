@@ -13,8 +13,8 @@ _logger = logging.getLogger(__name__)
 
 class ActionMailer:
 
-    def __getattribute__(self, name):
-        if name in {'__class__'}:
+    def __getattribute__(self, name: str):
+        if name.startswith('_'):
             return super().__getattribute__(name)
 
         ns = registry.get(self.__class__)

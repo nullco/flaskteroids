@@ -1,4 +1,5 @@
 import logging
+from functools import wraps
 from typing import Any
 from collections.abc import MutableMapping
 from collections import UserDict, defaultdict
@@ -11,6 +12,7 @@ _logger = logging.getLogger(__name__)
 
 
 def invoke_action(instance, action_fn):
+    @wraps(action_fn)
     def wrapper(*args, **kwargs):
         ns = registry.get(instance.__class__)
         before_action = [ba for ba in ns.get('before_action', {}).get(action_fn.__name__, [])]
@@ -20,8 +22,11 @@ def invoke_action(instance, action_fn):
     return wrapper
 
 
-def before_action(method_name, *, only=None):
+def before_action(method_name: str, *, only=None):
     def bind(cls):
+        if not method_name.startswith('_'):
+            raise ProgrammerError('Before action methods should follow conventions for private methods')
+        getattr(cls, method_name)
         actions = only if only else None
         ns = registry.get(cls)
 
