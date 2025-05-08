@@ -1,21 +1,16 @@
 from functools import wraps
 from flask import redirect, render_template
-from flaskteroids.actions import invoke_action, ParamsProxy
+from flaskteroids.actions import is_action, decorate_action, ParamsProxy
 from flaskteroids.exceptions import Redirect
-import flaskteroids.registry as registry
 
 
 class ActionController:
 
     def __getattribute__(self, name: str):
-        if name.startswith('_'):
+        if not is_action(self, name):
             return super().__getattribute__(name)
 
-        ns = registry.get(self.__class__)
-        if 'actions' not in ns or name not in ns['actions']:
-            return super().__getattribute__(name)
-
-        action = invoke_action(self, super().__getattribute__(name))
+        action = decorate_action(self, super().__getattribute__(name))
 
         @wraps(action)
         def wrapper(*args, **kwargs):

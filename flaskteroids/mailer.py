@@ -5,8 +5,7 @@ from flask import current_app, render_template
 from jinja2 import TemplateNotFound
 from flaskteroids import str_utils
 from flaskteroids.jobs.job import Job
-from flaskteroids.actions import ParamsProxy, invoke_action
-import flaskteroids.registry as registry
+from flaskteroids.actions import ParamsProxy, decorate_action, is_action
 
 _logger = logging.getLogger(__name__)
 
@@ -14,14 +13,10 @@ _logger = logging.getLogger(__name__)
 class ActionMailer:
 
     def __getattribute__(self, name: str):
-        if name.startswith('_'):
+        if not is_action(self, name):
             return super().__getattribute__(name)
 
-        ns = registry.get(self.__class__)
-        if 'actions' not in ns or name not in ns['actions']:
-            return super().__getattribute__(name)
-
-        action = invoke_action(self, super().__getattribute__(name))
+        action = decorate_action(self, super().__getattribute__(name))
 
         def wrapper(*args, **kwargs):
             message_delivery = action(*args, **kwargs)

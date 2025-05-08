@@ -11,7 +11,17 @@ from flaskteroids.exceptions import InvalidParameter, MissingParameter, Programm
 _logger = logging.getLogger(__name__)
 
 
-def invoke_action(instance, action_fn):
+def is_action(instance, name):
+    if name.startswith('_'):
+        return False
+
+    ns = registry.get(instance.__class__)
+    if 'actions' not in ns or name not in ns['actions']:
+        return False
+    return True
+
+
+def decorate_action(instance, action_fn):
     @wraps(action_fn)
     def wrapper(*args, **kwargs):
         ns = registry.get(instance.__class__)
