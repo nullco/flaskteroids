@@ -6,9 +6,17 @@ from collections import UserDict, defaultdict
 from flask import g
 from flaskteroids import registry
 from flaskteroids.exceptions import InvalidParameter, MissingParameter, ProgrammerError
+from flaskteroids.discovery import discover_methods
 
 
 _logger = logging.getLogger(__name__)
+
+
+def register_actions(cls, base_cls):
+    ns = registry.get(cls)
+    ns['actions'] = discover_methods(
+        cls, ignore=set(discover_methods(base_cls))
+    )
 
 
 def is_action(instance, name):

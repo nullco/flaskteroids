@@ -2,9 +2,10 @@ import logging
 from flask import request
 from importlib import import_module
 from flaskteroids import params, registry, str_utils
+from flaskteroids.actions import register_actions
 from flaskteroids.controller import ActionController
 from flaskteroids.exceptions import ProgrammerError
-from flaskteroids.extensions.utils import discover_classes, discover_methods
+from flaskteroids.discovery import discover_classes
 from flaskteroids.rules import bind_rules
 
 
@@ -27,8 +28,7 @@ class RoutesExtension:
         if not self.has_path('/'):
             self.root(to='flaskteroids/welcome#show')
         for c in self._controllers.values():
-            ns = registry.get(c)
-            ns['actions'] = discover_methods(c, ignore=set(discover_methods(ActionController)))
+            register_actions(c, ActionController)
             bind_rules(c)
 
         if not hasattr(app, "extensions"):

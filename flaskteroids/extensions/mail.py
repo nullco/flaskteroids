@@ -1,4 +1,5 @@
-from flaskteroids.extensions.utils import discover_classes, discover_methods
+from flaskteroids.actions import register_actions
+from flaskteroids.discovery import discover_classes
 from flaskteroids.mailer import ActionMailer
 import flaskteroids.registry as registry
 from flaskteroids.rules import bind_rules
@@ -16,9 +17,7 @@ class MailExtension:
         for mailer_name, mailer_class in self._mailers.items():
             ns = registry.get(mailer_class)
             ns['name'] = mailer_name
-            ns['actions'] = discover_methods(
-                mailer_class, ignore=set(discover_methods(ActionMailer))
-            )
+            register_actions(mailer_class, ActionMailer)
             bind_rules(mailer_class)
 
         app.extensions["flaskteroids.mail"] = self

@@ -3,7 +3,7 @@ from sqlalchemy.ext.automap import automap_base
 from sqlalchemy import create_engine, MetaData
 from sqlalchemy.orm import sessionmaker, scoped_session
 from flask import g
-from flaskteroids.extensions.utils import discover_classes
+from flaskteroids.discovery import discover_classes
 import flaskteroids.registry as registry
 from flaskteroids.model import Model
 from flaskteroids.rules import bind_rules

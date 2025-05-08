@@ -2,7 +2,7 @@ import logging
 from celery import Celery
 from celery.signals import setup_logging
 import flaskteroids.registry as registry
-from flaskteroids.extensions.utils import discover_classes
+from flaskteroids.discovery import discover_classes
 from flaskteroids.mailer import MessageDeliveryJob
 from flaskteroids.jobs.job import Job
 
