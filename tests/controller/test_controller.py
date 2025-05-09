@@ -13,15 +13,18 @@ def render_template(mocker):
 def my_controller():
 
     @rules(
-        before_action('_before')
+        before_action('_before_greet')
     )
     class GreetController(ActionController):
 
-        def _before(self):
+        def _before_greet(self):
+            self.user = 'Bob'
+
+        def greet(self):
             pass
 
-        def index(self):
-            pass
+        def _after_greet(self):
+            self.shake_hands = True
 
     register_actions(GreetController, ActionController)
     bind_rules(GreetController)
@@ -29,11 +32,11 @@ def my_controller():
 
 
 def test_controller_generates_template(my_controller, render_template):
-    my_controller().index()
-    render_template.assert_called_with('greet/index.html')
+    my_controller().greet()
+    render_template.assert_called_with('greet/greet.html', user='Bob')
 
 
 def test_controller_calls_before_actions(my_controller, mocker):
-    before = mocker.patch.object(my_controller, '_before', return_value=None)
-    my_controller().index()
-    before.assert_called()
+    before_greet = mocker.patch.object(my_controller, '_before_greet', return_value=None)
+    my_controller().greet()
+    before_greet.assert_called()
