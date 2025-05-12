@@ -24,16 +24,6 @@ def get_actions(cls):
     return ns.get('actions') or []
 
 
-def is_action(instance, name):
-    if name.startswith('_'):
-        return False
-
-    ns = registry.get(instance.__class__)
-    if 'actions' not in ns or name not in ns['actions']:
-        return False
-    return True
-
-
 def decorate_action(cls, action_fn):
     @wraps(action_fn)
     def wrapper(*args, **kwargs):
