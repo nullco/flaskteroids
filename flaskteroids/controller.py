@@ -9,6 +9,7 @@ def init(cls):
     register_actions(cls, ActionController)
     bind_rules(cls)
     _decorate_actions(cls)
+    return cls
 
 
 def _decorate_actions(cls):

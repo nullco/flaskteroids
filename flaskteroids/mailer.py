@@ -16,6 +16,7 @@ def init(cls):
     register_actions(cls, ActionMailer)
     bind_rules(cls)
     _decorate_actions(cls)
+    return cls
 
 
 def _decorate_actions(cls):

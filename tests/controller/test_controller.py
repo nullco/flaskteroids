@@ -27,8 +27,7 @@ def my_controller():
         def _after_greet(self):
             self.shake_hands = True
 
-    init(GreetController)
-    return GreetController
+    return init(GreetController)
 
 
 def test_controller_generates_template(my_controller, render_template):
