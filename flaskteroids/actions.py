@@ -39,9 +39,15 @@ def decorate_action(cls, action_fn):
     def wrapper(*args, **kwargs):
         ns = registry.get(cls)
         before_action = [ba for ba in ns.get('before_action', {}).get(action_fn.__name__, [])]
-        before_action = [getattr(cls, ba) for ba in before_action]
-        action = _chain_actions(*before_action, action_fn)
-        return action(*args, **kwargs)
+        for ba in before_action:
+            res = getattr(cls, ba)(*args, **kwargs)
+            if res:
+                return res
+        res = action_fn(*args, **kwargs)
+        after_action = [aa for aa in ns.get('after_action', {}).get(action_fn.__name__, [])]
+        for aa in after_action:
+            getattr(cls, aa)(*args, **kwargs)
+        return res
     return wrapper
 
 
@@ -64,15 +70,23 @@ def before_action(method_name: str, *, only=None):
     return bind
 
 
-def _chain_actions(*actions):
-    def wrapper(*args, **kwargs):
-        res = None
-        for action in actions:
-            res = action(*args, **kwargs)
-            if res:
-                break
-        return res
-    return wrapper
+def after_action(method_name: str, *, only=None):
+    def bind(cls):
+        if not method_name.startswith('_'):
+            raise ProgrammerError('After action methods should follow conventions for private methods')
+        getattr(cls, method_name)
+        actions = only if only else None
+        ns = registry.get(cls)
+
+        if 'after_action' not in ns:
+            ns['after_action'] = defaultdict(lambda: [])
+        if not actions:
+            actions = ns['actions'] if 'actions' in ns else []
+
+        for action_name in actions:
+            _logger.debug(f'after_action: setting {method_name} after {action_name} on {cls.__name__}')
+            ns['after_action'][action_name].append(method_name)
+    return bind
 
 
 class ActionParameters(UserDict):
