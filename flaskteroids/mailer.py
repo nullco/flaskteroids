@@ -1,31 +1,44 @@
 import logging
 import smtplib
+from functools import wraps
 from email.message import EmailMessage
 from flask import current_app, render_template
 from jinja2 import TemplateNotFound
 from flaskteroids import str_utils
 from flaskteroids.jobs.job import Job
-from flaskteroids.actions import ParamsProxy, decorate_action, is_action
+from flaskteroids.actions import ParamsProxy, decorate_action, get_actions, register_actions
+from flaskteroids.rules import bind_rules
 
 _logger = logging.getLogger(__name__)
 
 
+def init(cls):
+    register_actions(cls, ActionMailer)
+    bind_rules(cls)
+    _decorate_actions(cls)
+
+
+def _decorate_actions(cls):
+    for name in get_actions(cls):
+        action = getattr(cls, name)
+        setattr(cls, name, _decorate_action(cls, action))
+
+
+def _decorate_action(cls, action):
+    action = decorate_action(cls, action)
+
+    @wraps(action)
+    def wrapper(*args, **kwargs):
+        message_delivery = action(*args, **kwargs)
+        assert message_delivery, 'Actions must return a MessageDelivery object'
+        builder = message_delivery.builder
+        if not builder.template_name:
+            builder.template_name = action.__name__
+        return message_delivery
+    return wrapper
+
+
 class ActionMailer:
-
-    def __getattribute__(self, name: str):
-        if not is_action(self, name):
-            return super().__getattribute__(name)
-
-        action = decorate_action(self, super().__getattribute__(name))
-
-        def wrapper(*args, **kwargs):
-            message_delivery = action(*args, **kwargs)
-            assert message_delivery, 'Actions must return a MessageDelivery object'
-            builder = message_delivery.builder
-            if not builder.template_name:
-                builder.template_name = name
-            return message_delivery
-        return wrapper
 
     def mail(self, *, from_=None, to, subject):
         return MessageDelivery(

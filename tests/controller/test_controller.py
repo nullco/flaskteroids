@@ -1,7 +1,7 @@
 import pytest
-from flaskteroids.actions import register_actions, before_action
-from flaskteroids.controller import ActionController
-from flaskteroids.rules import bind_rules, rules
+from flaskteroids.actions import before_action
+from flaskteroids.controller import ActionController, init
+from flaskteroids.rules import rules
 
 
 @pytest.fixture(autouse=True)
@@ -26,8 +26,7 @@ def my_controller():
         def _after_greet(self):
             self.shake_hands = True
 
-    register_actions(GreetController, ActionController)
-    bind_rules(GreetController)
+    init(GreetController)
     return GreetController
 
 

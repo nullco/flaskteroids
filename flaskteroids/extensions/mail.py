@@ -1,8 +1,6 @@
-from flaskteroids.actions import register_actions
 from flaskteroids.discovery import discover_classes
-from flaskteroids.mailer import ActionMailer
+from flaskteroids.mailer import ActionMailer, init
 import flaskteroids.registry as registry
-from flaskteroids.rules import bind_rules
 
 
 class MailExtension:
@@ -17,7 +15,6 @@ class MailExtension:
         for mailer_name, mailer_class in self._mailers.items():
             ns = registry.get(mailer_class)
             ns['name'] = mailer_name
-            register_actions(mailer_class, ActionMailer)
-            bind_rules(mailer_class)
+            init(mailer_class)
 
         app.extensions["flaskteroids.mail"] = self

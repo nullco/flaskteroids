@@ -19,6 +19,11 @@ def register_actions(cls, base_cls):
     )
 
 
+def get_actions(cls):
+    ns = registry.get(cls)
+    return ns.get('actions') or []
+
+
 def is_action(instance, name):
     if name.startswith('_'):
         return False
@@ -29,12 +34,12 @@ def is_action(instance, name):
     return True
 
 
-def decorate_action(instance, action_fn):
+def decorate_action(cls, action_fn):
     @wraps(action_fn)
     def wrapper(*args, **kwargs):
-        ns = registry.get(instance.__class__)
+        ns = registry.get(cls)
         before_action = [ba for ba in ns.get('before_action', {}).get(action_fn.__name__, [])]
-        before_action = [getattr(instance, ba) for ba in before_action]
+        before_action = [getattr(cls, ba) for ba in before_action]
         action = _chain_actions(*before_action, action_fn)
         return action(*args, **kwargs)
     return wrapper
