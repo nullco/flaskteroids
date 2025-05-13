@@ -50,16 +50,26 @@ class SQLAlchemyExtension:
 
     def init_models(self):
         self._models = discover_classes('app.models', Model)
-        self._metadata.reflect(self._engine)
+        tables = [self._get_table_name(name) for name in self._models.keys()]
+        self._metadata.reflect(self._engine, only=tables)
         Base = automap_base(metadata=self._metadata)
-        Base.prepare()
+        Base.prepare(generate_relationship=self._skip_relationships)
         for name, model in self._models.items():
-            table_name = self._pluralize(name.lower())
+            table_name = self._get_table_name(name)
             if hasattr(Base.classes, table_name):
                 ns = registry.get(model)
                 ns['base_class'] = getattr(Base.classes, table_name)
             bind_rules(model)
 
+    def _get_table_name(self, model_name):
+        return self._pluralize(model_name.lower())
+
     @staticmethod
     def _pluralize(name):
         return f'{name}s'
+
+    @staticmethod
+    def _skip_relationships(*args, **kwargs):
+        # We don't want to automap relationships at this moment
+        # Those will be done explicitly afterwards
+        pass
