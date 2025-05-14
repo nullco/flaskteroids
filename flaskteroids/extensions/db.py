@@ -7,6 +7,7 @@ from flaskteroids.discovery import discover_classes
 import flaskteroids.registry as registry
 from flaskteroids.model import Model
 from flaskteroids.rules import bind_rules
+from flaskteroids.str_utils import pluralize
 
 
 _logger = logging.getLogger(__name__)
@@ -49,7 +50,10 @@ class SQLAlchemyExtension:
         return self._models
 
     def init_models(self):
-        self._models = discover_classes('app.models', Model)
+        models = discover_classes('app.models', Model)
+        ns = registry.get(Model)
+        ns['models'] = models
+        self._models = models
         tables = [self._get_table_name(name) for name in self._models.keys()]
         self._metadata.reflect(self._engine, only=tables)
         Base = automap_base(metadata=self._metadata)
@@ -59,14 +63,11 @@ class SQLAlchemyExtension:
             if hasattr(Base.classes, table_name):
                 ns = registry.get(model)
                 ns['base_class'] = getattr(Base.classes, table_name)
+        for model in self._models.values():
             bind_rules(model)
 
     def _get_table_name(self, model_name):
-        return self._pluralize(model_name.lower())
-
-    @staticmethod
-    def _pluralize(name):
-        return f'{name}s'
+        return pluralize(model_name.lower())
 
     @staticmethod
     def _skip_relationships(*args, **kwargs):

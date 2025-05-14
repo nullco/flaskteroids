@@ -2,14 +2,89 @@ import logging
 from datetime import datetime, timezone
 from functools import partial
 from sqlalchemy import select, inspect
+from sqlalchemy.orm import relationship
 from flaskteroids.db import session
+from flaskteroids.exceptions import ProgrammerError
 import flaskteroids.registry as registry
+from flaskteroids.str_utils import camel_to_snake, snake_to_camel, singularize
 
 _logger = logging.getLogger(__name__)
 
 
 class ModelNotFoundException(Exception):
     pass
+
+
+def belongs_to(relation_name: str, class_name: str | None = None, foreign_key: str | None = None):
+    def bind(model_cls):
+        ns = registry.get(Model)
+        models = ns['models']
+        related_model_name = class_name or snake_to_camel(singularize(relation_name))
+        related_model = models.get(related_model_name)
+        if not related_model:
+            raise ProgrammerError(f'{related_model_name} model not found')
+        related_base = _base(related_model)
+        base = _base(model_cls)
+        fk = getattr(base, foreign_key or f'{camel_to_snake(related_model.__name__)}_id')
+        r = relationship(related_base, primaryjoin=related_base.id == fk)
+        setattr(base, relation_name, r)
+        ns = registry.get(model_cls)
+        if 'relationships' not in ns:
+            ns['relationships'] = {}
+        ns['relationships'][related_model.__name__] = {'rel': r, 'name': relation_name}
+        ns = registry.get(related_model)
+        if model_cls.__name__ in ns.get('relationships', {}):
+            r.back_populates = ns['relationships'][model_cls.__name__]['name']
+            bp = ns['relationships'][model_cls.__name__]['rel']
+            bp.back_populates = relation_name
+
+        def rel(self):
+            related_base_instance = getattr(self._base_instance, relation_name)
+            return _build(related_model, related_base_instance)
+
+        setattr(model_cls, relation_name, property(rel))
+    return bind
+
+
+def has_many(relation_name: str, class_name: str | None = None, foreign_key: str | None = None):
+    def bind(model_cls):
+        ns = registry.get(Model)
+        models = ns['models']
+        related_model_name = class_name or snake_to_camel(singularize(relation_name))
+        related_model = models.get(related_model_name)
+        if not related_model:
+            raise ProgrammerError(f'{related_model_name} model not found')
+        related_base = _base(related_model)
+        base = _base(model_cls)
+        fk = getattr(related_base, foreign_key or f'{camel_to_snake(model_cls.__name__)}_id')
+        r = relationship(related_base, primaryjoin=base.id == fk)
+        setattr(base, relation_name, r)
+        ns = registry.get(model_cls)
+        if 'relationships' not in ns:
+            ns['relationships'] = {}
+        ns['relationships'][related_model.__name__] = {'rel': r, 'name': relation_name}
+        ns = registry.get(related_model)
+        if model_cls.__name__ in ns.get('relationships', {}):
+            r.property.back_populates = ns['relationships'][model_cls.__name__]['name']
+            bp = ns['relationships'][model_cls.__class__]['rel']
+            bp.property.back_populates = relation_name
+
+        def rel(self):
+            class Many:
+                def __init__(self, base_instance) -> None:
+                    self._values = getattr(base_instance, relation_name)
+
+                def __iter__(self):
+                    for v in self._values:
+                        yield _build(related_model, v)
+
+                def __repr__(self) -> str:
+                    return repr([v for v in self])
+
+            return Many(self._base_instance)
+
+        setattr(model_cls, relation_name, property(rel))
+    return bind
 
 
 def validates(field, *, presence=False):
@@ -79,6 +154,20 @@ class ModelQuery:
     def __repr__(self):
         return repr([r for r in self])
 
+
+class ModelRelation:
+
+    def __init__(self, related_base) -> None:
+        self._related_base = related_base
+
+    def __iter__(self):
+        s = session()
+        res = s.execute(self._query).scalars()
+        for r in res:
+            yield _build(self._model_cls, r)
+
+    def __repr__(self):
+        return repr([r for r in self])
 
 class Model:
 
