@@ -1,5 +1,5 @@
 import pytest
-from flaskteroids.controller import ActionParameters
+from flaskteroids.actions import ActionParameters
 from flaskteroids.exceptions import InvalidParameter, MissingParameter
 
 
