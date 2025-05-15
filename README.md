@@ -1,6 +1,6 @@
 <p align="center">
-<a href="https://github.com/nullco/flaskteroids/actions?query=workflow%3AFlaskteroids+event%3Apush+branch%3Amain" target="_blank">
-    <img src="https://github.com/nullco/flaskteroids/actions/workflows/flaskteroids.yml/badge.svg?event=push&branch=main" alt="Test">
+<a href="https://github.com/nullco/flaskteroids/actions?query=workflow%Test+event%3Apush+branch%3Amain" target="_blank">
+    <img src="https://github.com/nullco/flaskteroids/actions/workflows/test.yml/badge.svg?event=push&branch=main" alt="Test">
 </a>
 </p>
 
