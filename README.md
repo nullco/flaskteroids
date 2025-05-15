@@ -1,3 +1,10 @@
+<p align="center">
+<a href="https://github.com/nullco/flaskteroids/actions?query=workflow%3AFlaskteroids+event%3Apush+branch%3Amain" target="_blank">
+    <img src="https://github.com/nullco/flaskteroids/actions/workflows/flaskteroids.yml/badge.svg?event=push&branch=main" alt="Test">
+</a>
+</p>
+
+
 # Flaskteroids
 
 Flaskteroids (or Flask on steroids) is a lightweight and powerful Python MVC framework that enhances Flask with a structured and elegant abstraction. Inspired by the APIs of Ruby on Rails, it simplifies web application development while leveraging the robustness of Flask.
