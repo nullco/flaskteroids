@@ -36,7 +36,7 @@ def belongs_to(name: str, class_name: str | None = None, foreign_key: str | None
     def bind(cls):
         ns = registry.get(Model)
         models = ns['models']
-        related_cls_name = class_name or snake_to_camel(singularize(name))
+        related_cls_name = class_name or snake_to_camel(name)
         related_cls = models.get(related_cls_name)
         if not related_cls:
             raise ProgrammerError(f'{related_cls_name} model not found')
