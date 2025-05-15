@@ -15,20 +15,20 @@ class ModelNotFoundException(Exception):
     pass
 
 
-def _register_relationship(name, rel, cls, related_cls, fk_name):
+def _register_association(name, rel, cls, related_cls, fk_name):
     ns = registry.get(cls)
-    rel_key = (related_cls.__name__, fk_name)
-    if 'relationships' not in ns:
-        ns['relationships'] = {}
-    ns['relationships'][rel_key] = {'rel': rel, 'name': name}
+    key = (related_cls.__name__, fk_name)
+    if 'associations' not in ns:
+        ns['associations'] = {}
+    ns['associations'][key] = {'rel': rel, 'name': name}
 
 
-def _link_relationships(name, rel, cls, related_cls, fk_name):
+def _link_associations(name, rel, cls, related_cls, fk_name):
     ns = registry.get(related_cls)
-    rel_key = (cls.__name__, fk_name)
-    if rel_key in ns.get('relationships', {}):
-        rel.back_populates = ns['relationships'][rel_key]['name']
-        bp = ns['relationships'][rel_key]['rel']
+    key = (cls.__name__, fk_name)
+    if key in ns.get('associations', {}):
+        rel.back_populates = ns['associations'][key]['name']
+        bp = ns['associations'][key]['rel']
         bp.back_populates = name
 
 
@@ -46,8 +46,8 @@ def belongs_to(name: str, class_name: str | None = None, foreign_key: str | None
         fk = getattr(base, fk_name)
         rel = relationship(related_base, primaryjoin=related_base.id == fk)
         setattr(base, name, rel)
-        _register_relationship(name, rel, cls, related_cls, fk_name)
-        _link_relationships(name, rel, cls, related_cls, fk_name)
+        _register_association(name, rel, cls, related_cls, fk_name)
+        _link_associations(name, rel, cls, related_cls, fk_name)
 
         def rel_wrapper(self):
             related_base_instance = getattr(self._base_instance, name)
@@ -71,8 +71,8 @@ def has_many(name: str, class_name: str | None = None, foreign_key: str | None =
         fk = getattr(related_base, fk_name)
         rel = relationship(related_base, primaryjoin=base.id == fk)
         setattr(base, name, rel)
-        _register_relationship(name, rel, cls, related_cls, fk_name)
-        _link_relationships(name, rel, cls, related_cls, fk_name)
+        _register_association(name, rel, cls, related_cls, fk_name)
+        _link_associations(name, rel, cls, related_cls, fk_name)
 
         def rel_wrapper(self):
             class Many:
