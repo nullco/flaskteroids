@@ -5,6 +5,8 @@ import sqlalchemy as sa
 from alembic.operations import ops
 from datetime import datetime, timezone
 
+from flaskteroids.str_utils import pluralize
+
 
 _column_types = {
     'int': sa.Integer,
@@ -78,6 +80,15 @@ class _CreateTableCommand:
                                         nullable=not bool(am.group(3))
                                     )
                                     for am in args_matches.get('column', [])
+                                ],
+                                *[
+                                    sa.Column(
+                                        f'{am.group(1)}_id',
+                                        sa.Integer(),
+                                        sa.ForeignKey(f'{pluralize(am.group(1))}.id'),
+                                        nullable=False
+                                    )
+                                    for am in args_matches.get('reference', [])
                                 ]
                             ],
                         )

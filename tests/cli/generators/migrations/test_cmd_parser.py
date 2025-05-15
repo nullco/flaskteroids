@@ -35,6 +35,36 @@ from datetime import datetime, timezone
             }
         }
     ),
+    (
+        'CreateProducts',
+        ('name:str', 'user:references'),
+        {
+            'normalized_cmd': 'create_products',
+            'parsed': {
+                'cmd': 'create_table',
+                'ops': {
+                    'up': [
+                        ops.CreateTableOp(
+                            'products',
+                            [
+                                sa.Column('id', sa.Integer(), primary_key=True, autoincrement=True),
+                                sa.Column('created_at', sa.DateTime(), default=lambda: datetime.now(timezone.utc)),
+                                sa.Column(
+                                    'updated_at',
+                                    sa.DateTime(),
+                                    default=lambda: datetime.now(timezone.utc),
+                                    onupdate=lambda: datetime.now(timezone.utc),
+                                ),
+                                sa.Column('name', sa.String(255), nullable=True),
+                                sa.Column('user_id', sa.Integer(), sa.ForeignKey('users.id'), nullable=False)
+                            ]
+                        )
+
+                    ]
+                }
+            }
+        }
+    ),
 ])
 def test_create_table(cmd, args, expected):
     res = cmd_parser.parse(cmd, args)
@@ -50,6 +80,7 @@ def test_create_table(cmd, args, expected):
             assert oc.name == eoc.name
             # TODO: need to check how to assert for column type
             assert oc.nullable == eoc.nullable
+            assert len(oc.foreign_keys) == len(eoc.foreign_keys)
 
 
 @pytest.mark.parametrize('cmd, args, expected', [
