@@ -28,15 +28,20 @@ def decorate_action(cls, action_fn):
     @wraps(action_fn)
     def wrapper(*args, **kwargs):
         ns = registry.get(cls)
-        before_action = [ba for ba in ns.get('before_action', {}).get(action_fn.__name__, [])]
+        before_action = [getattr(cls, ba) for ba in ns.get('before_action', {}).get(action_fn.__name__, [])]
         for ba in before_action:
-            res = getattr(cls, ba)(*args, **kwargs)
+            res = ba(*args, **kwargs)
             if res:
                 return res
+        around_action = [getattr(cls, aa)(*args, **kwargs) for aa in ns.get('around_action', {}).get(action_fn.__name__, [])]
+        for aa in around_action:
+            next(aa)
         res = action_fn(*args, **kwargs)
-        after_action = [aa for aa in ns.get('after_action', {}).get(action_fn.__name__, [])]
+        for aa in around_action:
+            next(aa, None)
+        after_action = [getattr(cls, aa) for aa in ns.get('after_action', {}).get(action_fn.__name__, [])]
         for aa in after_action:
-            getattr(cls, aa)(*args, **kwargs)
+            aa(*args, **kwargs)
         return res
     return wrapper
 
@@ -57,6 +62,25 @@ def before_action(method_name: str, *, only=None):
         for action_name in actions:
             _logger.debug(f'before_action: setting {method_name} before {action_name} on {cls.__name__}')
             ns['before_action'][action_name].append(method_name)
+    return bind
+
+
+def around_action(method_name: str, *, only=None):
+    def bind(cls):
+        if not method_name.startswith('_'):
+            raise ProgrammerError('Around action methods should follow conventions for private methods')
+        getattr(cls, method_name)
+        actions = only if only else None
+        ns = registry.get(cls)
+
+        if 'around_action' not in ns:
+            ns['around_action'] = defaultdict(lambda: [])
+        if not actions:
+            actions = ns['actions'] if 'actions' in ns else []
+
+        for action_name in actions:
+            _logger.debug(f'around_action: setting {method_name} around {action_name} on {cls.__name__}')
+            ns['around_action'][action_name].append(method_name)
     return bind
 
 

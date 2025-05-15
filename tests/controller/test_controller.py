@@ -1,5 +1,5 @@
 import pytest
-from flaskteroids.actions import after_action, before_action
+from flaskteroids.actions import after_action, around_action, before_action
 from flaskteroids.controller import ActionController, init
 from flaskteroids.rules import rules
 
@@ -13,35 +13,30 @@ def render_template(mocker):
 def my_controller():
 
     @rules(
-        before_action('_before_greet'),
-        after_action('_after_greet')
+        before_action('_before'),
+        around_action('_around'),
+        after_action('_after')
     )
-    class GreetController(ActionController):
+    class TestController(ActionController):
 
-        def _before_greet(self):
-            self.user = 'Bob'
+        def _before(self):
+            self.calls = ['before']
 
-        def greet(self):
-            pass
+        def _around(self):
+            self.calls.append('around:before')
+            yield
+            self.calls.append('around:after')
 
-        def _after_greet(self):
-            self.shake_hands = True
+        def action(self):
+            self.calls.append('action')
 
-    return init(GreetController)
+        def _after(self):
+            self.calls.append('after')
 
-
-def test_controller_generates_template(my_controller, render_template):
-    my_controller().greet()
-    render_template.assert_called_with('greet/greet.html', user='Bob', shake_hands=True)
-
-
-def test_controller_calls_before_actions(my_controller, mocker):
-    before_greet = mocker.patch.object(my_controller, '_before_greet', return_value=None)
-    my_controller().greet()
-    before_greet.assert_called()
+    return init(TestController)
 
 
-def test_controller_calls_after_actions(my_controller, mocker):
-    after_greet = mocker.patch.object(my_controller, '_after_greet', return_value=None)
-    my_controller().greet()
-    after_greet.assert_called()
+def test_controller_flow(my_controller, render_template):
+    my_controller().action()
+    calls = ['before', 'around:before', 'action', 'around:after', 'after']
+    render_template.assert_called_with('test/action.html', calls=calls)
