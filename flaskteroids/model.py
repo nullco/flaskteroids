@@ -155,20 +155,6 @@ class ModelQuery:
         return repr([r for r in self])
 
 
-class ModelRelation:
-
-    def __init__(self, related_base) -> None:
-        self._related_base = related_base
-
-    def __iter__(self):
-        s = session()
-        res = s.execute(self._query).scalars()
-        for r in res:
-            yield _build(self._model_cls, r)
-
-    def __repr__(self):
-        return repr([r for r in self])
-
 class Model:
 
     def __init__(self, **kwargs):
