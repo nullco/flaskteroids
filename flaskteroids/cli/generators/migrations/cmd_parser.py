@@ -1,3 +1,4 @@
+from collections import defaultdict
 import re
 from flaskteroids.cli.generators import cmd_parser
 import sqlalchemy as sa
@@ -14,32 +15,40 @@ _column_types = {
     'json': sa.JSON
 }
 
-_column_pattern = re.compile(r'^([a-z_]+):(str|float|int|text|bool|json)(!?)$')
+_column_types_pattern = fr'{"|".join(k for k in _column_types.keys())}'
+
+_column_pattern = re.compile(fr'^([a-z_]+):({_column_types_pattern})(!?)$')
+_reference_pattern = re.compile(r'^([a-z_]+):references$')
 
 
 class _CommandArgsMatcher:
 
-    def __init__(self, cmd_pattern, args_pattern):
+    def __init__(self, cmd_pattern, args_patterns):
         self._cmd_pattern = cmd_pattern
-        self._args_pattern = args_pattern
+        self._args_patterns = args_patterns
 
     def match(self, cmd, args):
         match = self._cmd_pattern.match(cmd)
         if match:
-            if not self._args_pattern and args:
+            if not self._args_patterns and args:
                 raise Exception('Arguments not expected')
-            args_matches = []
+            args_matches = defaultdict(lambda: [])
             for arg in args:
-                amatch = self._args_pattern.match(arg)
-                if not amatch:
-                    raise Exception('Argument not matching expected format')
-                args_matches.append(amatch)
+                for k, p in self._args_patterns.items():
+                    amatch = p.match(arg)
+                    if amatch:
+                        args_matches[k].append(amatch)
+            if not args_matches:
+                raise Exception('Argument not matching expected format')
             return match, args_matches
 
 
 class _CreateTableCommand:
     pattern = re.compile(r'create_([a-z]+)')
-    args = _column_pattern
+    args = {
+        'column': _column_pattern,
+        'reference': _reference_pattern
+    }
 
     @classmethod
     def parse(cls, cmd, args):
@@ -68,7 +77,7 @@ class _CreateTableCommand:
                                         type_=_column_types[am.group(2)](),
                                         nullable=not bool(am.group(3))
                                     )
-                                    for am in args_matches
+                                    for am in args_matches.get('column', [])
                                 ]
                             ],
                         )
@@ -103,7 +112,10 @@ class _DropTableCommand:
 
 class _AddColumnsToTableCommand:
     pattern = re.compile(r'add_([a-z_]+)_to_([a-z]+)')
-    args = _column_pattern
+    args = {
+        'column': _column_pattern,
+        'reference': _reference_pattern
+    }
 
     @classmethod
     def parse(cls, cmd, args):
@@ -123,14 +135,14 @@ class _AddColumnsToTableCommand:
                                 nullable=not bool(am.group(3))
                             )
                         )
-                        for am in args_matches
+                        for am in args_matches.get('column', [])
                     ],
                     'down': [
                         ops.DropColumnOp(
                             cmd_match.group(2),
                             am.group(1)
                         )
-                        for am in args_matches
+                        for am in args_matches.get('column', [])
                     ]
                 }
             }
@@ -138,7 +150,9 @@ class _AddColumnsToTableCommand:
 
 class _RemoveColumnsFromTableCommand:
     pattern = re.compile(r'remove_([a-z_]+)_from_([a-z]+)')
-    args = re.compile(r'^([a-z_]+)(:(str|float|int|text|bool|json)(!?))?$')
+    args = {
+        'remove_column': re.compile(fr'^([a-z_]+)(:({_column_types_pattern})(!?))?$')
+    }
 
     @classmethod
     def parse(cls, cmd, args):
@@ -154,7 +168,7 @@ class _RemoveColumnsFromTableCommand:
                             cmd_match.group(2),
                             am.group(1)
                         )
-                        for am in args_matches
+                        for am in args_matches.get('remove_column', [])
                     ],
                     'down': [
                         ops.AddColumnOp(
@@ -165,7 +179,7 @@ class _RemoveColumnsFromTableCommand:
                                 nullable=not bool(am.group(4))
                             )
                         )
-                        for am in args_matches if am.group(2)
+                        for am in args_matches.get('remove_column', []) if am.group(2)
                     ],
                 }
             }
