@@ -15,6 +15,23 @@ class ModelNotFoundException(Exception):
     pass
 
 
+def _register_relationship(name, rel, cls, related_cls, fk_name):
+    ns = registry.get(cls)
+    rel_key = (related_cls.__name__, fk_name)
+    if 'relationships' not in ns:
+        ns['relationships'] = {}
+    ns['relationships'][rel_key] = {'rel': rel, 'name': name}
+
+
+def _link_relationships(name, rel, cls, related_cls, fk_name):
+    ns = registry.get(related_cls)
+    rel_key = (cls.__name__, fk_name)
+    if rel_key in ns.get('relationships', {}):
+        rel.back_populates = ns['relationships'][rel_key]['name']
+        bp = ns['relationships'][rel_key]['rel']
+        bp.back_populates = name
+
+
 def belongs_to(name: str, class_name: str | None = None, foreign_key: str | None = None):
     def bind(cls):
         ns = registry.get(Model)
@@ -25,24 +42,18 @@ def belongs_to(name: str, class_name: str | None = None, foreign_key: str | None
             raise ProgrammerError(f'{related_cls_name} model not found')
         related_base = _base(related_cls)
         base = _base(cls)
-        fk = getattr(base, foreign_key or f'{camel_to_snake(related_cls.__name__)}_id')
-        r = relationship(related_base, primaryjoin=related_base.id == fk)
-        setattr(base, name, r)
-        ns = registry.get(cls)
-        if 'relationships' not in ns:
-            ns['relationships'] = {}
-        ns['relationships'][related_cls.__name__] = {'rel': r, 'name': name}
-        ns = registry.get(related_cls)
-        if cls.__name__ in ns.get('relationships', {}):
-            r.back_populates = ns['relationships'][cls.__name__]['name']
-            bp = ns['relationships'][cls.__name__]['rel']
-            bp.back_populates = name
+        fk_name = foreign_key or f'{camel_to_snake(related_cls.__name__)}_id'
+        fk = getattr(base, fk_name)
+        rel = relationship(related_base, primaryjoin=related_base.id == fk)
+        setattr(base, name, rel)
+        _register_relationship(name, rel, cls, related_cls, fk_name)
+        _link_relationships(name, rel, cls, related_cls, fk_name)
 
-        def rel(self):
+        def rel_wrapper(self):
             related_base_instance = getattr(self._base_instance, name)
             return _build(related_cls, related_base_instance)
 
-        setattr(cls, name, property(rel))
+        setattr(cls, name, property(rel_wrapper))
     return bind
 
 
@@ -56,20 +67,14 @@ def has_many(name: str, class_name: str | None = None, foreign_key: str | None =
             raise ProgrammerError(f'{related_cls_name} model not found')
         related_base = _base(related_cls)
         base = _base(cls)
-        fk = getattr(related_base, foreign_key or f'{camel_to_snake(cls.__name__)}_id')
-        r = relationship(related_base, primaryjoin=base.id == fk)
-        setattr(base, name, r)
-        ns = registry.get(cls)
-        if 'relationships' not in ns:
-            ns['relationships'] = {}
-        ns['relationships'][related_cls.__name__] = {'rel': r, 'name': name}
-        ns = registry.get(related_cls)
-        if cls.__name__ in ns.get('relationships', {}):
-            r.property.back_populates = ns['relationships'][cls.__name__]['name']
-            bp = ns['relationships'][cls.__class__]['rel']
-            bp.property.back_populates = name
+        fk_name = foreign_key or f'{camel_to_snake(cls.__name__)}_id'
+        fk = getattr(related_base, fk_name)
+        rel = relationship(related_base, primaryjoin=base.id == fk)
+        setattr(base, name, rel)
+        _register_relationship(name, rel, cls, related_cls, fk_name)
+        _link_relationships(name, rel, cls, related_cls, fk_name)
 
-        def rel(self):
+        def rel_wrapper(self):
             class Many:
                 def __init__(self, base_instance) -> None:
                     self._values = getattr(base_instance, name)
@@ -83,7 +88,7 @@ def has_many(name: str, class_name: str | None = None, foreign_key: str | None =
 
             return Many(self._base_instance)
 
-        setattr(cls, name, property(rel))
+        setattr(cls, name, property(rel_wrapper))
     return bind
 
 
