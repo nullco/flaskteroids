@@ -15,75 +15,75 @@ class ModelNotFoundException(Exception):
     pass
 
 
-def belongs_to(relation_name: str, class_name: str | None = None, foreign_key: str | None = None):
-    def bind(model_cls):
+def belongs_to(name: str, class_name: str | None = None, foreign_key: str | None = None):
+    def bind(cls):
         ns = registry.get(Model)
         models = ns['models']
-        related_model_name = class_name or snake_to_camel(singularize(relation_name))
-        related_model = models.get(related_model_name)
-        if not related_model:
-            raise ProgrammerError(f'{related_model_name} model not found')
-        related_base = _base(related_model)
-        base = _base(model_cls)
-        fk = getattr(base, foreign_key or f'{camel_to_snake(related_model.__name__)}_id')
+        related_cls_name = class_name or snake_to_camel(singularize(name))
+        related_cls = models.get(related_cls_name)
+        if not related_cls:
+            raise ProgrammerError(f'{related_cls_name} model not found')
+        related_base = _base(related_cls)
+        base = _base(cls)
+        fk = getattr(base, foreign_key or f'{camel_to_snake(related_cls.__name__)}_id')
         r = relationship(related_base, primaryjoin=related_base.id == fk)
-        setattr(base, relation_name, r)
-        ns = registry.get(model_cls)
+        setattr(base, name, r)
+        ns = registry.get(cls)
         if 'relationships' not in ns:
             ns['relationships'] = {}
-        ns['relationships'][related_model.__name__] = {'rel': r, 'name': relation_name}
-        ns = registry.get(related_model)
-        if model_cls.__name__ in ns.get('relationships', {}):
-            r.back_populates = ns['relationships'][model_cls.__name__]['name']
-            bp = ns['relationships'][model_cls.__name__]['rel']
-            bp.back_populates = relation_name
+        ns['relationships'][related_cls.__name__] = {'rel': r, 'name': name}
+        ns = registry.get(related_cls)
+        if cls.__name__ in ns.get('relationships', {}):
+            r.back_populates = ns['relationships'][cls.__name__]['name']
+            bp = ns['relationships'][cls.__name__]['rel']
+            bp.back_populates = name
 
         def rel(self):
-            related_base_instance = getattr(self._base_instance, relation_name)
-            return _build(related_model, related_base_instance)
+            related_base_instance = getattr(self._base_instance, name)
+            return _build(related_cls, related_base_instance)
 
-        setattr(model_cls, relation_name, property(rel))
+        setattr(cls, name, property(rel))
     return bind
 
 
-def has_many(relation_name: str, class_name: str | None = None, foreign_key: str | None = None):
-    def bind(model_cls):
+def has_many(name: str, class_name: str | None = None, foreign_key: str | None = None):
+    def bind(cls):
         ns = registry.get(Model)
         models = ns['models']
-        related_model_name = class_name or snake_to_camel(singularize(relation_name))
-        related_model = models.get(related_model_name)
-        if not related_model:
-            raise ProgrammerError(f'{related_model_name} model not found')
-        related_base = _base(related_model)
-        base = _base(model_cls)
-        fk = getattr(related_base, foreign_key or f'{camel_to_snake(model_cls.__name__)}_id')
+        related_cls_name = class_name or snake_to_camel(singularize(name))
+        related_cls = models.get(related_cls_name)
+        if not related_cls:
+            raise ProgrammerError(f'{related_cls_name} model not found')
+        related_base = _base(related_cls)
+        base = _base(cls)
+        fk = getattr(related_base, foreign_key or f'{camel_to_snake(cls.__name__)}_id')
         r = relationship(related_base, primaryjoin=base.id == fk)
-        setattr(base, relation_name, r)
-        ns = registry.get(model_cls)
+        setattr(base, name, r)
+        ns = registry.get(cls)
         if 'relationships' not in ns:
             ns['relationships'] = {}
-        ns['relationships'][related_model.__name__] = {'rel': r, 'name': relation_name}
-        ns = registry.get(related_model)
-        if model_cls.__name__ in ns.get('relationships', {}):
-            r.property.back_populates = ns['relationships'][model_cls.__name__]['name']
-            bp = ns['relationships'][model_cls.__class__]['rel']
-            bp.property.back_populates = relation_name
+        ns['relationships'][related_cls.__name__] = {'rel': r, 'name': name}
+        ns = registry.get(related_cls)
+        if cls.__name__ in ns.get('relationships', {}):
+            r.property.back_populates = ns['relationships'][cls.__name__]['name']
+            bp = ns['relationships'][cls.__class__]['rel']
+            bp.property.back_populates = name
 
         def rel(self):
             class Many:
                 def __init__(self, base_instance) -> None:
-                    self._values = getattr(base_instance, relation_name)
+                    self._values = getattr(base_instance, name)
 
                 def __iter__(self):
                     for v in self._values:
-                        yield _build(related_model, v)
+                        yield _build(related_cls, v)
 
                 def __repr__(self) -> str:
                     return repr([v for v in self])
 
             return Many(self._base_instance)
 
-        setattr(model_cls, relation_name, property(rel))
+        setattr(cls, name, property(rel))
     return bind
 
 
