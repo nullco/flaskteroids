@@ -19,7 +19,7 @@ def session(mocker, engine):
 
 
 @pytest.fixture(autouse=True)
-def init_model(engine):
+def init_models(engine):
     Base = declarative_base()
 
     class UserBase(Base):
