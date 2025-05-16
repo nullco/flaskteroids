@@ -2,6 +2,7 @@ import pytest
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy import Column, ForeignKey, Integer, String, create_engine
 from flaskteroids import model
+from flaskteroids.model import Model, validates, belongs_to, has_many
 import flaskteroids.registry as registry
 from flaskteroids.rules import rules
 
@@ -43,15 +44,15 @@ def init_model(engine):
 
 
 @rules(
-    model.validates('username', presence=True),
-    model.belongs_to('group')
+    validates('username', presence=True),
+    belongs_to('group')
 )
-class User(model.Model):
+class User(Model):
     pass
 
 
 @rules(
-    model.has_many('users')
+    has_many('users')
 )
 class Group(model.Model):
     pass
