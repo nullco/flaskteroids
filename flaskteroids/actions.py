@@ -33,11 +33,14 @@ def decorate_action(cls, action_fn):
             res = ba(*args, **kwargs)
             if res:
                 return res
-        around_action = [getattr(cls, aa)(*args, **kwargs) for aa in ns.get('around_action', {}).get(action_fn.__name__, [])]
+        around_action = [
+            getattr(cls, aa)(*args, **kwargs)
+            for aa in ns.get('around_action', {}).get(action_fn.__name__, [])
+        ]
         for aa in around_action:
             next(aa)
         res = action_fn(*args, **kwargs)
-        for aa in around_action:
+        for aa in reversed(around_action):
             next(aa, None)
         after_action = [getattr(cls, aa) for aa in ns.get('after_action', {}).get(action_fn.__name__, [])]
         for aa in after_action:
