@@ -11,5 +11,3 @@ def session():
         db = current_app.extensions['flaskteroids.db']
         g.db_session = db.create_session()
     return g.db_session
-
-

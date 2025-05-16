@@ -24,6 +24,7 @@ class JobsExtension:
     def init_app(self, app):
         self._celery.main = app.import_name
         conf = app.config.get('JOBS') or {}
+        jobs_module = app.config['JOBS_PACKAGE']
         self._celery.conf['result_backend'] = conf.get('CELERY_RESULT_BACKEND')
         self._celery.conf['broker_url'] = conf.get('CELERY_BROKER_URL')
         self._celery.conf.update(conf.get('CELERY_ADDITIONAL_CONFIG') or {})
@@ -35,9 +36,9 @@ class JobsExtension:
 
         self._celery.Task = AppContextTask
 
-        self._jobs = discover_classes('app.jobs', Job)
+        self._jobs = discover_classes(jobs_module, Job)
         for job_name, job_class in self._jobs.items():
-            self.register_job(f'app.jobs.{job_name}', job_class)
+            self.register_job(f'{jobs_module}.{job_name}', job_class)
         self.register_job(MessageDeliveryJob.__name__, MessageDeliveryJob)
         if not hasattr(app, "extensions"):
             app.extensions = {}

@@ -5,8 +5,7 @@ from sqlalchemy.orm import sessionmaker, scoped_session
 from flask import g
 from flaskteroids.discovery import discover_classes
 import flaskteroids.registry as registry
-from flaskteroids.model import Model
-from flaskteroids.rules import bind_rules
+from flaskteroids.model import Model, init
 from flaskteroids.str_utils import pluralize
 
 
@@ -21,6 +20,7 @@ class SQLAlchemyExtension:
 
     def init_app(self, app):
         self._engine = create_engine(app.config['SQLALCHEMY_URL'])
+        self._models_module = app.config['MODELS_PACKAGE']
         self._metadata = MetaData()
         self._session_factory = scoped_session(sessionmaker(bind=self._engine))
         if not hasattr(app, 'extensions'):
@@ -50,7 +50,7 @@ class SQLAlchemyExtension:
         return self._models
 
     def init_models(self):
-        models = discover_classes('app.models', Model)
+        models = discover_classes(self._models_module, Model)
         ns = registry.get(Model)
         ns['models'] = models
         self._models = models
@@ -64,7 +64,7 @@ class SQLAlchemyExtension:
                 ns = registry.get(model)
                 ns['base_class'] = getattr(Base.classes, table_name)
         for model in self._models.values():
-            bind_rules(model)
+            init(model)
 
     def _get_table_name(self, model_name):
         return pluralize(model_name.lower())

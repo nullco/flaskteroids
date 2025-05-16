@@ -6,9 +6,15 @@ from sqlalchemy.orm import relationship
 from flaskteroids.db import session
 from flaskteroids.exceptions import ProgrammerError
 import flaskteroids.registry as registry
+from flaskteroids.rules import bind_rules
 from flaskteroids.str_utils import camel_to_snake, snake_to_camel, singularize
 
 _logger = logging.getLogger(__name__)
+
+
+def init(cls):
+    bind_rules(cls)
+    return cls
 
 
 class ModelNotFoundException(Exception):
@@ -211,7 +217,7 @@ class Model:
     def save(self, validate=True):
         try:
             if validate:
-                validate_rules = registry.get(self.__class__).get('validates')
+                validate_rules = registry.get(self.__class__).get('validates') or []
                 self._errors = []
                 for vr in validate_rules:
                     self._errors.extend(vr(instance=self))
