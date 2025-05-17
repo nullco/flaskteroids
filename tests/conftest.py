@@ -3,7 +3,7 @@ from flaskteroids.app import create_app
 import pytest
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def app():
 
     # This is needed in order to share in-memory DB from different engines

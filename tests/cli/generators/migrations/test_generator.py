@@ -7,6 +7,6 @@ def command(mocker):
     return mocker.patch.object(generator, 'command')
 
 
-def test_generator(command):
+def test_generator(app, command):
     generator.migration('CreateUsersTable', ['name:str'])
     command.revision.assert_called()
