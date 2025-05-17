@@ -12,7 +12,7 @@ from flaskteroids.cli.db import commands as db_commands
 
 def create_app(import_name, config=None):
     config = _config(config)
-    app = Flask(import_name, template_folder=config['VIEWS_FOLDER'])
+    app = Flask(import_name, template_folder=config['VIEWS']['LOCATION'])
 
     _attach_config(app, config)
     _register_routes(app)
@@ -29,15 +29,16 @@ def create_app(import_name, config=None):
 
 def _config(overwrites):
     cfg = {
-        'ROUTES_PACKAGE': 'app.config.routes',
-        'MODELS_PACKAGE': 'app.models',
-        'JOBS_PACKAGE': 'app.jobs',
-        'VIEWS_FOLDER': 'app/views/',
-        'SQLALCHEMY_URL': 'sqlite:///db/database.db',
+        'MODELS': {'LOCATION': 'app.models'},
+        'VIEWS': {'LOCATION': 'app/views/'},
+        'CONTROLLERS': {'LOCATION': 'app.controllers'},
+        'ROUTES': {'LOCATION': 'app.config.routes'},
+        'DB': {'SQLALCHEMY_URL': 'sqlite:///db/database.db'},
         'JOBS': {
+            'LOCATION': 'app.jobs',
             'CELERY_BROKER_URL': 'sqla+sqlite:///db/jobs_database.db'
         },
-        'MAIL_ENABLED': False
+        'MAILERS': {'SEND_MAILS': False}
     }
     if overwrites:
         cfg.update(overwrites)

@@ -24,7 +24,7 @@ class JobsExtension:
     def init_app(self, app):
         self._celery.main = app.import_name
         conf = app.config.get('JOBS') or {}
-        jobs_module = app.config['JOBS_PACKAGE']
+        jobs_module = app.config['JOBS']['LOCATION']
         self._celery.conf['result_backend'] = conf.get('CELERY_RESULT_BACKEND')
         self._celery.conf['broker_url'] = conf.get('CELERY_BROKER_URL')
         self._celery.conf.update(conf.get('CELERY_ADDITIONAL_CONFIG') or {})

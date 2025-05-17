@@ -103,13 +103,14 @@ class MessageDeliveryJob(Job):
         if not msg:
             _logger.debug('Nothing to send, ignoring...')
             return
-        if not current_app.config.get('MAIL_ENABLED', True):
+        cfg = current_app.config['MAILERS']
+        if not cfg.get('SEND_MAILS', True):
             _logger.debug('sending mail is disabled, ignoring...')
             return
-        host = current_app.config['MAIL_HOST']
-        port = current_app.config['MAIL_PORT']
-        username = current_app.config['MAIL_USERNAME']
-        password = current_app.config['MAIL_PASSWORD']
+        host = cfg['MAIL_HOST']
+        port = cfg['MAIL_PORT']
+        username = cfg['MAIL_USERNAME']
+        password = cfg['MAIL_PASSWORD']
 
         with smtplib.SMTP(host, port) as server:
             server.starttls()

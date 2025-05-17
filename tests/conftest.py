@@ -15,16 +15,16 @@ def app():
     init_db(db_url)
 
     cfg = {
-        'ROUTES_PACKAGE': 'tests.app.config.routes',
-        'MODELS_PACKAGE': 'tests.app.models',
-        'CONTROLLERS_PACKAGE': 'tests.app.controllers',
-        'JOBS_PACKAGE': 'tests.app.jobs',
-        'VIEWS_FOLDER': 'app/views/',
-        'SQLALCHEMY_URL': db_url,
+        'MODELS': {'LOCATION': 'tests.app.models'},
+        'VEWS': {'LOCATION': 'app/views/'},
+        'CONTROLLERS': {'LOCATION': 'tests.app.controllers'},
+        'ROUTES': {'LOCATION': 'tests.app.config.routes'},
+        'DB': {'SQLALCHEMY_URL': db_url},
         'JOBS': {
+            'LOCATION': 'tests.app.jobs',
             'CELERY_BROKER_URL': 'sqla+sqlite:///:memory:'
         },
-        'MAIL_ENABLED': False
+        'MAILERS': {'SEND_MAILS': False}
     }
     app = create_app(__name__, cfg)
     with app.app_context():

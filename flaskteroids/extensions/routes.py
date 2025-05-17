@@ -19,9 +19,9 @@ class RoutesExtension:
     def init_app(self, app):
         self._app = app
         self._paths = set()
-        self._controllers = discover_classes(app.config['CONTROLLERS_PACKAGE'], ActionController)
+        self._controllers = discover_classes(app.config['CONTROLLERS']['LOCATION'], ActionController)
         self._internal_controllers = discover_classes('flaskteroids.controllers', ActionController)
-        routes = import_module(app.config['ROUTES_PACKAGE'])
+        routes = import_module(app.config['ROUTES']['LOCATION'])
         routes.register(self)
         if not self.has_path('/'):
             self.root(to='flaskteroids/welcome#show')

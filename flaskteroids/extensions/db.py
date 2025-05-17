@@ -19,8 +19,8 @@ class SQLAlchemyExtension:
             self.init_app(app)
 
     def init_app(self, app):
-        self._engine = create_engine(app.config['SQLALCHEMY_URL'])
-        self._models_module = app.config['MODELS_PACKAGE']
+        self._engine = create_engine(app.config['DB']['SQLALCHEMY_URL'])
+        self._models_module = app.config['MODELS']['LOCATION']
         self._metadata = MetaData()
         self._session_factory = scoped_session(sessionmaker(bind=self._engine))
         if not hasattr(app, 'extensions'):
