@@ -1,46 +1,32 @@
 import pytest
-from sqlalchemy.orm import declarative_base, sessionmaker
-from sqlalchemy import Column, ForeignKey, Integer, String, create_engine
+from sqlalchemy.orm import declarative_base
+from sqlalchemy import Column, ForeignKey, Integer, String
 from flaskteroids import model
 from flaskteroids.model import Model, validates, belongs_to, has_many
-import flaskteroids.registry as registry
 from flaskteroids.rules import rules
 
 
-@pytest.fixture
-def engine():
-    return create_engine('sqlite:///:memory:')
-
-
 @pytest.fixture(autouse=True)
-def session(mocker, engine):
-    Session = sessionmaker(bind=engine)
-    return mocker.patch.object(model, 'session', return_value=Session())
+def init(init_models):
+    init_models(Base, [(UserBase, User), (GroupBase, Group)])
 
 
-@pytest.fixture(autouse=True)
-def init_models(engine):
-    Base = declarative_base()
+Base = declarative_base()
 
-    class UserBase(Base):
-        __tablename__ = 'users'
 
-        id = Column(Integer(), primary_key=True, autoincrement=True)
-        username = Column(String())
-        group_id = Column(Integer(), ForeignKey('groups.id'))
+class UserBase(Base):
+    __tablename__ = 'users'
 
-    class GroupBase(Base):
-        __tablename__ = 'groups'
+    id = Column(Integer(), primary_key=True, autoincrement=True)
+    username = Column(String())
+    group_id = Column(Integer(), ForeignKey('groups.id'))
 
-        id = Column(Integer(), primary_key=True, autoincrement=True)
-        name = Column(String())
 
-    Base.metadata.create_all(engine)
-    registry.get(model.Model)['models'] = {'User': User, 'Group': Group}
-    registry.get(User)['base_class'] = UserBase
-    registry.get(Group)['base_class'] = GroupBase
-    model.init(User)
-    model.init(Group)
+class GroupBase(Base):
+    __tablename__ = 'groups'
+
+    id = Column(Integer(), primary_key=True, autoincrement=True)
+    name = Column(String())
 
 
 @rules(
