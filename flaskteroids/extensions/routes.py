@@ -19,7 +19,7 @@ class RoutesExtension:
     def init_app(self, app):
         self._app = app
         self._paths = set()
-        self._controllers = discover_classes('app.controllers', ActionController)
+        self._controllers = discover_classes(app.config['CONTROLLERS_PACKAGE'], ActionController)
         self._internal_controllers = discover_classes('flaskteroids.controllers', ActionController)
         routes = import_module(app.config['ROUTES_PACKAGE'])
         routes.register(self)
