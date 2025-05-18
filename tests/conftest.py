@@ -24,7 +24,10 @@ def app():
             'LOCATION': 'tests.app.jobs',
             'CELERY_BROKER_URL': 'sqla+sqlite:///:memory:'
         },
-        'MAILERS': {'SEND_MAILS': False}
+        'MAILERS': {
+            'SEND_MAILS': False,
+            'LOCATION': 'tests.app.mailers'
+        }
     }
     app = create_app(__name__, cfg)
     return app

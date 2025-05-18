@@ -38,7 +38,10 @@ def _config(overwrites):
             'LOCATION': 'app.jobs',
             'CELERY_BROKER_URL': 'sqla+sqlite:///db/jobs_database.db'
         },
-        'MAILERS': {'SEND_MAILS': False}
+        'MAILERS': {
+            'LOCATION': 'app.mailers',
+            'SEND_MAILS': False
+        }
     }
     if overwrites:
         cfg.update(overwrites)
