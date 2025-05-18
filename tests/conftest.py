@@ -27,8 +27,13 @@ def app():
         'MAILERS': {'SEND_MAILS': False}
     }
     app = create_app(__name__, cfg)
+    return app
+
+
+@pytest.fixture
+def app_ctx(app):
     with app.app_context():
-        yield app
+        yield
 
 
 def init_db(db_url):
@@ -58,3 +63,8 @@ def init_db(db_url):
 @pytest.fixture
 def client(app):
     return app.test_client()
+
+
+@pytest.fixture
+def cli_runner(app):
+    return app.test_cli_runner()

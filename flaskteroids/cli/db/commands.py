@@ -14,6 +14,7 @@ def init():
 
 
 @click.command('db:migrate')
+@with_appcontext
 def migrate():
     config = get_config()
     revision = 'head'
@@ -21,6 +22,7 @@ def migrate():
 
 
 @click.command('db:rollback')
+@with_appcontext
 def rollback():
     config = get_config()
     revision = '-1'

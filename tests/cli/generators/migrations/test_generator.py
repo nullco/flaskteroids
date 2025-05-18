@@ -7,6 +7,7 @@ def command(mocker):
     return mocker.patch.object(generator, 'command')
 
 
-def test_generator(app, command):
+@pytest.mark.usefixtures('app_ctx')
+def test_generator(command):
     generator.migration('CreateUsersTable', ['name:str'])
     command.revision.assert_called()
