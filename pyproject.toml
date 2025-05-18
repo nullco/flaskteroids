@@ -11,6 +11,9 @@ dependencies = [
 	"celery"
 ]
 
+[project.scripts]
+flaskteroids = "flaskteroids.cli.flaskteroids:cli"
+
 
 [tool.flake8]
 max-line-length = 120
