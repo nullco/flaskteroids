@@ -32,7 +32,7 @@ def _config(overwrites):
         'MODELS': {'LOCATION': 'app.models'},
         'VIEWS': {'LOCATION': 'app/views/'},
         'CONTROLLERS': {'LOCATION': 'app.controllers'},
-        'ROUTES': {'LOCATION': 'app.config.routes'},
+        'ROUTES': {'LOCATION': 'config.routes'},
         'DB': {'SQLALCHEMY_URL': 'sqlite:///db/database.db'},
         'JOBS': {
             'LOCATION': 'app.jobs',
