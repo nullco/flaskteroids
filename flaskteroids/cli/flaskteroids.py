@@ -1,6 +1,6 @@
 import os
 import click
-from flaskteroids.cli.artifacts import ArtifactsBuilder
+from flaskteroids.cli.artifacts import ArtifactsBuilder, ArtifactsBuilderException
 
 
 @click.group()
@@ -33,7 +33,9 @@ def new(app_name):
         ab.file('app/views/layouts/mailer.txt')
         ab.file('app/controllers/application_controller.py', _application_controller())
         ab.file('config/routes.py', _routes())
-    except Exception as e:
+        ab.run('git init')
+        ab.run('git branch -m main')
+    except ArtifactsBuilderException as e:
         click.echo(f"Error creating new flaskteroids app: {e}")
 
 

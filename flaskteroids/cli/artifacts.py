@@ -1,6 +1,11 @@
 import os
 import textwrap
+import subprocess
 from pathlib import Path
+
+
+class ArtifactsBuilderException(Exception):
+    pass
 
 
 class ArtifactsBuilder:
@@ -25,6 +30,17 @@ class ArtifactsBuilder:
         if contents:
             file_path.write_text(self._clean(contents))
         self._notify(f"    create  {name}")
+
+    def run(self, cmd: str):
+        res = subprocess.run(
+            cmd.split(),
+            cwd=self._base_path,
+            capture_output=True,
+            text=True
+        )
+        if res.returncode != 0:
+            raise ArtifactsBuilderException(f'command {cmd} returned {res.returncode}:\n{res.stderr}')
+        self._notify(f"    run  {cmd}")
 
     def _clean(self, txt: str):
         return textwrap.dedent(txt).lstrip()
