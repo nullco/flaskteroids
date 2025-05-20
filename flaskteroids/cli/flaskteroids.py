@@ -12,7 +12,7 @@ def cli():
 @click.argument('app_name')
 def new(app_name):
     base_path = os.path.abspath(app_name)
-    ab = ArtifactsBuilder(base_path)
+    ab = ArtifactsBuilder(base_path, click.echo)
     try:
         ab.dir()
         ab.file('README.md')

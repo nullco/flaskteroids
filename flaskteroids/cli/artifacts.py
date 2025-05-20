@@ -1,13 +1,13 @@
 import os
 import textwrap
-import click
 from pathlib import Path
 
 
 class ArtifactsBuilder:
 
-    def __init__(self, base_path: str):
+    def __init__(self, base_path: str, notify_fn):
         self._base_path = base_path
+        self._notify = notify_fn
 
     def _join(self, name):
         if not name:
@@ -16,7 +16,7 @@ class ArtifactsBuilder:
 
     def dir(self, name=None):
         os.makedirs(self._join(name), exist_ok=True)
-        click.echo(f"    create  {name}")
+        self._notify(f"    create  {name}")
 
     def file(self, name, contents=None):
         file_path = self._join(name)
@@ -24,7 +24,7 @@ class ArtifactsBuilder:
         file_path.touch(exist_ok=True)
         if contents:
             file_path.write_text(self._clean(contents))
-        click.echo(f"    create  {name}")
+        self._notify(f"    create  {name}")
 
     def _clean(self, txt: str):
         return textwrap.dedent(txt).lstrip()
