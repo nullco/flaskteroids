@@ -10,6 +10,10 @@ def generate(controller, actions, skip_routes=False):
         f'app/controllers/{camel_to_snake(controller)}_controller.py',
         _controller(name=controller, actions=actions)
     )
+    ab.file(
+        f'app/helpers/{camel_to_snake(controller)}_helper.py',
+        _helper(name=controller)
+    )
     ab.dir(f'app/views/{camel_to_snake(controller)}/')
     for action in actions:
         file_name = f'app/views/{camel_to_snake(controller)}/{action}.html'
@@ -17,6 +21,12 @@ def generate(controller, actions, skip_routes=False):
         if not skip_routes:
             ab.modify_py_file('config/routes.py', _add_route(camel_to_snake(controller), action))
 
+
+def _helper(*, name):
+    return f"""
+class {name}Helper:
+    pass
+    """
 
 def _controller(*, name, actions):
     action_fns = []

@@ -38,6 +38,7 @@ class ArtifactsBuilder:
         tree = contents().visit(tree)
         with open(self._join(name), "w") as target:
             target.write(ast.unparse(tree))
+        self._notify(f"    modify  {name}")
 
     def run(self, cmd: str):
         res = subprocess.run(
