@@ -10,9 +10,9 @@ class ArtifactsBuilderException(Exception):
 
 class ArtifactsBuilder:
 
-    def __init__(self, base_path: str, notify_fn):
+    def __init__(self, base_path: str, notify_fn=None):
         self._base_path = base_path
-        self._notify = notify_fn
+        self._notify = notify_fn or (lambda txt: None)
 
     def _join(self, name):
         if not name:
