@@ -1,7 +1,6 @@
 import os
-import textwrap
 import click
-from pathlib import Path
+from flaskteroids.cli.artifacts import ArtifactsBuilder
 
 
 @click.group()
@@ -12,60 +11,36 @@ def cli():
 @cli.command('new')
 @click.argument('app_name')
 def new(app_name):
-    NewAppBuilder(os.path.abspath(app_name)).build()
-
-
-class NewAppBuilder:
-
-    def __init__(self, base_path: str):
-        self._base_path = base_path
-
-    def build(self):
-        try:
-            os.makedirs(self._base_path, exist_ok=True)
-            self._file('README.md')
-            self._file('Dockerfile')
-            self._file('.gitignore', _gitignore())
-            self._file('.flaskenv', _flaskenv())
-            self._file('run.py', _run())
-            self._dir('db/')
-            self._dir('app/')
-            self._file('app/assets/stylesheets/application.css')
-            self._file('app/assets/images/.keep')
-            self._file('app/helpers/application_helper.py')
-            self._file('app/models/application_model.py')
-            self._file('app/jobs/application_job.py')
-            self._file('app/mailers/application_mailer.py', _application_mailer())
-            self._file('app/views/layouts/application.html')
-            self._file('app/views/layouts/mailer.html')
-            self._file('app/views/layouts/mailer.txt')
-            self._file('app/controllers/application_controller.py', _application_controller())
-            self._file('config/routes.py', _routes())
-        except Exception as e:
-            click.echo(f"Error creating new flaskteroids app: {e}")
-
-    def _join(self, name):
-        return Path(self._base_path, name)
-
-    def _dir(self, name):
-        os.makedirs(self._join(name), exist_ok=True)
-        click.echo(f"    create  {name}")
-
-    def _file(self, name, contents=None):
-        file_path = self._join(name)
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-        file_path.touch(exist_ok=True)
-        if contents:
-            file_path.write_text(self._clean(contents))
-        click.echo(f"    create  {name}")
-
-    def _clean(self, txt: str):
-        return textwrap.dedent(txt).lstrip()
+    base_path = os.path.abspath(app_name)
+    ab = ArtifactsBuilder(base_path)
+    try:
+        ab.dir()
+        ab.file('README.md')
+        ab.file('Dockerfile')
+        ab.file('.gitignore', _gitignore())
+        ab.file('.flaskenv', _flaskenv())
+        ab.file('run.py', _run())
+        ab.dir('db/')
+        ab.dir('app/')
+        ab.file('app/assets/stylesheets/application.css')
+        ab.file('app/assets/images/.keep')
+        ab.file('app/helpers/application_helper.py')
+        ab.file('app/models/application_model.py')
+        ab.file('app/jobs/application_job.py')
+        ab.file('app/mailers/application_mailer.py', _application_mailer())
+        ab.file('app/views/layouts/application.html')
+        ab.file('app/views/layouts/mailer.html')
+        ab.file('app/views/layouts/mailer.txt')
+        ab.file('app/controllers/application_controller.py', _application_controller())
+        ab.file('config/routes.py', _routes())
+    except Exception as e:
+        click.echo(f"Error creating new flaskteroids app: {e}")
 
 
 def _gitignore():
     return """
 __pycache__/
+.venv/
 db/database.db
 db/jobs_database.db
     """
