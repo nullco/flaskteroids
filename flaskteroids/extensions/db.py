@@ -1,12 +1,13 @@
 import logging
 from sqlalchemy.ext.automap import automap_base
+from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy import create_engine, MetaData
 from sqlalchemy.orm import sessionmaker, scoped_session
 from flask import g
 from flaskteroids.discovery import discover_classes
 import flaskteroids.registry as registry
 from flaskteroids.model import Model, init
-from flaskteroids.str_utils import pluralize
+from flaskteroids.str_utils import camel_to_snake, pluralize
 
 
 _logger = logging.getLogger(__name__)
@@ -50,12 +51,15 @@ class SQLAlchemyExtension:
         return self._models
 
     def init_models(self):
-        models = discover_classes(self._models_module, Model)
+        models = discover_classes(self._models_module, Model, {'ApplicationModel'})
         ns = registry.get(Model)
         ns['models'] = models
         self._models = models
         tables = [self._get_table_name(name) for name in self._models.keys()]
-        self._metadata.reflect(self._engine, only=tables)
+        try:
+            self._metadata.reflect(self._engine, only=tables)
+        except InvalidRequestError:
+            pass
         Base = automap_base(metadata=self._metadata)
         Base.prepare(generate_relationship=self._skip_relationships)
         for name, model in self._models.items():
@@ -67,7 +71,7 @@ class SQLAlchemyExtension:
             init(model)
 
     def _get_table_name(self, model_name):
-        return pluralize(model_name.lower())
+        return pluralize(camel_to_snake((model_name)))
 
     @staticmethod
     def _skip_relationships(*args, **kwargs):

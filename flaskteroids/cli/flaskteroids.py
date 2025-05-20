@@ -25,7 +25,7 @@ def new(app_name):
         ab.file('app/assets/stylesheets/application.css')
         ab.file('app/assets/images/.keep')
         ab.file('app/helpers/application_helper.py')
-        ab.file('app/models/application_model.py')
+        ab.file('app/models/application_model.py', _application_model())
         ab.file('app/jobs/application_job.py')
         ab.file('app/mailers/application_mailer.py', _application_mailer())
         ab.file('app/views/layouts/application.html')
@@ -33,6 +33,7 @@ def new(app_name):
         ab.file('app/views/layouts/mailer.txt')
         ab.file('app/controllers/application_controller.py', _application_controller())
         ab.file('config/routes.py', _routes())
+        ab.run('flask db:init')
         ab.run('git init')
         ab.run('git branch -m main')
     except ArtifactsBuilderException as e:
@@ -45,6 +46,16 @@ __pycache__/
 .venv/
 db/database.db
 db/jobs_database.db
+    """
+
+
+def _application_model():
+    return """
+from flaskteroids.model import Model
+
+
+class ApplicationModel(Model):
+    pass
     """
 
 

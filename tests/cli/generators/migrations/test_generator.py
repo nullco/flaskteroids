@@ -9,5 +9,5 @@ def command(mocker):
 
 @pytest.mark.usefixtures('app_ctx')
 def test_generator(command):
-    generator.migration('CreateUsersTable', ['name:str'])
+    generator.generate('CreateUsersTable', ['name:str'])
     command.revision.assert_called()

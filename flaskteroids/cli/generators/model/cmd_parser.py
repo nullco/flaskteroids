@@ -1,27 +1,14 @@
+from collections import defaultdict
 import re
 from flaskteroids.cli.generators import cmd_parser
 import sqlalchemy as sa
 from alembic.operations import ops
 from datetime import datetime, timezone
+
 from flaskteroids.str_utils import pluralize
 
 
-_column_types = {
-    'int': sa.Integer,
-    'str': lambda: sa.String(255),
-    'text': sa.Text,
-    'float': sa.Float,
-    'bool': sa.Boolean,
-    'json': sa.JSON
-}
-
-_column_types_pattern = fr'{"|".join(k for k in _column_types.keys())}'
-
-_column_pattern = re.compile(fr'^([a-z_]+):({_column_types_pattern})(!?)$')
-_reference_pattern = re.compile(r'^([a-z_]+):references$')
-
-
-class _CreateTableCommand:
+class _CreateModelCmd:
     pattern = re.compile(r'create_([a-z]+)')
     args = {
         'column': _column_pattern,
@@ -82,7 +69,7 @@ class _DropTableCommand:
 
     @classmethod
     def parse(cls, cmd, args):
-        matcher = cmd_parser.CommandArgsMatcher(cls.pattern, cls.args)
+        matcher = _CommandArgsMatcher(cls.pattern, cls.args)
         match = matcher.match(cmd, args)
         if match:
             cmd_match, _ = match
@@ -106,7 +93,7 @@ class _AddColumnsToTableCommand:
 
     @classmethod
     def parse(cls, cmd, args):
-        matcher = cmd_parser.CommandArgsMatcher(cls.pattern, cls.args)
+        matcher = _CommandArgsMatcher(cls.pattern, cls.args)
         match = matcher.match(cmd, args)
         if match:
             cmd_match, args_matches = match
@@ -143,7 +130,7 @@ class _RemoveColumnsFromTableCommand:
 
     @classmethod
     def parse(cls, cmd, args):
-        matcher = cmd_parser.CommandArgsMatcher(cls.pattern, cls.args)
+        matcher = _CommandArgsMatcher(cls.pattern, cls.args)
         match = matcher.match(cmd, args)
         if match:
             cmd_match, args_matches = match

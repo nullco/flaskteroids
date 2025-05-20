@@ -4,7 +4,7 @@ from flaskteroids.cli.generators.migrations import cmd_parser
 from flaskteroids.cli.db.config import get_config
 
 
-def migration(cmd, args):
+def generate(cmd, args):
     config = get_config()
     res = cmd_parser.parse(cmd, args)
     up_ops = res['parsed']['ops']['up']
