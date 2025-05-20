@@ -2,6 +2,7 @@ import click
 from flask.cli import with_appcontext
 import flaskteroids.cli.generators.migrations.generator as migrations
 import flaskteroids.cli.generators.model.generator as model
+import flaskteroids.cli.generators.controller.generator as controller
 
 
 @click.group('generate')
@@ -22,3 +23,11 @@ def generate_migration(args):
 def generate_model(args):
     model_name, *cmd_args = args
     model.generate(model_name, cmd_args)
+
+
+@generate.command('controller')
+@click.argument('name')
+@click.argument('actions', nargs=-1)
+@click.option('--skip-routes', is_flag=True)
+def generate_controller(name, actions, skip_routes):
+    controller.generate(name, actions, skip_routes)

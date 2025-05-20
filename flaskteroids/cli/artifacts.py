@@ -1,3 +1,4 @@
+import ast
 import os
 import textwrap
 import subprocess
@@ -30,6 +31,13 @@ class ArtifactsBuilder:
         if contents:
             file_path.write_text(self._clean(contents))
         self._notify(f"    create  {name}")
+
+    def modify_py_file(self, name, contents):
+        with open(self._join(name), "r") as source:
+            tree = ast.parse(source.read())
+        tree = contents().visit(tree)
+        with open(self._join(name), "w") as target:
+            target.write(ast.unparse(tree))
 
     def run(self, cmd: str):
         res = subprocess.run(
