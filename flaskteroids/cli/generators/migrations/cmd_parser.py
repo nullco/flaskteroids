@@ -18,7 +18,7 @@ _column_types = {
 _column_types_pattern = fr'{"|".join(k for k in _column_types.keys())}'
 
 _column_pattern = re.compile(fr'^([a-z_]+):({_column_types_pattern})(!?)$')
-_reference_pattern = re.compile(r'^([a-z_]+):references$')
+_reference_pattern = re.compile(r'^([a-z_]+):(references|belongs_to)$')
 
 
 class _CreateTableCommand:
