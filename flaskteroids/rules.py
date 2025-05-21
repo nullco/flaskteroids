@@ -7,7 +7,7 @@ _logger = logging.getLogger(__name__)
 def rules(*rules_list):
     def decorator(cls):
         _logger.debug(f'registering rules to {cls.__name__}')
-        classes = reversed([c for c in cls.__mro__ if c is not object and c is not cls])
+        classes = _get_inheritance_chain(cls)
         ns = registry.get(cls)
         entries = []
         ns['rules'] = {'bound': False, 'entries': entries}
@@ -17,6 +17,23 @@ def rules(*rules_list):
             entries.append(r)
         return cls
     return decorator
+
+
+def _get_inheritance_chain(cls):
+    seen = set()
+    result = []
+
+    def visit(c):
+        if c in seen or c is object:
+            return
+        seen.add(c)
+        for base in c.__bases__:
+            visit(base)
+        if c is not cls:
+            result.append(c)
+
+    visit(cls)
+    return result
 
 
 def bind_rules(cls):
