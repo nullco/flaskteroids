@@ -37,7 +37,7 @@ class ConcernB(Concern):
 
 
 @rules(
-    rule('my')
+    rule('c')
 )
 class MyClass(ConcernA, ConcernB):
     def __init__(self) -> None:
@@ -59,7 +59,8 @@ def test_concern_instance_methods():
     c = MyClass()
     c.do_a()
     c.do_b()
+    assert c.done == ['a', 'b']
 
 
 def test_concern_rules():
-    assert registered_rules == ['a', 'b', 'my']
+    assert registered_rules == ['a', 'b', 'c']
