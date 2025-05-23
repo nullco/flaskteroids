@@ -106,6 +106,22 @@ def after_action(method_name: str, *, only=None):
     return bind
 
 
+def skip_action(method_name: str, *, only=None):
+    def bind(cls):
+        ns = registry.get(cls)
+        actions = only if only else None
+        if not actions:
+            actions = ns['actions'] if 'actions' in ns else []
+        for action_name in actions:
+            for at in ['before_action', 'around_action', 'after_action']:
+                if at not in ns:
+                    continue
+                if action_name not in ns[at]:
+                    continue
+                ns[at][action_name].remove(method_name)
+    return bind
+
+
 class ActionParameters(UserDict):
 
     @classmethod
