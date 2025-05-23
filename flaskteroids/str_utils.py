@@ -10,6 +10,8 @@ def snake_to_camel(text: str) -> str:
 
 
 def pluralize(text: str) -> str:
+    if text.endswith('s'):
+        return text
     return f'{text}s'
 
 

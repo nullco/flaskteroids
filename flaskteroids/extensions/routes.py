@@ -65,6 +65,23 @@ class RoutesExtension:
             to = to.format(name=name)
             method(path, to=to)
 
+    def resource(self, name, *, only=None):
+        only = only or ['new', 'create', 'show', 'edit', 'update', 'destroy']
+        cfg = {
+            'new': (self.get, '/{name}/new/', '{name}#new'),
+            'create': (self.post, '/{name}/', '{name}#create'),
+            'show': (self.get, '/{name}/', '{name}#show'),
+            'edit': (self.get, '/{name}/edit/', '{name}#edit'),
+            'update': (self.put, '/{name}/', '{name}#update'),
+            'destroy': (self.delete, '/{name}/', '{name}#destroy'),
+        }
+        for action in only:
+            action_cfg = cfg[action]
+            method, path, to = action_cfg
+            path = path.format(name=name)
+            to = to.format(name=name)
+            method(path, to=to)
+
     def has_path(self, path):
         return path in self._paths
 
@@ -73,6 +90,7 @@ class RoutesExtension:
             action_name = action_name.replace('flaskteroids/', '')
             controllers = self._internal_controllers
         else:
+            action_name = str_utils.pluralize(action_name)
             controllers = self._controllers
         controller_name = f'{str_utils.snake_to_camel(action_name)}Controller'
         controller = controllers.get(controller_name)
@@ -83,6 +101,9 @@ class RoutesExtension:
     def _register_view_func(self, path, to, methods=None, as_=None):
         cname, caction = to.split('#')
         ccls = self._get_controller_class(cname)
+        if not hasattr(ccls, caction):
+            return
+
         self._paths.add(path)
 
         def view_func(*args, **kwargs):
