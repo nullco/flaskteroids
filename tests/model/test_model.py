@@ -69,3 +69,12 @@ def test_all():
     User.create(username='two')
     User.create(username='three')
     assert len(list(User.all())) == 3
+
+
+def test_find_by():
+    User.create(username='one')
+    User.create(username='two')
+    User.create(username='three')
+    one = User.find_by(username='one')
+    assert one
+    assert one.username == 'one'

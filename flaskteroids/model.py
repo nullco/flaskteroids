@@ -209,6 +209,10 @@ class Model:
             raise ModelNotFoundException("Instance not found")
         return found
 
+    @classmethod
+    def find_by(cls, **kwargs):
+        return ModelQuery(cls).where(**kwargs).first()
+
     def update(self, **kwargs):
         for field, value in kwargs.items():
             setattr(self._base_instance, field, value)
