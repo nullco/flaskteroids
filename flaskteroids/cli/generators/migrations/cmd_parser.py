@@ -67,6 +67,7 @@ class _CreateTableCommand:
                                     for am in args_matches.get('reference', [])
                                 ]
                             ],
+                            _namespace_metadata=sa.MetaData()
                         )
                     ],
                     'down': [

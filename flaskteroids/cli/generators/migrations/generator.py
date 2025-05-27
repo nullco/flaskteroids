@@ -12,7 +12,7 @@ def generate(cmd, args):
     command.revision(
         config,
         message=res['normalized_cmd'].replace('_', ' '),
-        rev_id=datetime.now().strftime("%Y%m%d%H%M%S"),
+        rev_id=datetime.now().strftime("%Y%m%d%H%M%S%f"),
         process_revision_directives=_gen_process_revision_directives(up_ops, down_ops)
     )
 

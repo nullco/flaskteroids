@@ -3,6 +3,7 @@ from flask.cli import with_appcontext
 import flaskteroids.cli.generators.migrations.generator as migrations
 import flaskteroids.cli.generators.model.generator as model
 import flaskteroids.cli.generators.controller.generator as controller
+import flaskteroids.cli.generators.authentication.generator as authentication
 
 
 @click.group('generate')
@@ -31,3 +32,8 @@ def generate_model(args):
 @click.option('--skip-routes', is_flag=True)
 def generate_controller(name, actions, skip_routes):
     controller.generate(name, actions, skip_routes)
+
+
+@generate.command('authentication')
+def generate_authentication():
+    authentication.generate()

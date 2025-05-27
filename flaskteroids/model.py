@@ -46,8 +46,11 @@ def belongs_to(name: str, class_name: str | None = None, foreign_key: str | None
         related_cls = models.get(related_cls_name)
         if not related_cls:
             raise ProgrammerError(f'{related_cls_name} model not found')
-        related_base = _base(related_cls)
-        base = _base(cls)
+        try:
+            related_base = _base(related_cls)
+            base = _base(cls)
+        except Exception:
+            return  # TODO: Handle better this
         fk_name = foreign_key or f'{camel_to_snake(related_cls.__name__)}_id'
         fk = getattr(base, fk_name)
         rel = relationship(related_base, primaryjoin=related_base.id == fk)
@@ -71,8 +74,11 @@ def has_many(name: str, class_name: str | None = None, foreign_key: str | None =
         related_cls = models.get(related_cls_name)
         if not related_cls:
             raise ProgrammerError(f'{related_cls_name} model not found')
-        related_base = _base(related_cls)
-        base = _base(cls)
+        try:
+            related_base = _base(related_cls)
+            base = _base(cls)
+        except Exception:
+            return  # TODO: Handle better this
         fk_name = foreign_key or f'{camel_to_snake(cls.__name__)}_id'
         fk = getattr(related_base, fk_name)
         rel = relationship(related_base, primaryjoin=base.id == fk)
