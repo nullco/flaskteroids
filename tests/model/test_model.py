@@ -54,6 +54,15 @@ def test_create():
     assert user.id
 
 
+def test_edit():
+    user = User.create(username='one')
+    user.username = 'two'
+    user.save()
+
+    user = User.find(id=user.id)
+    assert user.username == 'two'
+
+
 def test_save():
     user = User.new(username='one')
     assert user.save()

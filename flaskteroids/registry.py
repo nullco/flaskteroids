@@ -1,7 +1,7 @@
 _registry = {}
 
 
-def get(cls):
+def get(cls) -> dict:
     namespace = _get_namespace(cls)
     if namespace not in _registry:
         _registry[namespace] = {}

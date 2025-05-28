@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime, timezone
 from functools import partial
+from werkzeug.security import check_password_hash, generate_password_hash
 from sqlalchemy import select, inspect
 from sqlalchemy.orm import relationship
 from flaskteroids.db import session
@@ -36,6 +37,37 @@ def _link_associations(name, rel, cls, related_cls, fk_name):
         rel.back_populates = ns['associations'][key]['name']
         bp = ns['associations'][key]['rel']
         bp.back_populates = name
+
+
+def has_secure_password(pwname='password'):
+    def bind(cls):
+
+        ns = registry.get(cls)
+        ns.setdefault('virtual_fields', {})[pwname] = {
+            'map_to': f'{pwname}_digest',
+            'map_fn': generate_password_hash
+        }
+        validates(pwname, length={'minimum': 1, 'maximum': 72})(cls)
+        validates(pwname, confirmation=True)(cls)
+
+        @classmethod
+        def authenticate_by(cls, **kwargs):
+            password = kwargs.pop(pwname)
+            entry = cls.find_by(**kwargs)
+            if not entry:
+                check_password_hash('a', 'b')  # To protect against timing attacks
+                return None
+            if not entry.authenticate(password):
+                return None
+            return entry
+
+        def authenticate(self, password):
+            password_digest = getattr(self, f'{pwname}_digest')
+            return check_password_hash(password_digest, password)
+
+        cls.authenticate = authenticate
+        cls.authenticate_by = authenticate_by
+    return bind
 
 
 def belongs_to(name: str, class_name: str | None = None, foreign_key: str | None = None):
@@ -104,22 +136,44 @@ def has_many(name: str, class_name: str | None = None, foreign_key: str | None =
     return bind
 
 
-def validates(field, *, presence=False):
+def validates(field, *, presence=False, length=None, confirmation=False):
     def bind(model_cls):
         ns = registry.get(model_cls)
-        if 'validates' not in ns:
-            ns['validates'] = []
-        ns['validates'].append(partial(_validates, field=field, presence=presence))
+        ns.setdefault('validates', []).append(
+            partial(
+                _validates,
+                field=field, presence=presence, length=length, confirmation=confirmation
+            )
+        )
+        if confirmation:
+            ns.setdefault('virtual_fields', {})[f'{field}_confirmation'] = {}
     return bind
 
 
-def _validates(*, instance, field, presence):
+def _validates(*, instance, field, presence, length, confirmation):
     errors = []
-    value = getattr(instance, field) if hasattr(instance, field) else None
-    if presence:
-        if value is None:
-            errors.append((f'{field}.presence', f"Field {field} is missing"))
-            return errors
+    if hasattr(instance, field):
+        value = getattr(instance, field)
+    elif field in instance._virtual_fields:
+        value = instance._virtual_fields[field]
+    else:
+        return
+
+    if presence and value is None:
+        errors.append((f'{field}.presence', f"Field {field} is missing"))
+        return errors
+    elif value is not None:
+        if length:
+            minimum = length.get('minimum')
+            maximum = length.get('maximum')
+            if minimum is not None and len(value) < minimum:
+                errors.append((f'{field}.length', f"Field {field} is lower than {minimum}"))
+            if maximum is not None and len(value) > maximum:
+                errors.append((f'{field}.length', f"Field {field} is higher than {maximum}"))
+        if confirmation:
+            confirmation_value = instance._virtual_fields.get(f'{field}_confirmation')
+            if confirmation_value != value:
+                errors.append((f'{field}.confirmation', f"Field {field} values do not match"))
     return errors
 
 
@@ -174,10 +228,15 @@ class ModelQuery:
 
 class Model:
 
+    _fields = ['_virtual_fields', '_base_instance', '_errors']
+
     def __init__(self, **kwargs):
         base = _base(self.__class__)
+        self._virtual_fields = {}
+        self._base_instance = base()
         self._errors = []
-        self._base_instance = base(**kwargs)
+        for k, v in kwargs.items():
+            setattr(self, k, v)
 
     @property
     def errors(self):
@@ -188,7 +247,24 @@ class Model:
         return list(self._base_instance.__table__.columns.keys())
 
     def __getattr__(self, name):
+        if name in self._virtual_fields:
+            return self._virtual_fields[name]
         return getattr(self._base_instance, name)
+
+    def __setattr__(self, name, value):
+        if name in self._fields:
+            super().__setattr__(name, value)
+            return
+        ns = registry.get(self.__class__)
+        vfd = ns.setdefault('virtual_fields', {})
+        if name in vfd:
+            self._virtual_fields[name] = value
+            map_to = vfd[name].get('map_to')
+            map_fn = vfd[name].get('map_fn')
+            if map_to and map_fn:
+                setattr(self._base_instance, map_to, map_fn(value))
+        else:
+            setattr(self._base_instance, name, value)
 
     def __json__(self):
         return {c: getattr(self._base_instance, c) for c in self.column_names}
