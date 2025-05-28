@@ -56,6 +56,9 @@ def test_authenticate_by(existing_user):
 def test_authenticate(existing_user):
     assert existing_user.authenticate('Abcde12345$')
 
+def test_authenticate_fails(existing_user):
+    assert not existing_user.authenticate('Wro00nggg$')
+
 
 def test_password_confirmation(new_user):
     new_user.password_confirmation = 'wrong'
