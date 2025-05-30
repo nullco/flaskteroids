@@ -1,11 +1,5 @@
-{% call(form) form_with(url=url_for('session')) %}
-<div>
-	{{ form.label('email_address') }}
-	{{ form.email_field('email_address') }}
-	{{ form.label('password') }}
-	{{ form.password_field('password') }}
-</div>
-<div>
-	{{ form.submit() }}
-</div>
+{% call(form) form_with(url=url_for('create_session')) %}
+	{{ form.email_field('email_address', required=True, autofocus=True, autocomplete='username', placeholder='Enter your email address', value=params['email_address']) }}
+	{{ form.password_field('password', required=True, autofocus=True, autocomplete='current-password', placeholder='Enter your pasword', maxlength=72) }}
+	{{ form.submit('Sign in') }}
 {% endcall %}

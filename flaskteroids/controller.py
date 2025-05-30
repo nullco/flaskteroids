@@ -27,7 +27,7 @@ def _decorate_action(cls, action):
         if res:
             return res
         cname = self.__class__.__name__.replace("Controller", "").lower()
-        view_template = render_template(f'{cname}/{action.__name__}.html', **self.__dict__)
+        view_template = render_template(f'{cname}/{action.__name__}.html', **{**self.__dict__, 'params': params})
         return view_template
     return wrapper
 

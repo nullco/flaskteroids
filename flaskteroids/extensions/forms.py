@@ -84,42 +84,51 @@ class Form:
     def label(self, field):
         return Markup(f'<label for="{self._get_id(field)}">{field.title()}</label>')
 
-    def _input_type(self, type_, field, value=None):
-        val = value if value is not None else self._get_value(field)
-        return Markup(f'<input type="{type_}" name="{self._get_name(field)}" id="{self._get_id(field)}" value="{val}">')
+    def _input_type(self, type_, field, **kwargs):
+        value = kwargs.pop('value', None)
+        value = value if value is not None else self._get_value(field)
+        attrs = {
+            'type': type_,
+            'id': self._get_id(field),
+            'name': self._get_name(field),
+            'value': value,
+            **kwargs
+        }
+        attrs = " ".join(f'{k}="{v}"' for k, v in attrs.items())
+        return Markup(f'<input {attrs}>')
 
-    def hidden_field(self, field, value=None):
-        return self._input_type('hidden', field, value)
+    def hidden_field(self, field, **kwargs):
+        return self._input_type('hidden', field, **kwargs)
 
-    def text_field(self, field, value=None):
-        return self._input_type('text', field, value)
+    def text_field(self, field, **kwargs):
+        return self._input_type('text', field, **kwargs)
 
-    def password_field(self, field, value=None):
-        return self._input_type('password', field, value)
+    def password_field(self, field, **kwargs):
+        return self._input_type('password', field, **kwargs)
 
-    def email_field(self, field, value=None):
-        return self._input_type('email', field, value)
+    def email_field(self, field, **kwargs):
+        return self._input_type('email', field, **kwargs)
 
-    def phone_field(self, field, value=None):
-        return self._input_type('tel', field, value)
+    def phone_field(self, field, **kwargs):
+        return self._input_type('tel', field, **kwargs)
 
-    def url_field(self, field, value=None):
-        return self._input_type('url', field, value)
+    def url_field(self, field, **kwargs):
+        return self._input_type('url', field, **kwargs)
 
-    def date_field(self, field, value=None):
-        return self._input_type('date', field, value)
+    def date_field(self, field, **kwargs):
+        return self._input_type('date', field, **kwargs)
 
-    def time_field(self, field, value=None):
-        return self._input_type('time', field, value)
+    def time_field(self, field, **kwargs):
+        return self._input_type('time', field, **kwargs)
 
-    def datetime_field(self, field, value=None):
-        return self._input_type('datetime-local', field, value)
+    def datetime_field(self, field, **kwargs):
+        return self._input_type('datetime-local', field, **kwargs)
 
-    def search_field(self, field, value=None):
-        return self._input_type('search', field, value)
+    def search_field(self, field, **kwargs):
+        return self._input_type('search', field, **kwargs)
 
-    def color_field(self, field, value=None):
-        return self._input_type('color', field, value)
+    def color_field(self, field, **kwargs):
+        return self._input_type('color', field, **kwargs)
 
     def text_area(self, field, value=None):
         val = value if value is not None else self._get_value(field)
