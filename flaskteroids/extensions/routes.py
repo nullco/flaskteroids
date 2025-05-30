@@ -115,7 +115,7 @@ class RoutesExtension:
             params.pop('csrf_token', None)
             return action()
 
-        view_func_name = f"{cname}_{caction}"
+        view_func_name = f"{caction}_{cname}"
         if as_:
             view_func_name = as_
         view_func.__name__ = view_func_name

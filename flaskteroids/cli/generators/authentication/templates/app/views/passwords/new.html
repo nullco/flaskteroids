@@ -1,0 +1,6 @@
+<h1>Forgot your password?</h1>
+
+{% call(form) form_with(url=url_for('passwords_XXX')) %}
+	{{ form.email_field('email_address', required=True, autofocus=True, autocomplete="username", placeholder='Enter your email address', value=params['email_address']) }}
+	{{ form.submit('Email reset instructions') }}
+{% endcall %}

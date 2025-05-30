@@ -1,7 +1,6 @@
 import textwrap
 from markupsafe import Markup, escape
 from flask import request, abort
-from flaskteroids.model import Model
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 
 
@@ -46,29 +45,37 @@ class FormsExtension:
     def _should_validate_csrf_token(self):
         return request.method not in ['GET', 'HEAD', 'OPTIONS', 'TRACE']
 
-    def _form_with(self, model: Model, caller):
-        form = Form(model)
+    def _form_with(self, model=None, caller=None, url='', method='POST'):
+        prefix = 'data'
+        data = None
+        if model:
+            prefix = model.__class__.__name__.lower()
+            data = model.__json__()
+        form = Form(prefix, data)
         return textwrap.dedent(f"""
-            <form action="{''}" method="POST">
+            <form action="{url}" method="{method}">
                <input type="hidden" name="csrf_token" value="{self._generate_csrf_token()}">
-               {caller(form)}
+               {caller(form) if caller else ''}
             </form>
         """)
 
 
 class Form:
 
-    def __init__(self, model: Model) -> None:
-        self._model = model
+    def __init__(self, prefix: str, data: dict | None = None) -> None:
+        self._prefix = prefix
+        self._data = data or {}
 
     def _get_name(self, field):
-        return f"{self._model.__class__.__name__.lower()}[{field}]"
+        return f"{self._prefix}[{field}]"
 
     def _get_id(self, field):
-        return f"{self._model.__class__.__name__.lower()}_{field}"
+        return f"{self._prefix}_{field}"
 
     def _get_value(self, field):
-        return escape(getattr(self._model, field) if hasattr(self._model, field) else '')
+        if field not in self._data:
+            return ''
+        return escape(self._data.get(field))
 
     def label(self, field):
         return Markup(f'<label for="{self._get_id(field)}">{field.title()}</label>')

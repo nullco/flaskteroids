@@ -1,4 +1,4 @@
-from flask import redirect
+from flask import redirect, url_for
 from flaskteroids import params
 from flaskteroids.rules import rules
 from flaskteroids.actions import skip_action
@@ -17,11 +17,10 @@ class SessionsController(ApplicationController):
     def create(self):
         if user := User.authenticate_by(**params.expect(['email_address', 'password'])):
             self._start_new_session_for(user)
-            return redirect('/')
+            return redirect(url_for('root'))  # TODO: after new session url
         else:
-            return redirect('/login?alert=Try another email address or password.')
+            return redirect(url_for('new_session', alert='Try another email address or password.'))
 
     def destroy(self):
         self._terminate_session()
-        return redirect('/login')
-
+        return redirect(url_for('new_session'))

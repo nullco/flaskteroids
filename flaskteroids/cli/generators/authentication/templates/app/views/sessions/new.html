@@ -1,0 +1,11 @@
+{% call(form) form_with(user) %}
+<div>
+	{{ form.label('email_address') }}
+	{{ form.email_field('email_address') }}
+	{{ form.label('password') }}
+	{{ form.password_field('password') }}
+</div>
+<div>
+	{{ form.submit() }}
+</div>
+{% endcall %}
