@@ -33,7 +33,6 @@ def user_params():
     return {
         'email_address': 'john-doe@example.org',
         'password': 'Abcde12345$',
-        'password_confirmation': 'Abcde12345$'
     }
 
 
@@ -67,20 +66,48 @@ def test_authenticate_with_wrong_password(existing_user):
     assert not existing_user.authenticate('Wro00nggg$')
 
 
-def test_password_confirmation(new_user):
+def test_password_with_confirmation(new_user):
     new_user.password_confirmation = 'wrong'
     assert not new_user.save()
     assert new_user.errors
+    new_user.password_confirmation = new_user.password
+    assert new_user.save()
 
 
 def test_change_password(existing_user):
     password_digest = existing_user.password_digest
     existing_user.password = 'N3wP4$$'
-    assert not existing_user.save()
-    existing_user.password_confirmation = 'N3wP4$$'
-    existing_user.save()
+    assert existing_user.save()
     assert not existing_user.errors
     assert existing_user.password_digest != password_digest
+
+
+def test_change_password_with_confirmation(existing_user):
+    password_digest = existing_user.password_digest
+    existing_user.password = 'N3wP4$$'
+    existing_user.password_confirmation = 'N3wP4$$'
+    assert existing_user.save()
+    assert not existing_user.errors
+    assert existing_user.password_digest != password_digest
+
+
+def test_change_password_via_update(existing_user):
+    password_digest = existing_user.password_digest
+    assert existing_user.update(password='N3wP4$$')
+    assert not existing_user.errors
+    assert existing_user.password_digest != password_digest
+
+
+def test_change_password_with_confirmation_via_update(existing_user):
+    password_digest = existing_user.password_digest
+    assert existing_user.update(password='N3wP4$$', password_confirmation='N3wP4$$')
+    assert not existing_user.errors
+    assert existing_user.password_digest != password_digest
+
+
+def test_change_password_with_wrong_confirmation_via_update(existing_user):
+    assert not existing_user.update(password='N3wP4$$', password_confirmation='Wrong')
+    assert existing_user.errors
 
 
 def test_change_empty_password(existing_user):

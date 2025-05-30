@@ -179,9 +179,11 @@ def _validates(*, instance, field, presence, length, confirmation):
             if maximum is not None and len(value) > maximum:
                 errors.append((f'{field}.length', f"Field {field} is higher than {maximum}"))
         if confirmation:
-            confirmation_value = instance._virtual_fields.get(f'{field}_confirmation')
-            if confirmation_value != value:
-                errors.append((f'{field}.confirmation', f"Field {field} values do not match"))
+            confirmation_field = f'{field}_confirmation'
+            if confirmation_field in instance._virtual_fields:
+                confirmation_value = instance._virtual_fields.get(confirmation_field)
+                if confirmation_value != value:
+                    errors.append((f'{field}.confirmation', f"Field {field} values do not match"))
     return errors
 
 
@@ -305,7 +307,7 @@ class Model:
 
     def update(self, **kwargs):
         for field, value in kwargs.items():
-            setattr(self._base_instance, field, value)
+            setattr(self, field, value)
         return self.save()
 
     def save(self, validate=True):
