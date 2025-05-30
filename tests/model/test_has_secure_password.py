@@ -53,10 +53,16 @@ def test_authenticate_by(existing_user):
     assert user.password_digest != existing_user.password
 
 
+def test_authenticate_by_with_wrong_password(existing_user):
+    user = User.authenticate_by(email_address=existing_user.email_address, password='Wro000nggg$')
+    assert not user
+
+
 def test_authenticate(existing_user):
     assert existing_user.authenticate('Abcde12345$')
 
-def test_authenticate_fails(existing_user):
+
+def test_authenticate_with_wrong_password(existing_user):
     assert not existing_user.authenticate('Wro00nggg$')
 
 
