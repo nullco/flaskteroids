@@ -1,7 +1,7 @@
 import pytest
 from sqlalchemy.orm import declarative_base
 from sqlalchemy import Column, Integer, String
-from flaskteroids.model import Model, has_secure_password
+from flaskteroids.model import PasswordAuthenticator, Model, has_secure_password
 from flaskteroids.rules import rules
 
 
@@ -24,7 +24,7 @@ class UserBase(Base):
 @rules(
     has_secure_password()
 )
-class User(Model):
+class User(Model, PasswordAuthenticator):
     pass
 
 
@@ -49,6 +49,7 @@ def existing_user(user_params):
 
 def test_authenticate_by(existing_user):
     user = User.authenticate_by(email_address=existing_user.email_address, password=existing_user.password)
+    assert user
     assert user.email_address == existing_user.email_address
     assert user.password_digest != existing_user.password
 

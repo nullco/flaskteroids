@@ -39,34 +39,42 @@ def _link_associations(name, rel, cls, related_cls, fk_name):
         bp.back_populates = name
 
 
+class PasswordAuthenticator:
+    @classmethod
+    def authenticate_by(cls, **kwargs):
+        ns = registry.get(cls)
+        pwname = ns.get('password_field')
+        if not pwname:
+            return
+        password = kwargs.pop(pwname)
+        entry = cls.find_by(**kwargs)
+        if not entry:
+            check_password_hash('a', 'b')  # To protect against timing attacks
+            return None
+        if not entry.authenticate(password):
+            return None
+        return entry
+
+    def authenticate(self, password):
+        ns = registry.get(self.__class__)
+        pwname = ns.get('password_field')
+        if not pwname:
+            return False
+        password_digest = getattr(self, f'{pwname}_digest')
+        return check_password_hash(password_digest, password)
+
+
 def has_secure_password(pwname='password'):
     def bind(cls):
 
         ns = registry.get(cls)
+        ns['password_field'] = pwname
         ns.setdefault('virtual_fields', {})[pwname] = {
             'map_to': f'{pwname}_digest',
             'map_fn': generate_password_hash
         }
         validates(pwname, length={'minimum': 1, 'maximum': 72})(cls)
         validates(pwname, confirmation=True)(cls)
-
-        @classmethod
-        def authenticate_by(cls, **kwargs):
-            password = kwargs.pop(pwname)
-            entry = cls.find_by(**kwargs)
-            if not entry:
-                check_password_hash('a', 'b')  # To protect against timing attacks
-                return None
-            if not entry.authenticate(password):
-                return None
-            return entry
-
-        def authenticate(self, password):
-            password_digest = getattr(self, f'{pwname}_digest')
-            return check_password_hash(password_digest, password)
-
-        cls.authenticate = authenticate
-        cls.authenticate_by = authenticate_by
     return bind
 
 
