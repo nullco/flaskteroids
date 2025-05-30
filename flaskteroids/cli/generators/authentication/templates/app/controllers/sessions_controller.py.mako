@@ -17,7 +17,7 @@ class SessionsController(ApplicationController):
     def create(self):
         if user := User.authenticate_by(**params.expect(['email_address', 'password'])):
             self._start_new_session_for(user)
-            return redirect(url_for('root'))  # TODO: after new session url
+            return redirect(self._after_authentication_url())
         else:
             return redirect(url_for('new_session', alert='Try another email address or password.'))
 

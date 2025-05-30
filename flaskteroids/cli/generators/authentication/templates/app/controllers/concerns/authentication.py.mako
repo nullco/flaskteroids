@@ -23,13 +23,17 @@ class Authentication(Concern):
             Current.session = self._find_session_by_cookie()
         return Current.session
 
-    def _request_authentication(self):
-        return redirect(url_for('new_session'))
-
     def _find_session_by_cookie(self):
         if 'session_id' not in session:
             return
         return Session.find_by(id=session['session_id'])
+
+    def _request_authentication(self):
+        session['return_to_after_authenticating'] = request.url
+        return redirect(url_for('new_session'))
+
+    def _after_authentication_url(self):
+        return session.pop('return_to_after_authenticating', None) or url_for('root')
 
     def _start_new_session_for(self, user):
         s = Session.create(
