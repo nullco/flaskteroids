@@ -7,7 +7,7 @@ _logger = logging.getLogger(__name__)
 def rules(*rules_list):
     def decorator(cls):
         _logger.debug(f'registering rules to {cls.__name__}')
-        classes = _get_inheritance_chain(cls)
+        classes = _get_ancestors(cls)
         ns = registry.get(cls)
         entries = []
         ns['rules'] = {'bound': False, 'entries': entries}
@@ -19,7 +19,7 @@ def rules(*rules_list):
     return decorator
 
 
-def _get_inheritance_chain(cls):
+def _get_ancestors(cls):
     seen = set()
     result = []
 
@@ -44,6 +44,6 @@ def bind_rules(cls):
     if rules['bound']:
         return
     _logger.debug(f'binding rules to {cls.__name__}')
-    for apply in rules['entries']:
-        apply(cls)
+    for bind in rules['entries']:
+        bind(cls)
     rules['bound'] = True
