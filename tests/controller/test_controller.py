@@ -1,4 +1,5 @@
 import pytest
+from flaskteroids import params
 from flaskteroids.actions import after_action, around_action, before_action
 from flaskteroids.controller import ActionController, init
 from flaskteroids.rules import rules
@@ -63,4 +64,4 @@ def test_controller_flow(my_controller, render_template):
         'after_first',
         'after_second'
     ]
-    render_template.assert_called_with('test/action.html', calls=calls)
+    render_template.assert_called_with('test/action.html', calls=calls, params=params)

@@ -3,7 +3,7 @@ from importlib.resources import files, as_file
 from mako.lookup import TemplateLookup
 from flaskteroids.cli.artifacts import ArtifactsBuilder
 from flaskteroids.cli.generators.migrations import generator as migrations
-from flaskteroids.cli.generators.src_modifier import add_routes
+from flaskteroids.cli.generators.src_modifier import add_routes, add_imports, add_base_cls
 
 
 def generate():
@@ -20,6 +20,13 @@ def generate():
     ab.file('app/controllers/sessions_controller.py', _template(path='app/controllers/sessions_controller.py.mako'))
     ab.file('app/controllers/passwords_controller.py', _template(path='app/controllers/passwords_controller.py.mako'))
     ab.file('app/mailers/passwords_mailer.py', _template(path='app/mailers/passwords_mailer.py.mako'))
+    ab.modify_py_file(
+        'app/controllers/application_controller.py',
+        add_imports([
+            "from app.controllers.concerns.authentication import Authentication"
+        ])
+    )
+    ab.modify_py_file('app/controllers/application_controller.py', add_base_cls("Authentication"))
     ab.modify_py_file('config/routes.py', add_routes(["route.resource('session')", "route.resources('passwords')",]))
     migrations.generate('CreateUsersTable', ['email_address:str!', 'password_digest:str!'])
     migrations.generate('CreateSessionsTable', ['user:references', 'ip_address:str', 'user_agent:str'])
