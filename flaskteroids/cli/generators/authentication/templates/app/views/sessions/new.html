@@ -1,4 +1,4 @@
-{% call(form) form_with(user) %}
+{% call(form) form_with(url=url_for('session')) %}
 <div>
 	{{ form.label('email_address') }}
 	{{ form.email_field('email_address') }}

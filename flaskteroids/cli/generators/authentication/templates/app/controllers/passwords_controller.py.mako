@@ -2,7 +2,6 @@ from flask import redirect, url_for
 from flaskteroids import params
 from flaskteroids.rules import rules
 from flaskteroids.actions import skip_action, before_action
-from app.controllers.concerns.authentication import Authentication
 from app.models.user import User
 from app.controllers.application_controller import ApplicationController
 from app.mailers.passwords_mailer import PasswordsMailer
@@ -20,12 +19,11 @@ class PasswordsController(ApplicationController):
     def create(self):
         if user := User.find_by(**params.expect(['email_address'])):
             PasswordsMailer().reset(user).deliver_later()
-	return redirect(url_for('new_session', notice='Password reset instructions sent (If user with that email address exists).'))
 
+        return redirect(url_for('new_session', notice='Password reset instructions sent (If user with that email address exists).'))
 
     def edit(self):
         pass
-
 
     def update(self):
         if self.user.update(**params.expect(['password', 'password_confirmation'])):

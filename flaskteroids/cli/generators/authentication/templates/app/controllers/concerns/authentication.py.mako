@@ -1,4 +1,4 @@
-from flask import session, redirect
+from flask import session, redirect, url_for
 from flaskteroids.concern import Concern
 from flaskteroids.rules import rules
 from flaskteroids.actions import before_action
@@ -24,7 +24,7 @@ class Authentication(Concern):
         return Current.session
 
     def _request_authentication(self):
-        return redirect('/login')
+        return redirect(url_for('new_session'))
 
     def _find_session_by_cookie(self):
         if 'session_id' not in session:
