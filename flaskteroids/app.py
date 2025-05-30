@@ -1,3 +1,4 @@
+from werkzeug.middleware.proxy_fix import ProxyFix
 from flask.app import Flask
 from flaskteroids.exceptions import Redirect
 from flaskteroids.extensions.mail import MailExtension
@@ -13,6 +14,7 @@ from flaskteroids.cli.db import commands as db_commands
 def create_app(import_name, config=None):
     config = _config(config)
     app = Flask(import_name, template_folder=config['VIEWS']['LOCATION'])
+    app.wsgi_app = ProxyFix(app.wsgi_app)
 
     _attach_config(app, config)
     _register_routes(app)

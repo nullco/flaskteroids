@@ -1,4 +1,4 @@
-from flask import session, redirect, url_for
+from flask import request, session, redirect, url_for
 from flaskteroids.concern import Concern
 from flaskteroids.rules import rules
 from flaskteroids.actions import before_action
@@ -32,7 +32,11 @@ class Authentication(Concern):
         return Session.find_by(id=session['session_id'])
 
     def _start_new_session_for(self, user):
-        s = Session.create(user_id=user.id)
+        s = Session.create(
+            user_id=user.id,
+            ip_address=request.remote_addr,
+            user_agent=request.user_agent.string
+        )
         session['session_id'] = s.id
 
     def _terminate_session(self):
