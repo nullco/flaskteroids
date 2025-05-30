@@ -38,12 +38,16 @@ def _get_ancestors(cls):
 
 def bind_rules(cls):
     ns = registry.get(cls)
-    rules = ns.get('rules')
-    if not rules:
+    if 'rules' not in ns:
+        # We register an empty set of rules in order to allow rules inheritance
+        # even when rules are not present in the current class
+        rules()(cls)
+    registered_rules = ns.get('rules')
+    if not registered_rules:
         return
-    if rules['bound']:
+    if registered_rules['bound']:
         return
     _logger.debug(f'binding rules to {cls.__name__}')
-    for bind in rules['entries']:
+    for bind in registered_rules['entries']:
         bind(cls)
-    rules['bound'] = True
+    registered_rules['bound'] = True
