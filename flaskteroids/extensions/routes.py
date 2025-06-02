@@ -85,17 +85,16 @@ class RoutesExtension:
     def has_path(self, path):
         return path in self._paths
 
-    def _get_controller_class(self, action_name):
-        if action_name.startswith('flaskteroids/'):
-            action_name = action_name.replace('flaskteroids/', '')
+    def _get_controller_class(self, controller_name):
+        if controller_name.startswith('flaskteroids/'):
+            controller_name = controller_name.replace('flaskteroids/', '')
             controllers = self._internal_controllers
         else:
-            action_name = str_utils.pluralize(action_name)
             controllers = self._controllers
-        controller_name = f'{str_utils.snake_to_camel(action_name)}Controller'
+        controller_name = f'{str_utils.snake_to_camel(controller_name)}Controller'
         controller = controllers.get(controller_name)
         if not controller:
-            raise ProgrammerError(f'Controller not found for <{action_name}>')
+            raise ProgrammerError(f'Controller not found for <{controller_name}>')
         return controller
 
     def _register_view_func(self, path, to, methods=None, as_=None):
