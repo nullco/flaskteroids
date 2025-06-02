@@ -118,6 +118,8 @@ def skip_action(method_name: str, *, only=None):
                     continue
                 if action_name not in ns[at]:
                     continue
+                if method_name not in ns[at][action_name]:
+                    continue
                 ns[at][action_name].remove(method_name)
     return bind
 
