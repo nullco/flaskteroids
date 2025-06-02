@@ -298,7 +298,7 @@ class Model:
     def find(cls, id):
         found = ModelQuery(cls).where(id=id).first()
         if not found:
-            raise ModelNotFoundException("Instance not found")
+            raise ModelNotFoundException(f"{cls.__name__} record with id {id} was not found")
         return found
 
     @classmethod

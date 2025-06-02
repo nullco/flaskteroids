@@ -1,5 +1,7 @@
 import secrets
+from http import HTTPStatus
 from werkzeug.middleware.proxy_fix import ProxyFix
+from werkzeug.exceptions import default_exceptions
 from flask.app import Flask
 from flaskteroids.extensions.mail import MailExtension
 import flaskteroids.model as model
@@ -67,10 +69,15 @@ def _configure_orm(app):
 
 def _register_error_handlers(app):
 
-    def handle_4xx(error):
-        return '400 Error, sorry masamorry'
+    def handle_error(code):
+        def _(e):
+            HttpExceptionClass = default_exceptions.get(code)
+            if HttpExceptionClass:
+                return HttpExceptionClass(description=str(e)).get_response()
+            raise e
+        return _
 
-    app.register_error_handler(model.ModelNotFoundException, handle_4xx)
+    app.register_error_handler(model.ModelNotFoundException, handle_error(HTTPStatus.NOT_FOUND))
 
 
 def _register_cli_commands(app):
