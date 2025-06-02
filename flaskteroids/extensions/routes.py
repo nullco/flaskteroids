@@ -79,7 +79,7 @@ class RoutesExtension:
             action_cfg = cfg[action]
             method, path, to = action_cfg
             path = path.format(name=name)
-            to = to.format(name=name)
+            to = to.format(name=str_utils.pluralize(name))
             method(path, to=to)
 
     def has_path(self, path):
@@ -114,7 +114,7 @@ class RoutesExtension:
             params.pop('csrf_token', None)
             return action()
 
-        view_func_name = f"{caction}_{cname}"
+        view_func_name = f"{caction}_{str_utils.singularize(cname)}"
         if as_:
             view_func_name = as_
         view_func.__name__ = view_func_name

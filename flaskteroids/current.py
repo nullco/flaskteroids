@@ -1,15 +1,24 @@
+from werkzeug.local import LocalProxy
 from flask import g
 
 
-class CurrentMeta(type):
-    def __getattr__(cls, name):
-        if name not in g:
-            return None
-        return getattr(g, name)
+class Current():
+    def __init__(self):
+        self._data = {}
 
-    def __setattr__(cls, name, value):
-        setattr(g, name, value)
+    def __getattr__(self, name):
+        return self._data.get(name)
+
+    def __setattr__(self, name, value):
+        if name in '_data':
+            return super().__setattr__(name, value)
+        self._data[name] = value
 
 
-class Current(metaclass=CurrentMeta):
-    pass
+def _get_current():
+    if 'current' not in g:
+        g.current = Current()
+    return g.current
+
+
+current = LocalProxy(_get_current)

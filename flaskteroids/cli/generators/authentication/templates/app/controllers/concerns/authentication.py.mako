@@ -2,7 +2,7 @@ from flask import request, session, redirect, url_for
 from flaskteroids.concern import Concern
 from flaskteroids.rules import rules
 from flaskteroids.actions import before_action
-from flaskteroids.current import Current
+from flaskteroids.current import current
 from app.models.session import Session
 
 
@@ -19,9 +19,9 @@ class Authentication(Concern):
             return self._request_authentication()
 
     def _resume_session(self):
-        if not Current.session:
-            Current.session = self._find_session_by_cookie()
-        return Current.session
+        if not current.session:
+            current.session = self._find_session_by_cookie()
+        return current.session
 
     def _find_session_by_cookie(self):
         if 'session_id' not in session:
@@ -44,5 +44,5 @@ class Authentication(Concern):
         session['session_id'] = s.id
 
     def _terminate_session(self):
-        Current.session.destroy()
+        current.session.destroy()
         session.clear()
