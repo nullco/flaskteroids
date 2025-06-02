@@ -1,5 +1,4 @@
 from flaskteroids.actions import params
-from flaskteroids.controller import redirect_to
 from importlib.metadata import PackageNotFoundError, version as _version
 
 
@@ -11,5 +10,4 @@ except PackageNotFoundError:
 
 __all__ = [
     'params',
-    'redirect_to'
 ]

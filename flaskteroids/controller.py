@@ -1,7 +1,6 @@
 from functools import wraps
-from flask import redirect, render_template
+from flask import render_template
 from flaskteroids.actions import decorate_action, get_actions, register_actions, params
-from flaskteroids.exceptions import Redirect
 from flaskteroids.rules import bind_rules
 
 
@@ -34,7 +33,3 @@ def _decorate_action(cls, action):
 
 class ActionController:
     pass
-
-
-def redirect_to(url):
-    raise Redirect(redirect(url))

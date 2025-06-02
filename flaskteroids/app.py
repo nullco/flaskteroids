@@ -1,6 +1,5 @@
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask.app import Flask
-from flaskteroids.exceptions import Redirect
 from flaskteroids.extensions.mail import MailExtension
 import flaskteroids.model as model
 from flaskteroids.extensions.forms import FormsExtension
@@ -68,11 +67,7 @@ def _register_error_handlers(app):
     def handle_4xx(error):
         return '400 Error, sorry masamorry'
 
-    def handle_redirect(redirect):
-        return redirect.response
-
     app.register_error_handler(model.ModelNotFoundException, handle_4xx)
-    app.register_error_handler(Redirect, handle_redirect)
 
 
 def _register_cli_commands(app):
