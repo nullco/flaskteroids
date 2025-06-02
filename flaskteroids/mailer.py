@@ -6,7 +6,7 @@ from flask import current_app, render_template
 from jinja2 import TemplateNotFound
 from flaskteroids import str_utils
 from flaskteroids.jobs.job import Job
-from flaskteroids.actions import ParamsProxy, decorate_action, get_actions, register_actions
+from flaskteroids.actions import decorate_action, get_actions, register_actions
 from flaskteroids.rules import bind_rules
 
 _logger = logging.getLogger(__name__)
@@ -128,6 +128,3 @@ class MessageDelivery:
 
     def deliver_later(self, *args, **kwargs):
         MessageDeliveryJob().perform_later(*args, message_builder=self.builder.to_dict(), **kwargs)
-
-
-params = ParamsProxy()

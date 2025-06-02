@@ -1,6 +1,6 @@
 from functools import wraps
 from flask import redirect, render_template
-from flaskteroids.actions import decorate_action, get_actions, ParamsProxy, register_actions
+from flaskteroids.actions import decorate_action, get_actions, register_actions, params
 from flaskteroids.exceptions import Redirect
 from flaskteroids.rules import bind_rules
 
@@ -34,9 +34,6 @@ def _decorate_action(cls, action):
 
 class ActionController:
     pass
-
-
-params = ParamsProxy()
 
 
 def redirect_to(url):

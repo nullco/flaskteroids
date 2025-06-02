@@ -1,4 +1,5 @@
-from flaskteroids.controller import params, redirect_to
+from flaskteroids.actions import params
+from flaskteroids.controller import redirect_to
 from importlib.metadata import PackageNotFoundError, version as _version
 
 

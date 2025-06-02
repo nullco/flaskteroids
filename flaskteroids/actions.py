@@ -1,7 +1,7 @@
 import logging
+from werkzeug.local import LocalProxy
 from functools import wraps
 from typing import Any
-from collections.abc import MutableMapping
 from collections import UserDict, defaultdict
 from flask import g
 from flaskteroids import registry
@@ -186,32 +186,10 @@ class ActionParameters(UserDict):
         return str(g.params)
 
 
-class ParamsProxy(MutableMapping):
+def _get_params():
+    if 'params' not in g:
+        g.params = ActionParameters()
+    return g.params
 
-    def __getattr__(self, name):
-        self._ensure_params()
-        return getattr(g.params, name)
 
-    def __getitem__(self, key):
-        self._ensure_params()
-        return g.params[key]
-
-    def __setitem__(self, key, val):
-        self._ensure_params()
-        g.params[key] = val
-
-    def __delitem__(self, key):
-        self._ensure_params()
-        del g.params[key]
-
-    def __iter__(self):
-        self._ensure_params()
-        return iter(g.params)
-
-    def __len__(self):
-        self._ensure_params()
-        return len(g.params)
-
-    def _ensure_params(self):
-        if 'params' not in g:
-            g.params = ActionParameters()
+params = LocalProxy(_get_params)
