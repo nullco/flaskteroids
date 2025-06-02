@@ -77,7 +77,7 @@ def _register_error_handlers(app):
             raise e
         return _
 
-    app.register_error_handler(model.ModelNotFoundException, handle_error(HTTPStatus.NOT_FOUND))
+    app.register_error_handler(model.RecordNotFoundException, handle_error(HTTPStatus.NOT_FOUND))
 
 
 def _register_cli_commands(app):

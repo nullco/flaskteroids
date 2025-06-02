@@ -18,7 +18,7 @@ def init(cls):
     return cls
 
 
-class ModelNotFoundException(Exception):
+class RecordNotFoundException(Exception):
     pass
 
 
@@ -298,7 +298,7 @@ class Model:
     def find(cls, id):
         found = ModelQuery(cls).where(id=id).first()
         if not found:
-            raise ModelNotFoundException(f"{cls.__name__} record with id {id} was not found")
+            raise RecordNotFoundException(f"{cls.__name__} record with id {id} was not found")
         return found
 
     @classmethod
