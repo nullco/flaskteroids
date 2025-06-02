@@ -80,8 +80,8 @@ class MessageBuilder:
         return msg
 
     def _render_content(self, type_: str):
+        path = f'{self.template_path}/{self.template_name}.{type_}'
         try:
-            path = f'{self.template_path}/{self.template_name}.{type_}'
             return render_template(path, **self.template_params)
         except TemplateNotFound:
             _logger.debug(f'template at <{path}> not found')
@@ -103,6 +103,8 @@ class MessageDeliveryJob(Job):
         if not msg:
             _logger.debug('Nothing to send, ignoring...')
             return
+        _logger.debug('message to be sent')
+        _logger.debug(msg)
         cfg = current_app.config['MAILERS']
         if not cfg.get('SEND_MAILS', True):
             _logger.debug('sending mail is disabled, ignoring...')

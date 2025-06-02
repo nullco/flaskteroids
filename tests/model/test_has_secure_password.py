@@ -114,3 +114,9 @@ def test_change_empty_password(existing_user):
     existing_user.password = ''
     assert not existing_user.save()
     assert existing_user.errors
+
+
+def test_password_reset_token(existing_user):
+    token = existing_user.password_reset_token
+    user = User.find_by_password_reset_token(token)
+    assert user.id == existing_user.id

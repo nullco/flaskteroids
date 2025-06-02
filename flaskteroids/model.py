@@ -1,10 +1,12 @@
 import logging
 from datetime import datetime, timezone
 from functools import partial
+from itsdangerous import URLSafeTimedSerializer
 from werkzeug.security import check_password_hash, generate_password_hash
 from sqlalchemy import select, inspect
 from sqlalchemy.orm import relationship
 from flaskteroids.db import session
+from flask import current_app
 from flaskteroids.exceptions import ProgrammerError
 import flaskteroids.registry as registry
 from flaskteroids.rules import bind_rules
@@ -55,6 +57,12 @@ class PasswordAuthenticator:
             return None
         return entry
 
+    @classmethod
+    def find_by_password_reset_token(cls, token):
+        serializer = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
+        id_ = serializer.loads(token, salt='pwres')
+        return cls.find(id_)
+
     def authenticate(self, password):
         ns = registry.get(self.__class__)
         pwname = ns.get('password_field')
@@ -69,10 +77,26 @@ def has_secure_password(pwname='password'):
 
         ns = registry.get(cls)
         ns['password_field'] = pwname
-        ns.setdefault('virtual_fields', {})[pwname] = {
-            'map_to': f'{pwname}_digest',
-            'map_fn': generate_password_hash
+        virtual_fields = ns.setdefault('virtual_fields', {})
+
+        def _set_password_digest(self):
+            value = getattr(self, f'{pwname}')
+            setattr(self, f'{pwname}_digest', generate_password_hash(value))
+
+        virtual_fields[pwname] = {
+            'set_fn': _set_password_digest
         }
+
+        def _set_password_reset_token(self):
+            serializer = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
+            token = serializer.dumps(self.id, salt='pwres')
+            self._virtual_fields[f'{pwname}_reset_token'] = token
+
+        virtual_fields[f'{pwname}_reset_token'] = {
+            'read_only': True,
+            'set_fn': _set_password_reset_token
+        }
+
         validates(pwname, length={'minimum': 1, 'maximum': 72})(cls)
         validates(pwname, confirmation=True)(cls)
     return bind
@@ -261,6 +285,13 @@ class Model:
         return list(self._base_instance.__table__.columns.keys())
 
     def __getattr__(self, name):
+        ns = registry.get(self.__class__)
+        vfd = ns.setdefault('virtual_fields', {})
+        if name not in self._virtual_fields and name in vfd:
+            if vfd[name].get('read_only', False):
+                set_fn = vfd[name].get('set_fn')
+                if set_fn:
+                    set_fn(self)
         if name in self._virtual_fields:
             return self._virtual_fields[name]
         return getattr(self._base_instance, name)
@@ -272,16 +303,25 @@ class Model:
         ns = registry.get(self.__class__)
         vfd = ns.setdefault('virtual_fields', {})
         if name in vfd:
+            if vfd[name].get('read_only', False):
+                raise AttributeError('You are trying to update a read-only attribute')
             self._virtual_fields[name] = value
-            map_to = vfd[name].get('map_to')
-            map_fn = vfd[name].get('map_fn')
-            if map_to and map_fn:
-                setattr(self._base_instance, map_to, map_fn(value))
+            set_fn = vfd[name].get('set_fn')
+            if set_fn:
+                set_fn(self)
         else:
             setattr(self._base_instance, name, value)
 
     def __json__(self):
-        return {c: getattr(self._base_instance, c) for c in self.column_names}
+        ns = registry.get(self.__class__)
+        vfd = ns.setdefault('virtual_fields', {})
+        for name in vfd:
+            if name not in self._virtual_fields and name in vfd:
+                if vfd[name].get('read_only', False):
+                    set_fn = vfd[name].get('set_fn')
+                    if set_fn:
+                        set_fn(self)
+        return self._virtual_fields | {c: getattr(self._base_instance, c) for c in self.column_names}
 
     @classmethod
     def new(cls, **kwargs):

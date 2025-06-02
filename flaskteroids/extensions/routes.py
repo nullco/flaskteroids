@@ -47,21 +47,21 @@ class RoutesExtension:
     def delete(self, path, *, to, as_=None):
         self._register_view_func(path, to, ['DELETE'], as_=as_)
 
-    def resources(self, name, *, only=None):
+    def resources(self, name, *, param='int:id', only=None):
         only = only or ['index', 'new', 'create', 'show', 'edit', 'update', 'destroy']
         cfg = {
             'index': (self.get, '/{name}/', '{name}#index'),
             'new': (self.get, '/{name}/new/', '{name}#new'),
             'create': (self.post, '/{name}/', '{name}#create'),
-            'show': (self.get, '/{name}/<int:id>/', '{name}#show'),
-            'edit': (self.get, '/{name}/<int:id>/edit/', '{name}#edit'),
-            'update': (self.put, '/{name}/<int:id>/', '{name}#update'),
-            'destroy': (self.delete, '/{name}/<int:id>/', '{name}#destroy'),
+            'show': (self.get, '/{name}/<{param}>/', '{name}#show'),
+            'edit': (self.get, '/{name}/<{param}>/edit/', '{name}#edit'),
+            'update': (self.put, '/{name}/<{param}>/', '{name}#update'),
+            'destroy': (self.delete, '/{name}/<{param}>/', '{name}#destroy'),
         }
         for action in only:
             action_cfg = cfg[action]
             method, path, to = action_cfg
-            path = path.format(name=name)
+            path = path.format(name=name, param=param)
             to = to.format(name=name)
             method(path, to=to)
 
@@ -111,6 +111,7 @@ class RoutesExtension:
             _logger.debug(f'to={to} view_func(args={args}, kwargs={kwargs}')
             params.update(request.form.to_dict(True))
             params.update(kwargs)  # looks like url template params come here
+            params.update(request.args.to_dict(True))
             params.pop('csrf_token', None)
             return action()
 

@@ -18,6 +18,14 @@ def session(mocker, engine):
 
 
 @pytest.fixture(autouse=True)
+def current_app(mocker):
+    from flaskteroids import model
+    current_app = mocker.Mock()
+    current_app.config = {'SECRET_KEY': 'test'}
+    return mocker.patch.object(model, 'current_app', current_app)
+
+
+@pytest.fixture(autouse=True)
 def init_models(engine):
     def _(Base, model_base_tuples):
         Base.metadata.create_all(engine)

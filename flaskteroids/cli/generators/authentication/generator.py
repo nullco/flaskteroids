@@ -27,7 +27,10 @@ def generate():
         ])
     )
     ab.modify_py_file('app/controllers/application_controller.py', add_base_cls("Authentication"))
-    ab.modify_py_file('config/routes.py', add_routes(["route.resource('session')", "route.resources('passwords')",]))
+    ab.modify_py_file('config/routes.py', add_routes([
+        "route.resource('session')",
+        "route.resources('passwords', param='token')",
+    ]))
     migrations.generate('CreateUsersTable', ['email_address:str!', 'password_digest:str!'])
     migrations.generate('CreateSessionsTable', ['user:references', 'ip_address:str', 'user_agent:str'])
 

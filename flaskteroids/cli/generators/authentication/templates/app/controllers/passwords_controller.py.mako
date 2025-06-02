@@ -8,7 +8,7 @@ from app.mailers.passwords_mailer import PasswordsMailer
 
 
 @rules(
-    skip_action('_require_authentication', only=['new', 'create']),
+    skip_action('_require_authentication'),
     before_action('_set_user_by_token', only=['edit', 'update'])
 )
 class PasswordsController(ApplicationController):
@@ -29,10 +29,10 @@ class PasswordsController(ApplicationController):
         if self.user.update(**params.expect(['password', 'password_confirmation'])):
             return redirect(url_for('new_session', notice='Password has been reset'))
         else:
-            return redirect(url_for('edit_passwords', token=params["token"], alert='Passwords did not match'))
+            return redirect(url_for('edit_password', token=params["token"], alert='Passwords did not match'))
 
     def _set_user_by_token(self):
         try:
             self.user = User.find_by_password_reset_token(params['token'])
         except:
-            return redirect(url_for('new_passwords', alert='Password reset link is invalid or has expired'))
+            return redirect(url_for('new_password', alert='Password reset link is invalid or has expired'))

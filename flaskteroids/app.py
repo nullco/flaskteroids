@@ -33,6 +33,9 @@ def create_app(import_name, config=None):
 
 def _config(overwrites):
     cfg = {
+        'SERVER_NAME': 'localhost:5000',
+        'APPLICATION_ROOT': '/',
+        'PREFERRED_URL_SCHEME': 'http',
         'MODELS': {'LOCATION': 'app.models'},
         'VIEWS': {'LOCATION': 'app/views/'},
         'CONTROLLERS': {'LOCATION': 'app.controllers'},

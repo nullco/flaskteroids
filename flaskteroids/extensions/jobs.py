@@ -1,6 +1,6 @@
 import logging
 from celery import Celery
-from celery.signals import setup_logging
+from celery import signals
 import flaskteroids.registry as registry
 from flaskteroids.discovery import discover_classes
 from flaskteroids.mailer import MessageDeliveryJob
@@ -9,13 +9,15 @@ from flaskteroids.jobs.job import Job
 _logger = logging.getLogger(__name__)
 
 
+# Do not overwrite logging setup.
+@signals.setup_logging.connect
+def _setup_logging(*args, **kwargs):
+    pass
+
+
 class JobsExtension:
 
     def __init__(self, app=None):
-
-        # Do not overwrite logging setup.
-        setup_logging.connect(lambda *args, **kwargs: ...)
-
         self._celery = Celery()
         self._jobs = {}
         if app:

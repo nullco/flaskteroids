@@ -184,9 +184,6 @@ class ActionParameters(UserDict):
                 expected[k] = self._expect(f'{key}.{k}', value[k], v)
         return expected
 
-    def __str__(self) -> str:
-        return str(g.params)
-
 
 def _get_params():
     if 'params' not in g:

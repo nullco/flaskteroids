@@ -1,3 +1,6 @@
+{% if params.alert %}<div style="color: red">{{ params.alert }}</div>{% endif %}
+{% if params.notice %}<div style="color: green">{{ params.notice }}</div>{% endif %}
+
 {% call(form) form_with(url=url_for('create_session')) %}
 	{{ form.email_field('email_address', required=True, autofocus=True, autocomplete='username', placeholder='Enter your email address', value=params['email_address']) }}
 	{{ form.password_field('password', required=True, autofocus=True, autocomplete='current-password', placeholder='Enter your pasword', maxlength=72) }}

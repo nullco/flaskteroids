@@ -1,6 +1,8 @@
 <h1>Forgot your password?</h1>
 
-{% call(form) form_with(url=url_for('passwords_XXX')) %}
+{% if params.alert %}<div style="color: red">{{ params.alert }}</div>{% endif %}
+
+{% call(form) form_with(url=url_for('create_password')) %}
 	{{ form.email_field('email_address', required=True, autofocus=True, autocomplete="username", placeholder='Enter your email address', value=params['email_address']) }}
 	{{ form.submit('Email reset instructions') }}
 {% endcall %}
