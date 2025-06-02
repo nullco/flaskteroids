@@ -198,7 +198,11 @@ def _build(model_cls, base_instance):
 def _base(model_cls):
     base = registry.get(model_cls).get('base_class')
     if not base:
-        raise Exception('Model not configured properly, make sure you have put it inside app.models folder')
+        raise ProgrammerError(
+            f'Base class not found for model {model_cls.__name__}.\n'
+            'Make sure there is a table in the database backing it up.',
+            'Did you create/run database migrations?'
+        )
     return base
 
 
