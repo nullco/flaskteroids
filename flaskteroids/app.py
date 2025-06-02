@@ -1,3 +1,4 @@
+import secrets
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask.app import Flask
 from flaskteroids.extensions.mail import MailExtension
@@ -46,6 +47,8 @@ def _config(overwrites):
     }
     if overwrites:
         cfg.update(overwrites)
+    if not cfg.get('SECRET_KEY'):
+        cfg['SECRET_KEY'] = secrets.token_hex(64)
     return cfg
 
 
