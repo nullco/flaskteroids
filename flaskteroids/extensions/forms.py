@@ -51,10 +51,12 @@ class FormsExtension:
         if model:
             prefix = model.__class__.__name__.lower()
             data = model.__json__()
+        methods = ['GET', 'POST']
         form = Form(prefix, data)
         return textwrap.dedent(f"""
-            <form action="{url}" method="{method}">
+            <form action="{url}" method="{'POST' if method not in methods else method}">
                <input type="hidden" name="csrf_token" value="{self._generate_csrf_token()}">
+               <input type="hidden" name="_method" value="{method if method not in methods else ''}">
                {caller(form) if caller else ''}
             </form>
         """)
