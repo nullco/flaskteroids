@@ -18,8 +18,9 @@ def new(app_name):
         ab.file('README.md')
         ab.file('Dockerfile')
         ab.file('.gitignore', _gitignore())
-        ab.file('.flaskenv', _flaskenv())
-        ab.file('run.py', _run())
+        ab.file('wsgi.py', _wsgi())
+        ab.file('jobs.py', _jobs())
+        ab.file('storage/.keep')
         ab.dir('db/')
         ab.dir('app/')
         ab.file('app/assets/stylesheets/application.css')
@@ -34,6 +35,7 @@ def new(app_name):
         ab.file('app/controllers/application_controller.py', _application_controller())
         ab.file('config/routes.py', _routes())
         ab.run('flask db:init')
+        ab.file('db/migrate/versions/.keep')
         ab.run('git init')
         ab.run('git branch -m main')
     except ArtifactsBuilderException as e:
@@ -44,8 +46,8 @@ def _gitignore():
     return """
 __pycache__/
 .venv/
-db/database.db
-db/jobs_database.db
+storage/database.db
+storage/jobs_database.db
     """
 
 
@@ -93,9 +95,8 @@ def register(route):
     """
 
 
-def _run():
+def _wsgi():
     return """
-import logging
 from flaskteroids.app import create_app
 
 app = create_app(__name__)
@@ -107,7 +108,9 @@ if __name__ == '__main__':
     """
 
 
-def _flaskenv():
+def _jobs():
     return """
-FLASK_APP=run.py
+from flaskteroids.app import create_app
+
+app = create_app(__name__).extensions['flaskteroids.jobs']
     """

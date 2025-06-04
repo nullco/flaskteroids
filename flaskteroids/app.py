@@ -40,10 +40,10 @@ def _config(overwrites):
         'VIEWS': {'LOCATION': 'app/views/'},
         'CONTROLLERS': {'LOCATION': 'app.controllers'},
         'ROUTES': {'LOCATION': 'config.routes'},
-        'DB': {'SQLALCHEMY_URL': 'sqlite:///db/database.db'},
+        'DB': {'SQLALCHEMY_URL': 'sqlite:///storage/database.db'},
         'JOBS': {
             'LOCATION': 'app.jobs',
-            'CELERY_BROKER_URL': 'sqla+sqlite:///db/jobs_database.db'
+            'CELERY_BROKER_URL': 'sqla+sqlite:///storage/jobs_database.db'
         },
         'MAILERS': {
             'LOCATION': 'app.mailers',
