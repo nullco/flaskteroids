@@ -6,7 +6,7 @@ import flaskteroids.cli.generators.controller.generator as controller
 import flaskteroids.cli.generators.authentication.generator as authentication
 
 
-@click.group('generate')
+@click.group()
 @with_appcontext
 def generate():
     pass
