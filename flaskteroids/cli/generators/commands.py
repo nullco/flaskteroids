@@ -9,12 +9,14 @@ import flaskteroids.cli.generators.authentication.generator as authentication
 @click.group()
 @with_appcontext
 def generate():
+    """Generate commands"""
     pass
 
 
 @generate.command('migration')
 @click.argument('args', nargs=-1)
 def generate_migration(args):
+    """Migration generator"""
     cmd, *cmd_args = args
     migrations.generate(cmd, cmd_args)
 
@@ -22,6 +24,7 @@ def generate_migration(args):
 @generate.command('model')
 @click.argument('args', nargs=-1)
 def generate_model(args):
+    """Model generator"""
     model_name, *cmd_args = args
     model.generate(model_name, cmd_args)
 
@@ -31,9 +34,11 @@ def generate_model(args):
 @click.argument('actions', nargs=-1)
 @click.option('--skip-routes', is_flag=True)
 def generate_controller(name, actions, skip_routes):
+    """Controller generator"""
     controller.generate(name, actions, skip_routes)
 
 
 @generate.command('authentication')
 def generate_authentication():
+    """Authentication generator"""
     authentication.generate()
