@@ -5,11 +5,6 @@ from flaskteroids.controller import ActionController, init
 from flaskteroids.rules import rules
 
 
-@pytest.fixture(autouse=True)
-def render_template(mocker):
-    return mocker.patch('flaskteroids.controller.render_template')
-
-
 @pytest.fixture()
 def my_controller():
 

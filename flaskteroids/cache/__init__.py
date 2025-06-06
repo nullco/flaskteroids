@@ -2,7 +2,7 @@ from flaskteroids.cache.factory import get_cache
 from flaskteroids.cache.base import MISSING
 
 
-def value(key: str, ttl: int = 60):
+def value(key: str, ttl=None):
     def wrapper(fn):
         def decorator(*args, **kwargs):
             value = fetch(key)
@@ -15,9 +15,13 @@ def value(key: str, ttl: int = 60):
     return wrapper
 
 
-def store(key: str, value, ttl: int = 60):
+def store(key: str, value, ttl=None):
     get_cache().store(key, value, ttl)
 
 
 def fetch(key: str):
     return get_cache().fetch(key)
+
+
+def increment(key: str, ttl=None):
+    return get_cache().increment(key, ttl)
