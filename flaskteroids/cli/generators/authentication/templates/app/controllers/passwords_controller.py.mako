@@ -1,14 +1,14 @@
 from flask import redirect, url_for
 from flaskteroids import params
 from flaskteroids.rules import rules
-from flaskteroids.actions import skip_action, before_action
+from flaskteroids.actions import skip_before_action, before_action
 from app.models.user import User
 from app.controllers.application_controller import ApplicationController
 from app.mailers.passwords_mailer import PasswordsMailer
 
 
 @rules(
-    skip_action('_require_authentication'),
+    skip_before_action('_require_authentication'),
     before_action('_set_user_by_token', only=['edit', 'update'])
 )
 class PasswordsController(ApplicationController):
