@@ -1,6 +1,6 @@
 import textwrap
 from markupsafe import Markup, escape
-from flask import request, abort
+from flask import request, abort, url_for
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 
 
@@ -50,6 +50,10 @@ class FormsExtension:
         data = None
         if model:
             prefix = model.__class__.__name__.lower()
+            url = url_for(f'create_{prefix}')
+            if model.id:
+                url = url_for(f'update_{prefix}', id=model.id)
+                method = 'PUT'
             data = model.__json__()
         methods = ['GET', 'POST']
         form = Form(prefix, data)
@@ -79,7 +83,7 @@ class Form:
         return f"{self._prefix}_{field}"
 
     def _get_value(self, field):
-        if field not in self._data:
+        if field not in self._data or self._data[field] is None:
             return ''
         return escape(self._data.get(field))
 

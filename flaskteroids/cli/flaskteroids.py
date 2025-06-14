@@ -1,6 +1,7 @@
 import os
 import click
 from flaskteroids.cli.artifacts import ArtifactsBuilder, ArtifactsBuilderException
+from flaskteroids.cli.generators.templates import template
 
 
 @click.group()
@@ -29,7 +30,7 @@ def new(app_name):
         ab.file('app/models/application_model.py', _application_model())
         ab.file('app/jobs/application_job.py')
         ab.file('app/mailers/application_mailer.py', _application_mailer())
-        ab.file('app/views/layouts/application.html')
+        ab.file('app/views/layouts/application.html', _template(path='app/views/layouts/application.html.mako'))
         ab.file('app/views/layouts/mailer.html')
         ab.file('app/views/layouts/mailer.txt')
         ab.file('app/controllers/application_controller.py', _application_controller())
@@ -114,3 +115,7 @@ from flaskteroids.app import create_app
 
 app = create_app(__name__).extensions['flaskteroids.jobs']
     """
+
+
+def _template(*, path, params=None):
+    return template('flaskteroids.cli.templates', path=path, params=params)

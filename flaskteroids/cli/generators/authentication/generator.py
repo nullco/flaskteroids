@@ -1,9 +1,8 @@
 import click
-from importlib.resources import files, as_file
-from mako.lookup import TemplateLookup
 from flaskteroids.cli.artifacts import ArtifactsBuilder
 from flaskteroids.cli.generators.migrations import generator as migrations
 from flaskteroids.cli.generators.src_modifier import add_routes, add_imports, add_base_cls
+from flaskteroids.cli.generators.templates import template
 
 
 def generate():
@@ -35,9 +34,5 @@ def generate():
     migrations.generate('CreateSessionsTable', ['user:references', 'ip_address:str', 'user_agent:str'])
 
 
-def _template(*, path, params=None):
-    with as_file(files('flaskteroids.cli.generators.authentication.templates')) as templates_dir:
-        template_lookup = TemplateLookup(directories=[str(templates_dir)])
-        params = params or {}
-        template = template_lookup.get_template(path)
-        return template.render(**params)
+def _template(*, path):
+    return template('flaskteroids.cli.generators.authentication.templates', path=path)

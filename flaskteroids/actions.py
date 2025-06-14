@@ -1,4 +1,5 @@
 import logging
+import re
 from werkzeug.local import LocalProxy
 from functools import wraps
 from typing import Any
@@ -131,9 +132,22 @@ class ActionParameters(UserDict):
         p.update(params)
         return p
 
-    def expect(self, fields):
-        schema = self._schema('params', fields)
-        return self._expect('params', self.data, schema)
+    def expect(self, *args, **kwargs):
+        root = {}
+        for arg in args:
+            schema = self._schema('params', [arg])
+            root.update(self._expect('params', self.data, schema))
+        expected = [root] if root else []
+        for k, v in kwargs.items():
+            schema = self._schema(f'params.{k}', [(k, v)])
+            res = self._expect(f'params.{k}', self.data, schema)
+            expected.append(res[k])
+        if not expected:
+            return {}
+        elif len(expected) == 1:
+            return expected[0]
+        else:
+            return expected
 
     def _schema(self, key, fields):
         if not isinstance(fields, list):

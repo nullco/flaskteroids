@@ -1,3 +1,4 @@
+import re
 import logging
 from flask import abort, request
 from importlib import import_module
@@ -110,11 +111,13 @@ class RoutesExtension:
             _logger.debug(f'to={to} view_func(args={args}, kwargs={kwargs}')
             controller_instance = ccls()
             action = getattr(controller_instance, caction)
-            params.update(request.form.to_dict(True))
-            params.update(kwargs)  # looks like url template params come here
-            params.update(request.args.to_dict(True))
-            params.pop('csrf_token', None)
-            params.pop('_method', None)
+            flat_params = {}
+            flat_params.update(request.form.to_dict(True))
+            flat_params.update(kwargs)  # looks like url template params come here
+            flat_params.update(request.args.to_dict(True))
+            flat_params.pop('csrf_token', None)
+            flat_params.pop('_method', None)
+            params.update(_unflatten_params(flat_params))
             return action()
 
         view_func_name = f"{caction}_{str_utils.singularize(cname)}"
@@ -133,16 +136,64 @@ class RoutesExtension:
 
         for path, methods in path_methods.items():
             if methods.difference({'GET', 'POST'}):
-                def _():
-                    def override_method(*args, **kwargs):
-                        method_override = request.form.get('_method') or request.method
-                        if method_override != request.method:
-                            _logger.debug(f'method override detected: {(method_override, path)}')
-                        view_func = self._view_functions.get((method_override, path))
-                        if not view_func:
-                            abort(405)
-                        return view_func(*args, **kwargs)
-                    override_method.__name__ = f'override {path}'
-                    return override_method
+                self._app.add_url_rule(path, view_func=self._build_override_method(path), methods=['POST'])
 
-                self._app.add_url_rule(path, view_func=_(), methods=['POST'])
+    def _build_override_method(self, path):
+        def override_method(*args, **kwargs):
+            method_override = request.form.get('_method') or request.method
+            if method_override != request.method:
+                _logger.debug(f'method override detected: {(method_override, path)}')
+            view_func = self._view_functions.get((method_override, path))
+            if not view_func:
+                abort(405)
+            return view_func(*args, **kwargs)
+        override_method.__name__ = f'override {path}'
+        return override_method
+
+
+def _unflatten_params(flat_dict):
+    def insert(container, keys, value):
+        key = keys[0]
+        is_last = len(keys) == 1
+
+        if key == '':
+            if not isinstance(container, list):
+                container = []
+            if is_last:
+                container.append(value)
+            else:
+                if len(container) == 0 or not isinstance(container[-1], (dict, list)):
+                    container.append({})
+                container[-1] = insert(container[-1], keys[1:], value)
+            return container
+
+        if isinstance(container, list):
+            index = int(key)
+            while len(container) <= index:
+                container.append({})
+            if is_last:
+                container[index] = value
+            else:
+                container[index] = insert(container[index], keys[1:], value)
+            return container
+
+        if is_last:
+            container[key] = value
+        else:
+            if key not in container or not isinstance(container[key], (dict, list)):
+                next_key = keys[1]
+                container[key] = [] if next_key == '' or re.fullmatch(r'\d+', next_key) else {}
+            container[key] = insert(container[key], keys[1:], value)
+
+        return container
+
+    result = {}
+
+    for flat_key, value in flat_dict.items():
+        parts = re.findall(r'\w+|\[\]', flat_key.replace(']', ''))
+        keys = [parts[0]] + [part if part != '[]' else '' for part in parts[1:]]
+
+        result = insert(result, keys, value)
+
+    return result
+

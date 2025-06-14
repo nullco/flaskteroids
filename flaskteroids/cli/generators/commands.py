@@ -2,6 +2,7 @@ import click
 from flask.cli import with_appcontext
 import flaskteroids.cli.generators.migrations.generator as migrations
 import flaskteroids.cli.generators.model.generator as model
+import flaskteroids.cli.generators.scaffold.generator as scaffold
 import flaskteroids.cli.generators.controller.generator as controller
 import flaskteroids.cli.generators.authentication.generator as authentication
 
@@ -42,3 +43,11 @@ def generate_controller(name, actions, skip_routes):
 def generate_authentication():
     """Authentication generator"""
     authentication.generate()
+
+
+@generate.command('scaffold')
+@click.argument('args', nargs=-1)
+def generate_scaffold(args):
+    """Model generator"""
+    name, *cmd_args = args
+    scaffold.generate(name, cmd_args)
