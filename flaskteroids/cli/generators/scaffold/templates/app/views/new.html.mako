@@ -12,6 +12,6 @@
 <br>
 
 <div>
-  <a href="url_for('index_${singular}')">Back to ${plural}</a>
+  <a href="{{ url_for('index_${singular}') }}">Back to ${plural}</a>
 </div>
 {% endblock %}

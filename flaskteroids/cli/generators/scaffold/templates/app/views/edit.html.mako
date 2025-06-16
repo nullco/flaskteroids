@@ -12,7 +12,7 @@
 <br>
 
 <div>
-  <a href="url_for('show_${singular}', id=${model_ref}.id)">Show this ${singular}</a>
-  <a href="url_for('index_${singular}')">Back to ${plural}</a>
+  <a href="{{ url_for('show_${singular} }}', id=${model_ref}.id)">Show this ${singular}</a>
+  <a href="{{ url_for('index_${singular} }}')">Back to ${plural}</a>
 </div>
 {% endblock %}
