@@ -68,6 +68,13 @@ def test_save():
     assert user.save()
 
 
+def test_save_with_errors():
+    user = User.new()
+    assert not user.save()
+    assert user.errors
+    assert user.errors.count == 1
+
+
 def test_find():
     user = User.create(username='one')
     assert User.find(id=user.id)

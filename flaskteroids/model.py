@@ -24,6 +24,32 @@ class RecordNotFoundException(Exception):
     pass
 
 
+class Error:
+    def __init__(self, args) -> None:
+        self._args = args
+
+    def full_message(self):
+        return ' '.join(self._args)
+
+class Errors:
+
+    def __init__(self) -> None:
+        self._errors = []
+
+    def append(self, error):
+        self._errors.append(Error(error))
+
+    def extend(self, errors):
+        self._errors.extend([Error(e) for e in errors])
+
+    @property
+    def count(self):
+        return len(self._errors)
+
+    def __bool__(self):
+        return bool(self._errors)
+
+
 def _register_association(name, rel, cls, related_cls, fk_name):
     ns = registry.get(cls)
     key = (related_cls.__name__, fk_name)
@@ -272,7 +298,7 @@ class Model:
         base = _base(self.__class__)
         self._virtual_fields = {}
         self._base_instance = base()
-        self._errors = []
+        self._errors = Errors()
         for k, v in kwargs.items():
             setattr(self, k, v)
 
@@ -358,7 +384,7 @@ class Model:
         try:
             if validate:
                 validate_rules = registry.get(self.__class__).get('validates') or []
-                self._errors = []
+                self._errors = Errors()
                 for vr in validate_rules:
                     self._errors.extend(vr(instance=self))
                 if self._errors:
