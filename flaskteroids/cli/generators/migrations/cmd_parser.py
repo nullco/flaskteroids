@@ -31,71 +31,67 @@ class _CreateTableCommand:
     @classmethod
     def parse(cls, cmd, args):
         matcher = cmd_parser.CommandArgsMatcher(cls.pattern, cls.args)
-        match = matcher.match(cmd, args)
-        if match:
-            cmd_match, args_matches = match
-            return {
-                'cmd': 'create_table',
-                'ops': {
-                    'up': [
-                        ops.CreateTableOp(
-                            cmd_match.group(1),
-                            [
-                                sa.Column('id', sa.Integer(), primary_key=True, autoincrement=True),
-                                sa.Column('created_at', sa.DateTime(), default=lambda: datetime.now(timezone.utc)),
+        cmd_match = matcher.match_cmd(cmd)
+        args_matches = matcher.match_args(args)
+        return {
+            'cmd': 'create_table',
+            'ops': {
+                'up': [
+                    ops.CreateTableOp(
+                        cmd_match.group(1),
+                        [
+                            sa.Column('id', sa.Integer(), primary_key=True, autoincrement=True),
+                            sa.Column('created_at', sa.DateTime(), default=lambda: datetime.now(timezone.utc)),
+                            sa.Column(
+                                'updated_at',
+                                sa.DateTime(),
+                                default=lambda: datetime.now(timezone.utc),
+                                onupdate=lambda: datetime.now(timezone.utc),
+                            ),
+                            *[
                                 sa.Column(
-                                    'updated_at',
-                                    sa.DateTime(),
-                                    default=lambda: datetime.now(timezone.utc),
-                                    onupdate=lambda: datetime.now(timezone.utc),
-                                ),
-                                *[
-                                    sa.Column(
-                                        name=am.group(1),
-                                        type_=_column_types[am.group(2)](),
-                                        nullable=not bool(am.group(3))
-                                    )
-                                    for am in args_matches.get('column', [])
-                                ],
-                                *[
-                                    sa.Column(
-                                        f'{am.group(1)}_id',
-                                        sa.Integer(),
-                                        sa.ForeignKey(f'{pluralize(am.group(1))}.id'),
-                                        nullable=False
-                                    )
-                                    for am in args_matches.get('reference', [])
-                                ]
+                                    name=am.group(1),
+                                    type_=_column_types[am.group(2)](),
+                                    nullable=not bool(am.group(3))
+                                )
+                                for am in args_matches.get('column', [])
                             ],
-                            _namespace_metadata=sa.MetaData()
-                        )
-                    ],
-                    'down': [
-                        ops.DropTableOp(cmd_match.group(1))
-                    ]
-                }
+                            *[
+                                sa.Column(
+                                    f'{am.group(1)}_id',
+                                    sa.Integer(),
+                                    sa.ForeignKey(f'{pluralize(am.group(1))}.id'),
+                                    nullable=False
+                                )
+                                for am in args_matches.get('reference', [])
+                            ]
+                        ],
+                        _namespace_metadata=sa.MetaData()
+                    )
+                ],
+                'down': [
+                    ops.DropTableOp(cmd_match.group(1))
+                ]
             }
+        }
 
 
 class _DropTableCommand:
     pattern = re.compile(r'create_([a-z]+)')
-    args = None
 
     @classmethod
-    def parse(cls, cmd, args):
-        matcher = cmd_parser.CommandArgsMatcher(cls.pattern, cls.args)
-        match = matcher.match(cmd, args)
-        if match:
-            cmd_match, _ = match
-            return {
-                'cmd': 'drop_table',
-                'ops': {
-                    'up': [
-                        ops.DropTableOp(cmd_match.group(1))
-                    ],
-                    'down': []
-                }
+    def parse(cls, cmd, _):
+        matcher = cmd_parser.CommandArgsMatcher(cls.pattern)
+        match = matcher.match_cmd(cmd)
+        return {
+            'cmd': 'drop_table',
+            'ops': {
+                'up': [
+                    ops.DropTableOp(match.group(1))
+                ],
+                'down': []
             }
+        }
 
 
 class _AddColumnsToTableCommand:
@@ -108,32 +104,31 @@ class _AddColumnsToTableCommand:
     @classmethod
     def parse(cls, cmd, args):
         matcher = cmd_parser.CommandArgsMatcher(cls.pattern, cls.args)
-        match = matcher.match(cmd, args)
-        if match:
-            cmd_match, args_matches = match
-            return {
-                'cmd': 'add_columns_to_table',
-                'ops': {
-                    'up': [
-                        ops.AddColumnOp(
-                            cmd_match.group(2),
-                            sa.Column(
-                                name=am.group(1),
-                                type_=_column_types[am.group(2)](),
-                                nullable=not bool(am.group(3))
-                            )
+        cmd_match = matcher.match_cmd(cmd)
+        args_matches = matcher.match_args(args)
+        return {
+            'cmd': 'add_columns_to_table',
+            'ops': {
+                'up': [
+                    ops.AddColumnOp(
+                        cmd_match.group(2),
+                        sa.Column(
+                            name=am.group(1),
+                            type_=_column_types[am.group(2)](),
+                            nullable=not bool(am.group(3))
                         )
-                        for am in args_matches.get('column', [])
-                    ],
-                    'down': [
-                        ops.DropColumnOp(
-                            cmd_match.group(2),
-                            am.group(1)
-                        )
-                        for am in args_matches.get('column', [])
-                    ]
-                }
+                    )
+                    for am in args_matches.get('column', [])
+                ],
+                'down': [
+                    ops.DropColumnOp(
+                        cmd_match.group(2),
+                        am.group(1)
+                    )
+                    for am in args_matches.get('column', [])
+                ]
             }
+        }
 
 
 class _RemoveColumnsFromTableCommand:
@@ -145,32 +140,31 @@ class _RemoveColumnsFromTableCommand:
     @classmethod
     def parse(cls, cmd, args):
         matcher = cmd_parser.CommandArgsMatcher(cls.pattern, cls.args)
-        match = matcher.match(cmd, args)
-        if match:
-            cmd_match, args_matches = match
-            return {
-                'cmd': 'remove_columns_from_table',
-                'ops': {
-                    'up': [
-                        ops.DropColumnOp(
-                            cmd_match.group(2),
-                            am.group(1)
+        cmd_match = matcher.match_cmd(cmd)
+        args_matches = matcher.match_args(args)
+        return {
+            'cmd': 'remove_columns_from_table',
+            'ops': {
+                'up': [
+                    ops.DropColumnOp(
+                        cmd_match.group(2),
+                        am.group(1)
+                    )
+                    for am in args_matches.get('remove_column', [])
+                ],
+                'down': [
+                    ops.AddColumnOp(
+                        cmd_match.group(2),
+                        sa.Column(
+                            name=am.group(1),
+                            type_=_column_types[am.group(3)](),
+                            nullable=not bool(am.group(4))
                         )
-                        for am in args_matches.get('remove_column', [])
-                    ],
-                    'down': [
-                        ops.AddColumnOp(
-                            cmd_match.group(2),
-                            sa.Column(
-                                name=am.group(1),
-                                type_=_column_types[am.group(3)](),
-                                nullable=not bool(am.group(4))
-                            )
-                        )
-                        for am in args_matches.get('remove_column', []) if am.group(2)
-                    ],
-                }
+                    )
+                    for am in args_matches.get('remove_column', []) if am.group(2)
+                ],
             }
+        }
 
 
 _cmds = [

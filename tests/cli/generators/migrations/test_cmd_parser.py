@@ -210,5 +210,5 @@ def test_remove_columns_from_table(cmd, args, expected):
 
 
 def test_invalid_command():
-    with pytest.raises(Exception):
-        cmd_parser.parse('InvalidCommand', *[])
+    with pytest.raises(ValueError):
+        cmd_parser.parse('InvalidCommand', [])

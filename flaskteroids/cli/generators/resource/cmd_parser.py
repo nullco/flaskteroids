@@ -16,21 +16,20 @@ class _ResourceCommand:
     @classmethod
     def parse(cls, cmd, args):
         matcher = cmd_parser.CommandArgsMatcher(cls.pattern, cls.args)
-        match = matcher.match(cmd, args)
-        if match:
-            cmd_match, args_matches = match
-            model = snake_to_camel(cmd_match.group())
-            controller = pluralize(model)
-            return {
-                'cmd': 'resource',
-                'model': model,
-                'controller': controller,
-                'plural': pluralize(cmd_match.group()),
-                'fields': [
-                    {'name': m.group(1), 'type': m.group(2)}
-                    for m in args_matches['fields']
-                ]
-            }
+        cmd_match = matcher.match_cmd(cmd)
+        args_matches = matcher.match_args(args)
+        model = snake_to_camel(cmd_match.group())
+        controller = pluralize(model)
+        return {
+            'cmd': 'resource',
+            'model': model,
+            'controller': controller,
+            'plural': pluralize(cmd_match.group()),
+            'fields': [
+                {'name': m.group(1), 'type': m.group(2)}
+                for m in args_matches['fields']
+            ]
+        }
 
 
 def parse(cmd, args):
