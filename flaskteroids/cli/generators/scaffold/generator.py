@@ -25,7 +25,7 @@ def generate(name: str, args: list[str]):
     ab.modify_py_file('config/routes.py', add_routes([
         f"route.resources('{plural}')",
     ]))
-    model.generate(name, args)
+    model.generate(params['model'], args)
 
 
 def _template(*, path, params=None):

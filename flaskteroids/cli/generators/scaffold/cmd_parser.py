@@ -1,6 +1,6 @@
 import re
 from flaskteroids.cli.generators import cmd_parser
-from flaskteroids.str_utils import pluralize
+from flaskteroids.str_utils import pluralize, snake_to_camel
 
 _field_types = ['int', 'str', 'text', 'float', 'bool', 'json', 'references', 'belongs_to']
 _field_types_pattern = fr'{"|".join(k for k in _field_types)}'
@@ -8,7 +8,7 @@ _fields_pattern = re.compile(fr'^([a-z_]+):({_field_types_pattern})(!?)$')
 
 
 class _ScaffoldCommand:
-    pattern = re.compile(r'([a-z]+)')
+    pattern = re.compile(r'([a-z_]+)')
     args = {
         'fields': _fields_pattern
     }
@@ -19,12 +19,16 @@ class _ScaffoldCommand:
         match = matcher.match(cmd, args)
         if match:
             cmd_match, args_matches = match
+            model = snake_to_camel(cmd_match.group())
+            model_ref = cmd_match.group()
+            models_ref = pluralize(model_ref)
+            controller = pluralize(model)
             return {
                 'cmd': 'scaffold',
-                'model': cmd_match.group().title(),
-                'model_ref': cmd_match.group(),
-                'models_ref': pluralize(cmd_match.group()),
-                'controller': pluralize(cmd_match.group()).title(),
+                'model': model,
+                'model_ref': model_ref,
+                'models_ref': models_ref,
+                'controller': controller,
                 'singular': cmd_match.group(),
                 'plural': pluralize(cmd_match.group()),
                 'fields': [
