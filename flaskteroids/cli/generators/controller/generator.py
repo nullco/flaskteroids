@@ -39,7 +39,7 @@ def _controller(*, name, actions):
     def {action}(self):
         pass
         """)
-    action_fns = ''.join(action_fns)
+    action_fns = ''.join(action_fns) or 'pass'
     return f"""
 from app.controllers.application_controller import ApplicationController
 
