@@ -50,22 +50,10 @@ class RoutesExtension:
     def delete(self, path, *, to, as_=None):
         self._register_view_func(path, to, ['DELETE'], as_=as_)
 
-    def resources(self, name, *, param='int:id', only=None):
-        only = only or ['index', 'new', 'create', 'show', 'edit', 'update', 'destroy']
-        cfg = {
-            'index': (self.get, '/{name}/', '{name}#index'),
-            'new': (self.get, '/{name}/new/', '{name}#new'),
-            'create': (self.post, '/{name}/', '{name}#create'),
-            'show': (self.get, '/{name}/<{param}>/', '{name}#show'),
-            'edit': (self.get, '/{name}/<{param}>/edit/', '{name}#edit'),
-            'update': (self.put, '/{name}/<{param}>/', '{name}#update'),
-            'destroy': (self.delete, '/{name}/<{param}>/', '{name}#destroy'),
-        }
-        for action in only:
-            action_cfg = cfg[action]
-            method, path, to = action_cfg
-            path = path.format(name=name, param=param)
-            to = to.format(name=name)
+    def resources(self, name, *, param=None, only=None, nested=None):
+        resources = _ResourceBuilder().resources(name, param=param, only=only, nested=nested)
+        for method_name, path, to in resources:
+            method = getattr(self, method_name)
             method(path, to=to)
 
     def resource(self, name, *, only=None):
@@ -149,6 +137,42 @@ class RoutesExtension:
             return view_func(*args, **kwargs)
         override_method.__name__ = f'override {path}'
         return override_method
+
+
+class _ResourceBuilder:
+
+    def __init__(self, path=None):
+        self._path = path or ''
+        if self._path.endswith('/'):
+            self._path = self._path.rstrip('/')
+
+    def resources(self, name, *, param=None, only=None, nested=None):
+        only = only or ['index', 'new', 'create', 'show', 'edit', 'update', 'destroy']
+        cfg = {
+            'index': ('get', '/{name}/', '{name}#index'),
+            'new': ('get', '/{name}/new/', '{name}#new'),
+            'create': ('post', '/{name}/', '{name}#create'),
+            'show': ('get', '/{name}/<{param}>/', '{name}#show'),
+            'edit': ('get', '/{name}/<{param}>/edit/', '{name}#edit'),
+            'update': ('put', '/{name}/<{param}>/', '{name}#update'),
+            'destroy': ('delete', '/{name}/<{param}>/', '{name}#destroy'),
+        }
+        resources = []
+        nested_resources = []
+        if nested:
+            param = param or f'int:{str_utils.singularize(name)}_id'
+            nested_resources = nested(_ResourceBuilder(f'{self._path}/{name}/{param}'))
+        else:
+            param = param or 'int:id'
+        for action in only:
+            action_cfg = cfg[action]
+            method, path, to = action_cfg
+            path = f'{self._path}{path.format(name=name, param=param)}'
+            to = to.format(name=name)
+            resources.append((method, path, to))
+        if nested_resources:
+            resources.extend(nested_resources)
+        return resources
 
 
 def _unflatten_params(flat_dict):
