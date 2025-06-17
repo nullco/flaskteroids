@@ -25,7 +25,7 @@ def _mailer(*, name, actions):
         self.greeting = 'Hi'
         self.mail(to='to@example.org')
         """)
-    action_fns = ''.join(action_fns)
+    action_fns = ''.join(action_fns) or 'pass'
     return f"""
 from app.mailers.application_mailer import ApplicationMailer
 
