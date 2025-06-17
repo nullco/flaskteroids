@@ -5,6 +5,7 @@ import flaskteroids.cli.generators.model.generator as model
 import flaskteroids.cli.generators.resource.generator as resource
 import flaskteroids.cli.generators.scaffold.generator as scaffold
 import flaskteroids.cli.generators.controller.generator as controller
+import flaskteroids.cli.generators.mailer.generator as mailer
 import flaskteroids.cli.generators.authentication.generator as authentication
 
 
@@ -38,6 +39,14 @@ def generate_model(args):
 def generate_controller(name, actions, skip_routes):
     """Controller generator"""
     controller.generate(name, actions, skip_routes)
+
+
+@generate.command('mailer')
+@click.argument('name')
+@click.argument('actions', nargs=-1)
+def generate_mailer(name, actions):
+    """Mailer generator"""
+    mailer.generate(name, actions)
 
 
 @generate.command('scaffold')
