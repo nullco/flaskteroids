@@ -1,5 +1,5 @@
 from functools import wraps
-from flask import render_template
+from flask import render_template, request
 from flaskteroids.actions import decorate_action, get_actions, register_actions, params
 from flaskteroids.rules import bind_rules
 
@@ -25,11 +25,27 @@ def _decorate_action(cls, action):
         res = action(self, *args, **kwargs)
         if res:
             return res
-        cname = self.__class__.__name__.replace("Controller", "").lower()
-        view_template = render_template(f'{cname}/{action.__name__}.html', **{**self.__dict__, 'params': params})
-        return view_template
+        return self.render(action.__name__)
     return wrapper
 
 
 class ActionController:
-    pass
+
+    @classmethod
+    def respond_to(cls, *, html=None, json=None):
+        if request.accept_mimetypes.accept_html:
+            return html() if html else None
+        elif json and request.accept_mimetypes.accept_json:
+            return json()
+
+    def render(self, action=None, *, json=None):
+        if action:
+            cname = self.__class__.__name__.replace("Controller", "").lower()
+            view = render_template(f'{cname}/{action}.html', **{**self.__dict__, 'params': params})
+            return view
+        elif json:
+            return json
+
+
+
+
