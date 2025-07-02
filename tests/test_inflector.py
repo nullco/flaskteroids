@@ -7,50 +7,71 @@ def inflector():
     return Inflector()
 
 
-def test_pluralize(inflector):
-    assert inflector.pluralize("cat") == "cats"
-    assert inflector.pluralize("person") == "people"
-    assert inflector.pluralize("Person") == "People"
-    assert inflector.pluralize("sheep") == "sheep"
-    assert inflector.pluralize("box") == "boxes"
-    assert inflector.pluralize("query") == "queries"
+@pytest.mark.parametrize("word, expected", [
+    ("cat", "cats"),
+    ("person", "people"),
+    ("Person", "People"),
+    ("sheep", "sheep"),
+    ("box", "boxes"),
+    ("query", "queries"),
+])
+def test_pluralize(inflector, word, expected):
+    assert inflector.pluralize(word) == expected
 
 
-def test_singularize(inflector):
-    assert inflector.singularize("cats") == "cat"
-    assert inflector.singularize("people") == "person"
-    assert inflector.singularize("People") == "Person"
-    assert inflector.singularize("sheep") == "sheep"
-    assert inflector.singularize("boxes") == "box"
-    assert inflector.singularize("queries") == "query"
+@pytest.mark.parametrize("word, expected", [
+    ("cats", "cat"),
+    ("people", "person"),
+    ("People", "Person"),
+    ("sheep", "sheep"),
+    ("boxes", "box"),
+    ("queries", "query"),
+])
+def test_singularize(inflector, word, expected):
+    assert inflector.singularize(word) == expected
 
 
-def test_underscore(inflector):
-    assert inflector.underscore("UserProfile") == "user_profile"
-    assert inflector.underscore("APIClient") == "api_client"
-    assert inflector.underscore("SomeHTTPResponse") == "some_http_response"
+@pytest.mark.parametrize("word, expected", [
+    ("UserProfile", "user_profile"),
+    ("APIClient", "api_client"),
+    ("SomeHTTPResponse", "some_http_response"),
+])
+def test_underscore(inflector, word, expected):
+    assert inflector.underscore(word) == expected
 
 
-def test_camelize(inflector):
-    assert inflector.camelize("user_profile") == "UserProfile"
-    assert inflector.camelize("api_client") == "ApiClient"
-    assert inflector.camelize("some_http_response") == "SomeHttpResponse"
-    assert inflector.camelize("user_profile", uppercase_first_letter=False) == "userProfile"
+@pytest.mark.parametrize("word, uppercase_first, expected", [
+    ("user_profile", True, "UserProfile"),
+    ("api_client", True, "ApiClient"),
+    ("some_http_response", True, "SomeHttpResponse"),
+    ("user_profile", False, "userProfile"),
+])
+def test_camelize(inflector, word, uppercase_first, expected):
+    assert inflector.camelize(word, uppercase_first_letter=uppercase_first) == expected
 
 
-def test_tableize(inflector):
-    assert inflector.tableize("UserProfile") == "user_profiles"
-    assert inflector.tableize("Category") == "categories"
+@pytest.mark.parametrize("class_name, expected", [
+    ("UserProfile", "user_profiles"),
+    ("Category", "categories"),
+])
+def test_tableize(inflector, class_name, expected):
+    assert inflector.tableize(class_name) == expected
 
 
-def test_classify(inflector):
-    assert inflector.classify("user_profiles") == "UserProfile"
-    assert inflector.classify("categories") == "Category"
+@pytest.mark.parametrize("table_name, expected", [
+    ("user_profiles", "UserProfile"),
+    ("categories", "Category"),
+])
+def test_classify(inflector, table_name, expected):
+    assert inflector.classify(table_name) == expected
 
 
-def test_foreign_key(inflector):
-    assert inflector.foreign_key("User") == "user_id"
-    assert inflector.foreign_key("UserProfile") == "user_profile_id"
+@pytest.mark.parametrize("class_name, expected", [
+    ("User", "user_id"),
+    ("UserProfile", "user_profile_id"),
+])
+def test_foreign_key(inflector, class_name, expected):
+    assert inflector.foreign_key(class_name) == expected
 
 
 def test_different_locale(inflector):
