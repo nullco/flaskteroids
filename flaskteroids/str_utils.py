@@ -1,21 +1,17 @@
-import re
+from flaskteroids.inflector import Inflector
 
 
 def camel_to_snake(text: str) -> str:
-    return re.sub(r'(?<!^)(?=[A-Z])', '_', text).lower()
+    return Inflector().underscore(text)
 
 
 def snake_to_camel(text: str) -> str:
-    return ''.join([t.title() for t in text.split('_')])
+    return Inflector().camelize(text)
 
 
 def pluralize(text: str) -> str:
-    if text.endswith('s'):
-        return text
-    return f'{text}s'
+    return Inflector().pluralize(text)
 
 
 def singularize(text: str) -> str:
-    if not text.endswith('s'):
-        return text
-    return text[:-1]
+    return Inflector().singularize(text)
