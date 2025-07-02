@@ -4,10 +4,10 @@ from functools import wraps
 from email.message import EmailMessage
 from flask import current_app, render_template
 from jinja2 import TemplateNotFound
-from flaskteroids import str_utils
 from flaskteroids.jobs.job import Job
 from flaskteroids.actions import decorate_action, get_actions, register_actions
 from flaskteroids.rules import bind_rules
+from flaskteroids.inflector import inflector
 
 _logger = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ class ActionMailer:
                 from_=from_,
                 to=to,
                 subject=subject,
-                template_path=str_utils.camel_to_snake(self.__class__.__name__),
+                template_path=inflector.underscore(self.__class__.__name__),
                 template_params=self.__dict__
             )
         )

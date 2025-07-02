@@ -1,13 +1,12 @@
-import ast
 import click
 from flaskteroids.cli.artifacts import ArtifactsBuilder
-from flaskteroids.str_utils import camel_to_snake
 from flaskteroids.cli.generators.src_modifier import add_routes
+from flaskteroids.inflector import inflector
 
 
 def generate(controller, actions, skip_routes=False):
     ab = ArtifactsBuilder('.', click.echo)
-    cname = camel_to_snake(controller)
+    cname = inflector.underscore(controller)
     ab.file(
         f'app/controllers/{cname}_controller.py',
         _controller(name=controller, actions=actions)

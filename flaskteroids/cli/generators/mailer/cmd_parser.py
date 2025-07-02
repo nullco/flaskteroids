@@ -1,6 +1,7 @@
 import re
 from flaskteroids.cli.generators import cmd_parser
-from flaskteroids.str_utils import pluralize, snake_to_camel
+from flaskteroids.inflector import inflector
+
 
 class _MailerCommand:
     pattern = re.compile(r'([a-z_]+)')
@@ -10,13 +11,13 @@ class _MailerCommand:
         matcher = cmd_parser.CommandArgsMatcher(cls.pattern)
         match = matcher.match_cmd(cmd)
         if match:
-            mailer = snake_to_camel(match.group())
+            mailer = inflector.camelize(match.group())
             return {
                 'cmd': 'mailer',
                 'snake': match.group(),
-                'snake_plural': pluralize(match.group()),
+                'snake_plural': inflector.pluralize(match.group()),
                 'camel': mailer,
-                'camel_plural': pluralize(mailer)
+                'camel_plural': inflector.pluralize(mailer)
             }
 
 

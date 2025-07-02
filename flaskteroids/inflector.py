@@ -128,3 +128,6 @@ class Inflector:
 
     def foreign_key(self, class_name: str) -> str:
         return self.underscore(class_name) + "_id"
+
+
+inflector = Inflector()

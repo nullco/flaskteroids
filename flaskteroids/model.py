@@ -10,7 +10,7 @@ from flask import current_app
 from flaskteroids.exceptions import ProgrammerError
 import flaskteroids.registry as registry
 from flaskteroids.rules import bind_rules
-from flaskteroids.str_utils import camel_to_snake, snake_to_camel, singularize
+from flaskteroids.inflector import inflector
 
 _logger = logging.getLogger(__name__)
 
@@ -30,6 +30,7 @@ class Error:
 
     def full_message(self):
         return ' '.join(self._args)
+
 
 class Errors:
 
@@ -132,7 +133,7 @@ def belongs_to(name: str, class_name: str | None = None, foreign_key: str | None
     def bind(cls):
         ns = registry.get(Model)
         models = ns['models']
-        related_cls_name = class_name or snake_to_camel(name)
+        related_cls_name = class_name or inflector.camelize(name)
         related_cls = models.get(related_cls_name)
         if not related_cls:
             raise ProgrammerError(f'{related_cls_name} model not found')
@@ -141,7 +142,7 @@ def belongs_to(name: str, class_name: str | None = None, foreign_key: str | None
             base = _base(cls)
         except Exception:
             return  # TODO: Handle better this
-        fk_name = foreign_key or f'{camel_to_snake(related_cls.__name__)}_id'
+        fk_name = foreign_key or inflector.foreign_key(related_cls.__name__)
         fk = getattr(base, fk_name)
         rel = relationship(related_base, primaryjoin=related_base.id == fk)
         setattr(base, name, rel)
@@ -160,7 +161,7 @@ def has_many(name: str, class_name: str | None = None, foreign_key: str | None =
     def bind(cls):
         ns = registry.get(Model)
         models = ns['models']
-        related_cls_name = class_name or snake_to_camel(singularize(name))
+        related_cls_name = class_name or inflector.camelize(inflector.singularize(name))
         related_cls = models.get(related_cls_name)
         if not related_cls:
             raise ProgrammerError(f'{related_cls_name} model not found')
@@ -169,7 +170,7 @@ def has_many(name: str, class_name: str | None = None, foreign_key: str | None =
             base = _base(cls)
         except Exception:
             return  # TODO: Handle better this
-        fk_name = foreign_key or f'{camel_to_snake(cls.__name__)}_id'
+        fk_name = foreign_key or inflector.foreign_key(cls.__name__)
         fk = getattr(related_base, fk_name)
         rel = relationship(related_base, primaryjoin=base.id == fk)
         setattr(base, name, rel)

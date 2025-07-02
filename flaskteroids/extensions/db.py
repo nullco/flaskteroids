@@ -7,7 +7,7 @@ from flask import g
 from flaskteroids.discovery import discover_classes
 import flaskteroids.registry as registry
 from flaskteroids.model import Model, init
-from flaskteroids.str_utils import camel_to_snake, pluralize
+from flaskteroids.inflector import inflector
 
 
 _logger = logging.getLogger(__name__)
@@ -71,7 +71,7 @@ class SQLAlchemyExtension:
             init(model)
 
     def _get_table_name(self, model_name):
-        return pluralize(camel_to_snake((model_name)))
+        return inflector.tableize(model_name)
 
     @staticmethod
     def _skip_relationships(*args, **kwargs):

@@ -1,6 +1,6 @@
 import re
 from flaskteroids.cli.generators import cmd_parser
-from flaskteroids.str_utils import pluralize, snake_to_camel
+from flaskteroids.inflector import inflector
 
 _field_types = ['int', 'str', 'text', 'float', 'bool', 'json', 'references', 'belongs_to']
 _field_types_pattern = fr'{"|".join(k for k in _field_types)}'
@@ -18,10 +18,10 @@ class _ScaffoldCommand:
         matcher = cmd_parser.CommandArgsMatcher(cls.pattern, cls.args)
         cmd_match = matcher.match_cmd(cmd)
         args_matches = matcher.match_args(args)
-        model = snake_to_camel(cmd_match.group())
+        model = inflector.camelize(cmd_match.group())
         model_ref = cmd_match.group()
-        models_ref = pluralize(model_ref)
-        controller = pluralize(model)
+        models_ref = inflector.pluralize(model_ref)
+        controller = inflector.pluralize(model)
         return {
             'cmd': 'scaffold',
             'model': model,
@@ -29,7 +29,7 @@ class _ScaffoldCommand:
             'models_ref': models_ref,
             'controller': controller,
             'singular': cmd_match.group(),
-            'plural': pluralize(cmd_match.group()),
+            'plural': inflector.pluralize(cmd_match.group()),
             'fields': [
                 {'name': m.group(1), 'type': m.group(2)}
                 for m in args_matches['fields']

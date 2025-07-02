@@ -1,9 +1,9 @@
 from collections import defaultdict
-from flaskteroids import str_utils
+from flaskteroids.inflector import inflector
 
 
 def parse(cmd, args, cmds):
-    normalized_cmd = str_utils.camel_to_snake(cmd)
+    normalized_cmd = inflector.underscore(cmd)
     return {
         'cmd': cmd,
         'normalized_cmd': normalized_cmd,

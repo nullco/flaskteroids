@@ -3,7 +3,7 @@ from flaskteroids.cli.generators import cmd_parser
 import sqlalchemy as sa
 from alembic.operations import ops
 from datetime import datetime, timezone
-from flaskteroids.str_utils import pluralize
+from flaskteroids.inflector import inflector
 
 
 _column_types = {
@@ -60,7 +60,7 @@ class _CreateTableCommand:
                                 sa.Column(
                                     f'{am.group(1)}_id',
                                     sa.Integer(),
-                                    sa.ForeignKey(f'{pluralize(am.group(1))}.id'),
+                                    sa.ForeignKey(f'{inflector.pluralize(am.group(1))}.id'),
                                     nullable=False
                                 )
                                 for am in args_matches.get('reference', [])

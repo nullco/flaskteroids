@@ -2,7 +2,8 @@ import re
 import logging
 from flask import abort, request
 from importlib import import_module
-from flaskteroids import params, str_utils
+from flaskteroids import params
+from flaskteroids.inflector import inflector
 from flaskteroids.controller import ActionController, init
 from flaskteroids.exceptions import ProgrammerError
 from flaskteroids.discovery import discover_classes
@@ -70,7 +71,7 @@ class RoutesExtension:
             action_cfg = cfg[action]
             method, path, to = action_cfg
             path = path.format(name=name)
-            to = to.format(name=str_utils.pluralize(name))
+            to = to.format(name=inflector.pluralize(name))
             method(path, to=to)
 
     def has_path(self, path):
@@ -82,7 +83,7 @@ class RoutesExtension:
             controllers = self._internal_controllers
         else:
             controllers = self._controllers
-        controller_name = f'{str_utils.snake_to_camel(controller_name)}Controller'
+        controller_name = f'{inflector.camelize(controller_name)}Controller'
         controller = controllers.get(controller_name)
         if not controller:
             raise ProgrammerError(f'Controller not found for <{controller_name}>')
@@ -108,7 +109,7 @@ class RoutesExtension:
             params.update(_unflatten_params(flat_params))
             return action()
 
-        view_func_name = f"{caction}_{str_utils.singularize(cname)}"
+        view_func_name = f"{caction}_{inflector.singularize(cname)}"
         if as_:
             view_func_name = as_
         view_func.__name__ = view_func_name
@@ -160,7 +161,7 @@ class _ResourceBuilder:
         resources = []
         nested_resources = []
         if nested:
-            param = param or f'int:{str_utils.singularize(name)}_id'
+            param = param or f'int:{inflector.singularize(name)}_id'
             nested_resources = nested(_ResourceBuilder(f'{self._path}/{name}/{param}'))
         else:
             param = param or 'int:id'
