@@ -2,6 +2,33 @@
 
 This document contains project-specific information to assist the Gemini CLI agent.
 
+## Project Philosophy
+
+This is a batteries included MVC framework built on top of Flask, Celery, and SQLAlchemy.
+
+The idea of this framework is to bring the proven philosophy and design principles of Ruby on Rails to the Python ecosystem. It aims to make web development fast, coherent, and enjoyable by embracing a strong set of conventions, prioritizing developer productivity, and providing a complete, integrated toolset.
+
+Key goals include:
+
+    * Eliminate unnecessary configuration through convention over configuration.
+
+    * Encourage maintainable code by applying the Don't Repeat Yourself (DRY) principle.
+
+    * Promote clean architecture using the Model-View-Controller (MVC) pattern.
+
+    * Offer an integrated stack for routing, ORM, templating, testing, and more—designed to work seamlessly together.
+
+    * Support RESTful application design with sensible defaults for resourceful routing.
+
+    * Provide first-class support for testing at all levels of the application.
+
+    * Leverage Python’s capabilities to offer concise, expressive APIs and domain-specific abstractions.
+
+    * Focus on developer happiness, making common tasks simple, elegant, and consistent.
+
+This framework provides a collection of tools and a cohesive ecosystem with a clear vision: to enable developers to build high-quality web applications with confidence and speed, without sacrificing code clarity or long-term maintainability.
+
+
 ## General Information
 
 *   **Project Type:** Python web framework.
@@ -22,4 +49,4 @@ This document contains project-specific information to assist the Gemini CLI age
 *   **Linting (Ruff):** `ruff check .`
 *   **Formatting (Ruff):** `ruff format .`
 
-## Project Conventions
+
