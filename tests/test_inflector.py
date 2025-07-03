@@ -74,23 +74,25 @@ def test_foreign_key(inflector, class_name, expected):
     assert inflector.foreign_key(class_name) == expected
 
 
-def test_different_locale(inflector):
-    # Test default English rules
-    assert inflector.pluralize("cat") == "cats"
+@pytest.fixture
+def spanish_inflector():
+    inf = Inflector()
+    inf.add_plural_rule(r"([aeiou])z$", r"\1ces", locale="es")
+    inf.add_plural_rule(r"$", r"s", locale="es")  # Default Spanish plural
+    inf.add_irregular("el", "los", locale="es")
+    return inf
 
-    # Add a Spanish plural rule (example: add 'es' to words ending in 'z')
-    inflector.add_plural_rule(r"([aeiou])z$", r"\1ces", locale="es")
-    inflector.add_plural_rule(r"$", r"s", locale="es")  # Default Spanish plural
-    inflector.add_irregular("el", "los", locale="es")
 
-    assert inflector.pluralize("pez", locale="es") == "peces"
-    assert inflector.pluralize("gato", locale="es") == "gatos"
-    assert inflector.pluralize("el", locale="es") == "los"
-
-    # Corrected assertion: English rules apply, so "pez" becomes "pezes"
-    assert inflector.pluralize("pez") == "pezes"
-    assert inflector.pluralize("cat") == "cats"
-
-    # Test pluralize with explicit locale argument
-    assert inflector.pluralize("pez", locale="es") == "peces"
-    assert inflector.pluralize("cat", locale="en") == "cats"
+@pytest.mark.parametrize("word, locale, expected", [
+    ("pez", "es", "peces"),
+    ("gato", "es", "gatos"),
+    ("el", "es", "los"),
+    ("pez", None, "pezes"),
+    ("cat", None, "cats"),
+    ("cat", "en", "cats"),
+])
+def test_pluralize_with_locales(spanish_inflector, word, locale, expected):
+    if locale is None:
+        assert spanish_inflector.pluralize(word) == expected
+    else:
+        assert spanish_inflector.pluralize(word, locale=locale) == expected
