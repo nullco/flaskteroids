@@ -4,7 +4,7 @@ This document contains project-specific information to assist the Gemini CLI age
 
 ## General Information
 
-*   **Project Type:** Python Flask web application.
+*   **Project Type:** Python web framework.
 *   **Primary Language:** Python 3.12+
 *   **Dependency Management:** `uv` (used for `uv pip install -r requirements.txt` or `uv sync`).
 *   **Virtual Environment:** `.venv/`
