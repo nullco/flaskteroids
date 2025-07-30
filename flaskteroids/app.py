@@ -107,8 +107,9 @@ def _prepare_shell_context(app):
         def commit(fn):
             """This commits immediately changes on models from the shell"""
             def wrapper(*args, **kwargs):
-                fn(*args, **kwargs)
+                res = fn(*args, **kwargs)
                 s.commit()
+                return res
             return wrapper
 
         for model_cls in db.models.values():
