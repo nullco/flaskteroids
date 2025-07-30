@@ -59,6 +59,9 @@ class Errors:
     def __repr__(self):
         return repr([e for e in self._errors])
 
+    def __len__(self):
+        return len(self._errors)
+
 
 def _register_association(name, rel, cls, related_cls, fk_name):
     ns = registry.get(cls)
@@ -229,6 +232,9 @@ def _validates(*, instance, field, presence, length, confirmation):
 
     if presence and value is None:
         errors.append((f'{field}.presence', f"Field {field} is missing"))
+        return errors
+    elif presence and value == '':
+        errors.append((f'{field}.presence', f"Field {field} is blank"))
         return errors
     elif value is not None:
         if length:
