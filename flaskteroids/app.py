@@ -1,3 +1,4 @@
+import logging
 import secrets
 from http import HTTPStatus
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -5,12 +6,16 @@ from werkzeug.exceptions import default_exceptions
 from flask.app import Flask
 from flaskteroids.extensions.mail import MailExtension
 import flaskteroids.model as model
+from flaskteroids.db import session
 from flaskteroids.extensions.forms import FormsExtension
 from flaskteroids.extensions.jobs import JobsExtension
 from flaskteroids.extensions.db import SQLAlchemyExtension
 from flaskteroids.extensions.routes import RoutesExtension
 from flaskteroids.cli.generators import commands as generate_commands
 from flaskteroids.cli.db import commands as db_commands
+
+
+_logger = logging.getLogger(__name__)
 
 
 def create_app(import_name, config=None):
@@ -92,12 +97,28 @@ def _register_cli_commands(app):
 
 
 def _prepare_shell_context(app):
+
     @app.shell_context_processor
     def _():
+        _logger.debug('Preparing shell context')
+        s = session()
         db = app.extensions['flaskteroids.db']
+
+        def commit(fn):
+            """This commits immediately changes on models from the shell"""
+            def wrapper(*args, **kwargs):
+                fn(*args, **kwargs)
+                s.commit()
+            return wrapper
+
+        for model_cls in db.models.values():
+            model_cls.create = commit(model_cls.create)
+            model_cls.update = commit(model_cls.update)
+            model_cls.save = commit(model_cls.save)
+            model_cls.destroy = commit(model_cls.destroy)
+
         return {
             **db.models,
-            'reload': db.init_models
         }
 
 
