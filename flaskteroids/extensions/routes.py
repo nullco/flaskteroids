@@ -84,19 +84,19 @@ class RoutesExtension:
         else:
             controllers = self._controllers
         controller_name = f'{inflector.camelize(controller_name)}Controller'
-        controller = controllers.get(controller_name)
-        if not controller:
-            raise ProgrammerError(f'Controller not found for <{controller_name}>')
-        return controller
+        return controllers.get(controller_name)
 
     def _register_view_func(self, path, to, methods=None, as_=None):
         methods = methods or ['GET']
         cname, caction = to.split('#')
         ccls = self._get_controller_class(cname)
-        if not hasattr(ccls, caction):
-            return
 
         def view_func(*args, **kwargs):
+            if not ccls:
+                raise ProgrammerError(f'Controller not found for <{cname}>')
+            if not hasattr(ccls, caction):
+                return
+
             _logger.debug(f'to={to} view_func(args={args}, kwargs={kwargs}')
             controller_instance = ccls()
             action = getattr(controller_instance, caction)
