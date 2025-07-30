@@ -29,7 +29,10 @@ class Error:
         self._args = args
 
     def full_message(self):
-        return ' '.join(self._args)
+        return self._args[-1]
+
+    def __repr__(self):
+        return f'<ModelError:{hex(id(self))} {{args={self._args}}}>'
 
 
 class Errors:
@@ -43,12 +46,18 @@ class Errors:
     def extend(self, errors):
         self._errors.extend([Error(e) for e in errors])
 
+    def full_messages(self):
+        return [e.full_message() for e in self._errors]
+
     @property
     def count(self):
         return len(self._errors)
 
     def __bool__(self):
         return bool(self._errors)
+
+    def __repr__(self):
+        return repr([e for e in self._errors])
 
 
 def _register_association(name, rel, cls, related_cls, fk_name):
