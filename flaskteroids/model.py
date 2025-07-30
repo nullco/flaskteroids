@@ -230,21 +230,23 @@ def _validates(*, instance, field, presence, length, confirmation):
     else:
         return
 
-    if presence and value is None:
-        errors.append((f'{field}.presence', f"Field {field} is missing"))
+    if presence:
+        if value is None:
+            errors.append((f'{field}.presence', f"Field {field} is missing"))
+            return errors
+        elif value == '':
+            errors.append((f'{field}.presence', f"Field {field} is blank"))
         return errors
-    elif presence and value == '':
-        errors.append((f'{field}.presence', f"Field {field} is blank"))
-        return errors
-    elif value is not None:
-        if length:
+    if length:
+        if value is not None:
             minimum = length.get('minimum')
             maximum = length.get('maximum')
             if minimum is not None and len(value) < minimum:
                 errors.append((f'{field}.length', f"Field {field} is lower than {minimum}"))
             if maximum is not None and len(value) > maximum:
                 errors.append((f'{field}.length', f"Field {field} is higher than {maximum}"))
-        if confirmation:
+    if confirmation:
+        if value is not None:
             confirmation_field = f'{field}_confirmation'
             if confirmation_field in instance._virtual_fields:
                 confirmation_value = instance._virtual_fields.get(confirmation_field)
