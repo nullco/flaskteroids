@@ -14,7 +14,7 @@ def engine():
 def session(mocker, engine):
     Session = sessionmaker(bind=engine)
     from flaskteroids import model
-    return mocker.patch.object(model, 'session', return_value=Session())
+    return mocker.patch.object(model, 'session', Session())
 
 
 @pytest.fixture(autouse=True)

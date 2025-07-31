@@ -104,14 +104,13 @@ def _prepare_shell_context(app):
     @app.shell_context_processor
     def _():
         _logger.debug('Preparing shell context')
-        s = session()
         db = app.extensions['flaskteroids.db']
 
         def commit(fn):
             """This commits immediately changes on models from the shell"""
             def wrapper(*args, **kwargs):
                 res = fn(*args, **kwargs)
-                s.commit()
+                session.commit()
                 return res
             return wrapper
 

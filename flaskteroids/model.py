@@ -293,8 +293,7 @@ class ModelQuery:
         return self
 
     def first(self):
-        s = session()
-        res = s.execute(self._query).scalars().first()
+        res = session.execute(self._query).scalars().first()
         if not res:
             return None
         return _build(self._model_cls, res)
@@ -307,8 +306,7 @@ class ModelQuery:
         return self
 
     def __iter__(self):
-        s = session()
-        res = s.execute(self._query).scalars()
+        res = session.execute(self._query).scalars()
         for r in res:
             yield _build(self._model_cls, r)
 
@@ -414,15 +412,16 @@ class Model:
                 for vr in validate_rules:
                     self._errors.extend(vr(instance=self))
                 if self._errors:
+                    if self.is_persisted():
+                        session.refresh(self._base_instance)
                     return False
 
-            s = session()
             now = datetime.now(timezone.utc)
             if not self.is_persisted():
                 self._base_instance.created_at = now
-                s.add(self._base_instance)
+                session.add(self._base_instance)
             self._base_instance.updated_at = now
-            s.flush()
+            session.flush()
             return True
         except Exception:
             _logger.exception(f'Error storing {self.__class__.__name__} instance')
@@ -432,9 +431,8 @@ class Model:
         return inspect(self._base_instance).persistent
 
     def destroy(self):
-        s = session()
-        s.delete(self._base_instance)
-        s.flush()
+        session.delete(self._base_instance)
+        session.flush()
 
     def __repr__(self) -> str:
         values = {c: getattr(self._base_instance, c) for c in self.column_names}
