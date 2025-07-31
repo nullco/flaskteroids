@@ -1,5 +1,5 @@
 from functools import wraps
-from flask import render_template, request, flash, redirect, url_for
+from flask import render_template, request, make_response 
 from flaskteroids.actions import decorate_action, get_actions, register_actions, params
 from flaskteroids.rules import bind_rules
 
@@ -53,10 +53,10 @@ class ActionController:
     def respond_to(self):
         return FormatResponder()
 
-    def render(self, action=None, *, json=None):
+    def render(self, action=None, *, status=200, json=None):
         if action:
             cname = self.__class__.__name__.replace("Controller", "").lower()
             view = render_template(f'{cname}/{action}.html', **{**self.__dict__, 'params': params})
-            return view
+            return make_response(view, status)
         elif json:
             return json
