@@ -5,27 +5,25 @@
 {% block head %}
 <script>
     function destroy(url) {
-        if (confirm("Are you sure?")) {
-            fetch(url, {
-                method: "DELETE",
-                headers: {
-                    'X-CSRF-TOKEN': "{{csrf_token()}}"
-                }
-            }).then(response => {
-                if (response.ok) {
-                } else if (response.redirected) {
-                    window.location.href = response.url;
-                } else {
-                    alert("Failed to delete.");
-                }
-            });
-        }
+	fetch(url, {
+	    method: "DELETE",
+	    headers: {
+		'X-CSRF-TOKEN': "{{csrf_token()}}"
+	    }
+	}).then(response => {
+	    if (response.ok) {
+	    } else if (response.redirected) {
+		window.location.href = response.url;
+	    } else {
+		alert("Failed to delete.");
+	    }
+	});
     }
 </script>
 {% endblock %}
 
 {% block body %}
-{% if params.notice %}<p style="color: green">{{ params.notice }}</p>{% endif %}
+<p style="color: green">{{ flash.notice }}</p>
 
 {% with ${singular}=${singular} %}
 {% include "${plural}/_${singular}.html" %}

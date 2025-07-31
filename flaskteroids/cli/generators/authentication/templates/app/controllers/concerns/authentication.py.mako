@@ -1,6 +1,6 @@
-from flask import request, session, redirect, url_for
+from flask import request, session, url_for
+from flaskteroids import redirect_to, rules
 from flaskteroids.concern import Concern
-from flaskteroids.rules import rules
 from flaskteroids.actions import before_action
 from flaskteroids.current import current
 from app.models.session import Session
@@ -30,7 +30,7 @@ class Authentication(Concern):
 
     def _request_authentication(self):
         session['return_to_after_authenticating'] = request.url
-        return redirect(url_for('new_session'))
+        return redirect_to(url_for('new_session'))
 
     def _after_authentication_url(self):
         return session.pop('return_to_after_authenticating', None) or url_for('root')

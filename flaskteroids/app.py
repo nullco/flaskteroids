@@ -4,9 +4,11 @@ from http import HTTPStatus
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.exceptions import default_exceptions
 from flask.app import Flask
+from flask import get_flashed_messages
 from flaskteroids.extensions.mail import MailExtension
 import flaskteroids.model as model
 from flaskteroids.db import session
+from flaskteroids.flash import flash
 from flaskteroids.extensions.forms import FormsExtension
 from flaskteroids.extensions.jobs import JobsExtension
 from flaskteroids.extensions.db import SQLAlchemyExtension
@@ -27,6 +29,7 @@ def create_app(import_name, config=None):
     _register_routes(app)
     _configure_orm(app)
     _prepare_shell_context(app)
+    _prepare_template_contexts(app)
     _register_error_handlers(app)
     _register_cli_commands(app)
     _setup_forms(app)
@@ -121,6 +124,12 @@ def _prepare_shell_context(app):
         return {
             **db.models,
         }
+
+
+def _prepare_template_contexts(app):
+    @app.context_processor
+    def _():
+        return {'flash': flash.messages}
 
 
 def _setup_forms(app):

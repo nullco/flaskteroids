@@ -1,5 +1,5 @@
 from functools import wraps
-from flask import render_template, request
+from flask import render_template, request, flash, redirect, url_for
 from flaskteroids.actions import decorate_action, get_actions, register_actions, params
 from flaskteroids.rules import bind_rules
 
@@ -29,14 +29,29 @@ def _decorate_action(cls, action):
     return wrapper
 
 
+class FormatResponder:
+    def __init__(self):
+        self._handlers = {}
+
+    def html(self, func):
+        self._handlers["text/html"] = func
+
+    def json(self, func):
+        self._handlers["application/json"] = func
+
+    def respond(self):
+        content_type = request.headers.get("Accept", "text/html")
+        handler = self._handlers.get(content_type)
+        if handler:
+            return handler()
+        else:
+            return "406 Not Acceptable", 406
+
+
 class ActionController:
 
-    @classmethod
-    def respond_to(cls, *, html=None, json=None):
-        if request.accept_mimetypes.accept_html:
-            return html() if html else None
-        elif json and request.accept_mimetypes.accept_json:
-            return json()
+    def respond_to(self):
+        return FormatResponder()
 
     def render(self, action=None, *, json=None):
         if action:
@@ -45,7 +60,3 @@ class ActionController:
             return view
         elif json:
             return json
-
-
-
-

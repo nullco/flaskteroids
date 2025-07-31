@@ -1,6 +1,5 @@
-from flask import redirect, url_for
-from flaskteroids import params
-from flaskteroids.rules import rules
+from flask import url_for
+from flaskteroids import params, rules, redirect_to
 from flaskteroids.actions import before_action
 from app.controllers.application_controller import ApplicationController
 from app.models.${model_ref} import ${model}
@@ -26,19 +25,19 @@ class ${controller}Controller(ApplicationController):
     def create(self):
         self.${model_ref} = ${model}.create(**self._${model_ref}_params())
         if self.${model_ref}.is_persisted():
-            return redirect(url_for('show_${singular}', id=self.${model_ref}.id))
+            return redirect_to(url_for('show_${singular}', id=self.${model_ref}.id))
         else:
-            return redirect(url_for('new_${singular}'))
+            return redirect_to(url_for('new_${singular}'))
 
     def update(self):
         if self.${model_ref}.update(**self._${model_ref}_params()):
-            return redirect(url_for('show_${singular}', id=self.${model_ref}.id))
+            return redirect_to(url_for('show_${singular}', id=self.${model_ref}.id))
         else:
-            return redirect(url_for('new_${singular}'))
+            return redirect_to(url_for('new_${singular}'))
 
     def destroy(self):
         self.${model_ref}.destroy()
-        return redirect(url_for('index_${singular}'))
+        return redirect_to(url_for('index_${singular}'))
 
     def _set_${model_ref}(self):
         self.${model_ref} = ${model}.find(id=params['id'])

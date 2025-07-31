@@ -4,7 +4,7 @@
 
 {% block body %}
 
-{% if params.notice %}<p style="color: green">{{ params.notice }}</p>{% endif %}
+<p style="color: green">{{ flash.notice }}</p>
 
 <h1>${plural.title()}</h1>
 

@@ -1,6 +1,6 @@
 <h1>Update your password</h1>
 
-{% if params.alert %}<div style="color: red">{{ params.alert }}</div>{% endif %}
+<div style="color: red">{{ flash.alert }}</div>
 
 {% call(form) form_with(url=url_for('update_password', token=params.token), method='POST') %}
 	{{ form.password_field('password', required=True, autocomplete="new-password", placeholder='Enter new password', maxlength=72) }}
