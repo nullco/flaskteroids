@@ -207,18 +207,29 @@ def has_many(name: str, class_name: str | None = None, foreign_key: str | None =
     return bind
 
 
-def validates(field, *, presence=False, length=None, confirmation=False):
+def validates(field, *, presence=None, length=None, confirmation=None):
     def bind(model_cls):
         ns = registry.get(model_cls)
         ns.setdefault('validates', []).append(
             partial(
                 _validates,
-                field=field, presence=presence, length=length, confirmation=confirmation
+                field=field,
+                presence=_setup_presence(field, presence),
+                length=length,
+                confirmation=confirmation
             )
         )
         if confirmation:
             ns.setdefault('virtual_fields', {})[f'{field}_confirmation'] = {}
     return bind
+
+
+def _setup_presence(field, value):
+    if isinstance(value, dict):
+        return value
+    elif isinstance(value, bool):
+        if value:
+            return {'message': f'Field {field} is blank'}
 
 
 def _validates(*, instance, field, presence, length, confirmation):
@@ -231,11 +242,8 @@ def _validates(*, instance, field, presence, length, confirmation):
         return
 
     if presence:
-        if value is None:
-            errors.append((f'{field}.presence', f"Field {field} is missing"))
-            return errors
-        elif value == '':
-            errors.append((f'{field}.presence', f"Field {field} is blank"))
+        if value is None or value == '':
+            errors.append((f'{field}.presence', presence['message']))
         return errors
     if length:
         if value is not None:
