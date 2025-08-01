@@ -14,13 +14,13 @@
     <div>
       {{ form.label('${field['name']}', style='display: block') }}
       % if field['type'] == 'text':
-      {{ form.text_area('${field['name']}' }}
+      {{ form.text_area('${field['name']}') }}
       % elif field['type'] == 'int':
-      {{ form.number_field('${field['name']}' }}
+      {{ form.number_field('${field['name']}') }}
       % elif field['type'] == 'bool':
-      {{ form.checkbox('${field['name']}' }}
+      {{ form.checkbox('${field['name']}') }}
       % else:
-      {{ form.text_field('${field['name']}' }}
+      {{ form.text_field('${field['name']}') }}
       % endif
     </div>
 % endfor

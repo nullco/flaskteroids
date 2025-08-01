@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from flask import url_for
 from flaskteroids import params, rules, redirect_to
 from flaskteroids.actions import before_action
@@ -37,7 +38,7 @@ class ${controller}Controller(ApplicationController):
 
     def destroy(self):
         self.${model_ref}.destroy()
-        return redirect_to(url_for('index_${singular}'))
+        return redirect_to(url_for('index_${singular}'), status=HTTPStatus.SEE_OTHER)
 
     def _set_${model_ref}(self):
         self.${model_ref} = ${model}.find(id=params['id'])
