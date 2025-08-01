@@ -52,10 +52,14 @@ class Form:
     def number_field(self, field, **kwargs):
         return self._input_type('number', field, **kwargs)
 
-    def checkbox(self, field, **kwargs):
+    def checkbox(self, field, **_):
+        attrs = {
+            'checked': bool(self._data.get(field))
+        }
+        attrs = {k: k for k, v in attrs.items() if v}
         checkbox = f"""
         {self._input_type('hidden', field, value='0')}
-        {self._input_type('checkbox', field, value='1')}
+        {self._input_type('checkbox', field, value='1', **attrs)}
         """
         return Markup(checkbox)
 
