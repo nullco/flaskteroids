@@ -22,8 +22,13 @@ class Form:
             return ''
         return escape(self._data.get(field))
 
-    def label(self, field):
-        return Markup(f'<label for="{self._get_id(field)}">{field.title()}</label>')
+    def label(self, field, **kwargs):
+        attrs = {
+            'for': self._get_id(field),
+            **kwargs
+        }
+        attrs = " ".join(f'{k}="{v}"' for k, v in attrs.items())
+        return Markup(f'<label {attrs}>{field.title()}</label>')
 
     def _input_type(self, type_, field, **kwargs):
         value = kwargs.pop('value', None)
@@ -43,6 +48,16 @@ class Form:
 
     def text_field(self, field, **kwargs):
         return self._input_type('text', field, **kwargs)
+
+    def number_field(self, field, **kwargs):
+        return self._input_type('number', field, **kwargs)
+
+    def checkbox(self, field, **kwargs):
+        checkbox = f"""
+        {self._input_type('hidden', field, value='0')}
+        {self._input_type('checkbox', field, value='1')}
+        """
+        return Markup(checkbox)
 
     def password_field(self, field, **kwargs):
         return self._input_type('password', field, **kwargs)

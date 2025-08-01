@@ -101,9 +101,9 @@ class RoutesExtension:
             controller_instance = ccls()
             action = getattr(controller_instance, caction)
             flat_params = {}
-            flat_params.update(request.form.to_dict(True))
+            flat_params.update(request.form.to_dict(False))
             flat_params.update(kwargs)  # looks like url template params come here
-            flat_params.update(request.args.to_dict(True))
+            flat_params.update(request.args.to_dict(False))
             flat_params.pop('csrf_token', None)
             flat_params.pop('_method', None)
             params.update(_unflatten_params(flat_params))
@@ -178,6 +178,7 @@ class _ResourceBuilder:
 
 
 def _unflatten_params(flat_dict):
+
     def insert(container, keys, value):
         key = keys[0]
         is_last = len(keys) == 1
@@ -216,10 +217,11 @@ def _unflatten_params(flat_dict):
     result = {}
 
     for flat_key, value in flat_dict.items():
+        if isinstance(value, list):
+            value = value[-1]
         parts = re.findall(r'\w+|\[\]', flat_key.replace(']', ''))
         keys = [parts[0]] + [part if part != '[]' else '' for part in parts[1:]]
 
         result = insert(result, keys, value)
 
     return result
-
