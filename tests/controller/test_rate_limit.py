@@ -28,6 +28,7 @@ def rate_limited_controller():
     return init(TestController)
 
 
+@pytest.mark.usefixtures('app_ctx')
 def test_rate_limit(rate_limited_controller):
     controller = rate_limited_controller()
     controller.index()

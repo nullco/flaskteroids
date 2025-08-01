@@ -4,12 +4,12 @@ from http import HTTPStatus
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.exceptions import default_exceptions
 from flask.app import Flask
-from flask import get_flashed_messages
 from flaskteroids.extensions.mail import MailExtension
 import flaskteroids.model as model
 from flaskteroids.db import session
 from flaskteroids.flash import flash
-from flaskteroids.extensions.forms import FormsExtension
+from flaskteroids import helpers
+from flaskteroids.csrf import CSRFToken
 from flaskteroids.extensions.jobs import JobsExtension
 from flaskteroids.extensions.db import SQLAlchemyExtension
 from flaskteroids.extensions.routes import RoutesExtension
@@ -32,7 +32,7 @@ def create_app(import_name, config=None):
     _prepare_template_contexts(app)
     _register_error_handlers(app)
     _register_cli_commands(app)
-    _setup_forms(app)
+    _setup_csrf(app)
     _setup_jobs(app)
     _setup_mailers(app)
 
@@ -126,13 +126,23 @@ def _prepare_shell_context(app):
 
 
 def _prepare_template_contexts(app):
+
+    app.jinja_env.globals['button_to'] = helpers.button_to
+    app.jinja_env.globals['form_with'] = helpers.form_with
+    app.jinja_env.globals['csrf_token'] = CSRFToken(app.config.get('SECRET_KEY')).generate
+
     @app.context_processor
     def _():
-        return {'flash': flash.messages}
+        return {
+            'flash': flash.messages
+        }
 
 
-def _setup_forms(app):
-    FormsExtension(app)
+def _setup_csrf(app):
+    @app.before_request
+    def _():
+        csrft = CSRFToken(app.config.get('SECRET_KEY'))
+        csrft.validate()
 
 
 def _setup_jobs(app):

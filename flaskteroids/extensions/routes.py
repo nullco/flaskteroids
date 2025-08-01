@@ -130,6 +130,7 @@ class RoutesExtension:
     def _build_override_method(self, path):
         def override_method(*args, **kwargs):
             method_override = request.form.get('_method') or request.method
+            method_override = method_override.upper()
             if method_override != request.method:
                 _logger.debug(f'method override detected: {(method_override, path)}')
             view_func = self._view_functions.get((method_override, path))

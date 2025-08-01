@@ -46,6 +46,7 @@ def my_controller():
     return init(TestController)
 
 
+@pytest.mark.usefixtures('app_ctx')
 def test_controller_flow(my_controller, render_template):
     my_controller().action()
     calls = [

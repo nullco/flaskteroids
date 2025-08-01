@@ -19,11 +19,13 @@ def redirect_to(target, **kwargs):
     alert = kwargs.pop('alert', None)
     if alert:
         flash['alert'] = alert
-    return redirect(target)
+    status = kwargs.get('status') or 302
+    return redirect(target, code=status)
 
 
 __all__ = [
     'params',
     'flash',
-    'rules'
+    'rules',
+    'redirect_to'
 ]
