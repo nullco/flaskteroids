@@ -316,11 +316,12 @@ class ModelQuery:
 
 class Model:
 
-    _fields = ['_virtual_fields', '_base_instance', '_errors']
+    _fields = ['_changes', '_virtual_fields', '_base_instance', '_errors']
 
     def __init__(self, **kwargs):
         base = _base(self.__class__)
         self._virtual_fields = {}
+        self._changes = {}
         self._base_instance = base()
         self._errors = Errors()
         for k, v in kwargs.items():
@@ -344,6 +345,8 @@ class Model:
                     set_fn(self)
         if name in self._virtual_fields:
             return self._virtual_fields[name]
+        if name in self._changes:
+            return self._changes[name]
         return getattr(self._base_instance, name)
 
     def __setattr__(self, name, value):
@@ -360,7 +363,7 @@ class Model:
             if set_fn:
                 set_fn(self)
         else:
-            setattr(self._base_instance, name, value)
+            self._changes[name] = value
 
     def __json__(self):
         ns = registry.get(self.__class__)
@@ -371,7 +374,8 @@ class Model:
                     set_fn = vfd[name].get('set_fn')
                     if set_fn:
                         set_fn(self)
-        return self._virtual_fields | {c: getattr(self._base_instance, c) for c in self.column_names}
+        stored_values = {c: getattr(self._base_instance, c) for c in self.column_names}
+        return self._virtual_fields | stored_values | self._changes
 
     @classmethod
     def new(cls, **kwargs):
@@ -412,9 +416,11 @@ class Model:
                 for vr in validate_rules:
                     self._errors.extend(vr(instance=self))
                 if self._errors:
-                    if self.is_persisted():
-                        session.refresh(self._base_instance)
                     return False
+
+            for field, value in self._changes.items():
+                setattr(self._base_instance, field, value)
+            self._changes.clear()
 
             now = datetime.now(timezone.utc)
             if not self.is_persisted():
