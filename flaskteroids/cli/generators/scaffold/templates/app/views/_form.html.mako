@@ -15,9 +15,9 @@
       {{ form.label('${field['name']}', style='display: block') }}
       % if field['type'] == 'text':
       {{ form.text_area('${field['name']}') }}
-      % elif field['type'] == 'int':
+      % elif field['type'] in ['int', 'integer']:
       {{ form.number_field('${field['name']}') }}
-      % elif field['type'] == 'bool':
+      % elif field['type'] in ['bool', 'boolean']:
       {{ form.checkbox('${field['name']}') }}
       % else:
       {{ form.text_field('${field['name']}') }}
