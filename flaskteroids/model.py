@@ -6,6 +6,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from sqlalchemy import select, inspect, Boolean, Integer, Float
 from sqlalchemy.orm import relationship
 from flaskteroids.db import session
+from flaskteroids import fields
 from flask import current_app
 from flaskteroids.exceptions import ProgrammerError
 import flaskteroids.registry as registry
@@ -283,24 +284,8 @@ def _base(model_cls):
 
 
 def _cast(column_type, value):
-
-    def _cast_or_none(fn):
-        try:
-            return fn(value)
-        except ValueError:
-            return None
-
-    if isinstance(column_type, Boolean):
-        false_values = {'false', 'f', 0, '0', False, None, ''}
-        if value in false_values:
-            return False
-        return True
-    elif isinstance(column_type, Integer):
-        return _cast_or_none(int)
-    elif isinstance(column_type, Float):
-        return _cast_or_none(float)
-    else:
-        return value
+    field = fields.get(column_type)
+    return field.cast(value)
 
 
 class ModelQuery:
