@@ -2,6 +2,7 @@ from functools import wraps
 from flask import render_template, request, make_response 
 from flaskteroids.actions import decorate_action, get_actions, register_actions, params
 from flaskteroids.rules import bind_rules
+from flaskteroids.inflector import inflector
 
 
 def init(cls):
@@ -55,7 +56,7 @@ class ActionController:
 
     def render(self, action=None, *, status=200, json=None):
         if action:
-            cname = self.__class__.__name__.replace("Controller", "").lower()
+            cname = inflector.underscore(self.__class__.__name__.replace("Controller", ""))
             view = render_template(f'{cname}/{action}.html', **{**self.__dict__, 'params': params})
             return make_response(view, status)
         elif json:

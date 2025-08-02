@@ -5,7 +5,7 @@ from flaskteroids.cli.artifacts import ArtifactsBuilder
 
 
 def generate(model, args):
-    migrations.generate(f'Create{inflector.pluralize(model).title()}Table', args)
+    migrations.generate(f'Create{inflector.pluralize(model)}', args)
     ab = ArtifactsBuilder('.', click.echo)
     ab.file(f'app/models/{inflector.underscore(model)}.py', _model(name=model))
 

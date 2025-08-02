@@ -8,7 +8,7 @@ from flaskteroids.cli.generators.fields import fields, field_types_pattern, fiel
 
 
 class _CreateTableCommand:
-    pattern = re.compile(r'create_([a-z]+)')
+    pattern = re.compile(r'create_([a-z_]+)')
     args = {
         'column': field_pattern,
         'reference': association_pattern
@@ -63,7 +63,7 @@ class _CreateTableCommand:
 
 
 class _DropTableCommand:
-    pattern = re.compile(r'create_([a-z]+)')
+    pattern = re.compile(r'create_([a-z_]+)')
 
     @classmethod
     def parse(cls, cmd, _):
@@ -81,7 +81,7 @@ class _DropTableCommand:
 
 
 class _AddColumnsToTableCommand:
-    pattern = re.compile(r'add_([a-z_]+)_to_([a-z]+)')
+    pattern = re.compile(r'add_([a-z_]+)_to_([a-z_]+)')
     args = {
         'column': field_pattern,
         'reference': association_pattern

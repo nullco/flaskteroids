@@ -1,13 +1,14 @@
 import textwrap
 from flask import url_for, current_app
 from markupsafe import Markup
+from flaskteroids.inflector import inflector
 from flaskteroids.form import Form
 from flaskteroids.csrf import CSRFToken
 
 
 def button_to(message, instance, method):
     method = method.upper()
-    name = instance.__class__.__name__.lower()
+    name = inflector.underscore(instance.__class__.__name__)
     url = '#'
     if method == 'DELETE':
         url = url_for(f"destroy_{name}", id=instance.id)
@@ -24,7 +25,7 @@ def form_with(model=None, caller=None, url='', method='POST'):
     prefix = None
     data = None
     if model:
-        prefix = model.__class__.__name__.lower()
+        prefix = inflector.underscore(model.__class__.__name__)
         url = url_for(f'create_{prefix}')
         if model.id:
             url = url_for(f'update_{prefix}', id=model.id)

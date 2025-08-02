@@ -65,6 +65,7 @@ class SQLAlchemyExtension:
         for name, model in self._models.items():
             table_name = self._get_table_name(name)
             if hasattr(Base.classes, table_name):
+                _logger.debug(f'associating <{table_name}> to model <{name}>')
                 ns = registry.get(model)
                 ns['base_class'] = getattr(Base.classes, table_name)
         for model in self._models.values():
