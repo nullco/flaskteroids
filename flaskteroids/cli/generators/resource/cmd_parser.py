@@ -1,19 +1,14 @@
 import re
-from flaskteroids.cli.generators import cmd_parser
 from flaskteroids.inflector import inflector
-from flaskteroids.fields import fields
-
-
-_column_types_pattern = fr'{"|".join(k for k in fields.keys())}'
-_column_pattern = re.compile(fr'^([a-z_]+):({_column_types_pattern})(!?)$')
-_reference_pattern = re.compile(r'^([a-z_]+):(references|belongs_to)$')
+from flaskteroids.cli.generators import cmd_parser
+from flaskteroids.cli.generators.fields import field_pattern, association_pattern
 
 
 class _ResourceCommand:
     pattern = re.compile(r'([a-z_]+)')
     args = {
-        'fields': _column_pattern,
-        'reference': _reference_pattern
+        'fields': field_pattern,
+        'reference': association_pattern
     }
 
     @classmethod

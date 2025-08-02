@@ -4,19 +4,14 @@ import sqlalchemy as sa
 from alembic.operations import ops
 from datetime import datetime, timezone
 from flaskteroids.inflector import inflector
-from flaskteroids.fields import fields
-
-
-_column_types_pattern = fr'{"|".join(k for k in fields.keys())}'
-_column_pattern = re.compile(fr'^([a-z_]+):({_column_types_pattern})(!?)$')
-_reference_pattern = re.compile(r'^([a-z_]+):(references|belongs_to)$')
+from flaskteroids.cli.generators.fields import fields, field_types_pattern, field_pattern, association_pattern
 
 
 class _CreateTableCommand:
     pattern = re.compile(r'create_([a-z]+)')
     args = {
-        'column': _column_pattern,
-        'reference': _reference_pattern
+        'column': field_pattern,
+        'reference': association_pattern
     }
 
     @classmethod
@@ -88,8 +83,8 @@ class _DropTableCommand:
 class _AddColumnsToTableCommand:
     pattern = re.compile(r'add_([a-z_]+)_to_([a-z]+)')
     args = {
-        'column': _column_pattern,
-        'reference': _reference_pattern
+        'column': field_pattern,
+        'reference': association_pattern
     }
 
     @classmethod
@@ -125,7 +120,7 @@ class _AddColumnsToTableCommand:
 class _RemoveColumnsFromTableCommand:
     pattern = re.compile(r'remove_([a-z_]+)_from_([a-z]+)')
     args = {
-        'remove_column': re.compile(fr'^([a-z_]+)(:({_column_types_pattern})(!?))?$')
+        'remove_column': re.compile(fr'^([a-z_]+)(:({field_types_pattern})(!?))?$')
     }
 
     @classmethod
