@@ -1,82 +1,79 @@
+from abc import ABC
 import sqlalchemy as sa
 
 
-def _cast_or_none(fn, value):
-    try:
-        return fn(value)
-    except ValueError:
-        return None
+class Field(ABC):
+    def __init__(self, column_type, primitive_type) -> None:
+        self.column_type = column_type
+        self.primitive_type = primitive_type
+
+    def new_column(self):
+        return self.column_type()
+
+    def as_primitive(self, value):
+        try:
+            return self.primitive_type(value)
+        except ValueError:
+            return None
 
 
-class Text:
-    column_type = sa.Text
-    primitive_type = str
+class Text(Field):
 
-    @classmethod
-    def cast(cls, value):
-        return value
+    def __init__(self) -> None:
+        super().__init__(sa.Text, str)
 
 
-class String:
-    column_type = sa.String
-    primitive_type = str
+class String(Field):
 
-    @classmethod
-    def cast(cls, value):
-        return value
+    def __init__(self) -> None:
+        super().__init__(sa.String, str)
 
-
-class Integer:
-    column_type = sa.Integer,
-    primitive_type = int
-
-    @classmethod
-    def cast(cls, value):
-        return _cast_or_none(int, value)
+    def new_column(self):
+        return self.column_type(255)
 
 
-class Float:
-    column_type = sa.Float,
-    primitive_type = float
+class Integer(Field):
 
-    @classmethod
-    def cast(cls, value):
-        return _cast_or_none(float, value)
+    def __init__(self) -> None:
+        super().__init__(sa.Integer, int)
 
 
-class Boolean:
-    column_type = sa.Boolean
-    primitive_type = bool
+class Float(Field):
 
-    @classmethod
-    def cast(cls, value):
+    def __init__(self) -> None:
+        super().__init__(sa.Float, float)
+
+
+class Boolean(Field):
+
+    def __init__(self) -> None:
+        super().__init__(sa.Boolean, bool)
+
+    def as_primitive(self, value):
         false_values = {'false', 'f', 0, '0', False, None, ''}
         if value in false_values:
             return False
         return True
 
 
-class Json:
-    column_type = sa.JSON
-    primitive_type = dict
-
-    @classmethod
-    def cast(cls, value):
-        return value
+class Json(Field):
+    def __init__(self) -> None:
+        super().__init__(sa.JSON, dict)
 
 
 fields = {
-    'text': Text,
-    'string': String,
-    'str': String,
-    'interger': Integer,
-    'int': Integer,
-    'boolean': Boolean,
-    'bool': Boolean,
+    'text': Text(),
+    'string': String(),
+    'str': String(),
+    'interger': Integer(),
+    'float': Float(),
+    'int': Integer(),
+    'boolean': Boolean(),
+    'bool': Boolean(),
 }
 
 
-def get(column_type):
+def from_column_type(column_type):
     for f in fields.values():
         if isinstance(column_type, f.column_type):
             return f

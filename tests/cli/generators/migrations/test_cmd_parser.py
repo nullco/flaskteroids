@@ -162,6 +162,7 @@ def test_add_columns_to_table(cmd, args, expected):
     assert res['parsed']['cmd'] == expected['parsed']['cmd']
     ops = res['parsed']['ops']['up']
     expected_ops = expected['parsed']['ops']['up']
+    print([o.__dict__ for o in ops])
     for op, expected_op in zip(ops, expected_ops):
         assert type(op) is type(expected_op)
         assert op.table_name == expected_op.table_name

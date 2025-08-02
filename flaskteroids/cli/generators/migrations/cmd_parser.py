@@ -4,19 +4,10 @@ import sqlalchemy as sa
 from alembic.operations import ops
 from datetime import datetime, timezone
 from flaskteroids.inflector import inflector
+from flaskteroids.fields import fields
 
 
-_column_types = {
-    'int': sa.Integer,
-    'str': lambda: sa.String(255),
-    'text': sa.Text,
-    'float': sa.Float,
-    'bool': sa.Boolean,
-    'json': sa.JSON
-}
-
-_column_types_pattern = fr'{"|".join(k for k in _column_types.keys())}'
-
+_column_types_pattern = fr'{"|".join(k for k in fields.keys())}'
 _column_pattern = re.compile(fr'^([a-z_]+):({_column_types_pattern})(!?)$')
 _reference_pattern = re.compile(r'^([a-z_]+):(references|belongs_to)$')
 
@@ -51,7 +42,7 @@ class _CreateTableCommand:
                             *[
                                 sa.Column(
                                     name=am.group(1),
-                                    type_=_column_types[am.group(2)](),
+                                    type_=fields.get(am.group(2)).new_column(),
                                     nullable=not bool(am.group(3))
                                 )
                                 for am in args_matches.get('column', [])
@@ -114,7 +105,7 @@ class _AddColumnsToTableCommand:
                         cmd_match.group(2),
                         sa.Column(
                             name=am.group(1),
-                            type_=_column_types[am.group(2)](),
+                            type_=fields.get(am.group(2)).new_column(),
                             nullable=not bool(am.group(3))
                         )
                     )

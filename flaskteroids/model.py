@@ -283,11 +283,6 @@ def _base(model_cls):
     return base
 
 
-def _cast(column_type, value):
-    field = fields.get(column_type)
-    return field.cast(value)
-
-
 class ModelQuery:
     def __init__(self, model_cls):
         self._model_cls = model_cls
@@ -371,7 +366,7 @@ class Model:
         elif name in self._base_instance.__table__.columns:
             column = self._base_instance.__table__.columns[name]
 
-            self._changes[name] = _cast(column.type, value)
+            self._changes[name] = fields.from_column_type(column.type).as_primitive(value)
 
     def __json__(self):
         ns = registry.get(self.__class__)
