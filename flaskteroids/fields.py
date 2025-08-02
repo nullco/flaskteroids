@@ -1,5 +1,7 @@
 from abc import ABC
+from contextlib import suppress
 import sqlalchemy as sa
+from datetime import datetime, date, time
 
 
 class Field(ABC):
@@ -11,10 +13,10 @@ class Field(ABC):
         return self.column_type()
 
     def as_primitive(self, value):
-        try:
+        if isinstance(value, self.primitive_type):
+            return value
+        with suppress(ValueError):
             return self.primitive_type(value)
-        except ValueError:
-            return None
 
 
 class Text(Field):
@@ -56,6 +58,45 @@ class Boolean(Field):
         return True
 
 
+class DateTime(Field):
+
+    def __init__(self) -> None:
+        super().__init__(sa.DateTime, datetime)
+
+    def as_primitive(self, value):
+        with suppress(ValueError):
+            if isinstance(value, datetime):
+                return value
+            elif isinstance(value, str):
+                return datetime.fromisoformat(value)
+
+
+class Date(Field):
+
+    def __init__(self) -> None:
+        super().__init__(sa.Date, datetime)
+
+    def as_primitive(self, value):
+        with suppress(ValueError):
+            if isinstance(value, date):
+                return value
+            elif isinstance(value, str):
+                return date.fromisoformat(value)
+
+
+class Time(Field):
+
+    def __init__(self) -> None:
+        super().__init__(sa.Time, datetime)
+
+    def as_primitive(self, value):
+        with suppress(ValueError):
+            if isinstance(value, time):
+                return value
+            elif isinstance(value, str):
+                return time.fromisoformat(value)
+
+
 class Json(Field):
     def __init__(self) -> None:
         super().__init__(sa.JSON, dict)
@@ -70,6 +111,9 @@ fields = {
     'int': Integer(),
     'boolean': Boolean(),
     'bool': Boolean(),
+    'datetime': DateTime(),
+    'date': Date(),
+    'time': Time(),
 }
 
 

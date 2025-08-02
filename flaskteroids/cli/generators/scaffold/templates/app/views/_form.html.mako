@@ -19,6 +19,12 @@
       {{ form.number_field('${field['name']}') }}
       % elif field['type'] in ['bool', 'boolean']:
       {{ form.checkbox('${field['name']}') }}
+      % elif field['type'] == 'datetime':
+      {{ form.datetime_field('${field['name']}') }}
+      % elif field['type'] == 'date':
+      {{ form.date_field('${field['name']}') }}
+      % elif field['type'] == 'time':
+      {{ form.time_field('${field['name']}') }}
       % else:
       {{ form.text_field('${field['name']}') }}
       % endif
