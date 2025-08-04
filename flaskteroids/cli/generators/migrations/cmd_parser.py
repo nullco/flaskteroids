@@ -47,7 +47,7 @@ class _CreateTableCommand:
                                     f'{am.group(1)}_id',
                                     sa.Integer(),
                                     sa.ForeignKey(f'{inflector.pluralize(am.group(1))}.id'),
-                                    nullable=False
+                                    nullable=True
                                 )
                                 for am in args_matches.get('reference', [])
                             ]
@@ -92,19 +92,52 @@ class _AddColumnsToTableCommand:
         matcher = cmd_parser.CommandArgsMatcher(cls.pattern, cls.args)
         cmd_match = matcher.match_cmd(cmd)
         args_matches = matcher.match_args(args)
+
+        def _add_references():
+            references = []
+            for am in args_matches.get('reference', []):
+                references.append(
+                    ops.AddColumnOp(
+                        cmd_match.group(2),
+                        sa.Column(
+                            name=f'{am.group(1)}_id',
+                            type_=sa.Integer(),
+                            nullable=True
+                        )
+                    )
+                )
+                references.append(
+                    ops.CreateForeignKeyOp(
+                        f'fk_{cmd_match.group(2)}_{inflector.pluralize(am.group(1))}',
+                        cmd_match.group(2),
+                        inflector.pluralize(am.group(1)),
+                        [f'{am.group(1)}_id'],
+                        ['id']
+                    )
+                )
+            return references
+
         return {
             'cmd': 'add_columns_to_table',
             'ops': {
                 'up': [
-                    ops.AddColumnOp(
+                    ops.ModifyTableOps(
                         cmd_match.group(2),
-                        sa.Column(
-                            name=am.group(1),
-                            type_=fields.get(am.group(2)).new_column(),
-                            nullable=not bool(am.group(3))
-                        )
+                        ops=[
+                            *[
+                                ops.AddColumnOp(
+                                    cmd_match.group(2),
+                                    sa.Column(
+                                        name=am.group(1),
+                                        type_=fields.get(am.group(2)).new_column(),
+                                        nullable=not bool(am.group(3))
+                                    )
+                                )
+                                for am in args_matches.get('column', [])
+                            ],
+                            *_add_references()
+                        ],
                     )
-                    for am in args_matches.get('column', [])
                 ],
                 'down': [
                     ops.DropColumnOp(

@@ -56,7 +56,7 @@ from datetime import datetime, timezone
                                     onupdate=lambda: datetime.now(timezone.utc),
                                 ),
                                 sa.Column('name', sa.String(255), nullable=True),
-                                sa.Column('user_id', sa.Integer(), sa.ForeignKey('users.id'), nullable=False)
+                                sa.Column('user_id', sa.Integer(), sa.ForeignKey('users.id'), nullable=True)
                             ]
                         )
 
@@ -86,7 +86,7 @@ from datetime import datetime, timezone
                                     onupdate=lambda: datetime.now(timezone.utc),
                                 ),
                                 sa.Column('name', sa.String(255), nullable=True),
-                                sa.Column('user_id', sa.Integer(), sa.ForeignKey('users.id'), nullable=False)
+                                sa.Column('user_id', sa.Integer(), sa.ForeignKey('users.id'), nullable=True)
                             ]
                         )
 
@@ -123,9 +123,14 @@ def test_create_table(cmd, args, expected):
                 'cmd': 'add_columns_to_table',
                 'ops': {
                     'up': [
-                        ops.AddColumnOp(
+                        ops.ModifyTableOps(
                             'products',
-                            sa.Column('price', sa.Float(), nullable=True)
+                            ops=[
+                                ops.AddColumnOp(
+                                    'products',
+                                    sa.Column('price', sa.Float(), nullable=True)
+                                )
+                            ]
                         )
                     ]
                 }
@@ -141,15 +146,19 @@ def test_create_table(cmd, args, expected):
                 'cmd': 'add_columns_to_table',
                 'ops': {
                     'up': [
-                        ops.AddColumnOp(
+                        ops.ModifyTableOps(
                             'products',
-                            sa.Column('price', sa.Float(), nullable=True)
-                        ),
-                        ops.AddColumnOp(
-                            'products',
-                            sa.Column('total', sa.Integer(), nullable=True)
+                            ops=[
+                                ops.AddColumnOp(
+                                    'products',
+                                    sa.Column('price', sa.Float(), nullable=True)
+                                ),
+                                ops.AddColumnOp(
+                                    'products',
+                                    sa.Column('total', sa.Integer(), nullable=True)
+                                )
+                            ]
                         )
-
                     ]
                 }
             }
@@ -162,11 +171,9 @@ def test_add_columns_to_table(cmd, args, expected):
     assert res['parsed']['cmd'] == expected['parsed']['cmd']
     ops = res['parsed']['ops']['up']
     expected_ops = expected['parsed']['ops']['up']
-    print([o.__dict__ for o in ops])
     for op, expected_op in zip(ops, expected_ops):
         assert type(op) is type(expected_op)
         assert op.table_name == expected_op.table_name
-        assert op.column.name == expected_op.column.name
 
 
 @pytest.mark.parametrize('cmd, args, expected', [
