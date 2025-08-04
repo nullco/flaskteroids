@@ -1,5 +1,5 @@
 import textwrap
-from flask import url_for, current_app
+from flask import render_template, url_for, current_app
 from markupsafe import Markup
 from flaskteroids.inflector import inflector
 from flaskteroids.form import Form
@@ -40,6 +40,10 @@ def form_with(model=None, caller=None, url='', method='POST'):
            {caller(form) if caller else ''}
         </form>
     """)
+
+
+def render(template, **kwargs):
+    return Markup(render_template(template, **kwargs))
 
 
 def csrf_token():
