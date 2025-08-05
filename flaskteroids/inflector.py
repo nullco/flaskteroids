@@ -12,9 +12,12 @@ class Inflector:
         self.add_plural_rule(r"([^aeiouy]|qu)y$", r"\1ies", locale='en')  # query -> queries
         self.add_plural_rule(r"$", r"s", locale='en')  # fallback
 
-        self.add_singular_rule(r"([sxz])es$", r"\1", locale='en')  # boxes -> box
-        self.add_singular_rule(r"([^aeiouy]|qu)ies$", r"\1y", locale='en')  # queries -> query
-        self.add_singular_rule(r"s$", r"", locale='en')  # fallback
+        self.add_singular_rule(r"([^aeiouy]|qu)ies$", r"\1y", locale='en')  # puppies → puppy
+        self.add_singular_rule(r"(ch|sh|x|ss|z)es$", r"\1", locale='en')
+        self.add_singular_rule(r"ies$", r"y", locale='en')                 # flies → fly (fallback)
+        self.add_singular_rule(r"ves$", r"f", locale='en')                 # wolves → wolf (optional)
+        self.add_singular_rule(r"oes$", r"o", locale='en')                 # heroes → hero (optional)
+        self.add_singular_rule(r"s$", r"", locale='en')                   # cars → car
 
         self.add_irregular("person", "people", locale='en')
         self.add_uncountable("sheep", locale='en')

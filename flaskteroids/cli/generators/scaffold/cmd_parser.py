@@ -33,7 +33,7 @@ class _ScaffoldCommand:
                 for m in args_matches['fields']
             ],
             'references': [
-                {'name': m.group(1), 'type': m.group(2)}
+                {'name': inflector.foreign_key(m.group(1)), 'type': m.group(2)}
                 for m in args_matches['reference']
             ]
         }

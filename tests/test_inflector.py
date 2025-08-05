@@ -20,6 +20,7 @@ def test_pluralize(inflector, word, expected):
 
 
 @pytest.mark.parametrize("word, expected", [
+    ("courses", "course"),
     ("cats", "cat"),
     ("people", "person"),
     ("People", "Person"),

@@ -30,6 +30,12 @@
       % endif
     </div>
 % endfor
+% for ref in references:
+    <div>
+      {{ form.label('${ref['name']}', style='display: block') }}
+      {{ form.text_field('${ref['name']}') }}
+    </div>
+% endfor
 
   <div>
     {{ form.submit() }}
