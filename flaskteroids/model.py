@@ -279,7 +279,6 @@ def _validate_confirmation(*, instance, field, config):
 
 
 def _validate_fk(*, instance, field, config=True):
-    print(instance)
     if not config:
         return []
     ns = registry.get(instance.__class__)
@@ -291,6 +290,8 @@ def _validate_fk(*, instance, field, config=True):
     if not association:
         return []
     value = getattr(instance, field)
+    if not value:
+        return []
     related_cls = association['class']
     try:
         related_cls.find(value)
