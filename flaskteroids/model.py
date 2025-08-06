@@ -208,59 +208,69 @@ def has_many(name: str, class_name: str | None = None, foreign_key: str | None =
     return bind
 
 
-def validates(field, *, presence=None, length=None, confirmation=None):
+def validates(field, **kwargs):
+    validations = {
+        'presence': _validate_presence,
+        'length': _validate_length,
+        'confirmation': _validate_confirmation
+    }
+
     def bind(model_cls):
         ns = registry.get(model_cls)
-        ns.setdefault('validates', []).append(
-            partial(
-                _validates,
-                field=field,
-                presence=_setup_presence(field, presence),
-                length=length,
-                confirmation=confirmation
-            )
-        )
-        if confirmation:
+        for v in kwargs:
+            if v in validations:
+                ns.setdefault('validates', []).append(
+                    partial(
+                        validations[v],
+                        field=field,
+                        config=kwargs[v]
+                    )
+                )
+        if 'confirmation' in kwargs:
             ns.setdefault('virtual_fields', {})[f'{field}_confirmation'] = {}
     return bind
 
 
-def _setup_presence(field, value):
-    if isinstance(value, dict):
-        return value
-    elif isinstance(value, bool):
-        if value:
-            return {'message': f'Field {field} is blank'}
+def _validate_presence(*, instance, field, config):
+    if not config:
+        return []
+    if isinstance(config, bool):
+        config = {'message': f'Field {field} is blank'}
 
-
-def _validates(*, instance, field, presence, length, confirmation):
     errors = []
-    if hasattr(instance, field):
-        value = getattr(instance, field)
-    elif field in instance._virtual_fields:
-        value = instance._virtual_fields[field]
-    else:
-        return
+    value = getattr(instance, field)
+    if value is None or value == '':
+        errors.append((f'{field}.presence', config['message']))
+    return errors
 
-    if presence:
-        if value is None or value == '':
-            errors.append((f'{field}.presence', presence['message']))
-        return errors
-    if length:
-        if value is not None:
-            minimum = length.get('minimum')
-            maximum = length.get('maximum')
-            if minimum is not None and len(value) < minimum:
-                errors.append((f'{field}.length', f"Field {field} is lower than {minimum}"))
-            if maximum is not None and len(value) > maximum:
-                errors.append((f'{field}.length', f"Field {field} is higher than {maximum}"))
-    if confirmation:
-        if value is not None:
-            confirmation_field = f'{field}_confirmation'
-            if confirmation_field in instance._virtual_fields:
-                confirmation_value = instance._virtual_fields.get(confirmation_field)
-                if confirmation_value != value:
-                    errors.append((f'{field}.confirmation', f"Field {field} values do not match"))
+
+def _validate_length(*, instance,  field, config):
+    if not config:
+        return []
+    errors = []
+    value = getattr(instance, field)
+
+    if value is not None:
+        minimum = config.get('minimum')
+        maximum = config.get('maximum')
+        if minimum is not None and len(value) < minimum:
+            errors.append((f'{field}.length', f"Field {field} is lower than {minimum}"))
+        if maximum is not None and len(value) > maximum:
+            errors.append((f'{field}.length', f"Field {field} is higher than {maximum}"))
+    return errors
+
+
+def _validate_confirmation(*, instance, field, config):
+    if not config:
+        return []
+    errors = []
+    value = getattr(instance, field)
+    if value is not None:
+        confirmation_field = f'{field}_confirmation'
+        if confirmation_field in instance._virtual_fields:
+            confirmation_value = instance._virtual_fields.get(confirmation_field)
+            if confirmation_value != value:
+                errors.append((f'{field}.confirmation', f"Field {field} values do not match"))
     return errors
 
 
