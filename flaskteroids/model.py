@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from functools import partial
 from itsdangerous import URLSafeTimedSerializer
 from werkzeug.security import check_password_hash, generate_password_hash
-from sqlalchemy import select, inspect, Boolean, Integer, Float
+from sqlalchemy import select, inspect
 from sqlalchemy.orm import relationship
 from flaskteroids.db import session
 from flaskteroids import fields
@@ -281,12 +281,7 @@ def _validate_confirmation(*, instance, field, config):
 def _validate_fk(*, instance, field, config=True):
     if not config:
         return []
-    ns = registry.get(instance.__class__)
-    associations = ns.get('associations') or {}
-    association = None
-    for cn, fk in associations.keys():
-        if fk == field:
-            association = associations[(cn, fk)]
+    association = _get_association(instance.__class__, name=field)
     if not association:
         return []
     value = getattr(instance, field)
@@ -298,6 +293,14 @@ def _validate_fk(*, instance, field, config=True):
         return []
     except RecordNotFoundException:
         return [(field, f'{association["name"]} must exist')]
+
+
+def _get_association(model_cls, *, name):
+    ns = registry.get(model_cls)
+    associations = ns.get('associations') or {}
+    for cn, fk in associations.keys():
+        if fk == name or associations[(cn, fk)]['name'] == name:
+            return associations[(cn, fk)]
 
 
 def _build(model_cls, base_instance):
@@ -401,8 +404,11 @@ class Model:
                 set_fn(self)
         elif name in self._base_instance.__table__.columns:
             column = self._base_instance.__table__.columns[name]
-
             self._changes[name] = fields.from_column_type(column.type).as_primitive(value)
+        else:
+            association = _get_association(self.__class__, name=name)
+            if association:
+                self._changes[name] = value
 
     def __json__(self):
         ns = registry.get(self.__class__)
