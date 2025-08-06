@@ -69,7 +69,7 @@ def _register_association(name, rel, cls, related_cls, fk_name):
     key = (related_cls.__name__, fk_name)
     if 'associations' not in ns:
         ns['associations'] = {}
-    ns['associations'][key] = {'rel': rel, 'name': name}
+    ns['associations'][key] = {'rel': rel, 'name': name, 'class': related_cls}
 
 
 def _link_associations(name, rel, cls, related_cls, fk_name):
@@ -167,6 +167,10 @@ def belongs_to(name: str, class_name: str | None = None, foreign_key: str | None
             return _build(related_cls, related_base_instance)
 
         setattr(cls, name, property(rel_wrapper))
+
+        registry.get(cls).setdefault('validates', []).append(
+            partial(_validate_fk, field=fk_name)
+        )
     return bind
 
 
@@ -212,7 +216,7 @@ def validates(field, **kwargs):
     validations = {
         'presence': _validate_presence,
         'length': _validate_length,
-        'confirmation': _validate_confirmation
+        'confirmation': _validate_confirmation,
     }
 
     def bind(model_cls):
@@ -272,6 +276,27 @@ def _validate_confirmation(*, instance, field, config):
             if confirmation_value != value:
                 errors.append((f'{field}.confirmation', f"Field {field} values do not match"))
     return errors
+
+
+def _validate_fk(*, instance, field, config=True):
+    print(instance)
+    if not config:
+        return []
+    ns = registry.get(instance.__class__)
+    associations = ns.get('associations') or {}
+    association = None
+    for cn, fk in associations.keys():
+        if fk == field:
+            association = associations[(cn, fk)]
+    if not association:
+        return []
+    value = getattr(instance, field)
+    related_cls = association['class']
+    try:
+        related_cls.find(value)
+        return []
+    except RecordNotFoundException:
+        return [(field, f'{association["name"]} must exist')]
 
 
 def _build(model_cls, base_instance):
