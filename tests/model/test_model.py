@@ -50,12 +50,14 @@ def test_new():
 
 
 def test_create():
-    user = User.create(username='one')
+    group = Group.create(name='one')
+    user = User.create(username='one', group=group)
     assert user.id
 
 
 def test_edit():
-    user = User.create(username='one')
+    group = Group.create(name='one')
+    user = User.create(username='one', group=group)
     user.username = 'two'
     user.save()
 
@@ -64,7 +66,8 @@ def test_edit():
 
 
 def test_save():
-    user = User.new(username='one')
+    group = Group.create(name='one')
+    user = User.new(username='one', group=group)
     assert user.save()
 
 
@@ -72,25 +75,28 @@ def test_save_with_errors():
     user = User.new()
     assert not user.save()
     assert user.errors
-    assert user.errors.count == 1
+    assert user.errors.count == 2
 
 
 def test_find():
-    user = User.create(username='one')
+    group = Group.create(name='one')
+    user = User.create(username='one', group=group)
     assert User.find(id=user.id)
 
 
 def test_all():
-    User.create(username='one')
-    User.create(username='two')
-    User.create(username='three')
+    group = Group.create(name='one')
+    User.create(username='one', group=group)
+    User.create(username='two', group=group)
+    User.create(username='three', group=group)
     assert len(list(User.all())) == 3
 
 
 def test_find_by():
-    User.create(username='one')
-    User.create(username='two')
-    User.create(username='three')
+    group = Group.create(name='one')
+    User.create(username='one', group=group)
+    User.create(username='two', group=group)
+    User.create(username='three', group=group)
     one = User.find_by(username='one')
     assert one
     assert one.username == 'one'

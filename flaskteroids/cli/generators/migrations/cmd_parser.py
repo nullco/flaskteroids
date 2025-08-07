@@ -47,7 +47,7 @@ class _CreateTableCommand:
                                     f'{am.group(1)}_id',
                                     sa.Integer(),
                                     sa.ForeignKey(f'{inflector.pluralize(am.group(1))}.id'),
-                                    nullable=True
+                                    nullable=False
                                 )
                                 for am in args_matches.get('reference', [])
                             ]
@@ -102,7 +102,7 @@ class _AddColumnsToTableCommand:
                         sa.Column(
                             name=f'{am.group(1)}_id',
                             type_=sa.Integer(),
-                            nullable=True
+                            nullable=False
                         )
                     )
                 )

@@ -69,7 +69,7 @@ def _register_association(name, rel, cls, related_cls, fk_name):
     key = (related_cls.__name__, fk_name)
     if 'associations' not in ns:
         ns['associations'] = {}
-    ns['associations'][key] = {'rel': rel, 'name': name, 'class': related_cls}
+    ns['associations'][key] = {'rel': rel, 'name': name, 'class': related_cls, 'fk_name': fk_name}
 
 
 def _link_associations(name, rel, cls, related_cls, fk_name):
@@ -286,7 +286,7 @@ def _validate_fk(*, instance, field, config=True):
         return []
     value = getattr(instance, field)
     if not value:
-        return []
+        return [(field, f'{association["name"]} must exist')]
     related_cls = association['class']
     try:
         related_cls.find(value)
@@ -409,6 +409,8 @@ class Model:
             association = _get_association(self.__class__, name=name)
             if association:
                 self._changes[name] = value
+                if association['fk_name'] != name:
+                    self._changes[association['fk_name']] = value.id
 
     def __json__(self):
         ns = registry.get(self.__class__)
