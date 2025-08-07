@@ -56,7 +56,7 @@ from datetime import datetime, timezone
                                     onupdate=lambda: datetime.now(timezone.utc),
                                 ),
                                 sa.Column('name', sa.String(255), nullable=True),
-                                sa.Column('user_id', sa.Integer(), sa.ForeignKey('users.id'), nullable=True)
+                                sa.Column('user_id', sa.Integer(), sa.ForeignKey('users.id'), nullable=False)
                             ]
                         )
 
@@ -86,7 +86,7 @@ from datetime import datetime, timezone
                                     onupdate=lambda: datetime.now(timezone.utc),
                                 ),
                                 sa.Column('name', sa.String(255), nullable=True),
-                                sa.Column('user_id', sa.Integer(), sa.ForeignKey('users.id'), nullable=True)
+                                sa.Column('user_id', sa.Integer(), sa.ForeignKey('users.id'), nullable=False)
                             ]
                         )
 
