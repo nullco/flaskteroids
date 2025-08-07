@@ -100,3 +100,17 @@ def test_find_by():
     one = User.find_by(username='one')
     assert one
     assert one.username == 'one'
+
+
+def test_belongs_to():
+    group = Group.create(name='one')
+    user = User.create(username='one', group=group)
+    assert user.group.id == group.id
+
+
+def test_has_many():
+    group = Group.create(name='one')
+    User.create(username='one', group=group)
+    User.create(username='two', group=group)
+    User.create(username='three', group=group)
+    assert len(group.users) == 3

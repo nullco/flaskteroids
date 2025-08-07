@@ -199,6 +199,9 @@ def has_many(name: str, class_name: str | None = None, foreign_key: str | None =
                 def __init__(self, base_instance) -> None:
                     self._values = getattr(base_instance, name)
 
+                def __len__(self):
+                    return len(self._values)
+
                 def __iter__(self):
                     for v in self._values:
                         yield _build(related_cls, v)
