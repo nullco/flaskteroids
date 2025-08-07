@@ -1,4 +1,5 @@
 from markupsafe import Markup, escape
+from jinja2 import Template
 
 
 class Form:
@@ -93,6 +94,27 @@ class Form:
     def text_area(self, field, value=None):
         val = value if value is not None else self._get_value(field)
         return Markup(f'<textarea name="{self._get_name(field)}" id="{self._get_id(field)}" value="{val}"></textarea>')
+
+    def collection_select(self, field, collection, option_value, option_display, prompt='Select one', value=None):
+        value = value if value is not None else self._get_value(field)
+        return Markup(Template("""
+            <select id="{{ id }}" name="{{ name }}">
+              <option value="">{{ prompt }}</option>
+              {% for elem in collection %}
+              <option value="{{ elem[option_value] }}" {% if elem[option_value] == value %}selected{% endif %}>
+                {{ elem[option_display] }}
+              </option>
+              {% endfor %}
+            </select>
+        """).render(
+            id=self._get_id(field),
+            name=self._get_name(field),
+            collection=collection,
+            option_value=option_value,
+            option_display=option_display,
+            prompt=prompt,
+            value=value
+        ))
 
     def submit(self, value='Submit'):
         return Markup(f'<input type="submit" value="{value}">')

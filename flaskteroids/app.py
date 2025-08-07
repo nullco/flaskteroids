@@ -127,6 +127,8 @@ def _prepare_shell_context(app):
 
 def _prepare_template_contexts(app):
 
+    db = app.extensions['flaskteroids.db']
+
     app.jinja_env.globals['render'] = helpers.render
     app.jinja_env.globals['button_to'] = helpers.button_to
     app.jinja_env.globals['form_with'] = helpers.form_with
@@ -135,7 +137,8 @@ def _prepare_template_contexts(app):
     @app.context_processor
     def _():
         return {
-            'flash': flash.messages
+            'flash': flash.messages,
+            **db.models
         }
 
 
