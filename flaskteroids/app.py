@@ -131,6 +131,7 @@ def _prepare_template_contexts(app):
 
     app.jinja_env.globals['render'] = helpers.render
     app.jinja_env.globals['button_to'] = helpers.button_to
+    app.jinja_env.globals['link_to'] = helpers.link_to
     app.jinja_env.globals['form_with'] = helpers.form_with
     app.jinja_env.globals['csrf_token'] = CSRFToken(app.config.get('SECRET_KEY')).generate
 

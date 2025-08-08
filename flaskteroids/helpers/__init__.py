@@ -6,6 +6,10 @@ from flaskteroids.form import Form
 from flaskteroids.csrf import CSRFToken
 
 
+def link_to(name, path):
+    return Markup(f'<a href="{path}">{name}</a>')
+
+
 def button_to(message, instance, method):
     method = method.upper()
     name = inflector.underscore(instance.__class__.__name__)
