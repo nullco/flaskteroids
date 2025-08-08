@@ -217,6 +217,10 @@ def test_remove_columns_from_table(cmd, args, expected):
         assert op.column_name == expected_op.column_name
 
 
-def test_invalid_command():
+@pytest.mark.parametrize('cmd, args', [
+    ('InvalidCommand', []),
+    ('AddCompletedAndPriorityToTodos', ['completed:boolean', 'priority:wronnnngg']),
+])
+def test_invalid_command(cmd, args):
     with pytest.raises(ValueError):
-        cmd_parser.parse('InvalidCommand', [])
+        cmd_parser.parse(cmd, args)

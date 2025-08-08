@@ -38,11 +38,15 @@ class CommandArgsMatcher:
         if not self._args_patterns and args:
             raise ValueError('Arguments not expected')
         args_matches = defaultdict(lambda: [])
+        not_matched = []
         for arg in args:
             for k, p in self._args_patterns.items():
                 amatch = p.match(arg)
                 if amatch:
                     args_matches[k].append(amatch)
-        if not args_matches and self._args_patterns:
-            raise ValueError('Argument not matching expected format')
+                    break
+            else:
+                not_matched.append(arg)
+        if not_matched and self._args_patterns:
+            raise ValueError(f'Invalid arguments: {" ".join(not_matched)}')
         return args_matches

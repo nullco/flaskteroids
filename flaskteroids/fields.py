@@ -106,7 +106,7 @@ fields = {
     'text': Text(),
     'string': String(),
     'str': String(),
-    'interger': Integer(),
+    'integer': Integer(),
     'float': Float(),
     'int': Integer(),
     'boolean': Boolean(),
