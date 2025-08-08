@@ -8,6 +8,9 @@ class Form:
         self._prefix = prefix
         self._data = data or {}
 
+    def _build_attributes(self, attrs):
+        return " ".join(f'{k}="{v}"' for k, v in attrs.items())
+
     def _get_name(self, field):
         if not self._prefix:
             return field
@@ -24,24 +27,19 @@ class Form:
         return escape(self._data.get(field))
 
     def label(self, field, **kwargs):
-        attrs = {
-            'for': self._get_id(field),
-            **kwargs
-        }
-        attrs = " ".join(f'{k}="{v}"' for k, v in attrs.items())
+        attrs = self._build_attributes({'for': self._get_id(field), **kwargs})
         return Markup(f'<label {attrs}>{field.title()}</label>')
 
     def _input_type(self, type_, field, **kwargs):
         value = kwargs.pop('value', None)
         value = value if value is not None else self._get_value(field)
-        attrs = {
+        attrs = self._build_attributes({
             'type': type_,
             'id': self._get_id(field),
             'name': self._get_name(field),
             'value': value,
             **kwargs
-        }
-        attrs = " ".join(f'{k}="{v}"' for k, v in attrs.items())
+        })
         return Markup(f'<input {attrs}>')
 
     def hidden_field(self, field, **kwargs):
