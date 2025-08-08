@@ -101,7 +101,7 @@ class Form:
             <select id="{{ id }}" name="{{ name }}">
               <option value="">{{ prompt }}</option>
               {% for elem in collection %}
-              <option value="{{ elem[option_value] }}" {% if elem[option_value] == value %}selected{% endif %}>
+              <option value="{{ elem[option_value] }}" {% if elem[option_value]|string == value %}selected{% endif %}>
                 {{ elem[option_display] }}
               </option>
               {% endfor %}
