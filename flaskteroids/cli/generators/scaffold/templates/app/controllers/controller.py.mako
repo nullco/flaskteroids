@@ -2,6 +2,7 @@ from http import HTTPStatus
 from flask import url_for
 from flaskteroids import params, rules, redirect_to
 from flaskteroids.actions import before_action
+from flaskteroids.controller import render
 from app.controllers.application_controller import ApplicationController
 from app.models.${model_ref} import ${model}
 
@@ -28,13 +29,13 @@ class ${controller}Controller(ApplicationController):
         if self.${model_ref}.is_persisted():
             return redirect_to(url_for('show_${singular}', id=self.${model_ref}.id))
         else:
-            return redirect_to(url_for('new_${singular}'))
+            return render('new', status=HTTPStatus.UNPROCESSABLE_ENTITY)
 
     def update(self):
         if self.${model_ref}.update(**self._${model_ref}_params()):
             return redirect_to(url_for('show_${singular}', id=self.${model_ref}.id))
         else:
-            return redirect_to(url_for('new_${singular}'))
+            return render('edit', status=HTTPStatus.UNPROCESSABLE_ENTITY)
 
     def destroy(self):
         self.${model_ref}.destroy()

@@ -1,10 +1,10 @@
 {% call(form) form_with(model=${model_ref}) %}
   {% if ${model_ref}.errors %}
     <div style="color: red">
-      <h2>some errors prohibited this resource from being saved:</h2>
+      <h2>{{ ${model_ref}.errors | count }} errors prohibited this ${singular} from being saved:</h2>
       <ul>
-      {% for error in ${model_ref}.errors %}
-        <li>{{ error.full_message }}</li>
+      {% for message in ${model_ref}.errors.full_messages() %}
+        <li>{{ message }}</li>
       {% endfor %}
       </ul>
     </div>
