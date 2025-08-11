@@ -114,5 +114,6 @@ class Form:
             value=value
         ))
 
-    def submit(self, value='Submit'):
-        return Markup(f'<input type="submit" value="{value}">')
+    def submit(self, value='Submit', **kwargs):
+        attrs = self._build_attributes(kwargs)
+        return Markup(f'<input type="submit" value="{value}" {attrs}>')

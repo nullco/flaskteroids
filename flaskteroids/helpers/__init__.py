@@ -6,8 +6,9 @@ from flaskteroids.form import Form
 from flaskteroids.csrf import CSRFToken
 
 
-def link_to(name, path):
-    return Markup(f'<a href="{path}">{name}</a>')
+def link_to(name, path, **kwargs):
+    attrs = " ".join(f'{k}="{v}"' for k, v in kwargs.items())
+    return Markup(f'<a href="{path}" {attrs}>{name}</a>')
 
 
 def button_to(message, instance, method):
