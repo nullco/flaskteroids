@@ -174,7 +174,7 @@ def belongs_to(name: str, class_name: str | None = None, foreign_key: str | None
     return bind
 
 
-def has_many(name: str, class_name: str | None = None, foreign_key: str | None = None):
+def has_many(name: str, class_name: str | None = None, foreign_key: str | None = None, dependent: str | None = None):
     def bind(cls):
         ns = registry.get(Model)
         models = ns['models']
@@ -189,7 +189,12 @@ def has_many(name: str, class_name: str | None = None, foreign_key: str | None =
             return  # TODO: Handle better this
         fk_name = foreign_key or inflector.foreign_key(cls.__name__)
         fk = getattr(related_base, fk_name)
-        rel = relationship(related_base, primaryjoin=base.id == fk)
+        match dependent:
+            case 'destroy':
+                cascade = 'all, delete-orphan'
+            case _:
+                cascade = 'save-update, merge'
+        rel = relationship(related_base, primaryjoin=base.id == fk, cascade=cascade)
         setattr(base, name, rel)
         _register_association(name, rel, cls, related_cls, fk_name)
         _link_associations(name, rel, cls, related_cls, fk_name)
