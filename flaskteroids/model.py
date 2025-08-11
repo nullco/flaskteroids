@@ -361,6 +361,10 @@ class ModelQuery:
     def __repr__(self):
         return repr([r for r in self])
 
+    def __json__(self):
+        res = session.execute(self._query).scalars()
+        return [_build(self._model_cls, r).__json__() for r in res]
+
 
 class Model:
 

@@ -1,5 +1,5 @@
 from functools import wraps
-from flask import render_template, request, make_response, g
+from flask import render_template, request, make_response, g, jsonify
 from flaskteroids.actions import decorate_action, get_actions, register_actions, params
 from flaskteroids.rules import bind_rules
 from flaskteroids.inflector import inflector
@@ -40,9 +40,15 @@ class FormatResponder:
     def json(self, func):
         self._handlers["application/json"] = func
 
+    def _get_accepts(self):
+        if request.path.endswith('.json/'):
+            return 'application/json'
+        accept_mimetypes = request.accept_mimetypes
+        accepts = accept_mimetypes.best_match(self._handlers.keys()) or "text/html"
+        return accepts
+
     def respond(self):
-        content_type = request.headers.get("Accept", "text/html")
-        handler = self._handlers.get(content_type)
+        handler = self._handlers.get(self._get_accepts())
         if handler:
             return handler()
         else:
@@ -55,8 +61,7 @@ def render(action=None, *, status=200, json=None):
         view = render_template(f'{cname}/{action}.html', **{**g.controller.__dict__, 'params': params})
         return make_response(view, status)
     elif json:
-        return json
-    pass
+        return jsonify(json.__json__())
 
 
 def respond_to():

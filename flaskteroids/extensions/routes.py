@@ -1,6 +1,6 @@
 import re
 import logging
-from flask import abort, request, g
+from flask import abort, request
 from importlib import import_module
 from flaskteroids import params
 from flaskteroids.inflector import inflector
@@ -53,9 +53,9 @@ class RoutesExtension:
 
     def resources(self, name, *, param=None, only=None, nested=None):
         resources = _ResourceBuilder().resources(name, param=param, only=only, nested=nested)
-        for method_name, path, to in resources:
+        for method_name, path, to, as_ in resources:
             method = getattr(self, method_name)
-            method(path, to=to)
+            method(path, to=to, as_=as_)
 
     def resource(self, name, *, only=None):
         only = only or ['new', 'create', 'show', 'edit', 'update', 'destroy']
@@ -150,14 +150,15 @@ class _ResourceBuilder:
 
     def resources(self, name, *, param=None, only=None, nested=None):
         only = only or ['index', 'new', 'create', 'show', 'edit', 'update', 'destroy']
+        singular = inflector.singularize(name)
         cfg = {
-            'index': ('get', '/{name}/', '{name}#index'),
-            'new': ('get', '/{name}/new/', '{name}#new'),
-            'create': ('post', '/{name}/', '{name}#create'),
-            'show': ('get', '/{name}/<{param}>/', '{name}#show'),
-            'edit': ('get', '/{name}/<{param}>/edit/', '{name}#edit'),
-            'update': ('put', '/{name}/<{param}>/', '{name}#update'),
-            'destroy': ('delete', '/{name}/<{param}>/', '{name}#destroy'),
+            'index': ('get', '/{name}/', '{name}#index', f'index_{singular}'),
+            'new': ('get', '/{name}/new/', '{name}#new', f'new_{singular}'),
+            'create': ('post', '/{name}/', '{name}#create', f'create_{singular}'),
+            'show': ('get', '/{name}/<{param}>/', '{name}#show', f'show_{singular}'),
+            'edit': ('get', '/{name}/<{param}>/edit/', '{name}#edit', f'edit_{singular}'),
+            'update': ('put', '/{name}/<{param}>/', '{name}#update', f'update_{singular}'),
+            'destroy': ('delete', '/{name}/<{param}>/', '{name}#destroy', f'destroy_{singular}'),
         }
         resources = []
         nested_resources = []
@@ -168,10 +169,12 @@ class _ResourceBuilder:
             param = param or 'int:id'
         for action in only:
             action_cfg = cfg[action]
-            method, path, to = action_cfg
+            method, path, to, as_ = action_cfg
             path = f'{self._path}{path.format(name=name, param=param)}'
             to = to.format(name=name)
-            resources.append((method, path, to))
+            resources.append((method, path, to, as_))
+            if method == 'get':
+                resources.append((method, f'{path.rstrip('/')}.json/', to, f'{as_}.json'))
         if nested_resources:
             resources.extend(nested_resources)
         return resources
