@@ -1,5 +1,5 @@
 from functools import wraps
-from flask import render_template, request, make_response 
+from flask import render_template, request, make_response, g
 from flaskteroids.actions import decorate_action, get_actions, register_actions, params
 from flaskteroids.rules import bind_rules
 from flaskteroids.inflector import inflector
@@ -26,7 +26,7 @@ def _decorate_action(cls, action):
         res = action(self, *args, **kwargs)
         if res:
             return res
-        return self.render(action.__name__)
+        return render(action.__name__)
     return wrapper
 
 
@@ -49,15 +49,20 @@ class FormatResponder:
             return "406 Not Acceptable", 406
 
 
+def render(action=None, *, status=200, json=None):
+    if action:
+        cname = inflector.underscore(g.controller.__class__.__name__.replace("Controller", ""))
+        view = render_template(f'{cname}/{action}.html', **{**g.controller.__dict__, 'params': params})
+        return make_response(view, status)
+    elif json:
+        return json
+    pass
+
+
+def respond_to():
+    return FormatResponder()
+
+
 class ActionController:
-
-    def respond_to(self):
-        return FormatResponder()
-
-    def render(self, action=None, *, status=200, json=None):
-        if action:
-            cname = inflector.underscore(self.__class__.__name__.replace("Controller", ""))
-            view = render_template(f'{cname}/{action}.html', **{**self.__dict__, 'params': params})
-            return make_response(view, status)
-        elif json:
-            return json
+    def __init__(self, *args, **kwargs) -> None:
+        g.controller = self

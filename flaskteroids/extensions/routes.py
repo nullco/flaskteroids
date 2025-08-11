@@ -1,6 +1,6 @@
 import re
 import logging
-from flask import abort, request
+from flask import abort, request, g
 from importlib import import_module
 from flaskteroids import params
 from flaskteroids.inflector import inflector
