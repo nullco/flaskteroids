@@ -464,29 +464,25 @@ class Model:
         return self.save()
 
     def save(self, validate=True):
-        try:
-            if validate:
-                validate_rules = registry.get(self.__class__).get('validates') or []
-                self._errors = Errors()
-                for vr in validate_rules:
-                    self._errors.extend(vr(instance=self))
-                if self._errors:
-                    return False
+        if validate:
+            validate_rules = registry.get(self.__class__).get('validates') or []
+            self._errors = Errors()
+            for vr in validate_rules:
+                self._errors.extend(vr(instance=self))
+            if self._errors:
+                return False
 
-            for field, value in self._changes.items():
-                setattr(self._base_instance, field, value)
-            self._changes.clear()
+        for field, value in self._changes.items():
+            setattr(self._base_instance, field, value)
+        self._changes.clear()
 
-            now = datetime.now(timezone.utc)
-            if not self.is_persisted():
-                self._base_instance.created_at = now
-                session.add(self._base_instance)
-            self._base_instance.updated_at = now
-            session.flush()
-            return True
-        except Exception:
-            _logger.exception(f'Error storing {self.__class__.__name__} instance')
-            return False
+        now = datetime.now(timezone.utc)
+        if not self.is_persisted():
+            self._base_instance.created_at = now
+            session.add(self._base_instance)
+        self._base_instance.updated_at = now
+        session.flush()
+        return True
 
     def is_persisted(self):
         return inspect(self._base_instance).persistent
