@@ -3,6 +3,7 @@ from flask import render_template, request, make_response, g, jsonify
 from flaskteroids.actions import decorate_action, get_actions, register_actions, params
 from flaskteroids.rules import bind_rules
 from flaskteroids.inflector import inflector
+from contextlib import contextmanager
 
 
 def init(cls):
@@ -26,6 +27,8 @@ def _decorate_action(cls, action):
         res = action(self, *args, **kwargs)
         if res:
             return res
+        elif 'response' in g and g.response:
+            return g.response
         return render(action.__name__)
     return wrapper
 
@@ -64,8 +67,11 @@ def render(action=None, *, status=200, json=None):
         return jsonify(json.__json__())
 
 
+@contextmanager
 def respond_to():
-    return FormatResponder()
+    formatter = FormatResponder()
+    yield formatter
+    g.response = formatter.respond()
 
 
 class ActionController:
