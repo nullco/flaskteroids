@@ -67,6 +67,13 @@ def render(action=None, *, status=200, json=None):
         return jsonify(json.__json__())
 
 
+def head(status=200, headers=None):
+    res = make_response('', status)
+    if headers:
+        res.headers.update(headers)
+    return res
+
+
 @contextmanager
 def respond_to():
     formatter = FormatResponder()
