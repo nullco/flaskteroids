@@ -174,7 +174,7 @@ class _ResourceBuilder:
             to = to.format(name=name)
             resources.append((method, path, to, as_))
             if action in ('index', 'create', 'show', 'update', 'destroy'):
-                resources.append((method, f'{path.rstrip('/')}.json/', to, f'{as_}.json'))
+                resources.append((method, f'{path.rstrip("/")}.json/', to, f'{as_}.json'))
         if nested_resources:
             resources.extend(nested_resources)
         return resources
