@@ -358,6 +358,33 @@ Flaskteroids automatically includes CSRF (Cross-Site Request Forgery) protection
 </form>
 ```
 
+### Forms
+
+Flaskteroids provides a simple and powerful way to build forms using the `form_with` helper and the `Form` object. The `form_with` helper can be used with a model object to automatically generate the form's action and method, and it also includes the CSRF token automatically.
+
+Here's an example of how to create a form for a `Post` model:
+
+```html
+<!-- app/views/posts/_form.html -->
+{% call(form) form_with(model=post) %}
+  <div>
+    {{ form.label('title') }}
+    {{ form.text_field('title') }}
+  </div>
+
+  <div>
+    {{ form.label('content') }}
+    {{ form.text_area('content') }}
+  </div>
+
+  <div>
+    {{ form.submit('Save') }}
+  </div>
+{% endcall %}
+```
+
+The `form` object provides a variety of helpers for generating form fields, such as `text_field`, `text_area`, `password_field`, `checkbox`, and more.
+
 ### Rate Limiting
 
 You can easily add rate limiting to your controllers to prevent abuse. The `rate_limit` decorator allows you to specify the maximum number of requests allowed within a given time window.
