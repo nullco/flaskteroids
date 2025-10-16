@@ -66,7 +66,7 @@ You can use the `flask generate` command to create various components of your ap
     ```sh
     flask generate authentication
     ```
-    This command sets up a complete authentication system, including routes, controllers, and views for user registration, login, and password management.
+    This command sets up a complete authentication system, including routes, controllers, and views for user authentication.
 
 *   **Controller:**
     ```sh
