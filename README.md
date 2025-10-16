@@ -52,10 +52,16 @@ It brings the proven philosophy of **convention over configuration** to Python, 
   - [Project Structure](#project-structure)
   - [Routing](#routing)
   - [Controllers](#controllers)
+    - [Controller Callbacks](#controller-callbacks)
+    - [Content Negotiation](#content-negotiation)
   - [Models](#models)
   - [Views](#views)
   - [Mailers](#mailers)
   - [Background Jobs](#background-jobs)
+  - [Flash Messaging](#flash-messaging)
+- [Security](#security)
+  - [CSRF Protection](#csrf-protection)
+  - [Rate Limiting](#rate-limiting)
 - [Command-Line Interface (CLI)](#command-line-interface-cli)
   - [Generators](#generators)
 - [Testing](#testing)
@@ -189,6 +195,41 @@ class PostsController(ActionController):
         # makes @post available in the template.
 ```
 
+#### Controller Callbacks
+
+You can use callbacks to run code before a controller action. The `before_action` callback is useful for setting up instance variables or performing authentication checks. Callbacks must be defined within a `@rules` decorator.
+
+```python
+from flaskteroids.actions import before_action
+from flaskteroids.rules import rules
+
+@rules(
+    before_action('_set_post', only=['show', 'edit', 'update', 'destroy'])
+)
+class PostsController(ActionController):
+    def show(self):
+        # self.post is already set by the callback
+        pass
+
+    def _set_post(self):
+        self.post = Post.find(params["id"])
+```
+
+#### Content Negotiation
+
+Flaskteroids can handle different response formats within a single action using the `respond_to` block. This is particularly useful for building APIs that serve both HTML and JSON.
+
+```python
+from flaskteroids.controller import respond_to
+
+class PostsController(ActionController):
+    def index(self):
+        self.posts = Post.all()
+        with respond_to() as format:
+            format.html(lambda: render('index'))
+            format.json(lambda: render(json=self.posts))
+```
+
 ### Models
 
 Models inherit from `flaskteroids.model.Model` and act as a rich wrapper around your database tables. Database columns are defined during migration and are automatically available as attributes on the model.
@@ -278,6 +319,55 @@ To enqueue a job, call `perform_later`:
 
 ```python
 MyJob().perform_later(user_id=1)
+```
+
+### Flash Messaging
+
+Flaskteroids provides a `flash` object for setting and displaying temporary messages.
+
+In your controller, you can set a message like this:
+
+```python
+from flaskteroids.flash import flash
+
+class PostsController(ActionController):
+    def create(self):
+        # ... create post
+        flash['notice'] = "Post was successfully created."
+        # redirect
+```
+
+Then, in your view, you can display the message:
+
+```html
+{% if flash['notice'] %}
+  <div class="notice">{{ flash['notice'] }}</div>
+{% endif %}
+```
+
+## Security
+
+### CSRF Protection
+
+Flaskteroids automatically includes CSRF (Cross-Site Request Forgery) protection on all non-GET requests. A CSRF token is generated and must be included in your forms.
+
+```html
+<form action="/posts" method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <!-- ... form fields -->
+</form>
+```
+
+### Rate Limiting
+
+You can easily add rate limiting to your controllers to prevent abuse. The `rate_limit` decorator allows you to specify the maximum number of requests allowed within a given time window.
+
+```python
+from flaskteroids.rate_limit import rate_limit
+
+@rate_limit(to=10, within=60) # 10 requests per 60 seconds
+class PostsController(ActionController):
+    # ...
 ```
 
 ## Command-Line Interface (CLI)
