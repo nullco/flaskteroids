@@ -31,6 +31,8 @@
 
 It brings the proven philosophy of **convention over configuration** to Python, allowing you to build scalable and maintainable applications with speed and confidence.
 
+It provides a "batteries-included" experience while being extremely selective about external dependencies, ensuring the core framework remains lean, fast, and secure.
+
 ## Features
 
 - **Full MVC Architecture**: Clean separation of concerns with Models, Views, and Controllers.
