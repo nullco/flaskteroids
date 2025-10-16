@@ -7,7 +7,7 @@
 <h1 align="center">Flaskteroids</h1>
 
 <p align="center">
-  <strong>Flask on Steroids: A Python MVC framework inspired by Ruby on Rails.</strong>
+  <strong>Flaskteroids: A complete, batteries-included Python MVC framework inspired by Ruby on Rails.</strong>
 </p>
 
 <p align="center">
@@ -27,20 +27,21 @@
 
 ---
 
-**Flaskteroids** is a lightweight and powerful Python MVC framework that enhances Flask with a structured and elegant abstraction. Inspired by the APIs of Ruby on Rails, it simplifies web application development while leveraging the robustness of Flask.
 
-It brings the proven philosophy of **convention over configuration** to Python, allowing you to build scalable and maintainable applications with speed and confidence.
+**Flaskteroids** (or Flask on Steroids) is a lightweight yet powerful Python MVC framework that supercharges **Flask** with a clean, elegant structure. Inspired by the best of **Ruby on Rails**, it brings clarity and productivity to your web development workflow.
 
-It provides a "batteries-included" experience while being extremely selective about external dependencies, ensuring the core framework remains lean, fast, and secure.
+Built on the philosophy of **convention over configuration**, Flaskteroids helps you move fast, write less code, and stay focused on what matters: building scalable, maintainable applications with confidence.
+
+With a **batteries-included** approach and carefully chosen core dependencies, Flaskteroids stays lean, fast, and secure — giving you everything you need, and nothing you don’t.
 
 ## Features
 
 - **Full MVC Architecture**: Clean separation of concerns with Models, Views, and Controllers.
-- **Elegant Routing**: Intuitive and resourceful routing inspired by Rails.
+- **Elegant Routing**: Intuitive and resourceful routing.
 - **Built-in ORM**: Seamless integration with SQLAlchemy and Alembic for database management and migrations.
-- **Powerful CLI**: A rich set of commands for generating models, controllers, mailers, scaffolds, and more.
 - **Background Jobs**: Integrated with Celery for easy background job processing.
 - **RESTful by Design**: Quickly build API routes with JSON responses.
+- **Powerful CLI**: A rich set of commands for generating models, controllers, mailers, scaffolds, and more.
 - **Flask Compatibility**: Retains the full power of Flask and its rich ecosystem.
 
 ## Table of Contents
