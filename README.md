@@ -53,6 +53,9 @@ It brings the proven philosophy of **convention over configuration** to Python, 
   - [Routing](#routing)
   - [Controllers](#controllers)
   - [Models](#models)
+  - [Views](#views)
+  - [Mailers](#mailers)
+  - [Background Jobs](#background-jobs)
 - [Command-Line Interface (CLI)](#command-line-interface-cli)
   - [Generators](#generators)
 - [Testing](#testing)
@@ -136,7 +139,8 @@ my_project/
 │   ├── controllers/
 │   ├── models/
 │   ├── mailers/
-│   └── views/
+│   ├── views/
+│   └── jobs/
 ├── config/
 │   └── routes.py
 └── run.py
@@ -145,6 +149,8 @@ my_project/
 - `app/controllers`: Handle web requests and respond with data or rendered views.
 - `app/models`: Define your application's data structure and database interactions.
 - `app/views`: Contain the templates for your application's UI.
+- `app/mailers`: Handle sending emails.
+- `app/jobs`: Define background jobs to be run asynchronously.
 - `config/routes.py`: Define the URL routes for your application.
 
 ### Routing
@@ -192,18 +198,86 @@ The `Model` class provides a powerful API for associations and data validation.
 ```python
 # app/models/post.py
 from flaskteroids.model import Model, validates, belongs_to, has_many
+from flaskteroids.rules import rules
 
+@rules(
+    # --- Associations ---
+    belongs_to('user'),
+    has_many('comments'),
+
+    # --- Validations ---
+    validates('title', presence=True, length={'minimum': 5}),
+    validates('content', presence=True)
+)
 class Post(Model):
     # The database columns (e.g., title, content, user_id) are defined
     # in the database migration and automatically mapped to this model.
+    pass
+```
 
-    # --- Associations ---
-    belongs_to('user')
-    has_many('comments')
+### Views
 
-    # --- Validations ---
-    validates('title', presence=True, length={'minimum': 5})
-    validates('content', presence=True)
+Views are the user-facing part of your application. Flaskteroids uses Jinja2 for templating, which is the default for Flask. Templates are located in the `app/views` directory and are automatically rendered by controller actions.
+
+Instance variables set in the controller are available in the corresponding view file.
+
+```html
+<!-- app/views/posts/index.html -->
+{% extends "layouts/application.html" %}
+
+{% block body %}
+<h1>Posts</h1>
+
+<ul>
+  {% for post in posts %}
+  <li>{{ post.title }}</li>
+  {% endfor %}
+</ul>
+{% endblock %}
+```
+
+### Mailers
+
+Mailers inherit from `ActionMailer` and are used to send emails from your application. They work similarly to controllers, with actions that correspond to email templates.
+
+```python
+# app/mailers/user_mailer.py
+from flaskteroids.mailer import ActionMailer
+
+class UserMailer(ActionMailer):
+    def welcome_email(self, user):
+        self.user = user
+        self.mail(to=user.email, subject="Welcome to My App!")
+```
+
+You can then deliver the email synchronously or asynchronously:
+
+```python
+# Deliver now
+UserMailer().welcome_email(user).deliver_now()
+
+# Deliver later using a background job
+UserMailer().welcome_email(user).deliver_later()
+```
+
+### Background Jobs
+
+For long-running tasks, you can use background jobs. Jobs inherit from `Job` and define a `perform` method.
+
+```python
+# app/jobs/my_job.py
+from flaskteroids.jobs.job import Job
+
+class MyJob(Job):
+    def perform(self, user_id):
+        # Do some long-running task
+        print(f"Performing job for user {user_id}")
+```
+
+To enqueue a job, call `perform_later`:
+
+```python
+MyJob().perform_later(user_id=1)
 ```
 
 ## Command-Line Interface (CLI)
