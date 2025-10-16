@@ -94,21 +94,29 @@ Now, open your browser and navigate to `http://127.0.0.1:5000`. You should see t
 
 Let's create a simple blog to see the power of scaffolding.
 
-1.  **Generate a Post scaffold:**
+1.  **Create a new app:**
+    This command will create a new Flaskteroids application in a directory called `my_blog`.
+
+    ```sh
+    flaskteroids new my_blog
+    cd my_blog
+    ```
+
+2.  **Generate a Post scaffold:**
     This command will create the model, controller, views, and database migration for a `Post` resource with `title` and `content` fields.
 
     ```sh
     flask generate scaffold Post title:string content:text
     ```
 
-2.  **Run the database migration:**
+3.  **Run the database migration:**
     Apply the changes to your database schema.
 
     ```sh
     flask db:migrate
     ```
 
-3.  **Start the server:**
+4.  **Start the server:**
 
     ```sh
     flask run
