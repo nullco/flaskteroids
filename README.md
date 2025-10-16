@@ -340,8 +340,8 @@ class PostsController(ActionController):
 Then, in your view, you can display the message:
 
 ```html
-{% if flash['notice'] %}
-  <div class="notice">{{ flash['notice'] }}</div>
+{% if flash.notice %}
+  <div class="notice">{{ flash.notice }}</div>
 {% endif %}
 ```
 
