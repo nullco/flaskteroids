@@ -87,6 +87,15 @@ def test_has_many():
     assert len([u for u in User.all()]) == 3
 
 
+def test_create_many():
+    group = Group.create(name='one')
+    group.users.create(username='one')
+    group.users.create(username='two')
+    group.users.create(username='three')
+    assert len(group.users) == 3
+    assert len([u for u in User.all()]) == 3
+
+
 def test_destroy():
     group = Group.create(name='one')
     User.create(username='one', group=group)

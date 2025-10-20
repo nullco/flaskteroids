@@ -199,22 +199,36 @@ def has_many(name: str, class_name: str | None = None, foreign_key: str | None =
         _register_association(name, rel, cls, related_cls, fk_name)
         _link_associations(name, rel, cls, related_cls, fk_name)
 
-        def rel_wrapper(self):
+        def rel_wrapper(self_):
             class Many:
                 def __init__(self, base_instance) -> None:
-                    self._values = getattr(base_instance, name)
+                    self._base_instance = base_instance
+
+                def _entries(self):
+                    return getattr(self._base_instance, name)
 
                 def __len__(self):
-                    return len(self._values)
+                    return len(self._entries())
 
                 def __iter__(self):
-                    for v in self._values:
+                    for v in self._entries():
                         yield _build(related_cls, v)
 
                 def __repr__(self) -> str:
                     return repr([v for v in self])
 
-            return Many(self._base_instance)
+                def create(self, **kwargs):
+                    instance = related_cls.new(**kwargs)
+                    # Prefer back_populates if available
+                    if rel.back_populates:
+                        setattr(instance, rel.back_populates, self_)
+                    # Otherwise fallback to foreign key (might happen when no belongs_to defined)
+                    elif fk_name in instance.column_names:
+                        setattr(instance, fk_name, self_.id)
+                    instance.save()
+                    return instance
+
+            return Many(self_._base_instance)
 
         setattr(cls, name, property(rel_wrapper))
     return bind
