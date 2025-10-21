@@ -219,13 +219,8 @@ def has_many(name: str, class_name: str | None = None, foreign_key: str | None =
 
                 def create(self, **kwargs):
                     instance = related_cls.new(**kwargs)
-                    # Prefer back_populates if available
-                    if rel.back_populates:
-                        setattr(instance, rel.back_populates, self_)
-                    # Otherwise fallback to foreign key (might happen when no belongs_to defined)
-                    elif fk_name in instance.column_names:
-                        setattr(instance, fk_name, self_.id)
-                    instance.save()
+                    self._entries().append(instance._base_instance)
+                    self_.save()
                     return instance
 
             return Many(self_._base_instance)
