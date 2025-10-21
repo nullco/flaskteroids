@@ -174,6 +174,32 @@ def belongs_to(name: str, class_name: str | None = None, foreign_key: str | None
     return bind
 
 
+class Many:
+    def __init__(self, instance, related_cls, name) -> None:
+        self._instance = instance
+        self._related_cls = related_cls
+        self._name = name
+
+    def _entries(self):
+        return getattr(self._instance._base_instance, self._name)
+
+    def __len__(self):
+        return len(self._entries())
+
+    def __iter__(self):
+        for v in self._entries():
+            yield _build(self._related_cls, v)
+
+    def __repr__(self) -> str:
+        return repr([v for v in self])
+
+    def create(self, **kwargs):
+        related_instance = self._related_cls.new(**kwargs)
+        self._entries().append(related_instance._base_instance)
+        self._instance.save()
+        return related_instance
+
+
 def has_many(name: str, class_name: str | None = None, foreign_key: str | None = None, dependent: str | None = None):
     def bind(cls):
         ns = registry.get(Model)
@@ -199,31 +225,8 @@ def has_many(name: str, class_name: str | None = None, foreign_key: str | None =
         _register_association(name, rel, cls, related_cls, fk_name)
         _link_associations(name, rel, cls, related_cls, fk_name)
 
-        def rel_wrapper(self_):
-            class Many:
-                def __init__(self, base_instance) -> None:
-                    self._base_instance = base_instance
-
-                def _entries(self):
-                    return getattr(self._base_instance, name)
-
-                def __len__(self):
-                    return len(self._entries())
-
-                def __iter__(self):
-                    for v in self._entries():
-                        yield _build(related_cls, v)
-
-                def __repr__(self) -> str:
-                    return repr([v for v in self])
-
-                def create(self, **kwargs):
-                    instance = related_cls.new(**kwargs)
-                    self._entries().append(instance._base_instance)
-                    self_.save()
-                    return instance
-
-            return Many(self_._base_instance)
+        def rel_wrapper(self):
+            return Many(self, related_cls, name)
 
         setattr(cls, name, property(rel_wrapper))
     return bind
