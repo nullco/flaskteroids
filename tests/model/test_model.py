@@ -1,13 +1,16 @@
 import pytest
+from datetime import datetime
 from sqlalchemy.orm import declarative_base
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, DateTime
 from flaskteroids.model import Model, validates
 from flaskteroids.rules import rules
 
 
 @pytest.fixture(autouse=True)
 def init(init_models):
-    init_models(Base, [(UserBase, User)])
+    init_models(Base, [
+        (UserBase, User),
+    ])
 
 
 Base = declarative_base()
@@ -18,6 +21,8 @@ class UserBase(Base):
 
     id = Column(Integer(), primary_key=True, autoincrement=True)
     username = Column(String())
+    age = Column(Integer())
+    last_login = Column(DateTime())
 
 
 @rules(
@@ -77,3 +82,20 @@ def test_find_by():
     one = User.find_by(username='one')
     assert one
     assert one.username == 'one'
+
+
+@pytest.mark.parametrize('query_factory, expected_count', [
+    (lambda: User.username == 'one', 1),
+    (lambda: User.username == 'two', 1),
+    (lambda: User.username.in_(['one', 'three']), 2),
+    (lambda: User.age >= 25, 2),
+    (lambda: User.last_login < datetime(2021, 1, 1), 1),
+    (lambda: (User.age < 30) & (User.last_login >= datetime(2021, 1, 1)), 1),
+])
+def test_where(query_factory, expected_count):
+    User.create(username='one', age=30, last_login=datetime(2022, 5, 20))
+    User.create(username='two', age=25, last_login=datetime(2021, 6, 15))
+    User.create(username='three', age=15, last_login=datetime(2020, 1, 1))
+    query = query_factory()
+    users = User.where(query).all()
+    assert len(list(users)) == expected_count

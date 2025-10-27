@@ -348,9 +348,15 @@ class ModelQuery:
         self._model_base = _base(model_cls)
         self._query = select(self._model_base)
 
-    def where(self, **kwargs):
-        self._query = self._query.filter_by(**kwargs)
+    def where(self, *args, **kwargs):
+        if args:
+            self._query = self._query.filter(*args)
+        if kwargs:
+            self._query = self._query.filter_by(**kwargs)
         return self
+
+    def all(self):
+        yield from self.__iter__()
 
     def first(self):
         res = session.execute(self._query).scalars().first()
@@ -378,7 +384,13 @@ class ModelQuery:
         return [_build(self._model_cls, r).__json__() for r in res]
 
 
-class Model:
+class ModelMeta(type):
+    def __getattr__(cls, name):
+        base = _base(cls)
+        return getattr(base, name)
+
+
+class Model(metaclass=ModelMeta):
 
     _fields = ['_changes', '_virtual_fields', '_base_instance', '_errors']
 
@@ -473,6 +485,10 @@ class Model:
     @classmethod
     def find_by(cls, **kwargs):
         return ModelQuery(cls).where(**kwargs).first()
+
+    @classmethod
+    def where(cls, *args, **kwargs):
+        return ModelQuery(cls).where(*args, **kwargs)
 
     def update(self, **kwargs):
         for field, value in kwargs.items():
