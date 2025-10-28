@@ -104,3 +104,61 @@ def test_destroy():
     assert len([u for u in User.all()]) == 2
     group.destroy()
     assert len([u for u in User.all()]) == 0
+
+
+@pytest.fixture
+def user_groups():
+    group_one = Group.create(name='one')
+    User.create(username='one', group=group_one)
+    User.create(username='two', group=group_one)
+    group_two = Group.create(name='two')
+    User.create(username='three', group=group_two)
+    User.create(username='four', group=group_two)
+
+
+@pytest.mark.usefixtures('user_groups')
+def test_lazy_on_many(engine):
+    def capture():
+        [user for group in Group.all() for user in group.users]
+
+    captured_statements = capture_statements(engine, capture)
+    assert len(captured_statements) == 3
+
+
+@pytest.mark.usefixtures('user_groups')
+def test_lazy_on_one(engine):
+    def capture():
+        [user.group for user in User.all()]
+
+    captured_statements = capture_statements(engine, capture)
+    assert len(captured_statements) == 3
+
+
+@pytest.mark.usefixtures('user_groups')
+def test_includes_on_many(engine):
+    def capture():
+        [user for group in Group.includes('users').all() for user in group.users]
+    captured_statements = capture_statements(engine, capture)
+    assert len(captured_statements) == 2
+
+
+@pytest.mark.usefixtures('user_groups')
+def test_includes_on_one(engine):
+    def capture():
+        [user.group for user in User.includes('group').all()]
+    captured_statements = capture_statements(engine, capture)
+    assert len(captured_statements) == 2
+
+
+def capture_statements(engine, func):
+    from sqlalchemy import event
+
+    captured_statements = []
+
+    def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+        captured_statements.append(statement)
+
+    event.listen(engine, "before_cursor_execute", before_cursor_execute)
+    func()
+    event.remove(engine, "before_cursor_execute", before_cursor_execute)
+    return captured_statements

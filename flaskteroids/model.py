@@ -4,7 +4,7 @@ from functools import partial
 from itsdangerous import URLSafeTimedSerializer
 from werkzeug.security import check_password_hash, generate_password_hash
 from sqlalchemy import select, inspect
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, selectinload
 from flaskteroids.db import session
 from flaskteroids import fields
 from flask import current_app
@@ -348,11 +348,22 @@ class ModelQuery:
         self._model_base = _base(model_cls)
         self._query = select(self._model_base)
 
+    def find(self, id):
+        found = self.where(id=id).first()
+        if not found:
+            raise RecordNotFoundException(f"{self._model_cls.__name__} record with id {id} was not found")
+        return found
+
     def where(self, *args, **kwargs):
         if args:
             self._query = self._query.filter(*args)
         if kwargs:
             self._query = self._query.filter_by(**kwargs)
+        return self
+
+    def includes(self, *args):
+        for rel in args:
+            self._query = self._query.options(selectinload(getattr(self._model_base, rel)))
         return self
 
     def all(self):
@@ -378,6 +389,9 @@ class ModelQuery:
 
     def __repr__(self):
         return repr([r for r in self])
+
+    def to_sql(self):
+        return str(self._query.compile(compile_kwargs={"literal_binds": True}))
 
     def __json__(self):
         res = session.execute(self._query).scalars()
@@ -476,11 +490,12 @@ class Model(metaclass=ModelMeta):
         return ModelQuery(cls)
 
     @classmethod
+    def includes(cls, *args):
+        return ModelQuery(cls).includes(*args)
+
+    @classmethod
     def find(cls, id):
-        found = ModelQuery(cls).where(id=id).first()
-        if not found:
-            raise RecordNotFoundException(f"{cls.__name__} record with id {id} was not found")
-        return found
+        return ModelQuery(cls).find(id)
 
     @classmethod
     def find_by(cls, **kwargs):
