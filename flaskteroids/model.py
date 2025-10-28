@@ -164,6 +164,8 @@ def belongs_to(name: str, class_name: str | None = None, foreign_key: str | None
 
         def rel_wrapper(self):
             related_base_instance = getattr(self._base_instance, name)
+            if not related_base_instance:
+                return None
             return _build(related_cls, related_base_instance)
 
         setattr(cls, name, property(rel_wrapper))
@@ -324,8 +326,6 @@ def _get_association(model_cls, *, name):
 
 
 def _build(model_cls, base_instance):
-    if base_instance is None:
-        return None
     res = model_cls()
     res._base_instance = base_instance
     return res
