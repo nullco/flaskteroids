@@ -174,7 +174,7 @@ def belongs_to(name: str, class_name: str | None = None, foreign_key: str | None
     return bind
 
 
-class Many:
+class Relation:
     def __init__(self, instance, related_cls, name) -> None:
         self._instance = instance
         self._related_cls = related_cls
@@ -226,7 +226,7 @@ def has_many(name: str, class_name: str | None = None, foreign_key: str | None =
         _link_associations(name, rel, cls, related_cls, fk_name)
 
         def rel_wrapper(self):
-            return Many(self, related_cls, name)
+            return Relation(self, related_cls, name)
 
         setattr(cls, name, property(rel_wrapper))
     return bind
