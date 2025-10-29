@@ -23,7 +23,7 @@ class SQLAlchemyExtension:
         self._engine = create_engine(app.config['DB']['SQLALCHEMY_URL'])
         self._models_module = app.config['MODELS']['LOCATION']
         self._metadata = MetaData()
-        self._session_factory = scoped_session(sessionmaker(bind=self._engine))
+        self._session_factory = scoped_session(sessionmaker(bind=self._engine, autoflush=False))
         if not hasattr(app, 'extensions'):
             app.extensions = {}
         app.extensions['flaskteroids.db'] = self
