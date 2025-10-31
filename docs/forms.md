@@ -10,7 +10,6 @@ Here's an example of how to create a form for a `Post` model:
 
 ```html
 <!-- app/views/posts/_form.html -->
-{%raw %}
 {% call(form) form_with(model=post) %}
   <div>
     {{ form.label('title') }}
@@ -26,7 +25,6 @@ Here's an example of how to create a form for a `Post` model:
     {{ form.submit('Save') }}
   </div>
 {% endcall %}
-{% endraw %}
 ```
 
 The `form` object provides a variety of helpers for generating form fields, such as `text_field`, `text_area`, `password_field`, `checkbox`, and more.
