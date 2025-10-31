@@ -1,8 +1,22 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "flaskteroids"
 version = "0.1.0"
 description = "Flask on steroids"
 readme = "README.md"
+license = { file = "LICENSE" }
+authors = [
+  { name="Juan Sebastian Quintero" }
+]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Framework :: Flask",
+]
 dependencies = [
 	"alembic>=1.15.1",
 	"Flask",
