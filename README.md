@@ -70,8 +70,6 @@ With a **batteries-included** approach and carefully chosen core dependencies, F
   - [Rate Limiting](#rate-limiting)
 - [Command-Line Interface (CLI)](#command-line-interface-cli)
   - [Generators](#generators)
-- [Testing](#testing)
-- [Contributing](#contributing)
 - [License](#license)
 
 ## Installation
