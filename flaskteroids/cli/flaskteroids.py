@@ -16,9 +16,10 @@ def new(app_name):
     ab = ArtifactsBuilder(base_path, click.echo)
     try:
         ab.dir()
-        ab.file('README.md')
+        ab.file('README.md', _readme(app_name))
         ab.file('Dockerfile')
         ab.file('.gitignore', _gitignore())
+        ab.file('pyproject.toml', _pyproject_toml(app_name))
         ab.file('wsgi.py', _wsgi())
         ab.file('jobs.py', _jobs())
         ab.file('storage/.keep')
@@ -49,6 +50,28 @@ __pycache__/
 .venv/
 storage/database.db
 storage/jobs_database.db
+    """
+
+
+def _readme(app_name):
+    return f"""
+# {app_name.replace('_', ' ').title()}
+
+Add your project description here
+    """
+
+
+def _pyproject_toml(app_name):
+    return f"""
+[project]
+name = "{app_name}"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "flaskteroids",
+]
     """
 
 
