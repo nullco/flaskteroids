@@ -507,18 +507,6 @@ Use the `flask generate` command to create various components:
     ```
     Generates a model, RESTful controller, and views.
 
-## Testing
-
-Flaskteroids is designed for testability. To run your application's test suite, use `pytest`:
-
-```sh
-pytest
-```
-
-## Contributing
-
-Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) to get started.
-
 ## License
 
 Flaskteroids is open-source and released under the [MIT License](LICENSE).
