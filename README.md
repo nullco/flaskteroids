@@ -27,16 +27,23 @@
 
 ---
 
+**Flaskteroids** (or Flask on Steroids) is a lightweight yet powerful
+Python MVC framework that supercharges **Flask** with a clean, elegant structure.
+Inspired by the best of **Ruby on Rails**, it brings clarity and productivity
+to your web development workflow.
 
-**Flaskteroids** (or Flask on Steroids) is a lightweight yet powerful Python MVC framework that supercharges **Flask** with a clean, elegant structure. Inspired by the best of **Ruby on Rails**, it brings clarity and productivity to your web development workflow.
+Built on the philosophy of **convention over configuration**, Flaskteroids helps
+you move fast, write less code, and stay focused on what matters: building
+scalable, maintainable applications with confidence.
 
-Built on the philosophy of **convention over configuration**, Flaskteroids helps you move fast, write less code, and stay focused on what matters: building scalable, maintainable applications with confidence.
-
-With a **batteries-included** approach and carefully chosen core dependencies, Flaskteroids stays lean, fast, and secure — giving you everything you need, and nothing you don’t.
+With a **batteries-included** approach and carefully chosen core dependencies,
+Flaskteroids stays lean, fast, and secure — giving you everything you need,
+and nothing you don’t.
 
 ## Features
 
-- **Full MVC Architecture**: Clean separation of concerns with Models, Views, and Controllers.
+- **Full MVC Architecture**: Clean separation of concerns with Models, Views,
+  and Controllers.
 - **Elegant Routing**: Intuitive and resourceful routing.
 - **Built-in ORM**: Seamless integration with SQLAlchemy and Alembic for database management and migrations.
 - **Background Jobs**: Integrated with Celery for easy background job processing.
@@ -51,10 +58,6 @@ With a **batteries-included** approach and carefully chosen core dependencies, F
   - [Creating a New App](#1-creating-a-new-app)
   - [Running the Server](#2-running-the-server)
   - [Your First Feature: A Blog](#your-first-feature-a-blog)
-- [Security](#security)
-  - [Rate Limiting](#rate-limiting)
-- [Command-Line Interface (CLI)](#command-line-interface-cli)
-  - [Generators](#generators)
 - [License](#license)
 
 ## Installation
@@ -72,11 +75,11 @@ pip install flaskteroids
 Create a new Flaskteroids application using the `flaskteroids new` command:
 
 ```sh
-flaskteroids new my_project
-cd my_project
+flaskteroids new my_app
+cd my_app
 ```
 
-This creates a new directory called `my_project` with a standard application structure.
+This creates a new directory called `my_app` with a standard application structure.
 
 ### 2. Running the Server
 
@@ -86,45 +89,39 @@ To start the development server, run:
 flask run
 ```
 
-Now, open your browser and navigate to `http://127.0.0.1:5000`. You should see the Flaskteroids welcome page!
+Now, open your browser and navigate to `http://127.0.0.1:5000`.
+You should see the Flaskteroids welcome page!
 
 ## Your First Feature: A Blog
 
 Let's create a simple blog to see the power of scaffolding.
+Inside your `my_app` follow the next steps:
 
-1.  **Create a new app:**
-    This command will create a new Flaskteroids application in a directory called `my_blog`.
+1. **Generate a Post scaffold:**
+   This command will create the model, controller, views, and database
+   migration for a `Post` resource with `title` and `content` fields.
 
-    ```sh
-    flaskteroids new my_blog
-    cd my_blog
-    ```
+   ```sh
+   flask generate scaffold Post title:string content:text
+   ```
 
-2.  **Generate a Post scaffold:**
-    This command will create the model, controller, views, and database migration for a `Post` resource with `title` and `content` fields.
+2. **Run the database migration:**
+   Apply the changes to your database schema.
 
-    ```sh
-    flask generate scaffold Post title:string content:text
-    ```
+   ```sh
+   flask db:migrate
+   ```
 
-3.  **Run the database migration:**
-    Apply the changes to your database schema.
+3. **Start the server:**
 
-    ```sh
-    flask db:migrate
-    ```
+   ```sh
+   flask run
+   ```
 
-4.  **Start the server:**
+Now, visit `http://1227.0.0.1:5000/posts` in your browser.
+You have a complete set of pages to create, view, update, and delete posts.
 
-    ```sh
-    flask run
-    ```
-
-Now, visit `http://1227.0.0.1:5000/posts` in your browser. You have a complete set of pages to create, view, update, and delete posts.
-
-
-For more check out the [documentation](docs/)
-
+For more check out the [documentation](https://nullco.github.io/flaskteroids/index.html)
 
 ## License
 
