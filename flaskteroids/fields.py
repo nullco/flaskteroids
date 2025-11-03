@@ -114,6 +114,7 @@ fields = {
     'datetime': DateTime(),
     'date': Date(),
     'time': Time(),
+    'json': Json(),
 }
 
 

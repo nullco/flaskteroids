@@ -33,3 +33,7 @@ Use it as `date`
 ## Time
 
 Use it as `time`
+
+## JSON
+
+Use it as `json`
