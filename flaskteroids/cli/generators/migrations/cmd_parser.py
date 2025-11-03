@@ -63,7 +63,7 @@ class _CreateTableCommand:
 
 
 class _DropTableCommand:
-    pattern = re.compile(r'create_([a-z_]+)')
+    pattern = re.compile(r'drop_([a-z_]+)')
 
     @classmethod
     def parse(cls, cmd, _):

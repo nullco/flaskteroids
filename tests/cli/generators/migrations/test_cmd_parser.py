@@ -113,6 +113,33 @@ def test_create_table(cmd, args, expected):
             assert len(oc.foreign_keys) == len(eoc.foreign_keys)
 
 
+@pytest.mark.parametrize('cmd, expected', [
+    (
+        'DropProducts',
+        {
+            'normalized_cmd': 'drop_products',
+            'parsed': {
+                'cmd': 'drop_table',
+                'ops': {
+                    'up': [
+                        ops.DropTableOp('products')
+                    ]
+                }
+            }
+        }
+    ),
+])
+def test_drop_table(cmd, expected):
+    res = cmd_parser.parse(cmd, None)
+    assert res['normalized_cmd'] == expected['normalized_cmd']
+    assert res['parsed']['cmd'] == expected['parsed']['cmd']
+    ops = res['parsed']['ops']['up']
+    expected_ops = expected['parsed']['ops']['up']
+    for op, expected_op in zip(ops, expected_ops):
+        assert type(op) is type(expected_op)
+        assert op.table_name == expected_op.table_name
+
+
 @pytest.mark.parametrize('cmd, args, expected', [
     (
         'AddPriceToProducts',
