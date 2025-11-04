@@ -1,4 +1,4 @@
-site_name: Flaskteroids Documentation
+site_name: Flaskteroids
 site_url: https://nullco.github.io/flaskteroids
 theme:
   name: material

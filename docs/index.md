@@ -1,4 +1,4 @@
-# Flaskteroids Documentation
+# Documentation
 
 ## Table of Contents
 
