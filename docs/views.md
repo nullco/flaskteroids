@@ -6,7 +6,6 @@ Instance variables set in the controller are available in the corresponding view
 
 ```html
 <!-- app/views/posts/index.html -->
-{% raw %}
 {% extends "layouts/application.html" %}
 
 {% block body %}
@@ -18,5 +17,4 @@ Instance variables set in the controller are available in the corresponding view
   {% endfor %}
 </ul>
 {% endblock %}
-{% endraw %}
 ```
