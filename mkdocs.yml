@@ -1,4 +1,32 @@
 site_name: Flaskteroids
 site_url: https://nullco.github.io/flaskteroids
+repo_url: https://github.com/nullco/flaskteroids
 theme:
   name: material
+
+  palette:
+    - scheme: default
+      primary: black
+      accent: deep orange
+      toggle:
+        icon: material/toggle-switch 
+        name: Switch to dark mode
+
+    - scheme: slate
+      primary: black
+      accent: deep orange
+      toggle:
+        icon: material/toggle-switch-off-outline
+        name: Switch to light mode
+  icon:
+    logo: material/flask-round-bottom
+    repo: fontawesome/brands/github-alt
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences

@@ -1,8 +1,8 @@
-<p align="center">
+<!--<p align="center">
   <a href="https://github.com/nullco/flaskteroids">
     <img src="https://raw.githubusercontent.com/nullco/flaskteroids/main/docs/images/logo.png" alt="Flaskteroids Logo" width="200">
   </a>
-</p>
+</p>-->
 
 <h1 align="center">Flaskteroids</h1>
 
