@@ -132,8 +132,8 @@ Nest resources to create hierarchical routes:
 ```python
 def register(router):
     router.resources("users", nested=lambda r: [
-        r.resources("posts"),
-        r.resources("comments")
+        *r.resources("posts"),
+        *r.resources("comments")
     ])
 ```
 
