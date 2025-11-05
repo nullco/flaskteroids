@@ -19,7 +19,7 @@ Define a GET route using `router.get(path, to="controller#action", as_=None)`:
 def register(router):
     router.get("/", to="welcome#index")
     router.get("/about", to="pages#about")
-    router.get("/users/:id", to="users#show")
+    router.get("/users/<int:id>", to="users#show")
 ```
 
 ### POST Routes
@@ -38,7 +38,7 @@ Define a PUT route using `router.put(path, to="controller#action", as_=None)`:
 
 ```python
 def register(router):
-    router.put("/users/:id", to="users#update")
+    router.put("/users/<int:id>", to="users#update")
 ```
 
 ### DELETE Routes
@@ -47,7 +47,7 @@ Define a DELETE route using `router.delete(path, to="controller#action", as_=Non
 
 ```python
 def register(router):
-    router.delete("/users/:id", to="users#destroy")
+    router.delete("/users/<int:id>", to="users#destroy")
 ```
 
 ### Root Route
@@ -74,15 +74,15 @@ def register(router):
 
 This generates the following routes:
 
-| HTTP Method | Path              | Controller#Action | Named Route    |
-|-------------|-------------------|-------------------|----------------|
-| GET         | /posts/           | posts#index       | index_post     |
-| GET         | /posts/new/       | posts#new         | new_post       |
-| POST        | /posts/           | posts#create      | create_post    |
-| GET         | /posts/:id/       | posts#show        | show_post      |
-| GET         | /posts/:id/edit/  | posts#edit        | edit_post      |
-| PUT         | /posts/:id/       | posts#update      | update_post    |
-| DELETE      | /posts/:id/       | posts#destroy     | destroy_post   |
+| HTTP Method | Path                   | Controller#Action | Named Route    |
+|-------------|------------------------|-------------------|----------------|
+| GET         | /posts/                | posts#index       | index_post     |
+| GET         | /posts/new/            | posts#new         | new_post       |
+| POST        | /posts/                | posts#create      | create_post    |
+| GET         | /posts/<int:id>/       | posts#show        | show_post      |
+| GET         | /posts/<int:id>/edit/  | posts#edit        | edit_post      |
+| PUT         | /posts/<int:id>/       | posts#update      | update_post    |
+| DELETE      | /posts/<int:id>/       | posts#destroy     | destroy_post   |
 
 By default, the `:id` parameter is an integer, but you can customize it:
 
@@ -139,9 +139,9 @@ def register(router):
 
 This generates nested routes like:
 
-- GET /users/:user_id/posts/
-- POST /users/:user_id/posts/
-- GET /users/:user_id/posts/:id/
+- GET /users/<int:user_id>/posts/
+- POST /users/<int:user_id>/posts/
+- GET /users/<int:user_id>/posts/<int:id>/
 - etc.
 
 ## Named Routes
@@ -162,9 +162,9 @@ For resourceful routes, the following JSON routes are added:
 
 - GET /posts/.json/ → posts#index
 - POST /posts/.json/ → posts#create
-- GET /posts/:id/.json/ → posts#show
-- PUT /posts/:id/.json/ → posts#update
-- DELETE /posts/:id/.json/ → posts#destroy
+- GET /posts/<int:id>/.json/ → posts#show
+- PUT /posts/<int:id>/.json/ → posts#update
+- DELETE /posts/<int:id>/.json/ → posts#destroy
 
 ## Method Overrides
 

@@ -164,7 +164,7 @@ class _ResourceBuilder:
         nested_resources = []
         if nested:
             param = param or f'int:{inflector.singularize(name)}_id'
-            nested_resources = nested(_ResourceBuilder(f'{self._path}/{name}/{param}'))
+            nested_resources = nested(_ResourceBuilder(f'{self._path}/{name}/<{param}>'))
         else:
             param = param or 'int:id'
         for action in only:
