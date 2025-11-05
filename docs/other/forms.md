@@ -1,4 +1,4 @@
-# Handling Forms
+# Forms
 
 Handling user input from forms is a common task in web applications. Flaskteroids provides a cohesive set of tools to build forms, handle submissions securely, and prevent common vulnerabilities.
 

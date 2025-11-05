@@ -22,6 +22,26 @@ theme:
     logo: material/flask-round-bottom
     repo: fontawesome/brands/github-alt
 
+nav:
+  - Introduction: index.md
+  - Getting Started:
+    - Overview: getting_started.md
+    - Project Structure: project_structure.md
+  - Models:
+    - Overview: models/index.md
+  - Views:
+    - Overview: views/index.md
+  - Controllers:
+    - Overview: controllers/index.md
+    - Routing: controllers/routing.md
+    - Advanced topics: controllers/advanced.md
+  - Other Components:
+    - CLI: other/cli.md
+    - Fields: other/fields.md
+    - Forms: other/forms.md
+    - Background Jobs: other/jobs.md
+    - Mailers: other/mailers.md
+
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
