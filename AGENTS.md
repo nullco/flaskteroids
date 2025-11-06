@@ -50,3 +50,13 @@ This framework provides a collection of tools and a cohesive ecosystem with a cl
 *   **Formatting (Ruff):** `ruff format .`
 
 
+### Tests implementation
+
+When implementing tests, consider the following
+
+* Use pytest and pytest-mock conventions
+* Use pytest fixtures
+* Keep code simple and out of unnecessary comments
+* Only test things via their public APIs. (No _ methods, etc)
+
+
