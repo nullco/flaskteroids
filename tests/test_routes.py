@@ -1,5 +1,4 @@
 import pytest
-from unittest.mock import ANY
 
 
 @pytest.fixture
@@ -15,28 +14,27 @@ def router(app):
 
 class TestRoutes:
 
-    def test_root_registers_route(self, router, app):
+    def test_root_registers_route(self, router, app, mocker):
         router.root(to="welcome#index")
-        app.add_url_rule.assert_called_with('/', view_func=ANY, methods=['GET'])
+        app.add_url_rule.assert_called_with('/', view_func=mocker.ANY, methods=['GET'])
 
-    def test_get_registers_route(self, router, app):
+    def test_get_registers_route(self, router, app, mocker):
         router.get("/test", to="test#index")
-        app.add_url_rule.assert_called_with('/test', view_func=ANY, methods=['GET'])
+        app.add_url_rule.assert_called_with('/test', view_func=mocker.ANY, methods=['GET'])
 
-    def test_post_registers_route(self, router, app):
+    def test_post_registers_route(self, router, app, mocker):
         router.post("/test", to="test#create")
-        app.add_url_rule.assert_called_with('/test', view_func=ANY, methods=['POST'])
+        app.add_url_rule.assert_called_with('/test', view_func=mocker.ANY, methods=['POST'])
 
-    def test_put_registers_route(self, router, app):
+    def test_put_registers_route(self, router, app, mocker):
         router.put("/test", to="test#update")
-        app.add_url_rule.assert_called_with('/test', view_func=ANY, methods=['PUT'])
+        app.add_url_rule.assert_called_with('/test', view_func=mocker.ANY, methods=['PUT'])
 
-    def test_delete_registers_route(self, router, app):
+    def test_delete_registers_route(self, router, app, mocker):
         router.delete("/test", to="test#destroy")
-        app.add_url_rule.assert_called_with('/test', view_func=ANY, methods=['DELETE'])
+        app.add_url_rule.assert_called_with('/test', view_func=mocker.ANY, methods=['DELETE'])
 
     def test_resources_registers_multiple_routes(self, router, app):
-        """Test resources method registers multiple routes."""
         router.resources("posts")
         assert app.add_url_rule.call_count == 12
 
