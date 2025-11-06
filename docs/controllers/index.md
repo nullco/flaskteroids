@@ -45,16 +45,17 @@ class PostsController(ActionController):
 
 ## Content Negotiation
 
-Flaskteroids can handle different response formats within a single action using the `respond_to` block. This is particularly useful for building APIs that serve both HTML and JSON.
+Flaskteroids can handle different response formats within a single action using the `respond` method. This is particularly useful for building APIs that serve both HTML and JSON.
 
 ```python
-from flaskteroids.controller import ActionController, respond_to
+from flaskteroids.controller import ActionController, respond
 from app.models.post import Post
 
 class PostsController(ActionController):
     def index(self):
         self.posts = Post.all()
-        with respond_to() as format:
-            format.html(lambda: render('index'))
-            format.json(lambda: render(json=self.posts))
+        return respond(
+            html=lambda: render('index'),
+            json=lambda: render(json=self.posts)
+        )
 ```

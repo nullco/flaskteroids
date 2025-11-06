@@ -3,7 +3,6 @@ from flask import render_template, request, make_response, g, jsonify
 from flaskteroids.actions import decorate_action, get_actions, register_actions, params
 from flaskteroids.rules import bind_rules
 from flaskteroids.inflector import inflector
-from contextlib import contextmanager
 
 
 def init(cls):
@@ -27,21 +26,16 @@ def _decorate_action(cls, action):
         res = action(self, *args, **kwargs)
         if res:
             return res
-        elif 'response' in g and g.response:
-            return g.response
         return render(action.__name__)
     return wrapper
 
 
 class FormatResponder:
-    def __init__(self):
-        self._handlers = {}
-
-    def html(self, func):
-        self._handlers["text/html"] = func
-
-    def json(self, func):
-        self._handlers["application/json"] = func
+    def __init__(self, *, html=None, json=None):
+        self._handlers = {
+            'text/html': html,
+            'application/json': json
+        }
 
     def _get_accepts(self):
         if request.path.endswith('.json/'):
@@ -50,7 +44,7 @@ class FormatResponder:
         accepts = accept_mimetypes.best_match(self._handlers.keys()) or "text/html"
         return accepts
 
-    def respond(self):
+    def handle(self):
         handler = self._handlers.get(self._get_accepts())
         if handler:
             return handler()
@@ -74,11 +68,9 @@ def head(status=200, headers=None):
     return res
 
 
-@contextmanager
-def respond_to():
-    formatter = FormatResponder()
-    yield formatter
-    g.response = formatter.respond()
+def respond(**kwargs):
+    formatter = FormatResponder(**kwargs)
+    return formatter.handle()
 
 
 class ActionController:

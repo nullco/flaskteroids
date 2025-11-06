@@ -2,7 +2,7 @@ from http import HTTPStatus
 from flask import url_for
 from flaskteroids import params, rules, redirect_to
 from flaskteroids.actions import before_action
-from flaskteroids.controller import render, head, respond_to
+from flaskteroids.controller import render, head, respond
 from app.controllers.application_controller import ApplicationController
 from app.models.${model_ref} import ${model}
 
@@ -14,14 +14,16 @@ class ${controller}Controller(ApplicationController):
 
     def index(self):
         self.${models_ref} = ${model}.all()
-        with respond_to() as format:
-            format.html(lambda: render('index'))
-            format.json(lambda: render(json=self.${models_ref}))
+        return respond(
+            html=lambda: render('index'),
+            json=lambda: render(json=self.${models_ref})
+        )
 
     def show(self):
-        with respond_to() as format:
-            format.html(lambda: render('show'))
-            format.json(lambda: render(json=self.${model_ref}))
+        return respond(
+            html=lambda: render('show'),
+            json=lambda: render(json=self.${model_ref})
+        )
 
     def new(self):
         self.${model_ref} = ${model}.new()
@@ -31,28 +33,35 @@ class ${controller}Controller(ApplicationController):
 
     def create(self):
         self.${model_ref} = ${model}.create(**self._${model_ref}_params())
-        with respond_to() as format:
-            if self.${model_ref}.save():
-                format.html(lambda: redirect_to(url_for('show_${singular}', id=self.${singular}.id), notice="${singular.title()} was successfully created."))
-                format.json(lambda: render(json=self.${model_ref}))
-            else:
-                format.html(lambda: render('new', status=HTTPStatus.UNPROCESSABLE_ENTITY))
-                format.json(lambda: render(json=self.${model_ref}.errors, status=HTTPStatus.UNPROCESSABLE_ENTITY))
+        if self.${model_ref}.save():
+            return respond(
+                html=lambda: redirect_to(url_for('show_${singular}', id=self.${singular}.id), notice="${singular.title()} was successfully created."),
+                json=lambda: render(json=self.${model_ref})
+            )
+        else:
+            return respond(
+                html=lambda: render('new', status=HTTPStatus.UNPROCESSABLE_ENTITY),
+                json=lambda: render(json=self.${model_ref}.errors, status=HTTPStatus.UNPROCESSABLE_ENTITY)
+            )
 
     def update(self):
-        with respond_to() as format:
-            if self.${model_ref}.update(**self._${model_ref}_params()):
-                format.html(lambda: redirect_to(url_for('show_${singular}', id=self.${model_ref}.id), notice="${singular.title()} was successfully updated."))
-                format.json(lambda: render(json=self.${model_ref}))
-            else:
-                format.html(lambda: render('edit', status=HTTPStatus.UNPROCESSABLE_ENTITY))
-                format.json(lambda: render(json=self.${model_ref}.errors, status=HTTPStatus.UNPROCESSABLE_ENTITY))
+        if self.${model_ref}.update(**self._${model_ref}_params()):
+            return respond(
+                html=lambda: redirect_to(url_for('show_${singular}', id=self.${model_ref}.id), notice="${singular.title()} was successfully updated."),
+                json=lambda: render(json=self.${model_ref})
+            )
+        else:
+            return respond(
+                html=lambda: render('edit', status=HTTPStatus.UNPROCESSABLE_ENTITY),
+                json=lambda: render(json=self.${model_ref}.errors, status=HTTPStatus.UNPROCESSABLE_ENTITY)
+            )
 
     def destroy(self):
         self.${model_ref}.destroy()
-        with respond_to() as format:
-            format.html(lambda: redirect_to(url_for('index_${singular}'), status=HTTPStatus.SEE_OTHER))
-            format.json(lambda: head(HTTPStatus.NO_CONTENT))
+        return respond(
+            html=lambda: redirect_to(url_for('index_${singular}'), status=HTTPStatus.SEE_OTHER),
+            json=lambda: head(HTTPStatus.NO_CONTENT)
+        )
 
     def _set_${model_ref}(self):
         self.${model_ref} = ${model}.find(id=params['id'])
