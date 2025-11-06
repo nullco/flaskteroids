@@ -1,0 +1,8 @@
+|23|     def test_generate_creates_artifacts_builder(self, artifacts_builder, mock_template, mock_migrations):
+|26|         artifacts_builder.return_value = mock_ab
+|33|         artifacts_builder.assert_called_once_with('.', ANY)
+|38|     def test_generate_adds_model_files(self, artifacts_builder, mock_template, mock_migrations):
+|41|         artifacts_builder.return_value = mock_ab
+|56|     def test_generate_adds_view_files(self, artifacts_builder, mock_template, mock_migrations):
+|59|         artifacts_builder.return_value = mock_ab
+|77|     def test_generate_adds_controller_files(self, artifacts_builder, mock_template, mock_migrations):
