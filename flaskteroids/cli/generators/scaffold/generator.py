@@ -29,4 +29,4 @@ def generate(name: str, args: list[str]):
 
 
 def _template(*, path, params=None):
-    return template('flaskteroids.cli.generators.scaffold.templates', path=path, params=params)
+    return template('flaskteroids.cli.generators.scaffold', path=path, params=params)

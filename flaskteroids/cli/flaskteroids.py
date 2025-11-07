@@ -139,4 +139,4 @@ app = create_app(__name__).extensions['flaskteroids.jobs']
 
 
 def _template(*, path, params=None):
-    return template('flaskteroids.cli.templates', path=path, params=params)
+    return template('flaskteroids.cli', path=path, params=params)

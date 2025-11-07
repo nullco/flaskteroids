@@ -35,4 +35,4 @@ def generate():
 
 
 def _template(*, path):
-    return template('flaskteroids.cli.generators.authentication.templates', path=path)
+    return template('flaskteroids.cli.generators.authentication', path=path)
