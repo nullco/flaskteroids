@@ -1,0 +1,21 @@
+{% call(form) form_with(model=user) %}
+  {% if user.errors %}
+    <div style="color: red">
+      <h2>{{ user.errors | count }} errors prohibited this user from being saved:</h2>
+      <ul>
+      {% for message in user.errors.full_messages() %}
+        <li>{{ message }}</li>
+      {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  <div>
+    {{ form.label('username', style='display: block') }}
+    {{ form.text_field('username') }}
+  </div>
+
+  <div>
+  {{ form.submit() }}
+  </div>
+{% endcall %}

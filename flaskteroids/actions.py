@@ -198,7 +198,7 @@ class ActionParameters(UserDict):
         return expected
 
 
-def _get_params():
+def _get_params() -> ActionParameters:
     if 'params' not in g:
         g.params = ActionParameters()
     return g.params

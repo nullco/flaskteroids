@@ -1,3 +1,9 @@
 def register(route):
     route.get('/up/', to="flaskteroids/health#show")
     route.get('/users/', to="users#index")
+    route.get('/users/<int:id>/', to="users#show")
+    route.get('/users/new/', to="users#new")
+    route.post('/users/', to="users#create")
+    route.get('/users/<int:id>/edit', to="users#edit")
+    route.put('/users/<int:id>/', to="users#update")
+    route.delete('/users/<int:id>/', to="users#destroy")

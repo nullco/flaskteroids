@@ -1,0 +1,11 @@
+<h1>New User</h1>
+
+{% with user=user %}
+{% include "users/_form.html" %}
+{% endwith %}
+
+<br>
+
+<div>
+  <a href="{{ url_for('index_user') }}">Back to Users</a>
+</div>
