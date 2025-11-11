@@ -234,25 +234,21 @@ def has_many(name: str, class_name: str | None = None, foreign_key: str | None =
     return bind
 
 
-def validates(field, **kwargs):
-    validations = {
-        'presence': _validate_presence,
-        'length': _validate_length,
-        'confirmation': _validate_confirmation,
+def validates(field, *, presence=None, length=None, confirmation=None):
+    options = {
+        'presence': {'config': presence, 'validator': _validate_presence},
+        'length': {'config': length, 'validator': _validate_length},
+        'confirmation': {'config': confirmation, 'validator': _validate_confirmation}
     }
+    options = {k: v for k, v in options.items() if v['config'] is not None}
 
     def bind(model_cls):
         ns = registry.get(model_cls)
-        for v in kwargs:
-            if v in validations:
-                ns.setdefault('validates', []).append(
-                    partial(
-                        validations[v],
-                        field=field,
-                        config=kwargs[v]
-                    )
-                )
-        if 'confirmation' in kwargs:
+        for value in options.values():
+            ns.setdefault('validates', []).append(
+                partial(value['validator'], field=field, config=value['config'])
+            )
+        if 'confirmation' in options:
             ns.setdefault('virtual_fields', {})[f'{field}_confirmation'] = {}
     return bind
 
