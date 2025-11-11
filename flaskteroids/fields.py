@@ -74,7 +74,7 @@ class DateTime(Field):
 class Date(Field):
 
     def __init__(self) -> None:
-        super().__init__(sa.Date, datetime)
+        super().__init__(sa.Date, date)
 
     def as_primitive(self, value):
         with suppress(ValueError):
@@ -87,7 +87,7 @@ class Date(Field):
 class Time(Field):
 
     def __init__(self) -> None:
-        super().__init__(sa.Time, datetime)
+        super().__init__(sa.Time, time)
 
     def as_primitive(self, value):
         with suppress(ValueError):
