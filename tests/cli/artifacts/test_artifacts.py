@@ -45,3 +45,35 @@ def test_run_fails(builder, subprocess):
     subprocess.run.return_value.returncode = -1
     with pytest.raises(ArtifactsBuilderException):
         builder.run('ls -la')
+
+
+def test_create_file_with_contents(builder):
+    builder.file('test.txt', 'hello world')
+
+
+def test_dir_without_name(builder):
+    builder.dir()
+
+
+def test_python_run(builder):
+    builder.python_run('pip install something')
+
+
+def test_python_run_fails(builder, subprocess):
+    subprocess.run.return_value.returncode = -1
+    with pytest.raises(ArtifactsBuilderException):
+        builder.python_run('pip install something')
+
+
+def test_modify_py_file(builder, mocker):
+    mocker.patch('builtins.open', mocker.mock_open(read_data='def hello():\n    pass\n'))
+    mock_parse = mocker.patch('flaskteroids.cli.artifacts.ast.parse')
+    mock_tree = mocker.Mock()
+    mock_parse.return_value = mock_tree
+    mocker.patch('flaskteroids.cli.artifacts.ast.unparse', return_value='def hello():\n    print("modified")\n')
+
+    def visitor():
+        visitor.visit = lambda tree: tree
+        return visitor
+
+    builder.modify_py_file('test.py', visitor)
