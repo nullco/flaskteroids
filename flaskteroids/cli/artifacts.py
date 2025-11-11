@@ -1,4 +1,5 @@
 import ast
+import sys
 import os
 import textwrap
 import subprocess
@@ -43,6 +44,17 @@ class ArtifactsBuilder:
     def run(self, cmd: str):
         res = subprocess.run(
             cmd.split(),
+            cwd=self._base_path,
+            capture_output=True,
+            text=True
+        )
+        if res.returncode != 0:
+            raise ArtifactsBuilderException(f'command {cmd} returned {res.returncode}:\n{res.stderr}')
+        self._notify(f"    run  {cmd}")
+
+    def python_run(self, cmd: str):
+        res = subprocess.run(
+            [sys.executable, '-m', *cmd.split()],
             cwd=self._base_path,
             capture_output=True,
             text=True

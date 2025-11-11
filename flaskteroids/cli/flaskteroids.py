@@ -36,7 +36,7 @@ def new(app_name):
         ab.file('app/views/layouts/mailer.txt')
         ab.file('app/controllers/application_controller.py', _application_controller())
         ab.file('config/routes.py', _routes())
-        ab.run('flask db:init')
+        ab.python_run('flask db:init')
         ab.file('db/migrate/versions/.keep')
         ab.run('git init')
         ab.run('git branch -m main')
