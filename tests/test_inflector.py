@@ -97,3 +97,75 @@ def test_pluralize_with_locales(spanish_inflector, word, locale, expected):
         assert spanish_inflector.pluralize(word) == expected
     else:
         assert spanish_inflector.pluralize(word, locale=locale) == expected
+
+
+class TestEmptyStringHandling:
+    def test_pluralize_empty_string(self, inflector):
+        assert inflector.pluralize("") == ""
+
+    def test_singularize_empty_string(self, inflector):
+        assert inflector.singularize("") == ""
+
+    def test_underscore_empty_string(self, inflector):
+        assert inflector.underscore("") == ""
+
+    def test_camelize_empty_string(self, inflector):
+        assert inflector.camelize("") == ""
+
+
+class TestIrregularCaseHandling:
+    def test_pluralize_lowercase_irregular(self, inflector):
+        assert inflector.pluralize("person") == "people"
+
+    def test_pluralize_capitalized_irregular(self, inflector):
+        assert inflector.pluralize("Person") == "People"
+
+    def test_pluralize_uppercase_irregular(self, inflector):
+        assert inflector.pluralize("PERSON") == "PEOPLE"
+
+    def test_singularize_lowercase_irregular(self, inflector):
+        assert inflector.singularize("people") == "person"
+
+    def test_singularize_capitalized_irregular(self, inflector):
+        assert inflector.singularize("People") == "Person"
+
+    def test_singularize_uppercase_irregular(self, inflector):
+        assert inflector.singularize("PEOPLE") == "PERSON"
+
+    def test_add_irregular_with_capitalized_input(self, inflector):
+        inflector.add_irregular("Child", "Children")
+        assert inflector.pluralize("child") == "children"
+        assert inflector.pluralize("Child") == "Children"
+        assert inflector.singularize("children") == "child"
+        assert inflector.singularize("Children") == "Child"
+
+
+class TestRuleRemovalSafety:
+    def test_remove_plural_rule_unknown_locale_no_error(self, inflector):
+        inflector.remove_plural_rule(r"$", locale="unknown")
+
+    def test_remove_singular_rule_unknown_locale_no_error(self, inflector):
+        inflector.remove_singular_rule(r"s$", locale="unknown")
+
+    def test_remove_plural_rule_existing_locale(self, inflector):
+        inflector.remove_plural_rule(r"$", locale="en")
+        rules = inflector.get_plural_rules("en")
+        assert all(r[0].pattern != r"$" for r in rules)
+
+
+class TestMatchCaseMixedCase:
+    def test_mixed_case_word_preserves_replacement(self, inflector):
+        inflector.add_irregular("iPhone", "iPhones")
+        assert inflector.pluralize("iPhone") == "iphones"
+
+    def test_single_uppercase_letter(self, inflector):
+        inflector.add_irregular("I", "we")
+        assert inflector.pluralize("I") == "We"
+
+
+class TestUnknownLocale:
+    def test_pluralize_unknown_locale_returns_word(self, inflector):
+        assert inflector.pluralize("cat", locale="unknown") == "cat"
+
+    def test_singularize_unknown_locale_returns_word(self, inflector):
+        assert inflector.singularize("cats", locale="unknown") == "cats"
