@@ -1,4 +1,5 @@
 import logging
+from typing import TypedDict
 from datetime import datetime, timezone
 from functools import partial
 from itsdangerous import URLSafeTimedSerializer
@@ -234,7 +235,23 @@ def has_many(name: str, class_name: str | None = None, foreign_key: str | None =
     return bind
 
 
-def validates(field, *, presence=None, length=None, confirmation=None):
+class PresenceConfig(TypedDict):
+    message: str
+
+
+class LenghtConfig(TypedDict):
+    minimum: int | None
+    maximum: int | None
+
+
+class ConfirmationConfig(TypedDict):
+    pass
+
+
+def validates(field, *,
+              presence: None | PresenceConfig | bool = None,
+              length: None | LenghtConfig = None,
+              confirmation=None):
     options = {
         'presence': {'config': presence, 'validator': _validate_presence},
         'length': {'config': length, 'validator': _validate_length},
@@ -266,7 +283,7 @@ def _validate_presence(*, instance, field, config):
     return errors
 
 
-def _validate_length(*, instance,  field, config):
+def _validate_length(*, instance, field, config: LenghtConfig | None):
     if not config:
         return []
     errors = []
