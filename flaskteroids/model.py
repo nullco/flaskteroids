@@ -244,14 +244,10 @@ class LenghtConfig(TypedDict):
     maximum: int | None
 
 
-class ConfirmationConfig(TypedDict):
-    pass
-
-
 def validates(field, *,
               presence: None | PresenceConfig | bool = None,
               length: None | LenghtConfig = None,
-              confirmation=None):
+              confirmation: None | bool = None):
     options = {
         'presence': {'config': presence, 'validator': _validate_presence},
         'length': {'config': length, 'validator': _validate_length},
@@ -299,7 +295,7 @@ def _validate_length(*, instance, field, config: LenghtConfig | None):
     return errors
 
 
-def _validate_confirmation(*, instance, field, config):
+def _validate_confirmation(*, instance, field, config: None | bool):
     if not config:
         return []
     errors = []
