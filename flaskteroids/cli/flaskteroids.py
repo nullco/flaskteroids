@@ -22,6 +22,15 @@ def new(app_name):
         ab.file("pyproject.toml", _pyproject_toml(app_name))
         ab.file("wsgi.py", _wsgi())
         ab.file("jobs.py", _jobs())
+        # Kamal deploy scaffold (example files) — adjust image/commands for your setup
+        ab.file("kamal.yml", _kamal_yml())
+        ab.file(".github/workflows/deploy.yml", _deploy_workflow())
+        ab.file("deploy/release.sh", _deploy_release())
+        # Rails-like default helpers
+        ab.file("bin/release", _bin_release())
+        ab.file("bin/setup", _bin_setup())
+        ab.file("Procfile", _procfile())
+        ab.file("deploy/README.md", _deploy_readme())
         ab.file("storage/.keep")
         ab.dir("db/")
         ab.dir("app/")
@@ -146,7 +155,8 @@ def _template(*, path, params=None):
 
 
 def _dockerfile():
-    return """
+    # Use a raw string to avoid accidental escape-sequence warnings (eg. file:\/\/) in Dockerfile contents
+    return r"""
 # Simplified multi-stage Dockerfile using uv's official image to produce a
 # pinned requirements.txt, then installing dependencies in a minimal Python image.
 
@@ -195,3 +205,158 @@ USER app
 EXPOSE 8000
 CMD ["gunicorn", "wsgi:app", "-b", "0.0.0.0:8000", "--workers", "4"]
     """
+
+
+def _kamal_yml():
+    return """
+# Example kamal configuration for a Flaskteroids app.
+# Update image names, environment and secrets as needed.
+services:
+  web:
+    # Use the IMAGE env var set by your CI; fallback shows a placeholder
+    image: ${IMAGE:-REPLACE_WITH_IMAGE}
+    command: gunicorn wsgi:app -b 0.0.0.0:8000 --workers 4
+    ports:
+      - 80:8000
+    env:
+      FLASK_ENV: production
+      DATABASE_URL: ${{ DATABASE_URL }}
+    mounts:
+      - type: tmpfs
+        target: /tmp
+
+  worker:
+    image: ${IMAGE:-REPLACE_WITH_IMAGE}
+    command: celery -A jobs worker --loglevel=info
+    env:
+      DATABASE_URL: ${{ DATABASE_URL }}
+      CELERY_BROKER_URL: ${{ CELERY_BROKER_URL }}
+
+  hooks:
+  release:
+    - name: migrate
+      # Call the Rails/Heroku-style release script if present
+      command: bash /srv/myapp/bin/release migrate
+      only_on: leader
+"""
+
+
+def _deploy_workflow():
+    return """
+name: Build and deploy
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      IMAGE: ghcr.io/${{ github.repository }}:${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v4
+        with:
+          push: true
+          tags: ${{ env.IMAGE }}
+
+      - name: Deploy with Kamal over SSH
+        env:
+          IMAGE: ${{ env.IMAGE }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_SSH_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+            "cd /srv/myapp && kamal deploy --image $IMAGE"
+        shell: bash
+        # Requires repository secrets: DEPLOY_SSH_KEY, DEPLOY_HOST, DEPLOY_USER
+"""
+
+
+def _deploy_release():
+    return """
+#!/usr/bin/env bash
+set -euo pipefail
+
+cmd=${1:-}
+case "$cmd" in
+  migrate)
+    echo "Running migrations..."
+    # Activate venv if you use one, or run via python -m
+    python -m flask db:migrate
+    ;;
+  *)
+    echo "Unknown release command: $cmd"
+    exit 1
+    ;;
+esac
+"""
+
+
+def _deploy_readme():
+    return """
+Kamal deployment files
+
+Place your built Docker image reference in `kamal.yml` under each service's `image`.
+The release hook calls `deploy/release.sh migrate` on the leader host to run DB migrations.
+
+Adjust the `command` fields and environment variables to match your app and hosting setup.
+"""
+
+
+def _bin_release():
+    return """
+#!/usr/bin/env bash
+# Default release helper similar to Rails/Heroku
+set -euo pipefail
+echo "Running release tasks..."
+case "${1:-}" in
+  migrate)
+    python -m flask db:migrate
+    ;;
+  assets:precompile)
+    # If you precompile assets during build, skip. Placeholder for app teams.
+    echo "Assets precompile not configured"
+    ;;
+  *)
+    echo "Usage: $0 {migrate|assets:precompile}"
+    exit 1
+    ;;
+esac
+"""
+
+
+def _bin_setup():
+    return """
+#!/usr/bin/env bash
+# Setup script to initialize local dev environment. Runs once per new app.
+set -euo pipefail
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt || true
+python -m flask db:init || true
+echo "Setup complete"
+"""
+
+
+def _procfile():
+    return """
+web: gunicorn wsgi:app -b 0.0.0.0:$PORT --workers 4
+worker: celery -A jobs worker --loglevel=info
+"""

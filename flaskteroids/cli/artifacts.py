@@ -11,7 +11,6 @@ class ArtifactsBuilderException(Exception):
 
 
 class ArtifactsBuilder:
-
     def __init__(self, base_path: str, notify_fn=None):
         self._base_path = base_path
         self._notify = notify_fn or (lambda txt: None)
@@ -31,6 +30,14 @@ class ArtifactsBuilder:
         file_path.touch(exist_ok=True)
         if contents:
             file_path.write_text(self._clean(contents))
+        # Make files in bin/ and deploy/ executable by default (convention similar to Rails)
+        try:
+            if str(name).startswith("bin/") or str(name).startswith("deploy/"):
+                mode = file_path.stat().st_mode
+                file_path.chmod(mode | 0o111)
+        except Exception:
+            # non-fatal if filesystem doesn't support chmod
+            pass
         self._notify(f"    create  {name}")
 
     def modify_py_file(self, name, contents):
@@ -43,24 +50,25 @@ class ArtifactsBuilder:
 
     def run(self, cmd: str):
         res = subprocess.run(
-            cmd.split(),
-            cwd=self._base_path,
-            capture_output=True,
-            text=True
+            cmd.split(), cwd=self._base_path, capture_output=True, text=True
         )
         if res.returncode != 0:
-            raise ArtifactsBuilderException(f'command {cmd} returned {res.returncode}:\n{res.stderr}')
+            raise ArtifactsBuilderException(
+                f"command {cmd} returned {res.returncode}:\n{res.stderr}"
+            )
         self._notify(f"    run  {cmd}")
 
     def python_run(self, cmd: str):
         res = subprocess.run(
-            [sys.executable, '-m', *cmd.split()],
+            [sys.executable, "-m", *cmd.split()],
             cwd=self._base_path,
             capture_output=True,
-            text=True
+            text=True,
         )
         if res.returncode != 0:
-            raise ArtifactsBuilderException(f'command {cmd} returned {res.returncode}:\n{res.stderr}')
+            raise ArtifactsBuilderException(
+                f"command {cmd} returned {res.returncode}:\n{res.stderr}"
+            )
         self._notify(f"    run  {cmd}")
 
     def _clean(self, txt: str):
