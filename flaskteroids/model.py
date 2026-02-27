@@ -1,5 +1,5 @@
 import logging
-from typing import TypedDict
+from typing import TypedDict, Any, NotRequired
 from datetime import datetime, timezone
 from functools import partial
 from itsdangerous import URLSafeTimedSerializer
@@ -236,22 +236,33 @@ def has_many(name: str, class_name: str | None = None, foreign_key: str | None =
 
 
 class PresenceConfig(TypedDict):
-    message: str
+    message: NotRequired[str]
 
 
 class LenghtConfig(TypedDict):
-    minimum: int | None
-    maximum: int | None
+    minimum: NotRequired[int]
+    maximum: NotRequired[int]
+
+
+class ComparisonConfig(TypedDict):
+    greater_than: NotRequired[Any]
+    less_than: NotRequired[Any]
+    less_than_or_equal_to: NotRequired[Any]
+    greater_than_or_equal_to: NotRequired[Any]
+    equal_to: NotRequired[Any]
+    other_than: NotRequired[Any]
 
 
 def validates(field, *,
               presence: None | PresenceConfig | bool = None,
               length: None | LenghtConfig = None,
-              confirmation: None | bool = None):
+              confirmation: None | bool = None,
+              comparison: None | ComparisonConfig = None):
     options = {
         'presence': {'config': presence, 'validator': _validate_presence},
         'length': {'config': length, 'validator': _validate_length},
-        'confirmation': {'config': confirmation, 'validator': _validate_confirmation}
+        'confirmation': {'config': confirmation, 'validator': _validate_confirmation},
+        'comparison': {'config': comparison, 'validator': _validate_comparison},
     }
     options = {k: v for k, v in options.items() if v['config'] is not None}
 
@@ -306,6 +317,51 @@ def _validate_confirmation(*, instance, field, config: None | bool):
             confirmation_value = instance._virtual_fields.get(confirmation_field)
             if confirmation_value != value:
                 errors.append((f'{field}.confirmation', f"Field {field} values do not match"))
+    return errors
+
+
+def _resolve_comparison_value(instance, compare_value):
+    if callable(compare_value):
+        return compare_value()
+    if isinstance(compare_value, str):
+        return getattr(instance, compare_value, None)
+    return compare_value
+
+
+def _validate_comparison(*, instance, field, config):
+    if not config:
+        return []
+    errors = []
+    value = getattr(instance, field)
+    if value is None:
+        return errors
+
+    comparisons = {
+        'greater_than': (lambda a, b: a > b, 'must be greater than'),
+        'less_than': (lambda a, b: a < b, 'must be less than'),
+        'greater_than_or_equal_to': (lambda a, b: a >= b, 'must be greater than or equal to'),
+        'less_than_or_equal_to': (lambda a, b: a <= b, 'must be less than or equal to'),
+        'equal_to': (lambda a, b: a == b, 'must be equal to'),
+        'other_than': (lambda a, b: a != b, 'must be other than'),
+    }
+
+    for comparator, raw_compare_value in config.items():
+        if comparator not in comparisons:
+            continue
+
+        compare_value = _resolve_comparison_value(instance, raw_compare_value)
+        if compare_value is None:
+            continue
+
+        check_fn, message = comparisons[comparator]
+        try:
+            if not check_fn(value, compare_value):
+                _logger.debug(f"Comparison failed: instance={instance!r}, field={field}, value={value}, comparator={comparator}, compare_value={compare_value}")
+                errors.append((f'{field}.comparison', f"Field {field} {message} {compare_value}"))
+        except TypeError:
+            _logger.debug(f"Comparison type error: instance={instance!r}, field={field}, value={value}, comparator={comparator}, compare_value={compare_value}")
+            errors.append((f'{field}.comparison', f"Field {field} cannot be compared with {compare_value}"))
+
     return errors
 
 
