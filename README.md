@@ -27,7 +27,7 @@
 
 ---
 
-**Cucurbit** is a lightweight yet powerful Python MVC framework designed to provide the closest possible experience to developing web applications in **Ruby on Rails**, in the python world. By supercharging **Flask** with Rails-inspired conventions and structure, Cucurbit enables developers to build full-featured web applications with unprecedented speed and elegance.
+**Cucurbit** (or Flask on Steroids) is a lightweight yet powerful Python MVC framework designed to provide the closest possible experience to developing web applications in **Ruby on Rails**, in the python world. By supercharging **Flask** with Rails-inspired conventions and structure, Cucurbit enables developers to build full-featured web applications with unprecedented speed and elegance.
 
 Our mission is to bring the proven productivity and developer happiness of Rails to the Python ecosystem, offering a batteries-included framework that emphasizes **convention over configuration**. This means you can focus on building great applications rather than boilerplate code, while maintaining the full power of Flask and its rich ecosystem.
 
