@@ -1,10 +1,10 @@
 from http import HTTPStatus
 from tests.app.models.user import User
-from flaskteroids import redirect_to
-from flaskteroids.helpers import url_for
-from flaskteroids.rules import rules
-from flaskteroids.actions import params, before_action
-from flaskteroids.controller import ActionController, respond, render
+from cucurbit import redirect_to
+from cucurbit.helpers import url_for
+from cucurbit.rules import rules
+from cucurbit.actions import params, before_action
+from cucurbit.controller import ActionController, respond, render
 
 
 @rules(

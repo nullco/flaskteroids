@@ -1,5 +1,5 @@
 from sqlalchemy import create_engine
-from flaskteroids.app import create_app
+from cucurbit.app import create_app
 import pytest
 
 

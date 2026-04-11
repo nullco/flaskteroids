@@ -1,4 +1,4 @@
-# Project: Flaskteroids
+# Project: Cucurbit
 
 This document contains project-specific information to assist the Gemini CLI agent.
 
@@ -42,7 +42,7 @@ This framework provides a collection of tools and a cohesive ecosystem with a cl
 
 *   **Unit/Integration Tests:** `pytest`
 *   **Specific Test File:** `pytest tests/path/to/your_test_file.py`
-*   **Coverage Report:** `pytest --cov=flaskteroids --cov-report=html`
+*   **Coverage Report:** `pytest --cov=cucurbit --cov-report=html`
 
 ### Linting and Formatting
 

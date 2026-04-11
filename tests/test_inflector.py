@@ -1,5 +1,5 @@
 import pytest
-from flaskteroids.inflector import Inflector
+from cucurbit.inflector import Inflector
 
 
 @pytest.fixture

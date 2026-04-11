@@ -1,4 +1,4 @@
-from flaskteroids.model import Model
+from cucurbit.model import Model
 
 
 class User(Model):

@@ -1,4 +1,4 @@
-from flaskteroids.form import Form
+from cucurbit.form import Form
 
 
 def test_form_fields():

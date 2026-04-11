@@ -1,6 +1,6 @@
 import ast
 import pytest
-from flaskteroids.cli.generators.src_modifier import add_routes, add_imports, add_rules, add_base_cls
+from cucurbit.cli.generators.src_modifier import add_routes, add_imports, add_rules, add_base_cls
 
 
 class TestAddRoutes:

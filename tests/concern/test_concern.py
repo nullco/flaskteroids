@@ -1,5 +1,5 @@
-from flaskteroids.concern import Concern
-from flaskteroids.rules import bind_rules, rules
+from cucurbit.concern import Concern
+from cucurbit.rules import bind_rules, rules
 
 registered_rules = []
 

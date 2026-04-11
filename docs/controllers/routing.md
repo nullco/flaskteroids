@@ -1,6 +1,6 @@
 # Routing
 
-Flaskteroids provides a powerful routing system that allows you to define routes in a clean, RESTful manner. Routes are defined in `config/routes.py` by a `register` function that receives a router instance. You can define standard routes or use resourceful routing to handle RESTful conventions automatically.
+Cucurbit provides a powerful routing system that allows you to define routes in a clean, RESTful manner. Routes are defined in `config/routes.py` by a `register` function that receives a router instance. You can define standard routes or use resourceful routing to handle RESTful conventions automatically.
 
 ## Route Format
 
@@ -52,7 +52,7 @@ def register(router):
 
 ### Root Route
 
-The root route maps the home page. If no root route is defined, Flaskteroids automatically adds one pointing to the internal welcome controller.
+The root route maps the home page. If no root route is defined, Cucurbit automatically adds one pointing to the internal welcome controller.
 
 ```python
 def register(router):
@@ -156,7 +156,7 @@ def register(router):
 
 ## JSON Routes
 
-Flaskteroids automatically adds JSON format routes for data-oriented actions:
+Cucurbit automatically adds JSON format routes for data-oriented actions:
 
 For resourceful routes, the following JSON routes are added:
 
@@ -168,7 +168,7 @@ For resourceful routes, the following JSON routes are added:
 
 ## Method Overrides
 
-Since browsers typically only support GET and POST, Flaskteroids provides method override support for PUT and DELETE requests. Include a `_method` parameter in POST requests:
+Since browsers typically only support GET and POST, Cucurbit provides method override support for PUT and DELETE requests. Include a `_method` parameter in POST requests:
 
 ```html
 <form action="/posts/1" method="POST">

@@ -1,7 +1,7 @@
 import pytest
 import sqlalchemy as sa
 from datetime import datetime, date, time
-from flaskteroids.fields import (
+from cucurbit.fields import (
     Field, Text, String, Integer, Float, Boolean,
     DateTime, Date, Time, Json, fields, from_column_type
 )

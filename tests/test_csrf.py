@@ -1,6 +1,6 @@
 import pytest
 from flask import Flask
-from flaskteroids.csrf import CSRFToken
+from cucurbit.csrf import CSRFToken
 from werkzeug.exceptions import BadRequest
 
 

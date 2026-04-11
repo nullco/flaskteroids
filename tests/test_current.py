@@ -1,5 +1,5 @@
 import pytest
-from flaskteroids.current import current
+from cucurbit.current import current
 
 
 @pytest.mark.usefixtures('app_ctx')

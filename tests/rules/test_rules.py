@@ -1,5 +1,5 @@
-from flaskteroids.rules import rules, bind_rules
-from flaskteroids.registry import get
+from cucurbit.rules import rules, bind_rules
+from cucurbit.registry import get
 
 
 def rule(name):

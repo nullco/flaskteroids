@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 "*" = ["templates/**/*"]
 
 [project]
-name = "flaskteroids"
+name = "cucurbit"
 version = "0.1.6"
 description = "Flask on steroids"
 readme = "README.md"
@@ -29,7 +29,7 @@ dependencies = [
 ]
 
 [project.scripts]
-flaskteroids = "flaskteroids.cli.flaskteroids:cli"
+cucurbit = "cucurbit.cli.cucurbit:cli"
 
 
 [tool.flake8]

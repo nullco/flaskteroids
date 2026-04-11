@@ -1,6 +1,6 @@
 # Project Structure
 
-A typical Flaskteroids project follows this structure:
+A typical Cucurbit project follows this structure:
 
 ```
 my_project/

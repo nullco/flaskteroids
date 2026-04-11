@@ -1,6 +1,6 @@
-site_name: Flaskteroids
-site_url: https://nullco.github.io/flaskteroids
-repo_url: https://github.com/nullco/flaskteroids
+site_name: Cucurbit
+site_url: https://nullco.github.io/cucurbit
+repo_url: https://github.com/nullco/cucurbit
 theme:
   name: material
 

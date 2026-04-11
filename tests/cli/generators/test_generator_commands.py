@@ -1,40 +1,40 @@
 import pytest
-from flaskteroids.cli.generators.commands import generate
+from cucurbit.cli.generators.commands import generate
 
 
 @pytest.fixture
 def migrations_generate(mocker):
-    return mocker.patch('flaskteroids.cli.generators.commands.migrations.generate')
+    return mocker.patch('cucurbit.cli.generators.commands.migrations.generate')
 
 
 @pytest.fixture
 def model_generate(mocker):
-    return mocker.patch('flaskteroids.cli.generators.commands.model.generate')
+    return mocker.patch('cucurbit.cli.generators.commands.model.generate')
 
 
 @pytest.fixture
 def controller_generate(mocker):
-    return mocker.patch('flaskteroids.cli.generators.commands.controller.generate')
+    return mocker.patch('cucurbit.cli.generators.commands.controller.generate')
 
 
 @pytest.fixture
 def mailer_generate(mocker):
-    return mocker.patch('flaskteroids.cli.generators.commands.mailer.generate')
+    return mocker.patch('cucurbit.cli.generators.commands.mailer.generate')
 
 
 @pytest.fixture
 def scaffold_generate(mocker):
-    return mocker.patch('flaskteroids.cli.generators.commands.scaffold.generate')
+    return mocker.patch('cucurbit.cli.generators.commands.scaffold.generate')
 
 
 @pytest.fixture
 def resource_generate(mocker):
-    return mocker.patch('flaskteroids.cli.generators.commands.resource.generate')
+    return mocker.patch('cucurbit.cli.generators.commands.resource.generate')
 
 
 @pytest.fixture
 def authentication_generate(mocker):
-    return mocker.patch('flaskteroids.cli.generators.commands.authentication.generate')
+    return mocker.patch('cucurbit.cli.generators.commands.authentication.generate')
 
 
 class TestGenerateCommands:

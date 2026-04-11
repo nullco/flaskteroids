@@ -1,5 +1,5 @@
 import pytest
-from flaskteroids.cli.generators.migrations import cmd_parser
+from cucurbit.cli.generators.migrations import cmd_parser
 from alembic.operations import ops
 import sqlalchemy as sa
 from datetime import datetime, timezone

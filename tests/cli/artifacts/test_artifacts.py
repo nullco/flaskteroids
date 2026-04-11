@@ -1,5 +1,5 @@
-import flaskteroids.cli.artifacts as artifacts
-from flaskteroids.cli.artifacts import ArtifactsBuilder, ArtifactsBuilderException
+import cucurbit.cli.artifacts as artifacts
+from cucurbit.cli.artifacts import ArtifactsBuilder, ArtifactsBuilderException
 import pytest
 
 
@@ -67,10 +67,10 @@ def test_python_run_fails(builder, subprocess):
 
 def test_modify_py_file(builder, mocker):
     mocker.patch('builtins.open', mocker.mock_open(read_data='def hello():\n    pass\n'))
-    mock_parse = mocker.patch('flaskteroids.cli.artifacts.ast.parse')
+    mock_parse = mocker.patch('cucurbit.cli.artifacts.ast.parse')
     mock_tree = mocker.Mock()
     mock_parse.return_value = mock_tree
-    mocker.patch('flaskteroids.cli.artifacts.ast.unparse', return_value='def hello():\n    print("modified")\n')
+    mocker.patch('cucurbit.cli.artifacts.ast.unparse', return_value='def hello():\n    print("modified")\n')
 
     def visitor():
         visitor.visit = lambda tree: tree

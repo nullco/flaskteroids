@@ -1,4 +1,4 @@
-from flaskteroids.mailer import ActionMailer
+from cucurbit.mailer import ActionMailer
 
 
 class UsersMailer(ActionMailer):

@@ -1,10 +1,10 @@
 import pytest
-from flaskteroids.helpers import link_to, button_to, form_with, render, csrf_token
+from cucurbit.helpers import link_to, button_to, form_with, render, csrf_token
 
 
 @pytest.fixture
 def url_for(mocker):
-    return mocker.patch('flaskteroids.helpers.url_for')
+    return mocker.patch('cucurbit.helpers.url_for')
 
 
 @pytest.fixture
@@ -18,7 +18,7 @@ def model_instance(mocker):
 
 @pytest.fixture
 def render_template(mocker):
-    render_template = mocker.patch('flaskteroids.helpers.render_template')
+    render_template = mocker.patch('cucurbit.helpers.render_template')
     render_template.return_value = '<div>test</div>'
     return render_template
 

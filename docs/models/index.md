@@ -1,6 +1,6 @@
 # Models
 
-Flaskteroids models provide a rich, Active Record-inspired API for working with your database. Models inherit from `flaskteroids.model.Model` and act as a wrapper around SQLAlchemy table objects. Database columns defined in migrations are automatically available as attributes on the model instances.
+Cucurbit models provide a rich, Active Record-inspired API for working with your database. Models inherit from `cucurbit.model.Model` and act as a wrapper around SQLAlchemy table objects. Database columns defined in migrations are automatically available as attributes on the model instances.
 
 Models support associations, validations, secure password handling, and provide a comprehensive querying interface.
 
@@ -10,8 +10,8 @@ Models are defined by inheriting from `Model` and using the `@rules` decorator t
 
 ```python
 # app/models/post.py
-from flaskteroids.model import Model, validates, belongs_to, has_many
-from flaskteroids.rules import rules
+from cucurbit.model import Model, validates, belongs_to, has_many
+from cucurbit.rules import rules
 
 @rules(
     # --- Associations ---
@@ -36,8 +36,8 @@ Associations define relationships between models.
 Defines a one-to-one or many-to-one relationship where the model belongs to another model.
 
 ```python
-from flaskteroids.model import Model, belongs_to
-from flaskteroids.rules import rules
+from cucurbit.model import Model, belongs_to
+from cucurbit.rules import rules
 
 @rules(
     belongs_to('user')
@@ -53,8 +53,8 @@ user = post.user  # Access the associated User
 You can customize the association:
 
 ```python
-from flaskteroids.model import Model, belongs_to
-from flaskteroids.rules import rules
+from cucurbit.model import Model, belongs_to
+from cucurbit.rules import rules
 
 
 @rules(
@@ -69,8 +69,8 @@ class Post(Model):
 Defines a one-to-many relationship where the model has many instances of another model.
 
 ```python
-from flaskteroids.model import Model, has_many
-from flaskteroids.rules import rules
+from cucurbit.model import Model, has_many
+from cucurbit.rules import rules
 
 @rules(
     has_many('comments')
@@ -91,8 +91,8 @@ new_comment = post.comments.create(content="Great post!", author="John")
 You can customize with `dependent` to handle cascading deletes:
 
 ```python
-from flaskteroids.model import Model, has_many
-from flaskteroids.rules import rules
+from cucurbit.model import Model, has_many
+from cucurbit.rules import rules
 
 @rules(
     has_many('comments', dependent='destroy')  # Deletes comments when post is deleted
@@ -110,8 +110,8 @@ Validations ensure data integrity before saving records.
 Ensures a field is not empty.
 
 ```python
-from flaskteroids.model import Model, validates
-from flaskteroids.rules import rules
+from cucurbit.model import Model, validates
+from cucurbit.rules import rules
 
 @rules(
     validates('title', presence=True)
@@ -125,8 +125,8 @@ class Post(Model):
 Validates the length of a string field.
 
 ```python
-from flaskteroids.model import Model, validates
-from flaskteroids.rules import rules
+from cucurbit.model import Model, validates
+from cucurbit.rules import rules
 
 
 @rules(
@@ -142,8 +142,8 @@ class Post(Model):
 Validates that two fields match (commonly used for passwords).
 
 ```python
-from flaskteroids.model import Model, validates
-from flaskteroids.rules import rules
+from cucurbit.model import Model, validates
+from cucurbit.rules import rules
 
 
 @rules(
@@ -161,7 +161,7 @@ user = User.new(password="secret", password_confirmation="secret")
 Adds secure password hashing and authentication methods.
 
 ```python
-from flaskteroids.model import Model, has_secure_password
+from cucurbit.model import Model, has_secure_password
 
 @rules(
     has_secure_password()
