@@ -1,8 +1,8 @@
 import pytest
-from cucurbit import params
-from cucurbit.actions import after_action, around_action, before_action
-from cucurbit.controller import ActionController, init
-from cucurbit.rules import rules
+from flaskteroids import params
+from flaskteroids.actions import after_action, around_action, before_action
+from flaskteroids.controller import ActionController, init
+from flaskteroids.rules import rules
 
 
 @pytest.fixture()

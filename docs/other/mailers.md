@@ -4,7 +4,7 @@ Mailers inherit from `ActionMailer` and are used to send emails from your applic
 
 ```python
 # app/mailers/user_mailer.py
-from cucurbit.mailer import ActionMailer
+from flaskteroids.mailer import ActionMailer
 
 class UserMailer(ActionMailer):
     def welcome_email(self, user):

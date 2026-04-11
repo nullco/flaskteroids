@@ -10,7 +10,7 @@ def test_healthcheck(client):
 def test_default_root(client):
     res = client.get('/')
     assert res.status_code == HTTPStatus.OK
-    assert b'Cucurbit' in res.data
+    assert b'Flaskteroids' in res.data
     assert b'Version' in res.data
 
 

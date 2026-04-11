@@ -1,15 +1,15 @@
 import pytest
-from cucurbit.cli.generators.authentication.generator import generate
+from flaskteroids.cli.generators.authentication.generator import generate
 
 
 @pytest.fixture
 def migrations(mocker):
-    return mocker.patch('cucurbit.cli.generators.authentication.generator.migrations')
+    return mocker.patch('flaskteroids.cli.generators.authentication.generator.migrations')
 
 
 @pytest.fixture
 def artifacts_builder(mocker):
-    ab = mocker.patch('cucurbit.cli.generators.authentication.generator.ArtifactsBuilder')
+    ab = mocker.patch('flaskteroids.cli.generators.authentication.generator.ArtifactsBuilder')
     instance = mocker.Mock()
     ab.return_value = instance
     return instance
@@ -17,7 +17,7 @@ def artifacts_builder(mocker):
 
 @pytest.fixture
 def template(mocker):
-    t = mocker.patch('cucurbit.cli.generators.authentication.generator.template')
+    t = mocker.patch('flaskteroids.cli.generators.authentication.generator.template')
     t.return_value = "template_content"
     return t
 

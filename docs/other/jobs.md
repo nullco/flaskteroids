@@ -4,7 +4,7 @@ For long-running tasks, you can use background jobs. Jobs inherit from `Job` and
 
 ```python
 # app/jobs/my_job.py
-from cucurbit.jobs.job import Job
+from flaskteroids.jobs.job import Job
 
 class MyJob(Job):
     def perform(self, user_id):

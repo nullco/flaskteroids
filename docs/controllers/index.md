@@ -4,8 +4,8 @@ Controllers handle the logic for incoming requests. Actions are methods within a
 
 ```python
 # app/controllers/posts_controller.py
-from cucurbit import params
-from cucurbit.controller import ActionController
+from flaskteroids import params
+from flaskteroids.controller import ActionController
 from app.models.post import Post
 
 class PostsController(ActionController):
@@ -25,10 +25,10 @@ class PostsController(ActionController):
 You can use callbacks to run code before a controller action. The `before_action` callback is useful for setting up instance variables or performing authentication checks. Callbacks must be defined within a `@rules` decorator.
 
 ```python
-from cucurbit import params
-from cucurbit.actions import before_action
-from cucurbit.rules import rules
-from cucurbit.controller import ActionController
+from flaskteroids import params
+from flaskteroids.actions import before_action
+from flaskteroids.rules import rules
+from flaskteroids.controller import ActionController
 from app.models.post import Post
 
 @rules(
@@ -45,10 +45,10 @@ class PostsController(ActionController):
 
 ## Content Negotiation
 
-Cucurbit can handle different response formats within a single action using the `respond` method. This is particularly useful for building APIs that serve both HTML and JSON.
+Flaskteroids can handle different response formats within a single action using the `respond` method. This is particularly useful for building APIs that serve both HTML and JSON.
 
 ```python
-from cucurbit.controller import ActionController, respond
+from flaskteroids.controller import ActionController, respond
 from app.models.post import Post
 
 class PostsController(ActionController):

@@ -2,9 +2,9 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy import Column, Integer, DateTime, create_engine
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime, timedelta
-from cucurbit.model import Model, validates, init
-from cucurbit import registry
-from cucurbit.rules import rules
+from flaskteroids.model import Model, validates, init
+from flaskteroids import registry
+from flaskteroids.rules import rules
 
 Base = declarative_base()
 
@@ -27,7 +27,7 @@ Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
 
 # patch model.session
-import cucurbit.model as mod
+import flaskteroids.model as mod
 mod.session = Session()
 
 # register model in registry

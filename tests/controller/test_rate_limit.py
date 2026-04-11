@@ -1,16 +1,16 @@
 import pytest
 from http import HTTPStatus
 from werkzeug.exceptions import HTTPException
-from cucurbit.rate_limit import rate_limit
-from cucurbit.controller import ActionController, init
-from cucurbit.rules import rules
+from flaskteroids.rate_limit import rate_limit
+from flaskteroids.controller import ActionController, init
+from flaskteroids.rules import rules
 
 
 @pytest.fixture(autouse=True)
 def req(mocker):
     mock = mocker.Mock()
     mock.remote_addr.return_value = '127.0.0.1'
-    mocker.patch('cucurbit.rate_limit.request', mock)
+    mocker.patch('flaskteroids.rate_limit.request', mock)
     return mock
 
 

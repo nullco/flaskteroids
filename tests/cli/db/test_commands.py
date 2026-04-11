@@ -1,5 +1,5 @@
 import pytest
-import cucurbit.cli.db.commands as db
+import flaskteroids.cli.db.commands as db
 
 
 @pytest.fixture

@@ -1,37 +1,37 @@
 <!--<p align="center">
-  <a href="https://github.com/nullco/cucurbit">
-    <img src="https://raw.githubusercontent.com/nullco/cucurbit/main/docs/images/logo.png" alt="Cucurbit Logo" width="200">
+  <a href="https://github.com/nullco/flaskteroids">
+    <img src="https://raw.githubusercontent.com/nullco/flaskteroids/main/docs/images/logo.png" alt="Flaskteroids Logo" width="200">
   </a>
 </p>-->
 
-<h1 align="center">Cucurbit</h1>
+<h1 align="center">Flaskteroids</h1>
 
 <p align="center">
-  <strong>Cucurbit: A complete, batteries-included Python MVC framework inspired by Ruby on Rails.</strong>
+  <strong>Flaskteroids: A complete, batteries-included Python MVC framework inspired by Ruby on Rails.</strong>
 </p>
 
 <p align="center">
-  <a href="https://github.com/nullco/cucurbit/actions/workflows/test.yml?query=branch%3Amain++" target="_blank">
-    <img src="https://github.com/nullco/cucurbit/actions/workflows/test.yml/badge.svg?event=push&branch=main" alt="Build Status">
+  <a href="https://github.com/nullco/flaskteroids/actions/workflows/test.yml?query=branch%3Amain++" target="_blank">
+    <img src="https://github.com/nullco/flaskteroids/actions/workflows/test.yml/badge.svg?event=push&branch=main" alt="Build Status">
   </a>
-  <a href="https://pypi.org/project/cucurbit/" target="_blank">
-    <img src="https://img.shields.io/pypi/v/cucurbit.svg" alt="PyPI Version">
+  <a href="https://pypi.org/project/flaskteroids/" target="_blank">
+    <img src="https://img.shields.io/pypi/v/flaskteroids.svg" alt="PyPI Version">
   </a>
-  <a href="https://pypi.org/project/cucurbit/" target="_blank">
-    <img src="https://img.shields.io/pypi/pyversions/cucurbit.svg" alt="Python Versions">
+  <a href="https://pypi.org/project/flaskteroids/" target="_blank">
+    <img src="https://img.shields.io/pypi/pyversions/flaskteroids.svg" alt="Python Versions">
   </a>
-  <a href="https://github.com/nullco/cucurbit/blob/main/LICENSE" target="_blank">
-    <img src="https://img.shields.io/github/license/nullco/cucurbit.svg" alt="License">
+  <a href="https://github.com/nullco/flaskteroids/blob/main/LICENSE" target="_blank">
+    <img src="https://img.shields.io/github/license/nullco/flaskteroids.svg" alt="License">
   </a>
 </p>
 
 ---
 
-**Cucurbit** (or Flask on Steroids) is a lightweight yet powerful Python MVC framework designed to provide the closest possible experience to developing web applications in **Ruby on Rails**, in the python world. By supercharging **Flask** with Rails-inspired conventions and structure, Cucurbit enables developers to build full-featured web applications with unprecedented speed and elegance.
+**Flaskteroids** (or Flask on Steroids) is a lightweight yet powerful Python MVC framework designed to provide the closest possible experience to developing web applications in **Ruby on Rails**, in the python world. By supercharging **Flask** with Rails-inspired conventions and structure, Flaskteroids enables developers to build full-featured web applications with unprecedented speed and elegance.
 
 Our mission is to bring the proven productivity and developer happiness of Rails to the Python ecosystem, offering a batteries-included framework that emphasizes **convention over configuration**. This means you can focus on building great applications rather than boilerplate code, while maintaining the full power of Flask and its rich ecosystem.
 
-Cucurbit stays lean, fast, and secure by carefully selecting core dependencies and providing everything you need out of the box — from database management to background jobs — without unnecessary complexity.
+Flaskteroids stays lean, fast, and secure by carefully selecting core dependencies and providing everything you need out of the box — from database management to background jobs — without unnecessary complexity.
 
 ## Features
 
@@ -46,20 +46,20 @@ Cucurbit stays lean, fast, and secure by carefully selecting core dependencies a
 
 ## Installation
 
-To get started, install the Cucurbit package using `pip`:
+To get started, install the Flaskteroids package using `pip`:
 
 ```sh
-pip install cucurbit
+pip install flaskteroids
 ```
 
 ## Getting Started
 
 ### 1. Creating a New App
 
-Create a new Cucurbit application using the `cucurbit new` command:
+Create a new Flaskteroids application using the `flaskteroids new` command:
 
 ```sh
-cucurbit new my_app
+flaskteroids new my_app
 cd my_app
 ```
 
@@ -74,7 +74,7 @@ flask run
 ```
 
 Now, open your browser and navigate to `http://127.0.0.1:5000`.
-You should see the Cucurbit welcome page!
+You should see the Flaskteroids welcome page!
 
 ## Your First Feature: A Blog
 
@@ -105,8 +105,8 @@ Inside your `my_app` follow the next steps:
 Now, visit `http://1227.0.0.1:5000/posts` in your browser.
 You have a complete set of pages to create, view, update, and delete posts.
 
-For more check out the [documentation](https://nullco.github.io/cucurbit/index.html)
+For more check out the [documentation](https://nullco.github.io/flaskteroids/index.html)
 
 ## License
 
-Cucurbit is open-source and released under the [MIT License](LICENSE).
+Flaskteroids is open-source and released under the [MIT License](LICENSE).

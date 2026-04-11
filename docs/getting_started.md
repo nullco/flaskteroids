@@ -3,15 +3,15 @@
 ## Installation
 
 ```sh
-pip install cucurbit
+pip install flaskteroids
 ```
 
 ## Creating a New App
 
-Create a new Cucurbit application using the `cucurbit new` command:
+Create a new Flaskteroids application using the `flaskteroids new` command:
 
 ```sh
-cucurbit new my_app
+flaskteroids new my_app
 cd my_app
 ```
 
@@ -19,7 +19,7 @@ This creates a new directory called `my_app` with a standard Rails-inspired appl
 
 ## Project Structure
 
-A typical Cucurbit application follows this structure:
+A typical Flaskteroids application follows this structure:
 
 ```
 my_app/
@@ -47,7 +47,7 @@ flask run
 ```
 
 Now, open your browser and navigate to `http://127.0.0.1:5000`.
-You should see the Cucurbit welcome page!
+You should see the Flaskteroids welcome page!
 
 ## Your First Feature: A Blog
 
@@ -80,6 +80,6 @@ You have a complete set of pages to create, view, update, and delete posts.
 
 ## Next Steps
 
-Congratulations on creating your first Cucurbit application! Here are some suggestions for what to explore next:
+Congratulations on creating your first Flaskteroids application! Here are some suggestions for what to explore next:
 
 - **Learn the Basics**: Dive deeper into [Models](models/index.md), [Views](views/index.md) and [Controllers](controllers/index.md).

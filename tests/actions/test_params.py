@@ -1,6 +1,6 @@
 import pytest
-from cucurbit.actions import ActionParameters
-from cucurbit.exceptions import InvalidParameter, MissingParameter
+from flaskteroids.actions import ActionParameters
+from flaskteroids.exceptions import InvalidParameter, MissingParameter
 
 
 class TestExpectParameters:

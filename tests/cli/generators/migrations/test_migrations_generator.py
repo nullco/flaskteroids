@@ -1,5 +1,5 @@
 import pytest
-from cucurbit.cli.generators.migrations import generator
+from flaskteroids.cli.generators.migrations import generator
 
 
 @pytest.fixture

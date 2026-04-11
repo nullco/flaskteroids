@@ -1,9 +1,9 @@
 import pytest
 from sqlalchemy.orm import declarative_base
 from sqlalchemy import Column, ForeignKey, Integer, String
-from cucurbit import model
-from cucurbit.model import Model, validates, belongs_to, has_many
-from cucurbit.rules import rules
+from flaskteroids import model
+from flaskteroids.model import Model, validates, belongs_to, has_many
+from flaskteroids.rules import rules
 
 
 @pytest.fixture(autouse=True)

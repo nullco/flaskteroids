@@ -1,8 +1,8 @@
 import pytest
 from sqlalchemy.orm import declarative_base
 from sqlalchemy import Column, Integer, String
-from cucurbit.model import PasswordAuthenticator, Model, has_secure_password
-from cucurbit.rules import rules
+from flaskteroids.model import PasswordAuthenticator, Model, has_secure_password
+from flaskteroids.rules import rules
 
 
 @pytest.fixture(autouse=True)

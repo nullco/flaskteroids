@@ -1,8 +1,8 @@
 import pytest
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
-from cucurbit.model import Model, init
-import cucurbit.registry as registry
+from flaskteroids.model import Model, init
+import flaskteroids.registry as registry
 
 
 @pytest.fixture
@@ -13,13 +13,13 @@ def engine():
 @pytest.fixture(autouse=True)
 def session(mocker, engine):
     Session = sessionmaker(bind=engine)
-    from cucurbit import model
+    from flaskteroids import model
     return mocker.patch.object(model, 'session', Session())
 
 
 @pytest.fixture(autouse=True)
 def current_app(mocker):
-    from cucurbit import model
+    from flaskteroids import model
     current_app = mocker.Mock()
     current_app.config = {'SECRET_KEY': 'test'}
     return mocker.patch.object(model, 'current_app', current_app)

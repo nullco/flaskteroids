@@ -1,5 +1,5 @@
 import pytest
-from cucurbit.mailer import init, ActionMailer
+from flaskteroids.mailer import init, ActionMailer
 
 
 class UsersMailer(ActionMailer):

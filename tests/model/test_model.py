@@ -2,8 +2,8 @@ import pytest
 from datetime import datetime, timedelta
 from sqlalchemy.orm import declarative_base
 from sqlalchemy import Column, Integer, String, DateTime
-from cucurbit.model import Model, validates
-from cucurbit.rules import rules
+from flaskteroids.model import Model, validates
+from flaskteroids.rules import rules
 
 
 @pytest.fixture(autouse=True)

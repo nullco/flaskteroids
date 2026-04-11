@@ -1,6 +1,6 @@
 # Command-Line Interface (CLI)
 
-Cucurbit extends the `flask` CLI with a powerful set of tools to streamline development.
+Flaskteroids extends the `flask` CLI with a powerful set of tools to streamline development.
 
 ## Generators
 

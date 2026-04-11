@@ -1,4 +1,4 @@
-from cucurbit import cache
+from flaskteroids import cache
 
 
 def test_cache(mocker):

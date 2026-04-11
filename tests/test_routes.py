@@ -9,7 +9,7 @@ def app(app, mocker):
 
 @pytest.fixture
 def router(app):
-    return app.extensions["cucurbit.routes"]
+    return app.extensions["flaskteroids.routes"]
 
 
 class TestRoutes:

@@ -1,10 +1,10 @@
 import pytest
-from cucurbit.cli.generators.scaffold.generator import generate
+from flaskteroids.cli.generators.scaffold.generator import generate
 
 
 @pytest.fixture
 def artifacts_builder(mocker):
-    mock_builder = mocker.patch('cucurbit.cli.generators.scaffold.generator.ArtifactsBuilder')
+    mock_builder = mocker.patch('flaskteroids.cli.generators.scaffold.generator.ArtifactsBuilder')
     mock_ab = mocker.Mock()
     mock_builder.return_value = mock_ab
     return mock_ab
@@ -12,7 +12,7 @@ def artifacts_builder(mocker):
 
 @pytest.fixture
 def model(mocker):
-    return mocker.patch('cucurbit.cli.generators.scaffold.generator.model')
+    return mocker.patch('flaskteroids.cli.generators.scaffold.generator.model')
 
 
 @pytest.mark.usefixtures('app_ctx', 'model', 'artifacts_builder')

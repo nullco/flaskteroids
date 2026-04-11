@@ -1,10 +1,10 @@
 import pytest
-from cucurbit.cli.generators.mailer.generator import generate
+from flaskteroids.cli.generators.mailer.generator import generate
 
 
 @pytest.fixture
 def artifacts_builder(mocker):
-    mock_builder = mocker.patch('cucurbit.cli.generators.mailer.generator.ArtifactsBuilder')
+    mock_builder = mocker.patch('flaskteroids.cli.generators.mailer.generator.ArtifactsBuilder')
     mock_ab = mocker.Mock()
     mock_builder.return_value = mock_ab
     return mock_ab
