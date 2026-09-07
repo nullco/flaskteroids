@@ -27,6 +27,18 @@ def test_new_command(cli_runner, artifacts_builder):
         args[0] == "pyproject.toml" and "flaskteroids" in args[1]
         for args, _ in artifacts_builder.file.call_args_list
     )
+    created_files = {args[0] for args, _ in artifacts_builder.file.call_args_list}
+    assert {
+        "config/application.py",
+        "config/environment.py",
+        "config/environments/development.py",
+        "config/environments/test.py",
+        "config/environments/production.py",
+        "config/database.yml",
+        "config/credentials.yml.enc",
+        "config/master.key",
+    }.issubset(created_files)
+    assert "bin/flaskteroids" not in created_files
 
 
 def test_new_command_error(cli_runner, artifacts_builder):

@@ -1,9 +1,7 @@
 import logging
-import secrets
 from http import HTTPStatus
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.exceptions import default_exceptions
-from flask.app import Flask
 from flaskteroids.extensions.mail import MailExtension
 import flaskteroids.model as model
 from flaskteroids.db import session
@@ -15,18 +13,14 @@ from flaskteroids.extensions.db import SQLAlchemyExtension
 from flaskteroids.extensions.routes import RoutesExtension
 from flaskteroids.cli.generators import commands as generate_commands
 from flaskteroids.cli.db import commands as db_commands
+from flaskteroids.cli import credentials as credentials_commands
 
 
 _logger = logging.getLogger(__name__)
 
 
-def create_app(import_name, config=None):
-    config = _config(config)
-    app = Flask(import_name, template_folder=config['VIEWS']['LOCATION'])
+def initialize_app(app):
     app.wsgi_app = ProxyFix(app.wsgi_app)
-
-    _attach_config(app, config)
-    _register_routes(app)
     _configure_orm(app)
     _prepare_shell_context(app)
     _prepare_template_contexts(app)
@@ -36,38 +30,9 @@ def create_app(import_name, config=None):
     _setup_jobs(app)
     _setup_mailers(app)
 
-    return app
 
-
-def _config(overwrites):
-    cfg = {
-        'SERVER_NAME': 'localhost:5000',
-        'APPLICATION_ROOT': '/',
-        'PREFERRED_URL_SCHEME': 'http',
-        'MODELS': {'LOCATION': 'app.models'},
-        'VIEWS': {'LOCATION': 'app/views/'},
-        'CONTROLLERS': {'LOCATION': 'app.controllers'},
-        'ROUTES': {'LOCATION': 'config.routes'},
-        'DB': {'SQLALCHEMY_URL': 'sqlite:///storage/database.db'},
-        'JOBS': {
-            'LOCATION': 'app.jobs',
-            'CELERY_BROKER_URL': 'sqla+sqlite:///storage/jobs_database.db'
-        },
-        'MAILERS': {
-            'LOCATION': 'app.mailers',
-            'SEND_MAILS': False
-        }
-    }
-    if overwrites:
-        cfg.update(overwrites)
-    if not cfg.get('SECRET_KEY'):
-        cfg['SECRET_KEY'] = secrets.token_hex(64)
-    return cfg
-
-
-def _attach_config(app, config):
-    if config:
-        app.config.update(config)
+def finalize_app(app):
+    _register_routes(app)
 
 
 def _register_routes(app):
@@ -97,6 +62,8 @@ def _register_cli_commands(app):
     app.cli.add_command(db_commands.init)
     app.cli.add_command(db_commands.migrate)
     app.cli.add_command(db_commands.rollback)
+    app.cli.add_command(credentials_commands.show)
+    app.cli.add_command(credentials_commands.edit)
 
 
 def _prepare_shell_context(app):

@@ -1,5 +1,6 @@
+from pathlib import Path
 from sqlalchemy import create_engine
-from flaskteroids.app import create_app
+from flaskteroids.application import Application
 import pytest
 
 
@@ -14,23 +15,25 @@ def app():
 
     init_db(db_url)
 
-    cfg = {
-        'MODELS': {'LOCATION': 'tests.app.models'},
-        'VEWS': {'LOCATION': 'app/views/'},
-        'CONTROLLERS': {'LOCATION': 'tests.app.controllers'},
-        'ROUTES': {'LOCATION': 'tests.app.config.routes'},
-        'DB': {'SQLALCHEMY_URL': db_url},
-        'JOBS': {
-            'LOCATION': 'tests.app.jobs',
-            'CELERY_BROKER_URL': 'sqla+sqlite:///:memory:'
-        },
-        'MAILERS': {
-            'SEND_MAILS': False,
-            'LOCATION': 'tests.app.mailers'
-        }
-    }
-    app = create_app(__name__, cfg)
-    return app
+    class TestApplication(Application):
+        def configure(self, config):
+            config.load_defaults('0.1')
+            config.paths.models = 'tests.app.models'
+            config.paths.views = 'app/views'
+            config.paths.controllers = 'tests.app.controllers'
+            config.paths.routes = 'tests.app.config.routes'
+            config.paths.jobs = 'tests.app.jobs'
+            config.paths.mailers = 'tests.app.mailers'
+            config.active_job.broker_url = 'sqla+sqlite:///:memory:'
+            config.action_mailer.perform_deliveries = False
+
+        def _configure_database(self):
+            self.database_url = db_url
+
+    return TestApplication.initialize(
+        environment='test',
+        root_path=Path(__file__).parent,
+    )
 
 
 @pytest.fixture

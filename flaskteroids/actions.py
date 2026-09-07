@@ -1,5 +1,4 @@
 import logging
-import re
 from werkzeug.local import LocalProxy
 from functools import wraps
 from typing import Any

@@ -27,6 +27,7 @@ nav:
   - Getting Started:
     - Overview: getting_started.md
     - Project Structure: project_structure.md
+    - Configuration: configuration.md
   - Models:
     - Overview: models/index.md
   - Views:

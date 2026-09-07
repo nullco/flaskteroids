@@ -25,11 +25,11 @@ class JobsExtension:
 
     def init_app(self, app):
         self._celery.main = app.import_name
-        conf = app.config.get('JOBS') or {}
-        jobs_module = app.config['JOBS']['LOCATION']
-        self._celery.conf['result_backend'] = conf.get('CELERY_RESULT_BACKEND')
-        self._celery.conf['broker_url'] = conf.get('CELERY_BROKER_URL')
-        self._celery.conf.update(conf.get('CELERY_ADDITIONAL_CONFIG') or {})
+        conf = app.config.active_job
+        jobs_module = app.config.paths.jobs
+        self._celery.conf['result_backend'] = conf.result_backend
+        self._celery.conf['broker_url'] = conf.broker_url
+        self._celery.conf.update(conf.additional_config.to_dict())
 
         class AppContextTask(self._celery.Task):
             def __call__(self, *args, **kwargs):

@@ -59,7 +59,8 @@ class MessageBuilder:
                  template_path=None,
                  template_name=None,
                  template_params=None):
-        self.from_ = from_ or 'no-reply@flaskteroids.me'  # TODO: Make it configurable
+        defaults = current_app.config.action_mailer.default_options
+        self.from_ = from_ or defaults.get('from_') or 'no-reply@flaskteroids.me'
         self.to = to
         self.subject = subject
         self.template_path = template_path
@@ -105,14 +106,15 @@ class MessageDeliveryJob(Job):
             return
         _logger.debug('message to be sent')
         _logger.debug(msg)
-        cfg = current_app.config['MAILERS']
-        if not cfg.get('SEND_MAILS', True):
+        cfg = current_app.config.action_mailer
+        if not cfg.perform_deliveries:
             _logger.debug('sending mail is disabled, ignoring...')
             return
-        host = cfg['MAIL_HOST']
-        port = cfg['MAIL_PORT']
-        username = cfg['MAIL_USERNAME']
-        password = cfg['MAIL_PASSWORD']
+        smtp = cfg.smtp_settings
+        host = smtp.host
+        port = smtp.port
+        username = smtp.username
+        password = smtp.password
 
         with smtplib.SMTP(host, port) as server:
             server.starttls()

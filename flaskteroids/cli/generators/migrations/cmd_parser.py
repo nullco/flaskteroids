@@ -176,7 +176,7 @@ class _RemoveColumnsFromTableCommand:
                         cmd_match.group(2),
                         sa.Column(
                             name=am.group(1),
-                            type_=_column_types[am.group(3)](),
+                            type_=fields.get(am.group(3)).new_column(),
                             nullable=not bool(am.group(4))
                         )
                     )

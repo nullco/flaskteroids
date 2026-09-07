@@ -10,7 +10,7 @@ class MailExtension:
             self.init_app(app)
 
     def init_app(self, app):
-        self._mailers = discover_classes(app.config['MAILERS']['LOCATION'], ActionMailer)
+        self._mailers = discover_classes(app.config.paths.mailers, ActionMailer)
 
         for mailer_name, mailer_class in self._mailers.items():
             ns = registry.get(mailer_class)

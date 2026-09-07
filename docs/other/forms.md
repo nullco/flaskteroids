@@ -31,7 +31,7 @@ The `form` object provides a variety of helpers for generating form fields, such
 
 ## Strong Parameters
 
-To prevent mass assignment vulnerabilities, Flaskteroids uses a technique inspired by Rails' **Strong Parameters**. The `params` object allows you to whitelist which parameters are permitted in your controller actions.
+To prevent mass assignment vulnerabilities, Flaskteroids provides **Strong Parameters**. The `params` object allows you to whitelist which parameters are permitted in your controller actions.
 
 This is a security best practice that ensures users cannot update model attributes they are not supposed to, such as an admin flag.
 

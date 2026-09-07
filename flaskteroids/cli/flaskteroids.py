@@ -1,7 +1,10 @@
 import os
+import secrets
 import click
+import yaml
 from flaskteroids.cli.artifacts import ArtifactsBuilder, ArtifactsBuilderException
 from flaskteroids.cli.generators.templates import template
+from flaskteroids.credentials import encrypt, generate_key
 
 
 @click.group()
@@ -18,8 +21,23 @@ def new(app_name):
         ab.dir()
         ab.file("README.md", _readme(app_name))
         ab.file("Dockerfile", _dockerfile())
+        ab.file(".dockerignore", _dockerignore())
         ab.file(".gitignore", _gitignore())
         ab.file("pyproject.toml", _pyproject_toml(app_name))
+        ab.file("config/application.py", _application_config())
+        ab.file("config/boot.py", _boot())
+        ab.file("config/environment.py", _environment())
+        ab.file("config/environments/development.py", _development_environment())
+        ab.file("config/environments/test.py", _test_environment())
+        ab.file("config/environments/production.py", _production_environment())
+        ab.file("config/initializers/.keep")
+        ab.file("config/database.yml", _database_yml())
+        credentials_key = generate_key()
+        credentials = yaml.safe_dump(
+            {"secret_key_base": secrets.token_hex(64)}, sort_keys=False
+        )
+        ab.file("config/master.key", f"{credentials_key}\n")
+        ab.file("config/credentials.yml.enc", encrypt(credentials, credentials_key))
         ab.file("wsgi.py", _wsgi())
         ab.file("jobs.py", _jobs())
         # Kamal deploy scaffold (example files) — adjust image/commands for your setup
@@ -60,8 +78,20 @@ def _gitignore():
     return """
 __pycache__/
 .venv/
-storage/database.db
-storage/jobs_database.db
+storage/*
+!storage/.keep
+config/master.key
+config/credentials/*.key
+    """
+
+
+def _dockerignore():
+    return """
+.git/
+.venv/
+__pycache__/
+config/master.key
+config/credentials/*.key
     """
 
 
@@ -131,22 +161,106 @@ def register(route):
     """
 
 
+def _application_config():
+    return """
+from flaskteroids.application import Application as FlaskteroidsApplication
+from config.boot import ROOT
+
+
+class Application(FlaskteroidsApplication):
+    root = ROOT
+
+    def configure(self, config):
+        config.load_defaults('0.1')
+    """
+
+
+def _boot():
+    return """
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+    """
+
+
+def _environment():
+    return """
+from config.application import Application
+
+application = Application.initialize()
+    """
+
+
+def _development_environment():
+    return """
+def configure(config):
+    config.enable_reloading = True
+    config.consider_all_requests_local = True
+    config.action_controller.perform_caching = False
+    config.action_mailer.perform_deliveries = False
+    """
+
+
+def _test_environment():
+    return """
+def configure(config):
+    config.enable_reloading = False
+    config.eager_load = False
+    config.action_controller.perform_caching = False
+    config.action_mailer.perform_deliveries = False
+    """
+
+
+def _production_environment():
+    return """
+import os
+
+
+def configure(config):
+    config.eager_load = True
+    config.consider_all_requests_local = False
+    config.require_master_key = True
+    config.action_mailer.perform_deliveries = True
+    config.active_job.broker_url = os.environ.get(
+        'CELERY_BROKER_URL', config.active_job.broker_url
+    )
+    """
+
+
+def _database_yml():
+    return """
+default: &default
+  adapter: sqlite3
+  pool: 5
+
+development:
+  <<: *default
+  database: storage/development.sqlite3
+
+test:
+  <<: *default
+  database: storage/test.sqlite3
+
+production:
+  <<: *default
+  database: storage/production.sqlite3
+    """
+
+
 def _wsgi():
     return """
-from flaskteroids.app import create_app
-
-app = create_app(__name__)
+from config.environment import application as app
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=app.env.development)
     """
 
 
 def _jobs():
     return """
-from flaskteroids.app import create_app
+from config.environment import application
 
-app = create_app(__name__).extensions['flaskteroids.jobs']
+app = application.extensions['flaskteroids.jobs']
     """
 
 
@@ -219,8 +333,9 @@ services:
     ports:
       - 80:8000
     env:
-      FLASK_ENV: production
+      FLASKTEROIDS_ENV: production
       DATABASE_URL: ${{ DATABASE_URL }}
+      FLASKTEROIDS_MASTER_KEY: ${{ FLASKTEROIDS_MASTER_KEY }}
     mounts:
       - type: tmpfs
         target: /tmp
@@ -229,8 +344,10 @@ services:
     image: ${IMAGE:-REPLACE_WITH_IMAGE}
     command: celery -A jobs worker --loglevel=info
     env:
+      FLASKTEROIDS_ENV: production
       DATABASE_URL: ${{ DATABASE_URL }}
       CELERY_BROKER_URL: ${{ CELERY_BROKER_URL }}
+      FLASKTEROIDS_MASTER_KEY: ${{ FLASKTEROIDS_MASTER_KEY }}
 
   hooks:
   release:
@@ -286,7 +403,8 @@ jobs:
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
             "cd /srv/myapp && kamal deploy --image $IMAGE"
         shell: bash
-        # Requires repository secrets: DEPLOY_SSH_KEY, DEPLOY_HOST, DEPLOY_USER
+        # Requires repository secrets: DEPLOY_SSH_KEY, DEPLOY_HOST, DEPLOY_USER,
+        # FLASKTEROIDS_MASTER_KEY, and application service secrets.
 """
 
 

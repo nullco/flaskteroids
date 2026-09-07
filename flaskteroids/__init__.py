@@ -1,8 +1,13 @@
-from flask import redirect
+from flask import redirect, current_app
+from werkzeug.local import LocalProxy
+from flaskteroids.application import Application
 from flaskteroids.actions import params
 from flaskteroids.flash import flash
 from flaskteroids.rules import rules
 from importlib.metadata import PackageNotFoundError, version as _version
+
+
+application = LocalProxy(lambda: current_app)
 
 
 try:
@@ -27,5 +32,7 @@ __all__ = [
     'params',
     'flash',
     'rules',
-    'redirect_to'
+    'redirect_to',
+    'Application',
+    'application',
 ]

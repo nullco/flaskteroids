@@ -1,6 +1,23 @@
 # Command-Line Interface (CLI)
 
-Flaskteroids extends the `flask` CLI with a powerful set of tools to streamline development.
+Flaskteroids extends the `flask` CLI with generators, database tasks, and credentials commands.
+
+## Credentials
+
+Edit or inspect shared encrypted credentials:
+
+```sh
+flask credentials:edit
+flask credentials:show
+```
+
+Use `--environment` for environment-specific credentials:
+
+```sh
+flask credentials:edit --environment production
+```
+
+See [Configuration](../configuration.md) for key handling and credential precedence.
 
 ## Generators
 

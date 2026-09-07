@@ -10,6 +10,7 @@ name = "flaskteroids"
 version = "0.1.6"
 description = "Flask on steroids"
 readme = "README.md"
+requires-python = ">=3.12"
 license = { file = "LICENSE" }
 authors = [
   { name="Juan Sebastian Quintero" }
@@ -23,9 +24,10 @@ classifiers = [
 dependencies = [
 	"alembic>=1.15.1",
 	"Flask",
-	"python-dotenv>=1.0.1",
 	"sqlalchemy",
-	"celery"
+	"celery",
+	"cryptography",
+	"PyYAML"
 ]
 
 [project.scripts]

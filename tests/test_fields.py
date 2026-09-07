@@ -12,7 +12,7 @@ class TestField:
     def test_init(self):
         field = Field(sa.String, str)
         assert field.column_type == sa.String
-        assert field.primitive_type == str
+        assert field.primitive_type is str
 
     def test_new_column(self):
         field = Field(sa.String, str)
@@ -37,7 +37,7 @@ class TestText:
     def test_init(self):
         field = Text()
         assert field.column_type == sa.Text
-        assert field.primitive_type == str
+        assert field.primitive_type is str
 
     def test_new_column(self):
         field = Text()
@@ -50,7 +50,7 @@ class TestString:
     def test_init(self):
         field = String()
         assert field.column_type == sa.String
-        assert field.primitive_type == str
+        assert field.primitive_type is str
 
     def test_new_column(self):
         field = String()
@@ -64,7 +64,7 @@ class TestInteger:
     def test_init(self):
         field = Integer()
         assert field.column_type == sa.Integer
-        assert field.primitive_type == int
+        assert field.primitive_type is int
 
     def test_new_column(self):
         field = Integer()
@@ -77,7 +77,7 @@ class TestFloat:
     def test_init(self):
         field = Float()
         assert field.column_type == sa.Float
-        assert field.primitive_type == float
+        assert field.primitive_type is float
 
     def test_new_column(self):
         field = Float()
@@ -90,7 +90,7 @@ class TestBoolean:
     def test_init(self):
         field = Boolean()
         assert field.column_type == sa.Boolean
-        assert field.primitive_type == bool
+        assert field.primitive_type is bool
 
     def test_new_column(self):
         field = Boolean()
@@ -201,7 +201,7 @@ class TestJson:
     def test_init(self):
         field = Json()
         assert field.column_type == sa.JSON
-        assert field.primitive_type == dict
+        assert field.primitive_type is dict
 
     def test_new_column(self):
         field = Json()

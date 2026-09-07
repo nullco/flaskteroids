@@ -61,7 +61,7 @@ def register(router):
 
 ## Resourceful Routes
 
-Resourceful routing provides automatic generation of RESTful routes for a controller. This follows Rails conventions and eliminates repetitive route definitions.
+Resourceful routing automatically generates RESTful routes for a controller and eliminates repetitive route definitions.
 
 ### Resources (Plural)
 

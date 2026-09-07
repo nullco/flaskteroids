@@ -15,7 +15,7 @@ flaskteroids new my_app
 cd my_app
 ```
 
-This creates a new directory called `my_app` with a standard Rails-inspired application structure.
+This creates a new directory called `my_app` with the standard Flaskteroids application structure.
 
 ## Project Structure
 
@@ -29,7 +29,12 @@ my_app/
 │   ├── views/           # Templates for rendering HTML
 │   └── mailers/         # Email templates and logic
 ├── config/
-│   ├── routes.py        # Route definitions
+│   ├── environments/    # Development, test, and production settings
+│   ├── initializers/    # Boot-time library configuration
+│   ├── application.py   # Application-wide configuration
+│   ├── credentials.yml.enc
+│   ├── database.yml     # Database settings by environment
+│   └── routes.py        # Route definitions
 ├── db/
 │   └── migrations/      # Database migration files
 ├── public/              # Static assets (CSS, JS, images)
@@ -48,6 +53,21 @@ flask run
 
 Now, open your browser and navigate to `http://127.0.0.1:5000`.
 You should see the Flaskteroids welcome page!
+
+Flaskteroids boots in `development` by default. Set `FLASKTEROIDS_ENV` to select another environment:
+
+```sh
+FLASKTEROIDS_ENV=test flask run
+```
+
+Application secrets are stored in encrypted credentials:
+
+```sh
+flask credentials:edit
+flask credentials:show
+```
+
+See [Configuration](configuration.md) for boot and configuration conventions.
 
 ## Your First Feature: A Blog
 

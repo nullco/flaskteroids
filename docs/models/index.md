@@ -185,8 +185,7 @@ The decorator adds:
 
 ## Callbacks
 
-Callbacks are hooks that run at specific points in a model's lifecycle,
-mirroring Ruby on Rails' Active Record callbacks. They are declared inside the
+Callbacks are hooks that run at specific points in a model's lifecycle. They are declared inside the
 `@rules` decorator, just like associations and validations.
 
 ```python
@@ -208,7 +207,7 @@ class User(Model):
 
 ### Available Callbacks
 
-The full lifecycle is supported, in the same order Rails runs it:
+The full lifecycle is supported in a deterministic order:
 
 ```
 before_validation
@@ -266,7 +265,7 @@ class Post(Model):
 ```
 
 Before callbacks run in registration order; after callbacks run in reverse
-registration order (LIFO), matching Rails.
+registration order (LIFO).
 
 ### Conditional Callbacks
 
