@@ -183,6 +183,149 @@ The decorator adds:
 - Virtual fields: `password`, `password_confirmation`, `password_reset_token`
 - Validation for password length and confirmation
 
+## Callbacks
+
+Callbacks are hooks that run at specific points in a model's lifecycle,
+mirroring Ruby on Rails' Active Record callbacks. They are declared inside the
+`@rules` decorator, just like associations and validations.
+
+```python
+from flaskteroids.model import Model, before_save, after_create
+from flaskteroids.rules import rules
+
+@rules(
+    before_save('_normalize_email'),
+    after_create('_send_welcome_email'),
+)
+class User(Model):
+    def _normalize_email(self):
+        self.email = self.email.strip().lower()
+
+    def _send_welcome_email(self):
+        # enqueue a mailer / background job
+        pass
+```
+
+### Available Callbacks
+
+The full lifecycle is supported, in the same order Rails runs it:
+
+```
+before_validation
+after_validation
+before_save
+around_save
+  before_create / before_update
+  around_create / around_update
+  after_create  / after_update
+after_save
+after_commit / after_rollback
+```
+
+For destruction:
+
+```
+before_destroy
+around_destroy
+after_destroy
+after_commit
+```
+
+Instantiating and loading records also have hooks:
+
+- `after_initialize` — runs when a model is instantiated (`new`, `create`, or loaded from the database).
+- `after_find` — runs when a model is loaded from the database (`find`, `find_by`, `all`, and associations).
+
+### Before, Around and After
+
+- **Before** callbacks run before the operation. Returning `False` from a before
+  callback halts the chain and aborts the operation (`save()` returns `False`,
+  `destroy()` returns `False`).
+- **Around** callbacks wrap the operation using a generator. Code before the
+  `yield` runs before the operation, and code after the `yield` runs after it.
+  An around callback that never yields also halts the chain.
+- **After** callbacks run after the operation completes.
+
+```python
+@rules(
+    before_save('_before'),
+    around_save('_around'),
+    after_save('_after'),
+)
+class Post(Model):
+    def _before(self):
+        pass
+
+    def _around(self):
+        # runs before the save
+        yield
+        # runs after the save
+
+    def _after(self):
+        pass
+```
+
+Before callbacks run in registration order; after callbacks run in reverse
+registration order (LIFO), matching Rails.
+
+### Conditional Callbacks
+
+Use `if_` and `unless_` to control when a callback runs. Each accepts a method
+name (a string) or a callable that receives the model instance.
+
+```python
+@rules(
+    before_save('_normalize_email', if_='_email_present'),
+    before_save('_log_change', unless_=lambda user: user.admin),
+)
+class User(Model):
+    def _email_present(self):
+        return bool(self.email)
+```
+
+Use `on=` to restrict a callback to `'create'` or `'update'` (and `'destroy'`
+for `after_commit`/`after_rollback`). It is only available on validation, save,
+commit, and rollback callbacks:
+
+```python
+@rules(
+    before_validation('_generate_slug', on='create'),
+    after_commit('_broadcast', on=['create', 'update']),
+)
+class Post(Model):
+    pass
+```
+
+### Ordering with `prepend`
+
+By default callbacks are appended to the chain. Pass `prepend=True` to insert a
+callback at the front of the chain:
+
+```python
+@rules(
+    before_save('_first'),
+    before_save('_second', prepend=True),  # runs before _first
+)
+class Post(Model):
+    pass
+```
+
+### After Commit and After Rollback
+
+`after_commit` and `after_rollback` run once the surrounding database
+transaction is committed or rolled back — useful for side effects that should
+only happen after the data is durably saved (e.g., sending emails, purging a
+cache). They support the `on=` option (`'create'`, `'update'`, or `'destroy'`).
+
+```python
+@rules(
+    after_commit('_purge_cache'),
+)
+class Post(Model):
+    def _purge_cache(self):
+        pass
+```
+
 ## Querying Models
 
 Models provide a rich querying interface through the `ModelQuery` class.

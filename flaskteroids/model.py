@@ -13,6 +13,63 @@ from flaskteroids.exceptions import ProgrammerError
 import flaskteroids.registry as registry
 from flaskteroids.rules import bind_rules
 from flaskteroids.inflector import inflector
+from flaskteroids.callbacks import (
+    run_callbacks,
+    _HALTED,
+    queue_after_commit,
+    before_validation,
+    after_validation,
+    before_save,
+    around_save,
+    after_save,
+    before_create,
+    around_create,
+    after_create,
+    before_update,
+    around_update,
+    after_update,
+    before_destroy,
+    around_destroy,
+    after_destroy,
+    after_commit,
+    after_rollback,
+    after_initialize,
+    after_find,
+)
+
+__all__ = [
+    'Model',
+    'ModelMeta',
+    'ModelQuery',
+    'init',
+    'RecordNotFoundException',
+    'Error',
+    'Errors',
+    'PasswordAuthenticator',
+    'has_secure_password',
+    'belongs_to',
+    'has_many',
+    'validates',
+    'Relation',
+    'before_validation',
+    'after_validation',
+    'before_save',
+    'around_save',
+    'after_save',
+    'before_create',
+    'around_create',
+    'after_create',
+    'before_update',
+    'around_update',
+    'after_update',
+    'before_destroy',
+    'around_destroy',
+    'after_destroy',
+    'after_commit',
+    'after_rollback',
+    'after_initialize',
+    'after_find',
+]
 
 _logger = logging.getLogger(__name__)
 
@@ -391,8 +448,11 @@ def _get_association(model_cls, *, name):
 
 
 def _build(model_cls, base_instance):
-    res = model_cls()
+    res = object.__new__(model_cls)
+    res._initialize()
     res._base_instance = base_instance
+    run_callbacks(res, 'initialize', None, lambda: None)
+    run_callbacks(res, 'find', None, lambda: None)
     return res
 
 
@@ -473,14 +533,17 @@ class Model(metaclass=ModelMeta):
 
     _fields = ['_changes', '_virtual_fields', '_base_instance', '_errors']
 
-    def __init__(self, **kwargs):
-        base = _base(self.__class__)
+    def _initialize(self):
         self._virtual_fields = {}
         self._changes = {}
-        self._base_instance = base()
+        self._base_instance = _base(self.__class__)()
         self._errors = Errors()
+
+    def __init__(self, **kwargs):
+        self._initialize()
         for k, v in kwargs.items():
             setattr(self, k, v)
+        run_callbacks(self, 'initialize', None, lambda: None)
 
     @property
     def errors(self):
@@ -576,30 +639,61 @@ class Model(metaclass=ModelMeta):
         return self.save()
 
     def save(self, validate=True):
+        operation = 'create' if self.is_new_record() else 'update'
+
         if validate:
-            validate_rules = registry.get(self.__class__).get('validates') or []
-            self._errors = Errors()
-            for vr in validate_rules:
-                self._errors.extend(vr(instance=self))
+            if run_callbacks(self, 'validation', operation, self._validate) is _HALTED:
+                return False
             if self._errors:
                 return False
 
+        if run_callbacks(self, 'save', operation, self._create_or_update, operation) is _HALTED:
+            return False
+
+        queue_after_commit(self, operation, session)
+        return True
+
+    def _validate(self):
+        validate_rules = registry.get(self.__class__).get('validates') or []
+        self._errors = Errors()
+        for vr in validate_rules:
+            self._errors.extend(vr(instance=self))
+
+    def _create_or_update(self, operation):
+        if operation == 'create':
+            return run_callbacks(self, 'create', None, self._create_record)
+        return run_callbacks(self, 'update', None, self._update_record)
+
+    def _create_record(self):
         for field, value in self._changes.items():
             setattr(self._base_instance, field, value)
         self._changes.clear()
-
         now = datetime.now(timezone.utc)
-        if not self.is_persisted():
-            self._base_instance.created_at = now
-            session.add(self._base_instance)
+        self._base_instance.created_at = now
         self._base_instance.updated_at = now
+        session.add(self._base_instance)
         session.flush()
-        return True
+
+    def _update_record(self):
+        for field, value in self._changes.items():
+            setattr(self._base_instance, field, value)
+        self._changes.clear()
+        self._base_instance.updated_at = datetime.now(timezone.utc)
+        session.flush()
 
     def is_persisted(self):
         return inspect(self._base_instance).persistent
 
+    def is_new_record(self):
+        return not self.is_persisted()
+
     def destroy(self):
+        if run_callbacks(self, 'destroy', None, self._destroy_record) is _HALTED:
+            return False
+        queue_after_commit(self, 'destroy', session)
+        return True
+
+    def _destroy_record(self):
         session.delete(self._base_instance)
         session.flush()
 
