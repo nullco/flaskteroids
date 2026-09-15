@@ -31,6 +31,9 @@ jobs:
     - name: Install dependencies using uv
       run: |
         uv sync --dev
+    - name: Install browser
+      run: |
+        uv run playwright install --with-deps chromium
     - name: Test with pytest
       run: |
         uv run pytest --cov=.

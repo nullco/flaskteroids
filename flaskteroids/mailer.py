@@ -1,5 +1,4 @@
 import logging
-import smtplib
 from functools import wraps
 from email.message import EmailMessage
 from flask import current_app, render_template
@@ -110,16 +109,7 @@ class MessageDeliveryJob(Job):
         if not cfg.perform_deliveries:
             _logger.debug('sending mail is disabled, ignoring...')
             return
-        smtp = cfg.smtp_settings
-        host = smtp.host
-        port = smtp.port
-        username = smtp.username
-        password = smtp.password
-
-        with smtplib.SMTP(host, port) as server:
-            server.starttls()
-            server.login(username, password)
-            server.send_message(msg)
+        current_app.extensions["flaskteroids.mail"].deliver(msg)
 
 
 class MessageDelivery:

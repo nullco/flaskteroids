@@ -2,6 +2,7 @@ import logging
 from http import HTTPStatus
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.exceptions import default_exceptions
+from flask import has_request_context
 from flaskteroids.extensions.mail import MailExtension
 import flaskteroids.model as model
 from flaskteroids.db import session
@@ -105,7 +106,7 @@ def _prepare_template_contexts(app):
     @app.context_processor
     def _():
         return {
-            'flash': flash.messages,
+            'flash': flash.messages if has_request_context() else {},
             **db.models
         }
 

@@ -1,0 +1,233 @@
+from contextlib import contextmanager
+from urllib.parse import urlsplit
+
+import pytest
+
+from flaskteroids.testing.context import activate_test_context, current_response
+from flaskteroids.testing.database import transactional_test
+from flaskteroids.testing.fixtures import load_fixtures
+
+
+class FlaskteroidsTest:
+    fixtures = []
+
+    @pytest.fixture(autouse=True)
+    def _flaskteroids_test_lifecycle(self, application):
+        jobs = application.extensions["flaskteroids.jobs"].queue_adapter
+        mail = application.extensions["flaskteroids.mail"].delivery_method
+        jobs.clear()
+        mail.clear()
+
+        with transactional_test(application):
+            with application.app_context():
+                client = application.test_client()
+                with activate_test_context(client):
+                    self._fixture_collection = load_fixtures(
+                        application, self.fixtures
+                    )
+                    self._before_test(application)
+                    try:
+                        self.setup()
+                        yield
+                    finally:
+                        try:
+                            self.teardown()
+                        finally:
+                            self._after_test()
+
+    def _before_test(self, application):
+        pass
+
+    def _after_test(self):
+        pass
+
+    def setup(self):
+        pass
+
+    def teardown(self):
+        pass
+
+    def __getattr__(self, name):
+        collection = self.__dict__.get("_fixture_collection")
+        if collection is not None and name in collection:
+            return getattr(collection, name)
+        raise AttributeError(name)
+
+    def fixture(self, fixture_set, label):
+        return getattr(self._fixture_collection, fixture_set)(label)
+
+    def assert_response(self, expected):
+        response = self._response()
+        ranges = {
+            "success": range(200, 300),
+            "redirect": range(300, 400),
+            "error": range(500, 600),
+        }
+        if expected == "missing":
+            assert response.status_code == 404, (
+                f"Expected a missing response, got {response.status_code}"
+            )
+        elif isinstance(expected, str) and expected in ranges:
+            assert response.status_code in ranges[expected], (
+                f"Expected a {expected} response, got {response.status_code}"
+            )
+        else:
+            assert response.status_code == int(expected)
+
+    def assert_redirected_to(self, location):
+        response = self._response()
+        assert response.status_code in range(300, 400), (
+            f"Expected a redirect, got {response.status_code}"
+        )
+        actual_url = urlsplit(response.location)
+        expected_url = urlsplit(str(location))
+        actual = (actual_url.path, actual_url.query)
+        expected = (expected_url.path, expected_url.query)
+        assert actual == expected, f"Expected redirect to {expected}, got {actual}"
+
+    @contextmanager
+    def assert_difference(self, expression, by=1):
+        before = expression()
+        yield
+        after = expression()
+        assert after - before == by, (
+            f"Expected value to change by {by}, changed by {after - before}"
+        )
+
+    @contextmanager
+    def assert_changes(self, expression, *, from_=None, to=None):
+        before = expression()
+        if from_ is not None:
+            assert before == from_
+        yield
+        after = expression()
+        assert after != before, "Expected value to change, but it did not"
+        if to is not None:
+            assert after == to
+
+    @contextmanager
+    def assert_enqueued_with(self, *, job, args=None, kwargs=None):
+        adapter = self._application.extensions["flaskteroids.jobs"].queue_adapter
+        start = len(adapter.enqueued_jobs)
+        yield
+        enqueued = adapter.enqueued_jobs[start:]
+        matched = any(
+            entry.job_class is job
+            and (args is None or entry.args == tuple(args))
+            and (kwargs is None or entry.kwargs == kwargs)
+            for entry in enqueued
+        )
+        assert matched, f"Expected {job.__name__} to be enqueued"
+
+    @contextmanager
+    def perform_enqueued_jobs(self):
+        adapter = self._application.extensions["flaskteroids.jobs"].queue_adapter
+        previous = adapter.performing_enqueued_jobs
+        adapter.performing_enqueued_jobs = True
+        try:
+            yield
+        finally:
+            adapter.performing_enqueued_jobs = previous
+
+    @contextmanager
+    def assert_emails(self, count):
+        deliveries = self._application.extensions[
+            "flaskteroids.mail"
+        ].delivery_method.deliveries
+        before = len(deliveries)
+        yield
+        actual = len(deliveries) - before
+        assert actual == count, f"Expected {count} emails, got {actual}"
+
+    @property
+    def deliveries(self):
+        return self._application.extensions[
+            "flaskteroids.mail"
+        ].delivery_method.deliveries
+
+    @property
+    def enqueued_jobs(self):
+        return self._application.extensions[
+            "flaskteroids.jobs"
+        ].queue_adapter.enqueued_jobs
+
+    @property
+    def _application(self):
+        from flask import current_app
+
+        return current_app._get_current_object()
+
+    def _response(self):
+        response = current_response()
+        assert response is not None, "No request has been made"
+        return response
+
+
+class ModelTest(FlaskteroidsTest):
+    pass
+
+
+class IntegrationTest(FlaskteroidsTest):
+    pass
+
+
+class JobTest(FlaskteroidsTest):
+    pass
+
+
+class MailerTest(FlaskteroidsTest):
+    pass
+
+
+class SystemTest(IntegrationTest):
+    pytestmark = pytest.mark.system
+
+    def _before_test(self, application):
+        import os
+        from threading import Thread
+
+        from playwright.sync_api import sync_playwright
+        from werkzeug.serving import make_server
+
+        self._server = make_server("127.0.0.1", 0, application)
+        self._server_thread = Thread(target=self._server.serve_forever, daemon=True)
+        self._server_thread.start()
+        self._base_url = f"http://127.0.0.1:{self._server.server_port}"
+        self._playwright = sync_playwright().start()
+        executable_path = os.environ.get("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH")
+        self._browser = self._playwright.chromium.launch(
+            headless=True, executable_path=executable_path
+        )
+        self.page = self._browser.new_page()
+
+    def _after_test(self):
+        self._browser.close()
+        self._playwright.stop()
+        self._server.shutdown()
+        self._server_thread.join()
+
+    def visit(self, location):
+        if str(location).startswith(("http://", "https://")):
+            url = str(location)
+        else:
+            url = f"{self._base_url}{location}"
+        self.page.goto(url)
+
+    def click_on(self, text):
+        self.page.get_by_text(text, exact=True).first.click()
+
+    def fill_in(self, label, *, with_):
+        self.page.get_by_label(label).fill(str(with_))
+
+    def assert_text(self, text):
+        from playwright.sync_api import expect
+
+        expect(self.page.get_by_text(text)).to_be_visible()
+
+    def assert_selector(self, selector, *, text=None):
+        from playwright.sync_api import expect
+
+        locator = self.page.locator(selector)
+        if text is not None:
+            locator = locator.filter(has_text=text)
+        expect(locator).to_be_visible()

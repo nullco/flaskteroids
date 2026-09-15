@@ -30,6 +30,13 @@ dependencies = [
 	"PyYAML"
 ]
 
+[project.optional-dependencies]
+test = [
+    "playwright>=1.50",
+    "pytest>=8",
+    "pytest-xdist>=3",
+]
+
 [project.scripts]
 flaskteroids = "flaskteroids.cli.flaskteroids:cli"
 
@@ -39,8 +46,10 @@ max-line-length = 120
 
 [dependency-groups]
 dev = [
+    "playwright>=1.50",
     "pytest>=8.3.5",
     "pytest-cov>=6.1.1",
     "pytest-mock>=3.14.0",
+    "pytest-xdist>=3",
     "ruff>=0.10.0",
 ]

@@ -14,10 +14,24 @@ def generate(name: str, args: list[str]):
         f'app/controllers/{plural}_controller.py',
         _template(path='app/controllers/controller.py.mako', params=params)
     )
+    ab.file(
+        f'test/controllers/{plural}_controller_test.py',
+        _controller_test(params["controller"]),
+    )
     ab.modify_py_file('config/routes.py', add_routes([
         f"route.resources('{plural}')",
     ]))
     model.generate(params['model'], args)
+
+
+def _controller_test(controller):
+    return f"""
+from test.test_helper import IntegrationTest
+
+
+class {controller}ControllerTest(IntegrationTest):
+    pass
+    """
 
 
 def _template(*, path, params=None):

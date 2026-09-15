@@ -61,6 +61,17 @@ class TestAuthenticationGenerator:
         artifacts_builder.file.assert_any_call('app/mailers/passwords_mailer.py', 'template_content')
 
     @pytest.mark.usefixtures('migrations', 'template')
+    def test_generate_adds_tests(self, artifacts_builder, mocker):
+        generate()
+        for path in [
+            'test/models/user_test.py',
+            'test/models/session_test.py',
+            'test/controllers/sessions_controller_test.py',
+            'test/controllers/passwords_controller_test.py',
+        ]:
+            artifacts_builder.file.assert_any_call(path, mocker.ANY)
+
+    @pytest.mark.usefixtures('migrations', 'template')
     def test_generate_modifies_application_controller(self, artifacts_builder, mocker):
         generate()
         artifacts_builder.modify_py_file.assert_has_calls([

@@ -32,9 +32,20 @@ from app.models.application_model import ApplicationModel
 class User(ApplicationModel):
     pass
     """
-        artifacts_builder.file.assert_called_once_with(
+        artifacts_builder.file.assert_any_call(
             'app/models/user.py',
             expected_content
+        )
+        expected_test_content = """
+from test.test_helper import ModelTest
+
+
+class UserTest(ModelTest):
+    pass
+    """
+        artifacts_builder.file.assert_any_call(
+            'test/models/user_test.py',
+            expected_test_content,
         )
 
     def test_generate_with_different_model_name(self, artifacts_builder, migrations_generate):
@@ -47,7 +58,11 @@ from app.models.application_model import ApplicationModel
 class Post(ApplicationModel):
     pass
     """
-        artifacts_builder.file.assert_called_once_with(
+        artifacts_builder.file.assert_any_call(
             'app/models/post.py',
             expected_content
+        )
+        assert any(
+            call.args[0] == 'test/models/post_test.py'
+            for call in artifacts_builder.file.call_args_list
         )

@@ -80,6 +80,20 @@ class TestModelCRUD:
         User.create(username='three')
         assert len(list(User.all())) == 3
 
+    def test_count_first_and_last(self):
+        first = User.create(username='one')
+        last = User.create(username='two')
+
+        assert User.count() == 2
+        assert User.first().id == first.id
+        assert User.last().id == last.id
+
+    def test_reload(self):
+        user = User.create(username='one')
+        user.username = 'two'
+
+        assert user.reload().username == 'one'
+
     def test_find_by(self):
         User.create(username='one')
         User.create(username='two')

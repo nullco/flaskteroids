@@ -1,4 +1,6 @@
 from flask.config import Config as FlaskConfig
+from flaskteroids.jobs.adapters import CeleryQueueAdapter
+from flaskteroids.mail.delivery_methods import SMTPDeliveryMethod
 
 
 class Options:
@@ -59,11 +61,13 @@ class Configuration(FlaskConfig):
                 "broker_url": "sqla+sqlite:///storage/jobs_database.db",
                 "result_backend": None,
                 "additional_config": {},
+                "queue_adapter": CeleryQueueAdapter,
             }
         )
         self.action_mailer = Options(
             {
                 "perform_deliveries": False,
+                "delivery_method": SMTPDeliveryMethod,
                 "smtp_settings": {},
                 "default_options": {"from_": "no-reply@flaskteroids.me"},
             }
@@ -71,6 +75,7 @@ class Configuration(FlaskConfig):
         self.action_controller = Options(
             {
                 "perform_caching": False,
+                "allow_forgery_protection": True,
             }
         )
         self.x = Options(autovivify=True)

@@ -19,6 +19,10 @@ def generate():
     ab.file('app/controllers/sessions_controller.py', _template(path='app/controllers/sessions_controller.py.mako'))
     ab.file('app/controllers/passwords_controller.py', _template(path='app/controllers/passwords_controller.py.mako'))
     ab.file('app/mailers/passwords_mailer.py', _template(path='app/mailers/passwords_mailer.py.mako'))
+    ab.file('test/models/user_test.py', _model_test('User'))
+    ab.file('test/models/session_test.py', _model_test('Session'))
+    ab.file('test/controllers/sessions_controller_test.py', _sessions_test())
+    ab.file('test/controllers/passwords_controller_test.py', _passwords_test())
     ab.modify_py_file(
         'app/controllers/application_controller.py',
         add_imports([
@@ -32,6 +36,41 @@ def generate():
     ]))
     migrations.generate('CreateUsersTable', ['email_address:str!', 'password_digest:str!'])
     migrations.generate('CreateSessionsTable', ['user:references', 'ip_address:str', 'user_agent:str'])
+
+
+def _model_test(name):
+    return f'''from test.test_helper import ModelTest
+
+
+class {name}Test(ModelTest):
+    pass
+'''
+
+
+def _sessions_test():
+    return '''from test.test_helper import IntegrationTest, get
+from flaskteroids.routes import new_session_path
+
+
+class SessionsControllerTest(IntegrationTest):
+    def test_should_get_new(self):
+        get(new_session_path())
+
+        self.assert_response("success")
+'''
+
+
+def _passwords_test():
+    return '''from test.test_helper import IntegrationTest, get
+from flaskteroids.routes import new_password_path
+
+
+class PasswordsControllerTest(IntegrationTest):
+    def test_should_get_new(self):
+        get(new_password_path())
+
+        self.assert_response("success")
+'''
 
 
 def _template(*, path):

@@ -35,6 +35,14 @@ class TestScaffoldGenerator:
         for file_path in expected_files:
             artifacts_builder.file.assert_any_call(file_path, mocker.ANY)
 
+    def test_generate_creates_tests_and_fixtures(self, artifacts_builder, mocker):
+        generate('User', ['name:str'])
+        artifacts_builder.file.assert_any_call(
+            'test/controllers/users_controller_test.py', mocker.ANY
+        )
+        artifacts_builder.file.assert_any_call('test/fixtures/users.yml', mocker.ANY)
+        artifacts_builder.file.assert_any_call('test/system/users_test.py', mocker.ANY)
+
     def test_generate_modifies_routes(self, artifacts_builder, mocker):
         generate('User', ['name:str'])
         artifacts_builder.modify_py_file.assert_called_once_with('config/routes.py', mocker.ANY)

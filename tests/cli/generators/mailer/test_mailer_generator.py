@@ -16,6 +16,12 @@ class TestMailerGenerator:
         generate('test_mailer', ['welcome'])
         artifacts_builder.file.assert_any_call('app/mailers/test_mailer_mailer.py', mocker.ANY)
 
+    def test_generate_creates_mailer_test(self, artifacts_builder, mocker):
+        generate('User', ['welcome'])
+        artifacts_builder.file.assert_any_call(
+            'test/mailers/user_mailer_test.py', mocker.ANY
+        )
+
     def test_generate_creates_views_directory(self, artifacts_builder):
         generate('test_mailer', ['welcome'])
         artifacts_builder.dir.assert_called_once_with('app/views/test_mailer_mailer/')

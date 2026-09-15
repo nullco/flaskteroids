@@ -1,6 +1,7 @@
 from pathlib import Path
 from sqlalchemy import create_engine
 from flaskteroids.application import Application
+from flaskteroids.testing import TestDeliveryMethod, TestQueueAdapter
 import pytest
 
 
@@ -25,7 +26,9 @@ def app():
             config.paths.jobs = 'tests.app.jobs'
             config.paths.mailers = 'tests.app.mailers'
             config.active_job.broker_url = 'sqla+sqlite:///:memory:'
-            config.action_mailer.perform_deliveries = False
+            config.active_job.queue_adapter = TestQueueAdapter
+            config.action_mailer.delivery_method = TestDeliveryMethod
+            config.action_mailer.perform_deliveries = True
 
         def _configure_database(self):
             self.database_url = db_url

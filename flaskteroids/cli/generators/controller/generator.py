@@ -16,12 +16,34 @@ def generate(controller, actions, skip_routes=False):
         _helper(name=controller)
     )
     ab.dir(f'app/views/{cname}/')
+    ab.file(
+        f'test/controllers/{cname}_controller_test.py',
+        _controller_test(name=controller, path=cname, actions=actions),
+    )
     for action in actions:
         file_name = f'app/views/{cname}/{action}.html'
         ab.file(file_name, _view(name=controller, action=action, file_name=file_name))
         if not skip_routes:
             route = f"route.get('/{cname}/{action}', to='{cname}#{action}')"
             ab.modify_py_file('config/routes.py', add_routes([route]))
+
+
+def _controller_test(*, name, path, actions):
+    tests = []
+    for action in actions:
+        tests.append(f'''    def test_should_get_{action}(self):
+        get("/{path}/{action}")
+
+        self.assert_response("success")
+''')
+    body = "\n".join(tests) or "    pass\n"
+    return f"""
+from test.test_helper import IntegrationTest, get
+
+
+class {name}ControllerTest(IntegrationTest):
+{body}
+    """
 
 
 def _helper(*, name):

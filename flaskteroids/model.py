@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from functools import partial
 from itsdangerous import URLSafeTimedSerializer
 from werkzeug.security import check_password_hash, generate_password_hash
-from sqlalchemy import select, inspect
+from sqlalchemy import select, inspect, func
 from sqlalchemy.orm import relationship, selectinload
 from flaskteroids.db import session
 from flaskteroids import fields
@@ -500,6 +500,18 @@ class ModelQuery:
             return None
         return _build(self._model_cls, res)
 
+    def last(self):
+        primary_key = inspect(self._model_base).primary_key[0]
+        query = self._query.order_by(primary_key.desc())
+        res = session.execute(query).scalars().first()
+        if not res:
+            return None
+        return _build(self._model_cls, res)
+
+    def count(self):
+        query = select(func.count()).select_from(self._query.subquery())
+        return session.execute(query).scalar_one()
+
     def order(self, **kwargs):
         for k, v in kwargs.items():
             field = getattr(self._model_base, k)
@@ -618,6 +630,18 @@ class Model(metaclass=ModelMeta):
         return ModelQuery(cls)
 
     @classmethod
+    def count(cls):
+        return ModelQuery(cls).count()
+
+    @classmethod
+    def first(cls):
+        return ModelQuery(cls).first()
+
+    @classmethod
+    def last(cls):
+        return ModelQuery(cls).last()
+
+    @classmethod
     def includes(cls, *args):
         return ModelQuery(cls).includes(*args)
 
@@ -637,6 +661,11 @@ class Model(metaclass=ModelMeta):
         for field, value in kwargs.items():
             setattr(self, field, value)
         return self.save()
+
+    def reload(self):
+        session.refresh(self._base_instance)
+        self._changes.clear()
+        return self
 
     def save(self, validate=True):
         operation = 'create' if self.is_new_record() else 'update'

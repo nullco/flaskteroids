@@ -20,7 +20,13 @@ class TestResourceGenerator:
 
     def test_generate_creates_controller_file(self, artifacts_builder, mocker):
         generate('User', [])
-        artifacts_builder.file.assert_called_once_with('app/controllers/users_controller.py', mocker.ANY)
+        artifacts_builder.file.assert_any_call('app/controllers/users_controller.py', mocker.ANY)
+
+    def test_generate_creates_controller_test(self, artifacts_builder, mocker):
+        generate('User', [])
+        artifacts_builder.file.assert_any_call(
+            'test/controllers/users_controller_test.py', mocker.ANY
+        )
 
     def test_generate_modifies_routes(self, artifacts_builder, mocker):
         generate('User', [])

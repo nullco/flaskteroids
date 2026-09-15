@@ -41,6 +41,17 @@ def register(router):
     router.put("/users/<int:id>", to="users#update")
 ```
 
+### PATCH Routes
+
+Define a PATCH route using `router.patch(path, to="controller#action", as_=None)`:
+
+```python
+def register(router):
+    router.patch("/users/<int:id>", to="users#update")
+```
+
+Resource update routes accept both PUT and PATCH.
+
 ### DELETE Routes
 
 Define a DELETE route using `router.delete(path, to="controller#action", as_=None)`:
@@ -81,7 +92,7 @@ This generates the following routes:
 | POST        | /posts/                | posts#create      | create_post    |
 | GET         | /posts/<int:id>/       | posts#show        | show_post      |
 | GET         | /posts/<int:id>/edit/  | posts#edit        | edit_post      |
-| PUT         | /posts/<int:id>/       | posts#update      | update_post    |
+| PUT/PATCH   | /posts/<int:id>/       | posts#update      | update_post    |
 | DELETE      | /posts/<int:id>/       | posts#destroy     | destroy_post   |
 
 By default, the `:id` parameter is an integer, but you can customize it:
@@ -120,7 +131,7 @@ This generates:
 | POST        | /profile/         | profiles#create   | create_profile     |
 | GET         | /profile/         | profiles#show     | show_profile       |
 | GET         | /profile/edit/    | profiles#edit     | edit_profile       |
-| PUT         | /profile/         | profiles#update   | update_profile     |
+| PUT/PATCH   | /profile/         | profiles#update   | update_profile     |
 | DELETE      | /profile/         | profiles#destroy  | destroy_profile    |
 
 Note: The controller name is pluralized (`profiles`), even though the resource is singular.
@@ -154,6 +165,28 @@ def register(router):
     router.resources("posts", as_="articles")  # Affects all generated routes
 ```
 
+### Path and URL Helpers
+
+Resourceful routes expose Rails-style helpers:
+
+```python
+from flaskteroids.routes import (
+    edit_post_path,
+    new_post_path,
+    post_path,
+    post_url,
+    posts_path,
+)
+
+posts_path()             # /posts/
+new_post_path()          # /posts/new/
+post_path(post)          # /posts/1/
+edit_post_path(post)     # /posts/1/edit/
+post_url(post)           # http://example.test/posts/1/
+```
+
+Helpers accept either a model instance or an identifier.
+
 ## JSON Routes
 
 Flaskteroids automatically adds JSON format routes for data-oriented actions:
@@ -163,7 +196,7 @@ For resourceful routes, the following JSON routes are added:
 - GET /posts/.json/ → posts#index
 - POST /posts/.json/ → posts#create
 - GET /posts/<int:id>/.json/ → posts#show
-- PUT /posts/<int:id>/.json/ → posts#update
+- PUT/PATCH /posts/<int:id>/.json/ → posts#update
 - DELETE /posts/<int:id>/.json/ → posts#destroy
 
 ## Method Overrides

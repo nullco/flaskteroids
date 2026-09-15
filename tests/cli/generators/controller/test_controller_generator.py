@@ -20,6 +20,12 @@ class TestControllerGenerator:
         generate('TestController', ['index'])
         artifacts_builder.file.assert_any_call('app/helpers/test_controller_helper.py', mocker.ANY)
 
+    def test_generate_creates_controller_test(self, artifacts_builder, mocker):
+        generate('TestController', ['index'])
+        artifacts_builder.file.assert_any_call(
+            'test/controllers/test_controller_controller_test.py', mocker.ANY
+        )
+
     def test_generate_creates_views_directory(self, artifacts_builder):
         generate('TestController', ['index'])
         artifacts_builder.dir.assert_called_once_with('app/views/test_controller/')

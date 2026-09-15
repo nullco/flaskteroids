@@ -1,4 +1,4 @@
-from flask import request, abort
+from flask import request, abort, current_app
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 
 
@@ -25,4 +25,7 @@ class CSRFToken:
             abort(400, 'Invalid CSRF token.')
 
     def _should_validate(self):
+        config = getattr(current_app.config, "action_controller", None)
+        if config and not config.allow_forgery_protection:
+            return False
         return request.method not in ['GET', 'HEAD', 'OPTIONS', 'TRACE']

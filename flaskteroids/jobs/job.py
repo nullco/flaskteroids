@@ -7,7 +7,6 @@ class Job:
         pass
 
     def perform_later(self, *args, **kwargs):
-        ns = registry.get(self.__class__)
-        task = ns.get('task')
-        assert task, 'Task not registered'
-        task.delay(*args, **kwargs)
+        adapter = registry.get(self.__class__).get("queue_adapter")
+        assert adapter, "Job not registered"
+        return adapter.enqueue(self.__class__, args, kwargs)

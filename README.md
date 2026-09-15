@@ -44,6 +44,7 @@ Flaskteroids stays lean, fast, and secure by carefully selecting core dependenci
 - **Flask Compatibility**: Retains the full power of Flask and its rich ecosystem while adding an integrated application framework.
 - **Convention Over Configuration**: Sensible defaults and automatic discovery reduce boilerplate code.
 - **Application Configuration**: Environment settings, `database.yml`, encrypted credentials, and initializers are integrated by default.
+- **Rails-style Testing**: Transactional tests, YAML fixtures, generated tests, job and mail assertions, and browser system tests powered by pytest.
 
 ## Installation
 
@@ -103,7 +104,7 @@ Inside your `my_app` follow the next steps:
    flask run
    ```
 
-Now, visit `http://1227.0.0.1:5000/posts` in your browser.
+Now, visit `http://127.0.0.1:5000/posts` in your browser.
 You have a complete set of pages to create, view, update, and delete posts.
 
 For more check out the [documentation](https://nullco.github.io/flaskteroids/index.html)

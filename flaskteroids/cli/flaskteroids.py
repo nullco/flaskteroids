@@ -12,6 +12,41 @@ def cli():
     pass
 
 
+@cli.command(
+    "test",
+    context_settings={"ignore_unknown_options": True},
+)
+@click.argument("pytest_args", nargs=-1, type=click.UNPROCESSED)
+def test(pytest_args):
+    """Run the application's test suite, excluding system tests."""
+    _run_tests(("-m", "not system", *pytest_args))
+
+
+@cli.command(
+    "test:system",
+    context_settings={"ignore_unknown_options": True},
+)
+@click.argument("pytest_args", nargs=-1, type=click.UNPROCESSED)
+def test_system(pytest_args):
+    """Run browser system tests."""
+    _run_tests(("-m", "system", *pytest_args))
+
+
+def _run_tests(pytest_args):
+    import pytest
+
+    previous_environment = os.environ.get("FLASKTEROIDS_ENV")
+    os.environ["FLASKTEROIDS_ENV"] = "test"
+    try:
+        exit_code = pytest.main(list(pytest_args))
+    finally:
+        if previous_environment is None:
+            os.environ.pop("FLASKTEROIDS_ENV", None)
+        else:
+            os.environ["FLASKTEROIDS_ENV"] = previous_environment
+    raise SystemExit(exit_code)
+
+
 @cli.command("new")
 @click.argument("app_name")
 def new(app_name):
@@ -66,6 +101,16 @@ def new(app_name):
         ab.file("app/views/layouts/mailer.txt")
         ab.file("app/controllers/application_controller.py", _application_controller())
         ab.file("config/routes.py", _routes())
+        ab.file("test/__init__.py")
+        ab.file("test/conftest.py", _test_conftest())
+        ab.file("test/test_helper.py", _test_helper())
+        ab.file("test/fixtures/.keep")
+        ab.file("test/models/.keep")
+        ab.file("test/controllers/.keep")
+        ab.file("test/mailers/.keep")
+        ab.file("test/jobs/.keep")
+        ab.file("test/system/.keep")
+        ab.file(".github/workflows/test.yml", _test_workflow())
         ab.python_run("flask db:init")
         ab.file("db/migrate/versions/.keep")
         ab.run("git init")
@@ -110,10 +155,84 @@ name = "{app_name}"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-    requires-python = ">=3.12"
+requires-python = ">=3.12"
 dependencies = [
     "flaskteroids",
 ]
+
+[dependency-groups]
+dev = [
+    "playwright>=1.50",
+    "pytest>=8",
+    "pytest-xdist>=3",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["test"]
+python_files = ["*_test.py"]
+python_classes = ["*Test"]
+python_functions = ["test_*"]
+    """
+
+
+def _test_conftest():
+    return """
+import os
+
+os.environ.setdefault("FLASKTEROIDS_ENV", "test")
+
+pytest_plugins = ["flaskteroids.testing.pytest_plugin"]
+    """
+
+
+def _test_helper():
+    return """
+from flaskteroids.testing import (
+    IntegrationTest,
+    JobTest,
+    MailerTest,
+    ModelTest,
+    SystemTest,
+    delete,
+    get,
+    patch,
+    post,
+    put,
+)
+
+__all__ = [
+    "IntegrationTest",
+    "JobTest",
+    "MailerTest",
+    "ModelTest",
+    "SystemTest",
+    "delete",
+    "get",
+    "patch",
+    "post",
+    "put",
+]
+    """
+
+
+def _test_workflow():
+    return """
+name: Test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --dev
+      - run: uv run playwright install --with-deps chromium
+      - run: uv run flaskteroids test
+      - run: uv run flaskteroids test:system
     """
 
 
@@ -203,11 +322,17 @@ def configure(config):
 
 def _test_environment():
     return """
+from flaskteroids.testing import TestDeliveryMethod, TestQueueAdapter
+
+
 def configure(config):
     config.enable_reloading = False
     config.eager_load = False
     config.action_controller.perform_caching = False
-    config.action_mailer.perform_deliveries = False
+    config.action_controller.allow_forgery_protection = False
+    config.active_job.queue_adapter = TestQueueAdapter
+    config.action_mailer.delivery_method = TestDeliveryMethod
+    config.action_mailer.perform_deliveries = True
     """
 
 
@@ -289,8 +414,8 @@ ENV PATH="/usr/local/bin:${PATH}"
 # Copy project files and sync dependencies with uv.
 # uv will create a .venv; we then freeze its installed packages to requirements.txt
     COPY . .
-    # Run uv sync (no --production flag; use default behavior)
-    RUN uv sync \
+    # Install only application runtime dependencies.
+    RUN uv sync --no-dev \
     && .venv/bin/pip freeze | sed '/^-e /d; /file:\/\//d' > /requirements.txt
 
 FROM python:3.12-slim

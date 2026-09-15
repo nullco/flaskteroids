@@ -299,6 +299,15 @@ wheels = [
 ]
 
 [[package]]
+name = "execnet"
+version = "2.1.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/bf/89/780e11f9588d9e7128a3f87788354c7946a9cbb1401ad38a48c4db9a4f07/execnet-2.1.2.tar.gz", hash = "sha256:63d83bfdd9a23e35b9c6a3261412324f964c2ec8dcd8d3c6916ee9373e0befcd", size = 166622 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ab/84/02fc1827e8cdded4aa65baef11296a9bbe595c474f0d6d758af082d849fd/execnet-2.1.2-py3-none-any.whl", hash = "sha256:67fba928dd5a544b783f6056f449e5e3931a5c378b128bc18501f7ea79e296ec", size = 40708 },
+]
+
+[[package]]
 name = "flask"
 version = "3.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -327,11 +336,20 @@ dependencies = [
     { name = "sqlalchemy" },
 ]
 
+[package.optional-dependencies]
+test = [
+    { name = "playwright" },
+    { name = "pytest" },
+    { name = "pytest-xdist" },
+]
+
 [package.dev-dependencies]
 dev = [
+    { name = "playwright" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-mock" },
+    { name = "pytest-xdist" },
     { name = "ruff" },
 ]
 
@@ -341,15 +359,21 @@ requires-dist = [
     { name = "celery" },
     { name = "cryptography" },
     { name = "flask" },
+    { name = "playwright", marker = "extra == 'test'", specifier = ">=1.50" },
+    { name = "pytest", marker = "extra == 'test'", specifier = ">=8" },
+    { name = "pytest-xdist", marker = "extra == 'test'", specifier = ">=3" },
     { name = "pyyaml" },
     { name = "sqlalchemy" },
 ]
+provides-extras = ["test"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "playwright", specifier = ">=1.50" },
     { name = "pytest", specifier = ">=8.3.5" },
     { name = "pytest-cov", specifier = ">=6.1.1" },
     { name = "pytest-mock", specifier = ">=3.14.0" },
+    { name = "pytest-xdist", specifier = ">=3" },
     { name = "ruff", specifier = ">=0.10.0" },
 ]
 
@@ -490,6 +514,25 @@ wheels = [
 ]
 
 [[package]]
+name = "playwright"
+version = "1.63.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "greenlet" },
+    { name = "pyee" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/19/dd/fbb3d34228ad753bc14464d5f2252585b73367539775a88d0a3949cf5a45/playwright-1.63.0-py3-none-macosx_10_13_x86_64.whl", hash = "sha256:84c540759e8e7f01e690e197e04060f48899d37cea322299f255843273d3385d", size = 44278407 },
+    { url = "https://files.pythonhosted.org/packages/f5/9a/948b930b1a8c4ee869e5a139a2b7747caa06aab56a3f09a2f0abdcbda221/playwright-1.63.0-py3-none-macosx_11_0_arm64.whl", hash = "sha256:fd1aa00631d44d55e56e0975bf3f3f285fac4a9fd2813183f0c12a488f1a1b24", size = 42944679 },
+    { url = "https://files.pythonhosted.org/packages/94/11/dc5c13fa1602371603acd461be47529c1b3513815d3a0dc98f642c291a10/playwright-1.63.0-py3-none-macosx_11_0_universal2.whl", hash = "sha256:c89fc4736502a1f0fac2c8ca5d10c0cbc1c669f1f4774a2d8507a43140e4d53f", size = 44278410 },
+    { url = "https://files.pythonhosted.org/packages/27/9c/103a5037789062bdab27c7dca53f3ca6b075b572ab2cd96eec825b3aec4e/playwright-1.63.0-py3-none-manylinux1_x86_64.whl", hash = "sha256:ad21bc07516b187965a7521c5cf0df0bd657b17482eaad74335272d35a2b07de", size = 48217159 },
+    { url = "https://files.pythonhosted.org/packages/f3/82/3d85505284c5a210f2da6c07b8f757524e79d1fba9cfdafe1eafb766ae59/playwright-1.63.0-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:354e15b29503565fc598b89f16fbe070459343bef9d7498a93e304864000c6a7", size = 47902708 },
+    { url = "https://files.pythonhosted.org/packages/69/8d/f74ff6b52751859f4b69caf66aa7d4a3c8d6c1f0c7dc9920da103612ee39/playwright-1.63.0-py3-none-win32.whl", hash = "sha256:660c00c62639e31b16700ba5456b351ddba55bb766b7ce8261223aa34928e482", size = 38606075 },
+    { url = "https://files.pythonhosted.org/packages/76/eb/d6b8d92658038e260dbc7dd69fb3fdbe245aac283953de8b50b02bfe5f61/playwright-1.63.0-py3-none-win_amd64.whl", hash = "sha256:2f9a707a6c6c91157ed77bff2b8caeb04b3c8d46e70d585fc134298cbe4b5cc6", size = 38606082 },
+    { url = "https://files.pythonhosted.org/packages/be/75/2432b3e3c7c62103b72d4c4cc8b16a56383ada372bbb0d1278591e988f71/playwright-1.63.0-py3-none-win_arm64.whl", hash = "sha256:1e4a3a838ce22fb68ad17193fcd142a19610d9d70fb9966d2239f5dddc0cc05b", size = 34523554 },
+]
+
+[[package]]
 name = "pluggy"
 version = "1.5.0"
 source = { registry = "https://pypi.org/simple" }
@@ -517,6 +560,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/1b/7d/92392ff7815c21062bea51aa7b87d45576f649f16458d78b7cf94b9ab2e6/pycparser-3.0.tar.gz", hash = "sha256:600f49d217304a5902ac3c37e1281c9fe94e4d0489de643a9504c5cdfdfc6b29", size = 103492 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/0c/c3/44f3fbbfa403ea2a7c779186dc20772604442dde72947e7d01069cbe98e3/pycparser-3.0-py3-none-any.whl", hash = "sha256:b727414169a36b7d524c1c3e31839a521725078d7b2ff038656844266160a992", size = 48172 },
+]
+
+[[package]]
+name = "pyee"
+version = "13.0.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/8b/04/e7c1fe4dc78a6fdbfd6c337b1c3732ff543b8a397683ab38378447baa331/pyee-13.0.1.tar.gz", hash = "sha256:0b931f7c14535667ed4c7e0d531716368715e860b988770fc7eb8578d1f67fc8", size = 31655 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a0/c4/b4d4827c93ef43c01f599ef31453ccc1c132b353284fc6c87d535c233129/pyee-13.0.1-py3-none-any.whl", hash = "sha256:af2f8fede4171ef667dfded53f96e2ed0d6e6bd7ee3bb46437f77e3b57689228", size = 15659 },
 ]
 
 [[package]]
@@ -557,6 +612,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c6/90/a955c3ab35ccd41ad4de556596fa86685bf4fc5ffcc62d22d856cfd4e29a/pytest-mock-3.14.0.tar.gz", hash = "sha256:2719255a1efeceadbc056d6bf3df3d1c5015530fb40cf347c0f9afac88410bd0", size = 32814 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f2/3b/b26f90f74e2986a82df6e7ac7e319b8ea7ccece1caec9f8ab6104dc70603/pytest_mock-3.14.0-py3-none-any.whl", hash = "sha256:0b72c38033392a5f4621342fe11e9219ac11ec9d375f8e2a0c164539e0d70f6f", size = 9863 },
+]
+
+[[package]]
+name = "pytest-xdist"
+version = "3.8.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "execnet" },
+    { name = "pytest" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/78/b4/439b179d1ff526791eb921115fca8e44e596a13efeda518b9d845a619450/pytest_xdist-3.8.0.tar.gz", hash = "sha256:7e578125ec9bc6050861aa93f2d59f1d8d085595d6551c2c90b6f4fad8d3a9f1", size = 88069 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ca/31/d4e37e9e550c2b92a9cbc2e4d0b7420a27224968580b5a447f420847c975/pytest_xdist-3.8.0-py3-none-any.whl", hash = "sha256:202ca578cfeb7370784a8c33d6d05bc6e13b4f25b5053c30a152269fd10f0b88", size = 46396 },
 ]
 
 [[package]]

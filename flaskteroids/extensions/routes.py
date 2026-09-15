@@ -22,6 +22,7 @@ class RoutesExtension:
         self._app = app
         self._paths = set()
         self._view_functions = {}
+        self._helpers = {}
         self._controllers = discover_classes(app.config.paths.controllers, ActionController)
         self._internal_controllers = discover_classes('flaskteroids.controllers', ActionController)
         routes = import_module(app.config.paths.routes)
@@ -36,8 +37,13 @@ class RoutesExtension:
             app.extensions = {}
         app.extensions["flaskteroids.routes"] = self
 
+    @property
+    def helpers(self):
+        return self._helpers
+
     def root(self, *, to, as_='root'):
         self._register_view_func('/', to, as_=as_)
+        self._helpers[as_] = {"endpoint": as_, "param": None}
 
     def get(self, path, *, to, as_=None):
         self._register_view_func(path, to, as_=as_)
@@ -48,14 +54,32 @@ class RoutesExtension:
     def put(self, path, *, to, as_=None):
         self._register_view_func(path, to, ['PUT'], as_=as_)
 
+    def patch(self, path, *, to, as_=None):
+        self._register_view_func(path, to, ['PATCH'], as_=as_)
+
     def delete(self, path, *, to, as_=None):
         self._register_view_func(path, to, ['DELETE'], as_=as_)
 
     def resources(self, name, *, param=None, only=None, nested=None):
+        actions = only or ['index', 'new', 'create', 'show', 'edit', 'update', 'destroy']
         resources = _ResourceBuilder().resources(name, param=param, only=only, nested=nested)
         for method_name, path, to, as_ in resources:
-            method = getattr(self, method_name)
-            method(path, to=to, as_=as_)
+            if method_name == "put":
+                self._register_view_func(path, to, ["PUT", "PATCH"], as_=as_)
+            else:
+                method = getattr(self, method_name)
+                method(path, to=to, as_=as_)
+
+        singular = inflector.singularize(name)
+        parameter = (param or "id").split(":")[-1]
+        if "index" in actions:
+            self._helpers[name] = {"endpoint": f"index_{singular}", "param": None}
+        if "new" in actions:
+            self._helpers[f"new_{singular}"] = {"endpoint": f"new_{singular}", "param": None}
+        if "show" in actions:
+            self._helpers[singular] = {"endpoint": f"show_{singular}", "param": parameter}
+        if "edit" in actions:
+            self._helpers[f"edit_{singular}"] = {"endpoint": f"edit_{singular}", "param": parameter}
 
     def resource(self, name, *, only=None):
         only = only or ['new', 'create', 'show', 'edit', 'update', 'destroy']
@@ -72,7 +96,17 @@ class RoutesExtension:
             method, path, to = action_cfg
             path = path.format(name=name)
             to = to.format(name=inflector.pluralize(name))
-            method(path, to=to)
+            if action == "update":
+                self._register_view_func(path, to, ["PUT", "PATCH"])
+            else:
+                method(path, to=to)
+
+        if "show" in only:
+            self._helpers[name] = {"endpoint": f"show_{name}", "param": None}
+        if "new" in only:
+            self._helpers[f"new_{name}"] = {"endpoint": f"new_{name}", "param": None}
+        if "edit" in only:
+            self._helpers[f"edit_{name}"] = {"endpoint": f"edit_{name}", "param": None}
 
     def has_path(self, path):
         return path in self._paths
@@ -112,6 +146,11 @@ class RoutesExtension:
         view_func_name = f"{caction}_{inflector.singularize(cname)}"
         if as_:
             view_func_name = as_
+            parameters = re.findall(r"<(?:(?:[^:>]+):)?([^>]+)>", path)
+            self._helpers[as_] = {
+                "endpoint": as_,
+                "param": parameters[0] if len(parameters) == 1 else None,
+            }
         view_func.__name__ = view_func_name
 
         self._paths.add(path)
