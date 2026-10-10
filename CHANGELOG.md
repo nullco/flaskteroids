@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.3.1 - 2026-10-10
+
+### Fixed
+
+- Refresh the README's PyPI version badge URL with each release to reduce stale
+  cached version badges on GitHub and PyPI.
+
 ## 0.3.0 - 2026-10-10
 
 ### Added

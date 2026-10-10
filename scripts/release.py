@@ -75,8 +75,18 @@ def prepare_release(root, bump):
         + new_section
         + project[project_section.end(1) :]
     )
+    readme_path = root / "README.md"
+    new_readme, count = re.subn(
+        r'https://img\.shields\.io/pypi/v/flaskteroids\.svg(?:\?release=\d+\.\d+\.\d+)?(?=["\'])',
+        f"https://img.shields.io/pypi/v/flaskteroids.svg?release={new_version}",
+        readme_path.read_text(),
+    )
+    if count != 1:
+        raise ValueError("Expected exactly one PyPI version badge in README.md")
+
     project_path.write_text(new_project)
     changelog_path.write_text(new_changelog)
+    readme_path.write_text(new_readme)
     return new_version
 
 
