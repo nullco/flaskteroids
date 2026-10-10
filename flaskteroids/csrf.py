@@ -1,5 +1,8 @@
-from flask import request, abort, current_app
-from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
+import hmac
+import secrets
+
+from flask import abort, current_app, request, session
+from itsdangerous import BadData, SignatureExpired, URLSafeTimedSerializer
 
 
 class CSRFToken:
@@ -9,7 +12,9 @@ class CSRFToken:
         self._salt = 'csrf-token'
 
     def generate(self):
-        return self._serializer.dumps('csrf-token', salt=self._salt)
+        if 'csrf_nonce' not in session:
+            session['csrf_nonce'] = secrets.token_urlsafe(32)
+        return self._serializer.dumps(session['csrf_nonce'], salt=self._salt)
 
     def validate(self):
         if not self._should_validate():
@@ -18,11 +23,19 @@ class CSRFToken:
         if not token:
             abort(400, 'Missing CSRF token.')
         try:
-            self._serializer.loads(token, salt=self._salt, max_age=3600)
+            nonce = self._serializer.loads(token, salt=self._salt, max_age=3600)
         except SignatureExpired:
             abort(400, 'CSRF token has expired.')
-        except BadSignature:
+        except BadData:
             abort(400, 'Invalid CSRF token.')
+        expected = session.get('csrf_nonce')
+        if (
+            not isinstance(nonce, str)
+            or not isinstance(expected, str)
+            or not expected
+            or not hmac.compare_digest(nonce.encode(), expected.encode())
+        ):
+            abort(400, 'CSRF token does not match this session.')
 
     def _should_validate(self):
         config = getattr(current_app.config, "action_controller", None)

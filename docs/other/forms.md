@@ -74,7 +74,19 @@ In this example, `_post_params` specifies that the `params` object must contain 
 
 ## CSRF Protection
 
-Flaskteroids automatically includes CSRF (Cross-Site Request Forgery) protection on all non-GET requests. A CSRF token is generated and must be included in your forms. The `form_with` helper does this automatically.
+Flaskteroids automatically includes CSRF (Cross-Site Request Forgery) protection on
+state-changing requests (all methods except GET, HEAD, OPTIONS, and TRACE). A CSRF
+token must be included in your forms. The `form_with` helper does this automatically.
+
+Tokens are signed, expire after one hour, and are bound to a random nonce stored in
+the browser session. A token from another session is rejected. Clearing the session
+invalidates its tokens; reload forms to obtain a new token. Token generation requires
+an active request context and a configured Flask secret key. AJAX requests can send
+the token in the `X-CSRF-TOKEN` header instead of the `csrf_token` form field.
+
+Do not share-cache pages containing CSRF tokens: they are specific to each session.
+Applications upgrading from the old session-independent tokens must reload existing
+forms.
 
 For manual forms, you can include the token like this:
 
