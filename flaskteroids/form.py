@@ -1,5 +1,5 @@
-from markupsafe import Markup, escape
 from jinja2 import Template
+from markupsafe import Markup, escape
 
 
 class Form:
@@ -90,8 +90,8 @@ class Form:
         return self._input_type('color', field, **kwargs)
 
     def text_area(self, field, value=None):
-        val = value if value is not None else self._get_value(field)
-        return Markup(f'<textarea name="{self._get_name(field)}" id="{self._get_id(field)}" value="{val}"></textarea>')
+        val = escape(value) if value is not None else self._get_value(field)
+        return Markup(f'<textarea name="{self._get_name(field)}" id="{self._get_id(field)}">{val}</textarea>')
 
     def collection_select(self, field, collection, option_value, option_display, prompt='Select one', value=None):
         value = value if value is not None else self._get_value(field)
