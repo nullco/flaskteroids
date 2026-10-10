@@ -1,6 +1,8 @@
 import pytest
+import yaml
+
+from flaskteroids.cli.artifacts import ArtifactsBuilder, ArtifactsBuilderException
 from flaskteroids.cli.flaskteroids import cli
-from flaskteroids.cli.artifacts import ArtifactsBuilderException
 
 
 @pytest.fixture
@@ -41,8 +43,30 @@ def test_new_command(cli_runner, artifacts_builder):
         "test/conftest.py",
         "test/test_helper.py",
         ".github/workflows/test.yml",
+        ".agents/skills/using-flaskteroids/SKILL.md",
     }.issubset(created_files)
     assert "bin/flaskteroids" not in created_files
+
+
+def test_new_generates_agent_skill_loader(cli_runner, tmp_path, mocker):
+    mocker.patch.object(ArtifactsBuilder, 'python_run')
+    mocker.patch.object(ArtifactsBuilder, 'run')
+    app_path = tmp_path / 'test_app'
+
+    result = cli_runner.invoke(cli, ['new', str(app_path)])
+
+    assert result.exit_code == 0
+    skill_path = app_path / '.agents' / 'skills' / 'using-flaskteroids' / 'SKILL.md'
+    text = skill_path.read_text()
+    _, frontmatter, body = text.split('---', 2)
+    metadata = yaml.safe_load(frontmatter)
+    assert metadata['name'] == 'using-flaskteroids'
+    assert metadata['description']
+    assert 'flaskteroids agent-skills path' in body
+    assert 'uv run flaskteroids agent-skills path' in body
+    assert 'using-flaskteroids/SKILL.md' in body
+    assert 'Read that file completely' in body
+    assert 'not this application-local loader' in body
 
 
 def test_new_command_error(cli_runner, artifacts_builder):

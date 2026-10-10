@@ -111,8 +111,13 @@ For more check out the [documentation](https://nullco.github.io/flaskteroids/ind
 
 ## Agent Skills
 
-Flaskteroids bundles coding guidance for agents with each release. Using your
-application's environment, locate the installed skills with:
+Flaskteroids bundles coding guidance for agents with each release. New applications
+include `.agents/skills/using-flaskteroids/SKILL.md`, a loader that directs agents to
+the installed package's version-matched instructions. The package skill requires
+using public Flaskteroids abstractions whenever they cover the task, rather than
+bypassing the framework with dependency internals.
+
+Using your application's environment, locate the installed skills with:
 
 ```sh
 flaskteroids agent-skills path
