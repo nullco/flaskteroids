@@ -1,3 +1,5 @@
+import pytest
+
 from flaskteroids.form import Form
 
 
@@ -17,7 +19,7 @@ def test_form_fields():
     assert str(form.search_field("query")) == '<input type="search" id="user_query" name="user[query]" value="">'
     assert str(form.color_field("favorite_color")) == '<input type="color" id="user_favorite_color" name="user[favorite_color]" value="">'
     assert str(form.hidden_field("csrf_token", value="abcde")) == '<input type="hidden" id="user_csrf_token" name="user[csrf_token]" value="abcde">'
-    assert str(form.text_area("bio")) == '<textarea name="user[bio]" id="user_bio" value=""></textarea>'
+    assert str(form.text_area("bio")) == '<textarea name="user[bio]" id="user_bio"></textarea>'
     assert 'type="checkbox"' in str(form.checkbox("terms"))
     assert str(form.submit("Create")) == '<input type="submit" value="Create" >'
 
@@ -27,6 +29,29 @@ def test_form_without_prefix_or_data():
 
     assert str(form.label("name")) == '<label for="name">Name</label>'
     assert str(form.text_field("name")) == '<input type="text" id="name" name="name" value="">'
+
+
+@pytest.mark.parametrize('data, value, expected', [
+    ({'bio': 'Existing text'}, None, 'Existing text'),
+    ({'bio': 'Existing text'}, 'Replacement text', 'Replacement text'),
+    ({'bio': 'Existing text'}, '', ''),
+    ({'bio': 'Existing text'}, 0, '0'),
+    ({'bio': None}, None, ''),
+    ({}, None, ''),
+    ({'bio': 'First line\nSecond line'}, None, 'First line\nSecond line'),
+    ({'bio': '<b>Text</b> & more'}, None, '&lt;b&gt;Text&lt;/b&gt; &amp; more'),
+    ({}, '</textarea><script>alert("x")</script>', '&lt;/textarea&gt;&lt;script&gt;alert(&#34;x&#34;)&lt;/script&gt;'),
+])
+def test_text_area_content(data, value, expected):
+    form = Form(prefix='user', data=data)
+
+    assert str(form.text_area('bio', value=value)) == f'<textarea name="user[bio]" id="user_bio">{expected}</textarea>'
+
+
+def test_text_area_without_prefix():
+    form = Form(prefix=None, data={'bio': 'Existing text'})
+
+    assert str(form.text_area('bio')) == '<textarea name="bio" id="bio">Existing text</textarea>'
 
 
 def test_checkbox():

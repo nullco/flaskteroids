@@ -1,9 +1,11 @@
 import os
 import secrets
+
 import click
 import yaml
-from flaskteroids.cli.artifacts import ArtifactsBuilder, ArtifactsBuilderException
+
 from flaskteroids.cli.agent_skills import agent_skills
+from flaskteroids.cli.artifacts import ArtifactsBuilder, ArtifactsBuilderException
 from flaskteroids.cli.generators.templates import template
 from flaskteroids.credentials import encrypt, generate_key
 
@@ -26,7 +28,7 @@ def new(app_name):
     """Create a configured application.
 
     Creates the APP_NAME directory with tests, encrypted credentials,
-    and deployment examples.
+    deployment examples, and a loader for version-matched agent guidance.
     Requires Git; does not install dependencies. Use a new directory:
     existing files may be overwritten.
 
@@ -39,6 +41,10 @@ def new(app_name):
     try:
         ab.dir()
         ab.file("README.md", _readme(app_name))
+        ab.file(
+            ".agents/skills/using-flaskteroids/SKILL.md",
+            _template(path="agent_skill.md.mako"),
+        )
         ab.file("Dockerfile", _dockerfile())
         ab.file(".dockerignore", _dockerignore())
         ab.file(".gitignore", _gitignore())

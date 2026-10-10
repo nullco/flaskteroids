@@ -182,6 +182,8 @@ The decorator adds:
 - Automatic password hashing to `password_digest`
 - Virtual fields: `password`, `password_confirmation`, `password_reset_token`
 - Validation for password length and confirmation
+- Password reset tokens that expire after 15 minutes and become invalid after a
+  successful password change
 
 ## Callbacks
 
@@ -380,6 +382,34 @@ posts = Post.order(created_at='desc').all()
 posts = Post.order(created_at='desc', title='asc').all()
 ```
 
+### Limit, Offset, and Pagination
+
+Use `limit()` to cap the number of records and `offset()` to skip records. Both
+methods work directly on a model or in a query chain and are applied in SQL:
+
+```python
+posts = Post.limit(10)
+posts = Post.offset(20)
+posts = Post.where(published=True).order(id='asc').limit(10).offset(20)
+
+# Page numbers start at 1
+page = 3
+per_page = 20
+posts = Post.where(published=True).order(id='asc').limit(per_page).offset((page - 1) * per_page)
+records = list(posts)
+
+# Count all matching records separately from the page
+page_count = posts.count()
+total_count = Post.where(published=True).count()
+```
+
+Always use a deterministic order (such as `id`) for pagination. Use non-negative
+integers: `limit(0)` returns no records and `offset(0)` skips none. Repeated calls
+replace the previous value; `limit(None)` or `offset(None)` clears that clause.
+Queries remain lazy until records or a count are requested. `count()`, `first()`,
+and `last()` respect the selected page; like Rails, `last()` loads the selected
+records when a limit or offset is present.
+
 ## CRUD Operations
 
 ### Creating Records
@@ -435,6 +465,21 @@ user = User.authenticate_by(email="user@example.com", password="secret")
 
 # Password reset tokens
 token = user.password_reset_token
-# Later...
+# Within 15 minutes, before the password changes
 user = User.find_by_password_reset_token(token)
 ```
+
+Reset tokens are signed and scoped to the model and password field. They contain a
+keyed fingerprint of the password digest, not the digest itself. Any successful
+password change invalidates all outstanding reset tokens, even when setting the
+same password again. Failed password updates and changes to unrelated fields do
+not invalidate existing tokens.
+
+Reading `password_reset_token` generates a fresh token using the current password
+digest and timestamp. For custom password fields, such as `has_secure_password('passcode')`,
+read `passcode_reset_token`; verification still uses `find_by_password_reset_token()`.
+
+Verification raises `itsdangerous.SignatureExpired` for expired tokens and
+`itsdangerous.BadSignature` for invalid or revoked tokens. Previously issued tokens
+from versions without expiration and password-change protection are rejected;
+users must request a new reset link.

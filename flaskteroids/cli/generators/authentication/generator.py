@@ -1,7 +1,12 @@
 import click
+
 from flaskteroids.cli.artifacts import ArtifactsBuilder
 from flaskteroids.cli.generators.migrations import generator as migrations
-from flaskteroids.cli.generators.src_modifier import add_routes, add_imports, add_base_cls
+from flaskteroids.cli.generators.src_modifier import (
+    add_base_cls,
+    add_imports,
+    add_routes,
+)
 from flaskteroids.cli.generators.templates import template
 
 
@@ -34,8 +39,8 @@ def generate():
         "route.resource('session')",
         "route.resources('passwords', param='token')",
     ]))
-    migrations.generate('CreateUsersTable', ['email_address:str!', 'password_digest:str!'])
-    migrations.generate('CreateSessionsTable', ['user:references', 'ip_address:str', 'user_agent:str'])
+    migrations.generate('CreateUsers', ['email_address:str!', 'password_digest:str!'])
+    migrations.generate('CreateSessions', ['user:references', 'ip_address:str', 'user_agent:str'])
 
 
 def _model_test(name):

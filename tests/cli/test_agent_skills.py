@@ -26,7 +26,10 @@ def test_agent_skills_path(runner, monkeypatch, tmp_path, mocker):
     assert skills_path.is_dir()
     assert skills_path.parts[-2:] == (".agents", "skills")
     skill = skills_path / "using-flaskteroids" / "SKILL.md"
-    assert "name: using-flaskteroids" in skill.read_text()
+    guidance = skill.read_text()
+    assert "name: using-flaskteroids" in guidance
+    assert "Always use public Flaskteroids abstractions" in guidance
+    assert "Only use a lower-level API when there is a concrete gap" in guidance
     initialize.assert_not_called()
 
 

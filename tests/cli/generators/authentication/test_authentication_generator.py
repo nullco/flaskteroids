@@ -1,4 +1,6 @@
 import pytest
+from alembic.operations import ops
+
 from flaskteroids.cli.generators.authentication.generator import generate
 
 
@@ -88,6 +90,25 @@ class TestAuthenticationGenerator:
     def test_generate_creates_migrations(self, migrations, mocker):
         generate()
         migrations.generate.assert_has_calls([
-            mocker.call.generate('CreateUsersTable', ['email_address:str!', 'password_digest:str!']),
-            mocker.call.generate('CreateSessionsTable', ['user:references', 'ip_address:str', 'user_agent:str']),
+            mocker.call.generate('CreateUsers', ['email_address:str!', 'password_digest:str!']),
+            mocker.call.generate('CreateSessions', ['user:references', 'ip_address:str', 'user_agent:str']),
         ])
+
+    @pytest.mark.usefixtures('artifacts_builder', 'template')
+    def test_generate_creates_expected_tables(self, mocker):
+        mocker.patch('flaskteroids.cli.generators.migrations.generator.get_config')
+        revision = mocker.patch('flaskteroids.cli.generators.migrations.generator.command.revision')
+
+        generate()
+
+        scripts = []
+        for call in revision.call_args_list:
+            script = ops.MigrationScript(None, ops.UpgradeOps([]), ops.DowngradeOps([]))
+            call.kwargs['process_revision_directives'](None, None, [script])
+            scripts.append(script)
+
+        tables = [script.upgrade_ops.ops[0] for script in scripts]
+        assert [table.table_name for table in tables] == ['users', 'sessions']
+        assert [script.downgrade_ops.ops[0].table_name for script in scripts] == ['users', 'sessions']
+        user_id = next(column for column in tables[1].columns if column.name == 'user_id')
+        assert [fk.target_fullname for fk in user_id.foreign_keys] == ['users.id']

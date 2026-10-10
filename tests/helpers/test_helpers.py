@@ -1,5 +1,6 @@
 import pytest
-from flaskteroids.helpers import link_to, button_to, form_with, render, csrf_token
+
+from flaskteroids.helpers import button_to, csrf_token, form_with, link_to, render
 
 
 @pytest.fixture
@@ -23,7 +24,13 @@ def render_template(mocker):
     return render_template
 
 
-@pytest.mark.usefixtures('app_ctx')
+@pytest.fixture
+def request_ctx(app):
+    with app.test_request_context():
+        yield
+
+
+@pytest.mark.usefixtures('request_ctx')
 class TestHelpers:
 
     def test_link_to_generates_anchor_tag(self):
