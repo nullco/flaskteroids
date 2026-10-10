@@ -182,6 +182,8 @@ The decorator adds:
 - Automatic password hashing to `password_digest`
 - Virtual fields: `password`, `password_confirmation`, `password_reset_token`
 - Validation for password length and confirmation
+- Password reset tokens that expire after 15 minutes and become invalid after a
+  successful password change
 
 ## Callbacks
 
@@ -463,6 +465,21 @@ user = User.authenticate_by(email="user@example.com", password="secret")
 
 # Password reset tokens
 token = user.password_reset_token
-# Later...
+# Within 15 minutes, before the password changes
 user = User.find_by_password_reset_token(token)
 ```
+
+Reset tokens are signed and scoped to the model and password field. They contain a
+keyed fingerprint of the password digest, not the digest itself. Any successful
+password change invalidates all outstanding reset tokens, even when setting the
+same password again. Failed password updates and changes to unrelated fields do
+not invalidate existing tokens.
+
+Reading `password_reset_token` generates a fresh token using the current password
+digest and timestamp. For custom password fields, such as `has_secure_password('passcode')`,
+read `passcode_reset_token`; verification still uses `find_by_password_reset_token()`.
+
+Verification raises `itsdangerous.SignatureExpired` for expired tokens and
+`itsdangerous.BadSignature` for invalid or revoked tokens. Previously issued tokens
+from versions without expiration and password-change protection are rejected;
+users must request a new reset link.

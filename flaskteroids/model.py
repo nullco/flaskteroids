@@ -1,8 +1,9 @@
+import hmac
 import logging
 from typing import TypedDict, Any, NotRequired
 from datetime import datetime, timezone
 from functools import partial
-from itsdangerous import URLSafeTimedSerializer
+from itsdangerous import BadSignature, URLSafeTimedSerializer
 from werkzeug.security import check_password_hash, generate_password_hash
 from sqlalchemy import select, inspect, func
 from sqlalchemy.orm import relationship, selectinload
@@ -139,6 +140,15 @@ def _link_associations(name, rel, cls, related_cls, fk_name):
         bp.back_populates = name
 
 
+def _password_reset_serializer(model_cls, pwname):
+    salt = f'pwres:{model_cls.__module__}.{model_cls.__qualname__}:{pwname}'
+    return URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt=salt)
+
+
+def _password_reset_fingerprint(serializer, password_digest):
+    return hmac.new(serializer.secret_key, f'pwres:{password_digest}'.encode(), 'sha256').hexdigest()
+
+
 class PasswordAuthenticator:
     @classmethod
     def authenticate_by(cls, **kwargs):
@@ -157,9 +167,23 @@ class PasswordAuthenticator:
 
     @classmethod
     def find_by_password_reset_token(cls, token):
-        serializer = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
-        id_ = serializer.loads(token, salt='pwres')
-        return cls.find(id_)
+        pwname = registry.get(cls).get('password_field')
+        if not pwname:
+            raise ProgrammerError('Password reset tokens require has_secure_password().')
+        serializer = _password_reset_serializer(cls, pwname)
+        payload = serializer.loads(token, max_age=900)
+        if (
+            not isinstance(payload, dict)
+            or type(payload.get('id')) is not int
+            or not isinstance(payload.get('fingerprint'), str)
+            or not payload['fingerprint'].isascii()
+        ):
+            raise BadSignature('Invalid password reset token.')
+        entry = cls.find(payload['id'])
+        fingerprint = _password_reset_fingerprint(serializer, getattr(entry, f'{pwname}_digest'))
+        if not hmac.compare_digest(payload['fingerprint'], fingerprint):
+            raise BadSignature('Password reset token has been invalidated.')
+        return entry
 
     def authenticate(self, password):
         ns = registry.get(self.__class__)
@@ -186,12 +210,14 @@ def has_secure_password(pwname='password'):
         }
 
         def _set_password_reset_token(self):
-            serializer = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
-            token = serializer.dumps(self.id, salt='pwres')
+            serializer = _password_reset_serializer(self.__class__, pwname)
+            fingerprint = _password_reset_fingerprint(serializer, getattr(self, f'{pwname}_digest'))
+            token = serializer.dumps({'id': self.id, 'fingerprint': fingerprint})
             self._virtual_fields[f'{pwname}_reset_token'] = token
 
         virtual_fields[f'{pwname}_reset_token'] = {
             'read_only': True,
+            'cache': False,
             'set_fn': _set_password_reset_token
         }
 
@@ -583,8 +609,8 @@ class Model(metaclass=ModelMeta):
     def __getattr__(self, name):
         ns = registry.get(self.__class__)
         vfd = ns.setdefault('virtual_fields', {})
-        if name not in self._virtual_fields and name in vfd:
-            if vfd[name].get('read_only', False):
+        if name in vfd and vfd[name].get('read_only', False):
+            if name not in self._virtual_fields or not vfd[name].get('cache', True):
                 set_fn = vfd[name].get('set_fn')
                 if set_fn:
                     set_fn(self)
@@ -621,8 +647,8 @@ class Model(metaclass=ModelMeta):
         ns = registry.get(self.__class__)
         vfd = ns.setdefault('virtual_fields', {})
         for name in vfd:
-            if name not in self._virtual_fields and name in vfd:
-                if vfd[name].get('read_only', False):
+            if vfd[name].get('read_only', False):
+                if name not in self._virtual_fields or not vfd[name].get('cache', True):
                     set_fn = vfd[name].get('set_fn')
                     if set_fn:
                         set_fn(self)
