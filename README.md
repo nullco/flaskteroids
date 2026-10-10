@@ -109,6 +109,19 @@ You have a complete set of pages to create, view, update, and delete posts.
 
 For more check out the [documentation](https://nullco.github.io/flaskteroids/index.html)
 
+## Agent Skills
+
+Flaskteroids bundles coding guidance for agents with each release. Using your
+application's environment, locate the installed skills with:
+
+```sh
+flaskteroids agent-skills path
+```
+
+The command prints the absolute skills directory path. Read
+`using-flaskteroids/SKILL.md` inside that directory for version-matched guidance.
+No application configuration or initialization is required.
+
 ## Releasing
 
 Maintainers: see [the release guide](RELEASING.md) for the automated release PR

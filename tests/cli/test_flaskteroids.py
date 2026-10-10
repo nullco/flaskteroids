@@ -56,4 +56,5 @@ def test_cli_help(cli_runner):
     result = cli_runner.invoke(cli, ["--help"])
     assert result.exit_code == 0
     assert "new" in result.output
+    assert "agent-skills" in result.output
     assert "test:system" not in result.output

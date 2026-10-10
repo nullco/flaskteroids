@@ -7,19 +7,46 @@ from flaskteroids.credentials import Credentials, encrypt, generate_key
 
 
 @click.command("credentials:show")
-@click.option("--environment")
+@click.option(
+    "--environment",
+    metavar="NAME",
+    help="Read credentials for NAME (default: the application's active credentials).",
+)
 @with_appcontext
 def show(environment):
-    """Show decrypted credentials."""
+    """Print decrypted credentials as YAML.
+
+    Requires the encryption key. Output contains plaintext secrets:
+    do not log it or share it in agent responses.
+
+    \b
+    Examples:
+      flask credentials:show
+      flask credentials:show --environment production
+    """
     store = _credentials(environment)
     click.echo(yaml.safe_dump(store.to_dict(), sort_keys=False), nl=False)
 
 
 @click.command("credentials:edit")
-@click.option("--environment")
+@click.option(
+    "--environment",
+    metavar="NAME",
+    help="Edit credentials for NAME (default: the application's active credentials).",
+)
 @with_appcontext
 def edit(environment):
-    """Edit encrypted credentials."""
+    """Edit credentials as YAML and save them encrypted.
+
+    Uses VISUAL or EDITOR. Creates credentials and an encryption key if needed;
+    existing credentials require their original key. Never commit key files
+    or plaintext credentials.
+
+    \b
+    Examples:
+      flask credentials:edit
+      flask credentials:edit --environment production
+    """
     store = _credentials(environment)
     key = store.key()
     if not key:

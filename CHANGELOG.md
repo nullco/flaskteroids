@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+### Added
+
+- A version-matched `using-flaskteroids` agent skill bundled with the framework,
+  encouraging agents to use existing commands and their installed help.
+- `flaskteroids agent-skills path` to locate the installed skills directory
+  without initializing an application.
+
+### Changed
+
+- CLI help now includes concise command summaries, usage examples, prerequisites,
+  and important safety notes.
+- Model, migration, resource, and scaffold generators now show `NAME [FIELDS]...`
+  usage and report missing names as clear usage errors.
+
 ## 0.2.0 - 2026-10-10
 
 ### Added
