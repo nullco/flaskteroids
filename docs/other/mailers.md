@@ -1,6 +1,6 @@
-### Mailers
+# Mailers
 
-Mailers inherit from `ActionMailer` and are used to send emails from your application. They work similarly to controllers, with actions that correspond to email templates.
+Mailers inherit from `ActionMailer`. Each action sets template variables and calls `mail` with the recipient and subject.
 
 ```python
 # app/mailers/user_mailer.py
@@ -12,7 +12,7 @@ class UserMailer(ActionMailer):
         self.mail(to=user.email, subject="Welcome to My App!")
 ```
 
-You can then deliver the email synchronously or asynchronously:
+Call `deliver_now` to send the email immediately, or `deliver_later` to enqueue a background job:
 
 ```python
 # Deliver now

@@ -1,16 +1,16 @@
 # Routing
 
-Flaskteroids provides a powerful routing system that allows you to define routes in a clean, RESTful manner. Routes are defined in `config/routes.py` by a `register` function that receives a router instance. You can define standard routes or use resourceful routing to handle RESTful conventions automatically.
+Define routes in `config/routes.py`. Its `register` function receives a router instance. You can map individual HTTP methods and paths, or use `resources` to generate CRUD routes.
 
-## Route Format
+## Route format
 
-Routes map HTTP requests to controller actions using the format `"controller#action"`. Controllers are automatically discovered from the `CONTROLLERS['LOCATION']` directory (default: `app/controllers`), and their class names are derived by camelizing the controller name and appending "Controller" (e.g., `posts` becomes `PostsController`).
+Routes map requests to controller actions using `"controller#action"`. Flaskteroids discovers controllers in the `CONTROLLERS['LOCATION']` directory, which defaults to `app/controllers`. It converts controller names to CamelCase and appends `Controller`. For example, `posts#show` calls `PostsController.show`.
 
-## Standard Routes
+## Standard routes
 
-Standard routes allow you to manually define routes for specific HTTP methods and paths.
+Map an HTTP method and path to an action:
 
-### GET Routes
+### GET routes
 
 Define a GET route using `router.get(path, to="controller#action", as_=None)`:
 
@@ -22,7 +22,7 @@ def register(router):
     router.get("/users/<int:id>", to="users#show")
 ```
 
-### POST Routes
+### POST routes
 
 Define a POST route using `router.post(path, to="controller#action", as_=None)`:
 
@@ -32,7 +32,7 @@ def register(router):
     router.post("/login", to="sessions#create")
 ```
 
-### PUT Routes
+### PUT routes
 
 Define a PUT route using `router.put(path, to="controller#action", as_=None)`:
 
@@ -41,7 +41,7 @@ def register(router):
     router.put("/users/<int:id>", to="users#update")
 ```
 
-### PATCH Routes
+### PATCH routes
 
 Define a PATCH route using `router.patch(path, to="controller#action", as_=None)`:
 
@@ -52,7 +52,7 @@ def register(router):
 
 Resource update routes accept both PUT and PATCH.
 
-### DELETE Routes
+### DELETE routes
 
 Define a DELETE route using `router.delete(path, to="controller#action", as_=None)`:
 
@@ -61,20 +61,20 @@ def register(router):
     router.delete("/users/<int:id>", to="users#destroy")
 ```
 
-### Root Route
+### Root route
 
-The root route maps the home page. If no root route is defined, Flaskteroids automatically adds one pointing to the internal welcome controller.
+The root route maps `/`. If you do not define one, Flaskteroids adds a route to its welcome controller.
 
 ```python
 def register(router):
     router.root(to="welcome#index")  # or router.get("/", to="welcome#index")
 ```
 
-## Resourceful Routes
+## Resource routes
 
-Resourceful routing automatically generates RESTful routes for a controller and eliminates repetitive route definitions.
+Use `resources` to generate the standard CRUD routes for a controller.
 
-### Resources (Plural)
+### Plural resources
 
 The `router.resources(name, param=None, only=None, nested=None)` method generates standard CRUD routes for a plural resource:
 
@@ -85,7 +85,7 @@ def register(router):
 
 This generates the following routes:
 
-| HTTP Method | Path                   | Controller#Action | Named Route    |
+| HTTP method | Path                   | Controller#Action | Named route    |
 |-------------|------------------------|-------------------|----------------|
 | GET         | /posts/                | posts#index       | index_post     |
 | GET         | /posts/new/            | posts#new         | new_post       |
@@ -95,7 +95,7 @@ This generates the following routes:
 | PUT/PATCH   | /posts/<int:id>/       | posts#update      | update_post    |
 | DELETE      | /posts/<int:id>/       | posts#destroy     | destroy_post   |
 
-By default, the `:id` parameter is an integer, but you can customize it:
+The identifier defaults to `<int:id>`. Use `param` to change its name or type:
 
 ```python
 def register(router):
@@ -104,19 +104,19 @@ def register(router):
     router.resources("posts", param="post_id")
 ```
 
-### Limiting Actions
+### Limiting actions
 
 Use the `only` parameter to generate only specific actions:
 
 ```python
 def register(router):
     router.resources("posts", only=["index", "show"])
-    # Generates only GET /posts/ and GET /posts/:id/
+    # Generates only GET /posts/ and GET /posts/<int:id>/
 ```
 
-### Resource (Singular)
+### Singular resources
 
-For singular resources (like `/profile`), use `router.resource(name, only=None)`:
+For a resource without an identifier in its path, such as `/profile`, use `router.resource(name, only=None)`:
 
 ```python
 def register(router):
@@ -125,7 +125,7 @@ def register(router):
 
 This generates:
 
-| HTTP Method | Path              | Controller#Action | Named Route        |
+| HTTP method | Path              | Controller#Action | Named route        |
 |-------------|-------------------|-------------------|--------------------|
 | GET         | /profile/new/     | profiles#new      | new_profile        |
 | POST        | /profile/         | profiles#create   | create_profile     |
@@ -134,9 +134,9 @@ This generates:
 | PUT/PATCH   | /profile/         | profiles#update   | update_profile     |
 | DELETE      | /profile/         | profiles#destroy  | destroy_profile    |
 
-Note: The controller name is pluralized (`profiles`), even though the resource is singular.
+The controller name is still plural, so `profile` routes to `ProfilesController`.
 
-### Nested Resources
+### Nested resources
 
 Nest resources to create hierarchical routes:
 
@@ -148,16 +148,15 @@ def register(router):
     ])
 ```
 
-This generates nested routes like:
+The generated paths include:
 
-- GET /users/<int:user_id>/posts/
-- POST /users/<int:user_id>/posts/
-- GET /users/<int:user_id>/posts/<int:id>/
-- etc.
+- `GET /users/<int:user_id>/posts/`
+- `POST /users/<int:user_id>/posts/`
+- `GET /users/<int:user_id>/posts/<int:id>/`
 
-## Named Routes
+## Named routes
 
-All routes automatically receive a generated name, but you can customize it with the `as_` parameter:
+Flaskteroids generates a name for each route. Use `as_` to override it:
 
 ```python
 def register(router):
@@ -165,9 +164,9 @@ def register(router):
     router.resources("posts", as_="articles")  # Affects all generated routes
 ```
 
-### Path and URL Helpers
+### Path and URL helpers
 
-Resourceful routes expose Rails-style helpers:
+Resource routes generate path and URL helpers:
 
 ```python
 from flaskteroids.routes import (
@@ -187,21 +186,21 @@ post_url(post)           # http://example.test/posts/1/
 
 Helpers accept either a model instance or an identifier.
 
-## JSON Routes
+## JSON routes
 
-Flaskteroids automatically adds JSON format routes for data-oriented actions:
+Resource routes also include `.json/` paths for `index`, `create`, `show`, `update`, and `destroy`:
 
-For resourceful routes, the following JSON routes are added:
+| HTTP method | Path | Action |
+| --- | --- | --- |
+| GET | `/posts/.json/` | `posts#index` |
+| POST | `/posts/.json/` | `posts#create` |
+| GET | `/posts/<int:id>/.json/` | `posts#show` |
+| PUT/PATCH | `/posts/<int:id>/.json/` | `posts#update` |
+| DELETE | `/posts/<int:id>/.json/` | `posts#destroy` |
 
-- GET /posts/.json/ → posts#index
-- POST /posts/.json/ → posts#create
-- GET /posts/<int:id>/.json/ → posts#show
-- PUT/PATCH /posts/<int:id>/.json/ → posts#update
-- DELETE /posts/<int:id>/.json/ → posts#destroy
+## Method overrides
 
-## Method Overrides
-
-Since browsers typically only support GET and POST, Flaskteroids provides method override support for PUT and DELETE requests. Include a `_method` parameter in POST requests:
+HTML forms support GET and POST. To submit a PUT or DELETE request, include a `_method` parameter in a POST form:
 
 ```html
 <form action="/posts/1" method="POST">
@@ -210,4 +209,4 @@ Since browsers typically only support GET and POST, Flaskteroids provides method
 </form>
 ```
 
-This allows the same URL to handle different HTTP methods based on the `_method` parameter.
+Flaskteroids dispatches the request using the `_method` value rather than POST. Include a CSRF token as described in [Forms](../other/forms.md).

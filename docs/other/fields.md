@@ -1,39 +1,21 @@
 # Fields
 
-The following fields are supported in migration / model / scaffold generators:
+Migration, model, resource, and scaffold generators accept these field types:
 
-## Text
+| Type | Generator argument |
+| --- | --- |
+| Text | `text` |
+| String | `string` or `str` |
+| Integer | `integer` or `int` |
+| Float | `float` |
+| Boolean | `boolean` or `bool` |
+| Date and time | `datetime` |
+| Date | `date` |
+| Time | `time` |
+| JSON | `json` |
 
-Use it as `text`
+For example:
 
-## String
-
-Use it as `string` or `str`
-
-## Integer
-
-Use it as `integer` or `int`
-
-## Float
-
-Use it as `float`
-
-## Boolean
-
-Use it as `boolean` or `bool`
-
-## DateTime
-
-Use it as `datetime`
-
-## Date
-
-Use it as `date`
-
-## Time
-
-Use it as `time`
-
-## JSON
-
-Use it as `json`
+```sh
+flask generate model Post title:string content:text published:boolean
+```

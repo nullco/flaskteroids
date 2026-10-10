@@ -1,6 +1,6 @@
-# Command-Line Interface (CLI)
+# Command-line interface
 
-Flaskteroids extends the `flask` CLI with generators, database tasks, and credentials commands.
+Flaskteroids extends the `flask` CLI with generators, database tasks, credentials commands, and test runners. Run application commands from the application root. Use `flask --help` to list commands and `flask <command> --help` for usage.
 
 ## Credentials
 
@@ -17,117 +17,99 @@ Use `--environment` for environment-specific credentials:
 flask credentials:edit --environment production
 ```
 
-See [Configuration](../configuration.md) for key handling and credential precedence.
+See [Configuration](../configuration.md) for encryption keys and credential precedence.
 
 ## Generators
 
-Use the `flask generate` command to create various components:
+Use `flask generate` to create application components. Field arguments use `name:type` syntax. See [Fields](fields.md) for supported types.
 
 ### Migration
 
-Allows generation of database migrations. You can specify different migration commands
-depending on what you want to achieve. All tables come by default with an auto-increment
-`id` field, and a `created_at` date field.
+Generate a migration to create or drop a table, or add or remove columns. New tables include an auto-incrementing `id` and a `created_at` field by default.
 
-#### Creating new tables
+#### Create a table
 
 ```sh
 flask generate migration <CreateXXX> [field1:type ...]
 ```
 
-*Example:* `flask generate migration CreateProducts name:string!`
+For example:
 
-Use the plural table name after `Create`, without adding a `Table` suffix.
+```sh
+flask generate migration CreateProducts name:string!
+```
 
-#### Adding columns to existing table
+Use the plural table name after `Create`, without a `Table` suffix.
+
+#### Add columns
 
 ```sh
 flask generate migration <AddXXXToXXX> [field1:type ...]
+flask generate migration AddPriceToProducts price:float
 ```
 
-*Example:* `flask generate migration AddPriceToProducts price:float`
-
-#### Removing columns from an existing table
+#### Remove columns
 
 ```sh
 flask generate migration <RemoveXXXFromXXX> [field1 ...]
+flask generate migration RemovePriceFromProducts price
 ```
 
-*Example:* `flask generate migration RemovePriceFromProducts price`
-
-#### Dropping an existing table
+#### Drop a table
 
 ```sh
 flask generate migration <DropXXXX> [field1 ...]
+flask generate migration DropProducts
 ```
 
-*Example:* `flask generate migration DropProducts`
+Apply pending migrations with:
+
+```sh
+flask db:migrate
+```
 
 ### Model
 
-This will created together a Model and it's corresponding migration.
-See [Migrations](#migration) for further details.
+Generate a model and its database migration:
 
 ```sh
 flask generate model <ModelName> [field1:type ...]
+flask generate model User name:string email:string
 ```
-
-*Example:* `flask generate model User name:string email:string`
 
 ### Controller
 
-This will generate:
-
-* A new controller with the actions specified.
-* A views for each action.
-* Entries in routes file linking all controller actions individually
+Generate a controller with the specified actions, a view for each action, and individual route entries:
 
 ```sh
 flask generate controller <ControllerName> [action1 action2 ...]
+flask generate controller Users index show
 ```
-
-*Example:* `flask generate controller Users index show`
 
 ### Resource
 
-This will Generate:
-
-* A model and it's migration.
-* An empty controller associated to that model.
-* A resource entry linking the controller in routes.
-
-All the code is up to be written by you.
+Generate a model, its migration, an empty controller, and a resource route entry. You write the controller actions and views.
 
 ```sh
 flask generate resource <ResourceName> [field1:type ...]
 ```
 
-Generates a model and a RESTful controller.
-
 ### Scaffold
 
-This will generate:
-
-* A model and it's migration.
-* A controller associated to that model fully supporting CRUD operations.
-  (The controller will have `index`, `show`, `new`, `edit`, `create`, `update`
-  and `destroy` actions)
-* All views backing up CRUD operations
-* A resource entry linking the controller in routes.
+Generate a model, its migration, a CRUD controller, views, and a resource route entry. The controller includes `index`, `show`, `new`, `edit`, `create`, `update`, and `destroy` actions.
 
 ```sh
 flask generate scaffold <scaffold_name> [field1:type ...]
 ```
 
-Generates a model, RESTful controller, and views.
-
 ### Mailer
+
+Generate a mailer with the specified actions:
 
 ```sh
 flask generate mailer <MailerName> [action1 action2 ...]
+flask generate mailer UserMailer welcome_email
 ```
-
-*Example:* `flask generate mailer UserMailer welcome_email`
 
 ### Authentication
 
@@ -135,14 +117,14 @@ flask generate mailer <MailerName> [action1 action2 ...]
 flask generate authentication
 ```
 
-Sets up a complete authentication system
-(routes, controllers, views and models for managing users and sessions).
+Generate user and session models, login pages, and password management:
 
-It will add:
+- A `User` model with `email` and `password_digest`.
+- A `Session` model with `user_id`, `ip_address`, and `user_agent`.
+- Controllers and views for login and password changes.
+- Views and mailers for password resets.
+- Routes for session and password management.
 
-* A `User` model (email, password_digest).
-* A `Session` model (user_id, ip_address, user_agent).
-* Views and Controllers for logging in.
-* Views and Controllers for editing passwords
-* Views and Mailers for resetting user passwords
-* Routes for session and password management
+## Tests
+
+Run model, integration, job, and mailer tests with `flask test`. Run browser tests with `flask test:system`. Both commands accept pytest arguments. See [Testing](../testing.md) for setup and examples.

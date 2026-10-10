@@ -1,6 +1,6 @@
-# Background Jobs
+# Background jobs
 
-For long-running tasks, you can use background jobs. Jobs inherit from `Job` and define a `perform` method.
+Jobs inherit from `Job` and define `perform`. Use them for work that should run outside the HTTP request, such as processing an upload.
 
 ```python
 # app/jobs/my_job.py

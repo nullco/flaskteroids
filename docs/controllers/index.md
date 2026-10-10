@@ -1,6 +1,6 @@
 # Controllers
 
-Controllers handle the logic for incoming requests. Actions are methods within a controller class that set instance variables for the view. Rendering is handled automatically.
+Controllers handle HTTP requests. Each action is a method on a controller class. If an action returns no response, Flaskteroids renders its matching template and passes the controller's instance variables to it.
 
 ```python
 # app/controllers/posts_controller.py
@@ -20,9 +20,9 @@ class PostsController(ActionController):
         # makes self.post available in the template.
 ```
 
-## Controller Callbacks
+## Controller callbacks
 
-You can use callbacks to run code before a controller action. The `before_action` callback is useful for setting up instance variables or performing authentication checks. Callbacks must be defined within a `@rules` decorator.
+Declare `before_action` inside `@rules` to run code before an action. Use it to load records shared by several actions or check authentication:
 
 ```python
 from flaskteroids import params
@@ -43,12 +43,12 @@ class PostsController(ActionController):
         self.post = Post.find(params["id"])
 ```
 
-## Content Negotiation
+## Content negotiation
 
-Flaskteroids can handle different response formats within a single action using the `respond` method. This is particularly useful for building APIs that serve both HTML and JSON.
+Use `respond` to return HTML or JSON from the same action. It selects a handler based on the request's `Accept` header or a `.json/` URL suffix:
 
 ```python
-from flaskteroids.controller import ActionController, respond
+from flaskteroids.controller import ActionController, render, respond
 from app.models.post import Post
 
 class PostsController(ActionController):

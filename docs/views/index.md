@@ -1,8 +1,8 @@
 # Views
 
-Views are the user-facing part of your application. Flaskteroids uses Jinja2 for templating, which is the default for Flask. Templates are located in the `app/views` directory and are automatically rendered by controller actions.
+Views are Jinja2 templates in `app/views`. By default, a controller action renders the template matching its controller and action name. For example, `PostsController.index` renders `app/views/posts/index.html`.
 
-Instance variables set in the controller are available in the corresponding view file.
+Controller instance variables become template variables. If the action sets `self.posts`, the template can use `posts`:
 
 ```html
 <!-- app/views/posts/index.html -->

@@ -1,6 +1,6 @@
 # Configuration
 
-Flaskteroids keeps application configuration organized by environment, with separate database configuration, encrypted credentials, and boot-time initializers.
+Configure application-wide settings in `config/application.py` and override them in `config/environments/`. Database settings live in `config/database.yml`. Store secrets in encrypted credentials and use initializers to configure external libraries during boot.
 
 ## Application boot
 
@@ -33,17 +33,17 @@ class Application(FlaskteroidsApplication):
         config.x.payments.provider = 'stripe'
 ```
 
-`config.load_defaults()` pins the framework defaults used when the application was generated. Updating Flaskteroids does not silently opt the application into defaults introduced by a later release.
+`config.load_defaults()` selects the framework defaults for the given version. Updating Flaskteroids does not change that selection. Change the version passed to `load_defaults()` to adopt newer defaults.
 
 ## Environments
 
-The environment is selected in this order:
+Flaskteroids selects the environment in this order:
 
 1. `FLASKTEROIDS_ENV`
 2. `FLASK_ENV`
 3. `development`
 
-The selected file under `config/environments/` is applied after application-wide configuration:
+Flaskteroids applies the selected file under `config/environments/` after application-wide configuration:
 
 ```python
 # config/environments/production.py
@@ -69,11 +69,11 @@ application.env.test
 application.env.production
 ```
 
-Environment variables are read explicitly in configuration code. Flaskteroids does not automatically map arbitrary SMTP, job, or application environment variables into settings.
+Read environment variables explicitly in configuration code. Flaskteroids does not map arbitrary SMTP, job, or application environment variables to settings.
 
 ## Database configuration
 
-Database connections are configured in `config/database.yml`, separately from application configuration:
+Define database connections in `config/database.yml`:
 
 ```yaml
 default: &default
@@ -111,7 +111,7 @@ production:
 
 ## Encrypted credentials
 
-Shared credentials are encrypted in `config/credentials.yml.enc`. The local key is stored in `config/master.key`, which is excluded from Git and container images.
+Shared credentials live in `config/credentials.yml.enc`. Flaskteroids stores the local encryption key in `config/master.key`. Generated Git and container ignore files exclude the key.
 
 Edit or display credentials with:
 
@@ -134,7 +134,7 @@ config/credentials/production.yml.enc
 config/credentials/production.key
 ```
 
-When environment-specific credentials exist, they replace the shared credentials for that environment. Encryption keys are resolved from `FLASKTEROIDS_MASTER_KEY` first and then from the corresponding key file.
+When environment-specific credentials exist, they replace the shared credentials for that environment. Flaskteroids reads the encryption key from `FLASKTEROIDS_MASTER_KEY` first, then from the corresponding key file.
 
 Credentials are available through the application:
 
@@ -171,5 +171,3 @@ Flaskteroids initializes an application in this order:
 5. Initialize framework components.
 6. Run files in `config/initializers/`.
 7. Finish route and application setup.
-
-This separation keeps boot behavior predictable and application configuration explicit.
