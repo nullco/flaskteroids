@@ -15,7 +15,7 @@
     <img src="https://github.com/nullco/flaskteroids/actions/workflows/test.yml/badge.svg?event=push&branch=main" alt="Build Status">
   </a>
   <a href="https://pypi.org/project/flaskteroids/" target="_blank">
-    <img src="https://img.shields.io/pypi/v/flaskteroids.svg" alt="PyPI Version">
+    <img src="https://img.shields.io/pypi/v/flaskteroids.svg?release=0.3.1" alt="PyPI Version">
   </a>
   <a href="https://pypi.org/project/flaskteroids/" target="_blank">
     <img src="https://img.shields.io/pypi/pyversions/flaskteroids.svg" alt="Python Versions">

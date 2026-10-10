@@ -48,7 +48,7 @@ jobs:
             echo "Merge or close the existing release PR before preparing another: $pending"
             exit 1
           fi
-      - name: Prepare version, changelog, and lockfile
+      - name: Prepare version, changelog, badge, and lockfile
         id: release
         env:
           BUMP: ${{ inputs.bump }}
@@ -66,7 +66,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -c "$branch"
-          git add pyproject.toml uv.lock CHANGELOG.md
+          git add pyproject.toml uv.lock CHANGELOG.md README.md
           git commit -m "chore(release): prepare v${VERSION}"
           gh auth setup-git
           git push --set-upstream origin "$branch"
