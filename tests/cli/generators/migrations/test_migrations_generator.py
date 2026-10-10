@@ -1,4 +1,5 @@
 import pytest
+
 from flaskteroids.cli.generators.migrations import generator
 
 
@@ -9,5 +10,5 @@ def command(mocker):
 
 @pytest.mark.usefixtures('app_ctx')
 def test_generator(command):
-    generator.generate('CreateUsersTable', ['name:str'])
+    generator.generate('CreateUsers', ['name:str'])
     command.revision.assert_called()

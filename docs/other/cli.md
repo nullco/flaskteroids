@@ -32,10 +32,12 @@ depending on what you want to achieve. All tables come by default with an auto-i
 #### Creating new tables
 
 ```sh
-flask generate migration <CreateXXXTable> [field1:type ...]
+flask generate migration <CreateXXX> [field1:type ...]
 ```
 
 *Example:* `flask generate migration CreateProducts name:string!`
+
+Use the plural table name after `Create`, without adding a `Table` suffix.
 
 #### Adding columns to existing table
 
