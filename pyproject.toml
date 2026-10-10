@@ -40,6 +40,10 @@ test = [
 [project.scripts]
 flaskteroids = "flaskteroids.cli.flaskteroids:cli"
 
+[project.entry-points."flask.commands"]
+test = "flaskteroids.cli.testing:test"
+"test:system" = "flaskteroids.cli.testing:test_system"
+
 
 [tool.flake8]
 max-line-length = 120

@@ -1,5 +1,3 @@
-import os
-
 import pytest
 from flaskteroids.cli.flaskteroids import cli
 from flaskteroids.cli.artifacts import ArtifactsBuilderException
@@ -54,30 +52,8 @@ def test_new_command_error(cli_runner, artifacts_builder):
     assert "Error creating new flaskteroids app: Test error" in result.output
 
 
-def test_test_command_runs_pytest(cli_runner, mocker, monkeypatch):
-    pytest_main = mocker.patch("pytest.main", return_value=0)
-    monkeypatch.delenv("FLASKTEROIDS_ENV", raising=False)
-
-    result = cli_runner.invoke(cli, ["test", "-q", "test/models"])
-
-    assert result.exit_code == 0
-    pytest_main.assert_called_once_with(
-        ["-m", "not system", "-q", "test/models"]
-    )
-    assert "FLASKTEROIDS_ENV" not in os.environ
-
-
-def test_system_test_command_runs_system_tests(cli_runner, mocker):
-    pytest_main = mocker.patch("pytest.main", return_value=0)
-
-    result = cli_runner.invoke(cli, ["test:system", "-q"])
-
-    assert result.exit_code == 0
-    pytest_main.assert_called_once_with(["-m", "system", "-q"])
-
-
 def test_cli_help(cli_runner):
     result = cli_runner.invoke(cli, ["--help"])
     assert result.exit_code == 0
     assert "new" in result.output
-    assert "test" in result.output
+    assert "test:system" not in result.output

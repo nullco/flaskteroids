@@ -105,7 +105,7 @@ def test_generated_scaffold_controller_tests_pass(tmp_path, monkeypatch):
         [
             sys.executable,
             "-m",
-            "flaskteroids",
+            "flask",
             "test",
             "-q",
             "test/controllers",
@@ -120,7 +120,7 @@ def test_generated_scaffold_controller_tests_pass(tmp_path, monkeypatch):
     assert "8 passed" in tests.stdout
 
     system_tests = subprocess.run(
-        [sys.executable, "-m", "flaskteroids", "test:system", "-q"],
+        [sys.executable, "-m", "flask", "test:system", "-q"],
         cwd=root,
         env=environment,
         capture_output=True,

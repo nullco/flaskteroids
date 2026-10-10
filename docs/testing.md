@@ -5,20 +5,20 @@ Flaskteroids provides a Rails-style testing layer powered by pytest. New applica
 Run model, controller, job, and mailer tests with:
 
 ```sh
-flaskteroids test
+flask test
 ```
 
 Run browser tests separately, as in Rails:
 
 ```sh
-flaskteroids test:system
+flask test:system
 ```
 
 Arguments are passed to pytest:
 
 ```sh
-flaskteroids test -n auto
-flaskteroids test test/controllers/posts_controller_test.py
+flask test -n auto
+flask test test/controllers/posts_controller_test.py
 ```
 
 The command selects the `test` environment and applies pending migrations to the test database before collection. Tests that inherit from a Flaskteroids test class run in a transaction that is rolled back after every test.

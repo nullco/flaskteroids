@@ -15,6 +15,7 @@ from flaskteroids.extensions.routes import RoutesExtension
 from flaskteroids.cli.generators import commands as generate_commands
 from flaskteroids.cli.db import commands as db_commands
 from flaskteroids.cli import credentials as credentials_commands
+from flaskteroids.cli import testing as testing_commands
 
 
 _logger = logging.getLogger(__name__)
@@ -65,6 +66,8 @@ def _register_cli_commands(app):
     app.cli.add_command(db_commands.rollback)
     app.cli.add_command(credentials_commands.show)
     app.cli.add_command(credentials_commands.edit)
+    app.cli.add_command(testing_commands.test)
+    app.cli.add_command(testing_commands.test_system)
 
 
 def _prepare_shell_context(app):
