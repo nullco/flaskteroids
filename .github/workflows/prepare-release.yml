@@ -1,0 +1,75 @@
+name: Prepare Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Version bump
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prepare-release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BASE_BRANCH: ${{ github.event.repository.default_branch }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: astral-sh/setup-uv@v6
+      - name: Check release prerequisites
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PR_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "Configure the RELEASE_PR_TOKEN secret first. See RELEASING.md."
+            exit 1
+          fi
+          pending=$(gh pr list --base "$BASE_BRANCH" --state open \
+            --json headRefName --jq '.[] | select(.headRefName | startswith("release/")) | .headRefName')
+          if [ -n "$pending" ]; then
+            echo "Merge or close the existing release PR before preparing another: $pending"
+            exit 1
+          fi
+      - name: Prepare version, changelog, and lockfile
+        id: release
+        env:
+          BUMP: ${{ inputs.bump }}
+        run: |
+          version=$(python scripts/release.py prepare "$BUMP")
+          uv lock
+          python scripts/release.py validate-tag "v$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Open release pull request
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PR_TOKEN }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          branch="release/v${VERSION}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add pyproject.toml uv.lock CHANGELOG.md
+          git commit -m "chore(release): prepare v${VERSION}"
+          gh auth setup-git
+          git push --set-upstream origin "$branch"
+          gh pr create --base "$BASE_BRANCH" --head "$branch" \
+            --title "Release v${VERSION}" \
+            --body "Review the version and changelog, then merge once CI passes. Merging creates a draft GitHub release. Publish that draft when ready to publish to PyPI."

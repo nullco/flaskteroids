@@ -1,0 +1,81 @@
+name: Publish
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    uses: ./.github/workflows/test.yml
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: astral-sh/setup-uv@v6
+      - name: Validate release metadata
+        run: python scripts/release.py validate-tag "$RELEASE_TAG"
+      - name: Build and check distributions
+        run: |
+          uv build
+          uvx twine check --strict dist/*
+      - name: Smoke-test the installed wheel outside the source tree
+        run: |
+          smoke="$RUNNER_TEMP/release-smoke"
+          uv venv "$smoke"
+          uv pip install --python "$smoke/bin/python" dist/*.whl
+          export PATH="$smoke/bin:$PATH"
+          unset PYTHONPATH
+          cd "$RUNNER_TEMP"
+          flaskteroids new release_app
+          cd release_app
+          test -f db/migrate/env.py
+          flask generate scaffold Post title:string content:text
+          flask db:migrate
+          python - <<'PY'
+          import os
+          from wsgi import app
+          from flaskteroids import __version__
+
+          assert __version__ == os.environ["RELEASE_TAG"].removeprefix("v")
+          response = app.test_client().get("/posts", follow_redirects=True)
+          assert response.status_code == 200, response.get_data(as_text=True)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-dist
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment:
+      name: pypi
+      url: https://pypi.org/project/flaskteroids/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1

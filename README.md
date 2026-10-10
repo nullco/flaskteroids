@@ -109,6 +109,11 @@ You have a complete set of pages to create, view, update, and delete posts.
 
 For more check out the [documentation](https://nullco.github.io/flaskteroids/index.html)
 
+## Releasing
+
+Maintainers: see [the release guide](RELEASING.md) for the automated release PR
+and PyPI publishing process.
+
 ## License
 
 Flaskteroids is open-source and released under the [MIT License](LICENSE).
