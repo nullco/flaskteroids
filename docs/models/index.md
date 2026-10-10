@@ -380,6 +380,34 @@ posts = Post.order(created_at='desc').all()
 posts = Post.order(created_at='desc', title='asc').all()
 ```
 
+### Limit, Offset, and Pagination
+
+Use `limit()` to cap the number of records and `offset()` to skip records. Both
+methods work directly on a model or in a query chain and are applied in SQL:
+
+```python
+posts = Post.limit(10)
+posts = Post.offset(20)
+posts = Post.where(published=True).order(id='asc').limit(10).offset(20)
+
+# Page numbers start at 1
+page = 3
+per_page = 20
+posts = Post.where(published=True).order(id='asc').limit(per_page).offset((page - 1) * per_page)
+records = list(posts)
+
+# Count all matching records separately from the page
+page_count = posts.count()
+total_count = Post.where(published=True).count()
+```
+
+Always use a deterministic order (such as `id`) for pagination. Use non-negative
+integers: `limit(0)` returns no records and `offset(0)` skips none. Repeated calls
+replace the previous value; `limit(None)` or `offset(None)` clears that clause.
+Queries remain lazy until records or a count are requested. `count()`, `first()`,
+and `last()` respect the selected page; like Rails, `last()` loads the selected
+records when a limit or offset is present.
+
 ## CRUD Operations
 
 ### Creating Records

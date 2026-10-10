@@ -472,6 +472,8 @@ class ModelQuery:
         self._model_cls = model_cls
         self._model_base = _base(model_cls)
         self._query = select(self._model_base)
+        self._limit = None
+        self._offset = None
 
     def find(self, id):
         found = self.where(id=id).first()
@@ -501,6 +503,9 @@ class ModelQuery:
         return _build(self._model_cls, res)
 
     def last(self):
+        if self._limit is not None or self._offset is not None:
+            records = session.execute(self._query).scalars().all()
+            return _build(self._model_cls, records[-1]) if records else None
         primary_key = inspect(self._model_base).primary_key[0]
         query = self._query.order_by(primary_key.desc())
         res = session.execute(query).scalars().first()
@@ -517,6 +522,16 @@ class ModelQuery:
             field = getattr(self._model_base, k)
             clause = field.desc() if v == 'desc' else field.asc()
             self._query = self._query.order_by(clause)
+        return self
+
+    def limit(self, value: int | None):
+        self._query = self._query.limit(value)
+        self._limit = value
+        return self
+
+    def offset(self, value: int | None):
+        self._query = self._query.offset(value)
+        self._offset = value
         return self
 
     def __iter__(self):
@@ -656,6 +671,18 @@ class Model(metaclass=ModelMeta):
     @classmethod
     def where(cls, *args, **kwargs):
         return ModelQuery(cls).where(*args, **kwargs)
+
+    @classmethod
+    def order(cls, **kwargs):
+        return ModelQuery(cls).order(**kwargs)
+
+    @classmethod
+    def limit(cls, value: int | None):
+        return ModelQuery(cls).limit(value)
+
+    @classmethod
+    def offset(cls, value: int | None):
+        return ModelQuery(cls).offset(value)
 
     def update(self, **kwargs):
         for field, value in kwargs.items():
