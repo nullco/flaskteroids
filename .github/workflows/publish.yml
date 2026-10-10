@@ -58,6 +58,9 @@ jobs:
           response = app.test_client().get("/posts", follow_redirects=True)
           assert response.status_code == 200, response.get_data(as_text=True)
           PY
+          flask test -q -n 2
+          playwright install --with-deps chromium
+          flask test:system -q
       - uses: actions/upload-artifact@v4
         with:
           name: release-dist
