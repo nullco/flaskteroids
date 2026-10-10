@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.2.0 - 2026-10-10
+
 ### Added
 
 - Model validations and Rails-style lifecycle callbacks, including transaction
@@ -29,3 +31,4 @@
 ### Fixed
 
 - Inflection handling for empty strings and additional irregular words.
+
