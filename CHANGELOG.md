@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.3.0 - 2026-10-10
+
 ### Added
 
 - A version-matched `using-flaskteroids` agent skill bundled with the framework,
