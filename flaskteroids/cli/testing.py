@@ -8,9 +8,9 @@ import click
 def test(pytest_args):
     """Run tests excluding browser tests.
 
-    Run from the application root with test dependencies installed. Uses the
-    test environment and prepares its database. Pass test paths and pytest
-    options as PYTEST_ARGS. Returns pytest's exit code.
+    Run from the application root. Testing dependencies are included with
+    Flaskteroids. Uses the test environment and prepares its database. Pass
+    test paths and pytest options as PYTEST_ARGS. Returns pytest's exit code.
 
     \b
     Examples:
@@ -27,10 +27,10 @@ def test(pytest_args):
 def test_system(pytest_args):
     """Run browser system tests.
 
-    Run from the application root with test dependencies installed. Uses the
-    test environment and prepares its database. Install the browser first with
-    playwright install chromium. Pass test paths and pytest options as
-    PYTEST_ARGS. Returns pytest's exit code.
+    Run from the application root. Testing dependencies are included with
+    Flaskteroids. Uses the test environment and prepares its database. Install
+    the browser first with playwright install chromium. Pass test paths and
+    pytest options as PYTEST_ARGS. Returns pytest's exit code.
 
     \b
     Examples:

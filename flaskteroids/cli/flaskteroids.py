@@ -144,13 +144,6 @@ dependencies = [
     "flaskteroids",
 ]
 
-[dependency-groups]
-dev = [
-    "playwright>=1.50",
-    "pytest>=8",
-    "pytest-xdist>=3",
-]
-
 [tool.pytest.ini_options]
 testpaths = ["test"]
 python_files = ["*_test.py"]
@@ -213,7 +206,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
-      - run: uv sync --dev
+      - run: uv sync
       - run: uv run playwright install --with-deps chromium
       - run: uv run flask test
       - run: uv run flask test:system

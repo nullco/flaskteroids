@@ -1,8 +1,20 @@
 import os
+from importlib.metadata import requires
 
 import pytest
 from click.testing import CliRunner
 from flask.cli import FlaskGroup
+from packaging.requirements import Requirement
+
+
+@pytest.mark.parametrize("dependency", ["pytest", "pytest-xdist", "playwright"])
+def test_testing_dependencies_are_core_requirements(dependency):
+    requirements = [Requirement(value) for value in requires("flaskteroids")]
+
+    assert any(
+        requirement.name == dependency and requirement.marker is None
+        for requirement in requirements
+    )
 
 
 @pytest.fixture

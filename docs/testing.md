@@ -1,6 +1,6 @@
 # Testing
 
-Flaskteroids provides a Rails-style testing layer powered by pytest. New applications include a `test/` directory, test configuration, and a GitHub Actions workflow.
+Flaskteroids provides a Rails-style testing layer powered by pytest. Installing `flaskteroids` includes pytest, pytest-xdist for parallel testing, and Playwright for system testing; no extra or development dependencies are needed. New applications include a `test/` directory, test configuration, and a GitHub Actions workflow.
 
 Run model, controller, job, and mailer tests with:
 
@@ -119,7 +119,7 @@ class PostsTest(SystemTest):
         self.assert_selector("h1", text="Posts")
 ```
 
-Install Chromium locally before running them for the first time:
+The Playwright Python package is included with Flaskteroids. Its browser binaries are installed separately; install Chromium locally before running system tests for the first time:
 
 ```sh
 playwright install chromium
