@@ -3,18 +3,37 @@ import secrets
 import click
 import yaml
 from flaskteroids.cli.artifacts import ArtifactsBuilder, ArtifactsBuilderException
+from flaskteroids.cli.agent_skills import agent_skills
 from flaskteroids.cli.generators.templates import template
 from flaskteroids.credentials import encrypt, generate_key
 
 
 @click.group()
 def cli():
-    pass
+    """Create applications and locate agent skills.
+
+    For application commands, run flask --help from the application root.
+    Use COMMAND --help for usage and examples.
+    """
+
+
+cli.add_command(agent_skills)
 
 
 @cli.command("new")
 @click.argument("app_name")
 def new(app_name):
+    """Create a configured application.
+
+    Creates the APP_NAME directory with tests, encrypted credentials,
+    and deployment examples.
+    Requires Git; does not install dependencies. Use a new directory:
+    existing files may be overwritten.
+
+    \b
+    Example:
+      flaskteroids new my_app
+    """
     base_path = os.path.abspath(app_name)
     ab = ArtifactsBuilder(base_path, click.echo)
     try:
