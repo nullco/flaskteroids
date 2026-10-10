@@ -58,11 +58,9 @@ merging a release PR. These workflows do not bypass branch protection.
    - **major**: `0.1.6` → `1.0.0`
 
    The action always prepares from the repository's default branch. It updates
-   `pyproject.toml`, refreshes `uv.lock` and the README badge URL, moves Unreleased
-   notes into a dated release section, and opens a PR from a `release/` branch.
-   The badge URL gets a release-specific query parameter to reduce stale image
-   caching on GitHub and PyPI; it still reports the latest version from PyPI.
-   It refuses to open another release PR while one is pending.
+   `pyproject.toml`, refreshes `uv.lock`, moves Unreleased notes into a dated
+   release section, and opens a PR from a `release/` branch. It refuses to open
+   another release PR while one is pending.
 3. Review the version and changelog, wait for CI, then merge the PR. The
    **Create Draft Release** action creates a draft for `vX.Y.Z` targeting the
    exact merged commit, with the changelog notes. Squash merges are supported;

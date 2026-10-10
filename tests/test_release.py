@@ -24,12 +24,6 @@ def release_project(tmp_path):
         "### Added\n\n- Application configuration.\n\n"
         "## 0.1.6 - 2025-01-01\n\n- Previous changes.\n"
     )
-    (tmp_path / "README.md").write_text(
-        '# Flaskteroids\n\n<img src="https://img.shields.io/pypi/v/flaskteroids.svg" '
-        'alt="PyPI Version">\n'
-        '<img src="https://img.shields.io/pypi/pyversions/flaskteroids.svg" '
-        'alt="Python Versions">\n'
-    )
     return tmp_path
 
 
@@ -66,45 +60,6 @@ def test_prepare_updates_version_and_moves_notes(
     notes = run_release("notes")
     assert notes.returncode == 0, notes.stderr
     assert notes.stdout.strip() == "### Added\n\n- Application configuration."
-    readme = (release_project / "README.md").read_text()
-    assert f'flaskteroids.svg?release={expected}"' in readme
-    assert 'https://img.shields.io/pypi/pyversions/flaskteroids.svg"' in readme
-
-
-@pytest.mark.parametrize("old_version", ["0.1.6", "0.0.1"])
-def test_prepare_refreshes_existing_badge_parameter(
-    release_project, run_release, old_version
-):
-    path = release_project / "README.md"
-    path.write_text(
-        path.read_text().replace(
-            'pypi/v/flaskteroids.svg"',
-            f'pypi/v/flaskteroids.svg?release={old_version}"',
-        )
-    )
-
-    result = run_release("prepare", "patch")
-
-    assert result.returncode == 0, result.stderr
-    assert 'pypi/v/flaskteroids.svg?release=0.1.7"' in path.read_text()
-    assert path.read_text().count("?release=") == 1
-
-
-@pytest.mark.parametrize("badge_count", [0, 2])
-def test_prepare_rejects_missing_or_duplicate_badges_without_changes(
-    release_project, run_release, badge_count
-):
-    (release_project / "README.md").write_text(
-        '<img src="https://img.shields.io/pypi/v/flaskteroids.svg">\n' * badge_count
-    )
-    names = ["README.md", "pyproject.toml", "CHANGELOG.md", "uv.lock"]
-    before = {name: (release_project / name).read_text() for name in names}
-
-    result = run_release("prepare", "patch")
-
-    assert result.returncode != 0
-    assert "Expected exactly one PyPI version badge" in result.stderr
-    assert {name: (release_project / name).read_text() for name in names} == before
 
 
 def test_prepare_supports_single_quoted_version(release_project, run_release):
@@ -157,9 +112,6 @@ def test_second_release_moves_only_new_notes(release_project, run_release):
     assert result.returncode == 0, result.stderr
     assert run_release("notes").stdout.strip() == "- New fix."
     assert "- Application configuration." in path.read_text()
-    readme = (release_project / "README.md").read_text()
-    assert 'flaskteroids.svg?release=0.1.8"' in readme
-    assert readme.count("?release=") == 1
 
 
 def test_version_reads_project_metadata(run_release):

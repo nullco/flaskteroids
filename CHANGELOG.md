@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Added
+
+- Support for Python 3.14 and 3.15, with CI coverage.
+
+### Changed
+
+- Reverted release-specific PyPI badge URLs and restored the standard dynamic
+  badge. Release preparation no longer modifies the README.
+- Display the PyPI version badge in green.
+- Declare Python 3.12 through 3.15 in package classifiers, matching the CI matrix,
+  so the Python badge lists specific supported versions.
+
 ## 0.3.1 - 2026-10-10
 
 ### Fixed
