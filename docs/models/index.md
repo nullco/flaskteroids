@@ -1,12 +1,12 @@
 # Models
 
-Flaskteroids models provide a rich, Active Record-inspired API for working with your database. Models inherit from `flaskteroids.model.Model` and act as a wrapper around SQLAlchemy table objects. Database columns defined in migrations are automatically available as attributes on the model instances.
+Models inherit from `flaskteroids.model.Model` and wrap SQLAlchemy table objects with an Active Record-style API. Database columns defined in migrations become attributes on model instances.
 
-Models support associations, validations, secure password handling, and provide a comprehensive querying interface.
+Use models to query records, define associations and validations, and handle passwords.
 
-## Defining a Model
+## Define a model
 
-Models are defined by inheriting from `Model` and using the `@rules` decorator to apply associations, validations, and other features. The decorators (belongs_to, has_many, validates, etc.) are defined inside the rules decorator.
+Inherit from `Model` and declare associations and validations inside `@rules`:
 
 ```python
 # app/models/post.py
@@ -33,7 +33,7 @@ Associations define relationships between models.
 
 ### belongs_to
 
-Defines a one-to-one or many-to-one relationship where the model belongs to another model.
+Use `belongs_to` when the model holds a foreign key to another model. For example, a post belongs to a user:
 
 ```python
 from flaskteroids.model import Model, belongs_to
@@ -66,7 +66,7 @@ class Post(Model):
 
 ### has_many
 
-Defines a one-to-many relationship where the model has many instances of another model.
+Use `has_many` for a one-to-many relationship. For example, a post has many comments:
 
 ```python
 from flaskteroids.model import Model, has_many
@@ -88,7 +88,7 @@ for comment in comments:
 new_comment = post.comments.create(content="Great post!", author="John")
 ```
 
-You can customize with `dependent` to handle cascading deletes:
+Set `dependent='destroy'` to delete associated records when you destroy the parent:
 
 ```python
 from flaskteroids.model import Model, has_many
@@ -103,11 +103,11 @@ class Post(Model):
 
 ## Validations
 
-Validations ensure data integrity before saving records.
+Validations check model attributes before saving. A failed validation prevents the save and adds messages to the model's `errors` object.
 
 ### Presence
 
-Ensures a field is not empty.
+Reject empty values:
 
 ```python
 from flaskteroids.model import Model, validates
@@ -139,7 +139,7 @@ class Post(Model):
 
 ### Confirmation
 
-Validates that two fields match (commonly used for passwords).
+Require a field to match its confirmation field, usually for passwords:
 
 ```python
 from flaskteroids.model import Model, validates
@@ -156,12 +156,13 @@ class User(Model):
 user = User.new(password="secret", password_confirmation="secret")
 ```
 
-## Secure Passwords
+## Password hashing
 
-Adds secure password hashing and authentication methods.
+Use `has_secure_password()` to hash passwords and add authentication methods. The database table needs a `password_digest` column.
 
 ```python
 from flaskteroids.model import Model, has_secure_password
+from flaskteroids.rules import rules
 
 @rules(
     has_secure_password()
@@ -187,8 +188,7 @@ The decorator adds:
 
 ## Callbacks
 
-Callbacks are hooks that run at specific points in a model's lifecycle. They are declared inside the
-`@rules` decorator, just like associations and validations.
+Callbacks run at specific points in a model's lifecycle. Declare them inside `@rules`, alongside associations and validations.
 
 ```python
 from flaskteroids.model import Model, before_save, after_create
@@ -207,9 +207,9 @@ class User(Model):
         pass
 ```
 
-### Available Callbacks
+### Available callbacks
 
-The full lifecycle is supported in a deterministic order:
+Save callbacks run in this order:
 
 ```
 before_validation
@@ -232,20 +232,18 @@ after_destroy
 after_commit
 ```
 
-Instantiating and loading records also have hooks:
+Two callbacks run when you instantiate or load records:
 
-- `after_initialize` — runs when a model is instantiated (`new`, `create`, or loaded from the database).
-- `after_find` — runs when a model is loaded from the database (`find`, `find_by`, `all`, and associations).
+- `after_initialize` runs when you instantiate a model with `new` or `create`, or load it from the database.
+- `after_find` runs when you load a model through `find`, `find_by`, `all`, or an association.
 
-### Before, Around and After
+### Before, around, and after
 
-- **Before** callbacks run before the operation. Returning `False` from a before
-  callback halts the chain and aborts the operation (`save()` returns `False`,
-  `destroy()` returns `False`).
-- **Around** callbacks wrap the operation using a generator. Code before the
-  `yield` runs before the operation, and code after the `yield` runs after it.
-  An around callback that never yields also halts the chain.
-- **After** callbacks run after the operation completes.
+Before callbacks run before the operation. Returning `False` halts the chain and aborts the operation. In that case, `save()` or `destroy()` returns `False`.
+
+Around callbacks wrap the operation using a generator. Code before `yield` runs before the operation. Code after `yield` runs after it. An around callback that never yields also halts the chain.
+
+After callbacks run when the operation completes.
 
 ```python
 @rules(
@@ -266,13 +264,11 @@ class Post(Model):
         pass
 ```
 
-Before callbacks run in registration order; after callbacks run in reverse
-registration order (LIFO).
+Before callbacks run in registration order. After callbacks run in reverse registration order.
 
-### Conditional Callbacks
+### Conditional callbacks
 
-Use `if_` and `unless_` to control when a callback runs. Each accepts a method
-name (a string) or a callable that receives the model instance.
+Use `if_` and `unless_` to control when a callback runs. Each accepts a method name as a string, or a callable that receives the model instance.
 
 ```python
 @rules(
@@ -284,9 +280,7 @@ class User(Model):
         return bool(self.email)
 ```
 
-Use `on=` to restrict a callback to `'create'` or `'update'` (and `'destroy'`
-for `after_commit`/`after_rollback`). It is only available on validation, save,
-commit, and rollback callbacks:
+Use `on=` to restrict a callback to `'create'` or `'update'`. Commit and rollback callbacks also accept `'destroy'`. The option is available only on validation, save, commit, and rollback callbacks:
 
 ```python
 @rules(
@@ -299,8 +293,7 @@ class Post(Model):
 
 ### Ordering with `prepend`
 
-By default callbacks are appended to the chain. Pass `prepend=True` to insert a
-callback at the front of the chain:
+By default, Flaskteroids adds callbacks to the end of the chain. Pass `prepend=True` to insert a callback at the front:
 
 ```python
 @rules(
@@ -311,12 +304,9 @@ class Post(Model):
     pass
 ```
 
-### After Commit and After Rollback
+### After commit and after rollback
 
-`after_commit` and `after_rollback` run once the surrounding database
-transaction is committed or rolled back — useful for side effects that should
-only happen after the data is durably saved (e.g., sending emails, purging a
-cache). They support the `on=` option (`'create'`, `'update'`, or `'destroy'`).
+`after_commit` runs once the surrounding database transaction commits. Use it for work that must wait until the data is saved, such as sending an email or purging a cache. `after_rollback` runs once the transaction rolls back. Both accept `on='create'`, `on='update'`, or `on='destroy'`.
 
 ```python
 @rules(
@@ -327,11 +317,11 @@ class Post(Model):
         pass
 ```
 
-## Querying Models
+## Querying models
 
-Models provide a rich querying interface through the `ModelQuery` class.
+Start a query with `where`, `order`, or `all`. These methods return a `ModelQuery` that you can chain to filter, order, or paginate records.
 
-### Finding Records
+### Finding records
 
 ```python
 # Find by ID
@@ -344,7 +334,7 @@ post = Post.find_by(title="Hello World")
 posts = list(Post.all())
 ```
 
-### Where Clauses
+### Where clauses
 
 ```python
 # Simple where
@@ -358,7 +348,7 @@ from sqlalchemy import or_
 posts = Post.where(or_(Post.title.like("%hello%"), Post.content.like("%world%")))
 ```
 
-### Includes (Eager Loading)
+### Eager loading with `includes`
 
 Load associated records to avoid N+1 queries.
 
@@ -382,7 +372,7 @@ posts = Post.order(created_at='desc').all()
 posts = Post.order(created_at='desc', title='asc').all()
 ```
 
-### Limit, Offset, and Pagination
+### Limit, offset, and pagination
 
 Use `limit()` to cap the number of records and `offset()` to skip records. Both
 methods work directly on a model or in a query chain and are applied in SQL:
@@ -403,16 +393,15 @@ page_count = posts.count()
 total_count = Post.where(published=True).count()
 ```
 
-Always use a deterministic order (such as `id`) for pagination. Use non-negative
-integers: `limit(0)` returns no records and `offset(0)` skips none. Repeated calls
-replace the previous value; `limit(None)` or `offset(None)` clears that clause.
-Queries remain lazy until records or a count are requested. `count()`, `first()`,
-and `last()` respect the selected page; like Rails, `last()` loads the selected
-records when a limit or offset is present.
+Always use a deterministic order, such as `id`, for pagination. Limits and offsets must be non-negative integers. `limit(0)` returns no records, and `offset(0)` skips none.
 
-## CRUD Operations
+Repeated calls replace the previous value. `limit(None)` or `offset(None)` clears that clause. Queries execute when you request records or a count.
 
-### Creating Records
+`count()`, `first()`, and `last()` respect the selected page. Like Rails, `last()` loads the selected records when a limit or offset is present.
+
+## CRUD operations
+
+### Creating records
 
 ```python
 # Create and save immediately
@@ -423,7 +412,7 @@ post = Post.new(title="New Post", content="Content here")
 post.save()  # Returns True on success
 ```
 
-### Updating Records
+### Updating records
 
 ```python
 post = Post.find(1)
@@ -434,14 +423,14 @@ post.save()
 post.update(title="New Title", content="New Content")
 ```
 
-### Deleting Records
+### Deleting records
 
 ```python
 post = Post.find(1)
 post.destroy()
 ```
 
-## Error Handling
+## Validation errors
 
 Models include an `errors` object for validation errors.
 

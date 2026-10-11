@@ -1,8 +1,8 @@
 # Releasing Flaskteroids
 
-Releases are maintainer-driven: choose a version bump, review a release PR,
-then publish a draft GitHub release. No Conventional Commit format is required.
-Only stable `X.Y.Z` releases are supported by these workflows.
+To release Flaskteroids, choose a version bump, review a release PR,
+then publish a draft GitHub release. Commit messages do not need to follow
+Conventional Commits. Only stable `X.Y.Z` releases are supported by these workflows.
 
 ## One-time setup
 
@@ -19,11 +19,11 @@ must have write access to the repository. Approve the token for the organization
 if required, and renew it before it expires.
 
 A GitHub App installation token with equivalent permissions can be used instead
-if you provide a fresh token to the preparation workflow. The built-in
-`GITHUB_TOKEN` is deliberately not used for opening the PR: its events do not
-normally trigger other workflows, so the release PR would miss automatic CI.
+if you provide a fresh token to the preparation workflow. The workflow does not
+use the built-in `GITHUB_TOKEN` to open the PR. Its events do not normally trigger other workflows,
+so the release PR would not run CI automatically.
 
-### PyPI Trusted Publishing
+### PyPI trusted publishing
 
 On GitHub, create an environment named **`pypi`**. Optionally configure required
 reviewers for an additional approval immediately before uploading.

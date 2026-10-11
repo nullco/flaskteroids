@@ -1,13 +1,7 @@
-<!--<p align="center">
-  <a href="https://github.com/nullco/flaskteroids">
-    <img src="https://raw.githubusercontent.com/nullco/flaskteroids/main/docs/images/logo.png" alt="Flaskteroids Logo" width="200">
-  </a>
-</p>-->
-
 <h1 align="center">Flaskteroids</h1>
 
 <p align="center">
-  <strong>Flaskteroids: A complete, batteries-included Python MVC framework.</strong>
+  A Rails-inspired Python MVC framework built on Flask, SQLAlchemy, and Celery.
 </p>
 
 <p align="center">
@@ -27,97 +21,70 @@
 
 ---
 
-**Flaskteroids** (or Flask on Steroids) is a lightweight yet powerful Python MVC framework designed to provide the closest possible experience to developing web applications in **Ruby on Rails**, in the Python world. Flaskteroids uses **Rails 8 as its reference implementation** for conventions, framework boundaries, and developer experience while expressing those conventions through Python and Flask.
+Flaskteroids brings Rails conventions to Python. It uses Rails 8 as the reference for application structure and framework behavior, with Flask handling HTTP requests, SQLAlchemy and Alembic handling the database, and Celery running background jobs.
 
-Our mission is to bring exceptional productivity and developer happiness to the Python ecosystem through a batteries-included framework that emphasizes **convention over configuration**. This means you can focus on building great applications rather than boilerplate code, while maintaining the full power of Flask and its rich ecosystem.
+Models, controllers, and templates live in conventional directories. The framework discovers them without manual registration. Flask APIs and extensions remain available when you need them.
 
-Flaskteroids stays lean, fast, and secure by carefully selecting core dependencies and providing everything you need out of the box — from database management to background jobs — without unnecessary complexity.
+## What's included
 
-## Features
-
-- **Full MVC Architecture**: Clean separation of concerns with Models, Views, and Controllers.
-- **Elegant Routing**: Intuitive and resourceful routing that automatically generates RESTful routes for your resources.
-- **Built-in ORM**: Seamless integration with SQLAlchemy and Alembic for database management and migrations.
-- **Background Jobs**: Integrated with Celery for easy background job processing.
-- **RESTful by Design**: Quickly build API routes with automatic JSON responses for data-oriented actions.
-- **Powerful CLI**: A rich set of commands for generating models, controllers, mailers, scaffolds, and more.
-- **Flask Compatibility**: Retains the full power of Flask and its rich ecosystem while adding an integrated application framework.
-- **Convention Over Configuration**: Sensible defaults and automatic discovery reduce boilerplate code.
-- **Application Configuration**: Environment settings, `database.yml`, encrypted credentials, and initializers are integrated by default.
-- **Rails-style Testing**: Transactional tests, YAML fixtures, generated tests, job and mail assertions, and browser system tests powered by pytest.
+- Resource routing with CRUD routes and path helpers.
+- Active Record-style models with associations, validations, and lifecycle callbacks.
+- Jinja templates, form helpers, and HTML or JSON responses.
+- Generators for models, migrations, controllers, scaffolds, mailers, and authentication.
+- Background jobs and email delivery.
+- Environment settings, `database.yml`, encrypted credentials, and boot-time initializers.
+- Pytest-based transactional tests, YAML fixtures, job and mail assertions, and Playwright browser tests.
 
 ## Installation
 
-To get started, install the Flaskteroids package using `pip`:
+Requires Python 3.12 or newer. Install Flaskteroids in your Python environment:
 
 ```sh
 pip install flaskteroids
 ```
 
-## Getting Started
+## Getting started
 
-### 1. Creating a New App
-
-Create a new Flaskteroids application using the `flaskteroids new` command:
+Create an application. Git must be installed.
 
 ```sh
 flaskteroids new my_app
 cd my_app
 ```
 
-This creates a new directory called `my_app` with a standard application structure.
-
-### 2. Running the Server
-
-To start the development server, run:
+The command creates the application files and initializes a Git repository in `my_app`. Start the development server:
 
 ```sh
 flask run
 ```
 
-Now, open your browser and navigate to `http://127.0.0.1:5000`.
-You should see the Flaskteroids welcome page!
+Open `http://127.0.0.1:5000` to see the welcome page.
 
-## Your First Feature: A Blog
+## Add a posts resource
 
-Let's create a simple blog to see the power of scaffolding.
-Inside your `my_app` follow the next steps:
+Stop the server and run these commands inside `my_app`:
 
-1. **Generate a Post scaffold:**
-   This command will create the model, controller, views, and database
-   migration for a `Post` resource with `title` and `content` fields.
+```sh
+flask generate scaffold Post title:string content:text
+flask db:migrate
+flask run
+```
 
-   ```sh
-   flask generate scaffold Post title:string content:text
-   ```
+The scaffold generates a model, migration, controller, views, and routes. Visit
+`http://127.0.0.1:5000/posts/` to create, view, edit, and delete posts.
 
-2. **Run the database migration:**
-   Apply the changes to your database schema.
+See the [documentation](https://nullco.github.io/flaskteroids/) for configuration,
+testing, and the API guides.
 
-   ```sh
-   flask db:migrate
-   ```
-
-3. **Start the server:**
-
-   ```sh
-   flask run
-   ```
-
-Now, visit `http://127.0.0.1:5000/posts` in your browser.
-You have a complete set of pages to create, view, update, and delete posts.
-
-For more check out the [documentation](https://nullco.github.io/flaskteroids/index.html)
-
-## Agent Skills
+## Agent skills
 
 Flaskteroids bundles coding guidance for agents with each release. New applications
-include `.agents/skills/using-flaskteroids/SKILL.md`, a loader that directs agents to
-the installed package's version-matched instructions. The package skill requires
-using public Flaskteroids abstractions whenever they cover the task, rather than
-bypassing the framework with dependency internals.
+include `.agents/skills/using-flaskteroids/SKILL.md`, which points agents to
+instructions for the installed framework version. These instructions require
+agents to use public Flaskteroids APIs when they cover the task, rather than
+calling dependency internals.
 
-Using your application's environment, locate the installed skills with:
+In your application's Python environment, locate the installed skills with:
 
 ```sh
 flaskteroids agent-skills path
@@ -129,9 +96,8 @@ No application configuration or initialization is required.
 
 ## Releasing
 
-Maintainers: see [the release guide](RELEASING.md) for the automated release PR
-and PyPI publishing process.
+See [the release guide](RELEASING.md) for release PRs and PyPI publishing.
 
 ## License
 
-Flaskteroids is open-source and released under the [MIT License](LICENSE).
+Flaskteroids is released under the [MIT License](LICENSE).

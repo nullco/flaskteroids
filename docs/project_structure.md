@@ -1,11 +1,13 @@
-# Project Structure
+# Project structure
 
-A Flaskteroids project uses the following application structure:
+`flaskteroids new` generates this application layout. The tree shows the main directories and configuration files:
 
 ```text
 my_project/
 ├── app/
+│   ├── assets/
 │   ├── controllers/
+│   ├── helpers/
 │   ├── models/
 │   ├── mailers/
 │   ├── views/
@@ -25,22 +27,28 @@ my_project/
 ├── db/
 │   └── migrate/
 ├── storage/
-├── tests/
+├── test/
 ├── pyproject.toml
 └── wsgi.py
 ```
 
-- `app/controllers`: Handle web requests and responses.
-- `app/models`: Define database-backed models and business logic.
-- `app/views`: Contain Jinja templates.
-- `app/mailers`: Define mail delivery actions.
-- `app/jobs`: Define background jobs.
-- `config/application.py`: Holds application-wide configuration.
-- `config/environments`: Holds environment-specific overrides.
-- `config/initializers`: Configures external libraries during boot.
-- `config/database.yml`: Defines database connections by environment.
-- `config/credentials.yml.enc`: Stores encrypted application secrets.
-- `config/routes.py`: Defines application routes.
-- `db/migrate`: Contains database migrations.
+| Path | Contents |
+| --- | --- |
+| `app/assets` | Stylesheets and images. |
+| `app/controllers` | Request-handling actions. |
+| `app/helpers` | Template helpers. |
+| `app/models` | Database-backed models and business logic. |
+| `app/views` | Jinja templates. |
+| `app/mailers` | Email actions. |
+| `app/jobs` | Background jobs. |
+| `config/application.py` | Application-wide configuration. |
+| `config/environments` | Environment-specific overrides. |
+| `config/initializers` | Library configuration that runs during boot. |
+| `config/database.yml` | Database connections by environment. |
+| `config/credentials.yml.enc` | Encrypted application secrets. |
+| `config/routes.py` | Application routes. |
+| `db/migrate` | Database migrations. |
+| `storage` | Local database files and other stored data. |
+| `test` | Tests and YAML fixtures. |
 
-See [Configuration](configuration.md) for the boot process, environments, credentials, and database precedence.
+See [Configuration](configuration.md) for the boot process, environments, credentials, and database setting precedence.

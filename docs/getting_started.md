@@ -2,104 +2,65 @@
 
 ## Installation
 
+Requires Python 3.12 or newer. Install Flaskteroids in your Python environment:
+
 ```sh
 pip install flaskteroids
 ```
 
-## Creating a New App
+## Create an application
 
-Create a new Flaskteroids application using the `flaskteroids new` command:
+Git must be installed. Run:
 
 ```sh
 flaskteroids new my_app
 cd my_app
 ```
 
-This creates a new directory called `my_app` with the standard Flaskteroids application structure.
+The command creates the application files and initializes a Git repository in `my_app`. It does not install dependencies. See [Project structure](project_structure.md) for the generated directory layout.
 
-## Project Structure
-
-A typical Flaskteroids application follows this structure:
-
-```
-my_app/
-├── app/
-│   ├── controllers/     # Controllers handle requests and responses
-│   ├── models/          # Models represent database tables and business logic
-│   ├── views/           # Templates for rendering HTML
-│   └── mailers/         # Email templates and logic
-├── config/
-│   ├── environments/    # Development, test, and production settings
-│   ├── initializers/    # Boot-time library configuration
-│   ├── application.py   # Application-wide configuration
-│   ├── credentials.yml.enc
-│   ├── database.yml     # Database settings by environment
-│   └── routes.py        # Route definitions
-├── db/
-│   └── migrations/      # Database migration files
-├── public/              # Static assets (CSS, JS, images)
-├── tests/               # Test files
-├── pyproject.toml       # Project configuration
-└── wsgi.py               # Main application entry point
-```
-
-## Running the Server
-
-To start the development server, run:
+## Run the server
 
 ```sh
 flask run
 ```
 
-Now, open your browser and navigate to `http://127.0.0.1:5000`.
-You should see the Flaskteroids welcome page!
+Open `http://127.0.0.1:5000` to see the welcome page.
 
-Flaskteroids boots in `development` by default. Set `FLASKTEROIDS_ENV` to select another environment:
+Flaskteroids uses the `development` environment by default. Set `FLASKTEROIDS_ENV` to select another environment:
 
 ```sh
 FLASKTEROIDS_ENV=test flask run
 ```
 
-Application secrets are stored in encrypted credentials:
+The generated application stores its secrets in encrypted credentials. Edit or inspect them with:
 
 ```sh
 flask credentials:edit
 flask credentials:show
 ```
 
-See [Configuration](configuration.md) for boot and configuration conventions.
+See [Configuration](configuration.md) for environments, credentials, and the boot process.
 
-## Your First Feature: A Blog
+## Add a posts resource
 
-Let's create a simple blog to see the power of scaffolding.
-Inside your `my_app` follow the next steps:
+Stop the server and generate a `Post` scaffold inside `my_app`:
 
-1. **Generate a Post scaffold:**
-   This command will create the model, controller, views, and database
-   migration for a `Post` resource with `title` and `content` fields.
+```sh
+flask generate scaffold Post title:string content:text
+```
 
-   ```sh
-   flask generate scaffold Post title:string content:text
-   ```
+This creates a model, database migration, controller, views, and routes for posts with `title` and `content` fields.
 
-2. **Run the database migration:**
-   Apply the changes to your database schema.
+Apply the migration and restart the server:
 
-   ```sh
-   flask db:migrate
-   ```
+```sh
+flask db:migrate
+flask run
+```
 
-3. **Start the server:**
+Visit `http://127.0.0.1:5000/posts/` to create, view, edit, and delete posts.
 
-   ```sh
-   flask run
-   ```
+## Next steps
 
-Now, visit `http://127.0.0.1:5000/posts` in your browser.
-You have a complete set of pages to create, view, update, and delete posts.
-
-## Next Steps
-
-Congratulations on creating your first Flaskteroids application! Here are some suggestions for what to explore next:
-
-- **Learn the Basics**: Dive deeper into [Models](models/index.md), [Views](views/index.md) and [Controllers](controllers/index.md).
+Read the [models](models/index.md), [views](views/index.md), and [controllers](controllers/index.md) guides to change the generated code. See [Testing](testing.md) to run the application's tests.

@@ -24,9 +24,9 @@ theme:
 
 nav:
   - Introduction: index.md
-  - Getting Started:
+  - Getting started:
     - Overview: getting_started.md
-    - Project Structure: project_structure.md
+    - Project structure: project_structure.md
     - Configuration: configuration.md
     - Testing: testing.md
   - Models:
@@ -37,11 +37,11 @@ nav:
     - Overview: controllers/index.md
     - Routing: controllers/routing.md
     - Advanced topics: controllers/advanced.md
-  - Other Components:
+  - Other components:
     - CLI: other/cli.md
     - Fields: other/fields.md
     - Forms: other/forms.md
-    - Background Jobs: other/jobs.md
+    - Background jobs: other/jobs.md
     - Mailers: other/mailers.md
 
 markdown_extensions:

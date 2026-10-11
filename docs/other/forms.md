@@ -1,12 +1,10 @@
 # Forms
 
-Handling user input from forms is a common task in web applications. Flaskteroids provides a cohesive set of tools to build forms, handle submissions securely, and prevent common vulnerabilities.
+Use `form_with` to build model-backed forms and `params.expect` to filter submitted attributes.
 
-## Building Forms
+## Building forms
 
-Flaskteroids provides a simple and powerful way to build forms using the `form_with` helper and the `Form` object. The `form_with` helper can be used with a model object to automatically generate the form's action and method, and it also includes the CSRF token automatically.
-
-Here's an example of how to create a form for a `Post` model:
+`form_with(model=post)` chooses the form's action and HTTP method from the model and includes a CSRF token. Inside the template block, it exposes a `Form` object for generating labels and inputs:
 
 ```html
 <!-- app/views/posts/_form.html -->
@@ -27,56 +25,48 @@ Here's an example of how to create a form for a `Post` model:
 {% endcall %}
 ```
 
-The `form` object provides a variety of helpers for generating form fields, such as `text_field`, `text_area`, `password_field`, `checkbox`, and more.
+Field helpers include `text_field`, `text_area`, `password_field`, and `checkbox`.
 
-## Strong Parameters
+## Strong parameters
 
-To prevent mass assignment vulnerabilities, Flaskteroids provides **Strong Parameters**. The `params` object allows you to whitelist which parameters are permitted in your controller actions.
+Use `params.expect` to select the attributes a controller may pass to a model. Do not pass unfiltered request data to `create` or `update`. Otherwise, users could change attributes you did not intend to expose, such as an admin flag.
 
-This is a security best practice that ensures users cannot update model attributes they are not supposed to, such as an admin flag.
-
-Here's how you can use `params.expect` to safely handle incoming data. The `expect` method allows you to define the structure of the expected parameters, including nested objects and lists.
+`expect` checks the expected structure, including nested objects and lists. For a post form:
 
 ```python
 # app/controllers/posts_controller.py
-from flaskteroids import params
-from flaskteroids.controller import ActionController
+from flaskteroids import params, redirect_to
+from flaskteroids.controller import ActionController, render
+from flaskteroids.routes import post_path
 from app.models.post import Post
 
 class PostsController(ActionController):
     # ...
 
     def create(self):
-        self.post = Post.new(_post_params())
+        self.post = Post.new(**self._post_params())
         if self.post.save():
-            # ... success
-        else:
-            # ... error
-            pass
+            return redirect_to(post_path(self.post))
+        return render('new', status=422)
 
     def update(self):
         self.post = Post.find(params['id'])
-        if self.post.update(_post_params()):
-            # ... success
-        else:
-            # ... error
-            pass
+        if self.post.update(**self._post_params()):
+            return redirect_to(post_path(self.post))
+        return render('edit', status=422)
 
     def _post_params(self):
         # Assumes form data is sent as:
         # post[title]=...
         # post[content]=...
         return params.expect(post=['title', 'content'])
-
 ```
 
-In this example, `_post_params` specifies that the `params` object must contain a top-level key called `post`, which should be a dictionary containing only the `title` and `content` keys. Any other attributes within the `post` object will be discarded, and if the `post` key is missing or the structure is incorrect, an exception will be raised.
+`params.expect(post=['title', 'content'])` requires a top-level `post` dictionary and returns only its permitted attributes. It discards other attributes. If `post` is missing or has the wrong structure, it raises an exception.
 
-## CSRF Protection
+## CSRF protection
 
-Flaskteroids automatically includes CSRF (Cross-Site Request Forgery) protection on
-state-changing requests (all methods except GET, HEAD, OPTIONS, and TRACE). A CSRF
-token must be included in your forms. The `form_with` helper does this automatically.
+Flaskteroids checks CSRF tokens on state-changing requests, meaning all methods except GET, HEAD, OPTIONS, and TRACE. `form_with` includes the token for you.
 
 Tokens are signed, expire after one hour, and are bound to a random nonce stored in
 the browser session. A token from another session is rejected. Clearing the session
@@ -84,11 +74,11 @@ invalidates its tokens; reload forms to obtain a new token. Token generation req
 an active request context and a configured Flask secret key. AJAX requests can send
 the token in the `X-CSRF-TOKEN` header instead of the `csrf_token` form field.
 
-Do not share-cache pages containing CSRF tokens: they are specific to each session.
+Do not store pages containing CSRF tokens in a shared cache. Tokens are specific to each session.
 Applications upgrading from the old session-independent tokens must reload existing
 forms.
 
-For manual forms, you can include the token like this:
+Include the token yourself in manual forms:
 
 ```html
 <form action="/posts" method="post">

@@ -1,19 +1,18 @@
-# Intro
+# Flaskteroids
 
-**Flaskteroids** (or Flask on Steroids) is a lightweight yet powerful Python MVC framework designed to provide the closest possible experience to developing web applications in **Ruby on Rails**, in the Python world. Flaskteroids uses **Rails 8 as its reference implementation** for conventions, framework boundaries, and developer experience while expressing those conventions through Python and Flask.
+Flaskteroids is a Python MVC framework built on Flask, SQLAlchemy, and Celery. It uses Rails 8 as the reference for its conventions and framework behavior.
 
-Our mission is to bring exceptional productivity and developer happiness to the Python ecosystem through a batteries-included framework that emphasizes **convention over configuration**. This means you can focus on building great applications rather than boilerplate code, while maintaining the full power of Flask and its rich ecosystem.
+The framework chooses an application layout and discovers models, controllers, and templates in their conventional directories. It includes resource routing, database migrations, form helpers, background jobs, and email delivery. Flask APIs and extensions remain available when you need them.
 
-Flaskteroids stays lean, fast, and secure by carefully selecting core dependencies and providing everything you need out of the box — from database management to background jobs — without unnecessary complexity.
+Generators create models, controllers, scaffolds, mailers, and authentication code. Applications include environment-specific settings, encrypted credentials, and pytest-based tests with YAML fixtures and transactional rollback. Browser tests use Playwright.
 
-## Features
+Start with [Getting started](getting_started.md) to create an application and generate a posts resource.
 
-- **Full MVC Architecture**: Clean separation of concerns with Models, Views, and Controllers.
-- **Elegant Routing**: Intuitive and resourceful routing that automatically generates RESTful routes for your resources.
-- **Built-in ORM**: Seamless integration with SQLAlchemy and Alembic for database management and migrations.
-- **Background Jobs**: Integrated with Celery for easy background job processing.
-- **RESTful by Design**: Quickly build API routes with automatic JSON responses for data-oriented actions.
-- **Powerful CLI**: A rich set of commands for generating models, controllers, mailers, scaffolds, and more.
-- **Flask Compatibility**: Retains the full power of Flask and its rich ecosystem while adding an integrated application framework.
-- **Convention Over Configuration**: Sensible defaults and automatic discovery reduce boilerplate code.
-- **Application Configuration**: Environment settings, `database.yml`, encrypted credentials, and initializers are integrated by default.
+## Guides
+
+- [Project structure](project_structure.md) and [configuration](configuration.md) explain where files live and how an application boots.
+- The [models guide](models/index.md) covers associations, validations, callbacks, and queries.
+- [Controllers](controllers/index.md) and [routing](controllers/routing.md) cover request handling and HTML or JSON responses.
+- [Views](views/index.md) and [forms](other/forms.md) cover templates and form submissions.
+- [Testing](testing.md) covers model, integration, job, mailer, and browser tests.
+- The [CLI reference](other/cli.md) lists generators and credentials commands.
