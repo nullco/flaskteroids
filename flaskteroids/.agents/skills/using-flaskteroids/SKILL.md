@@ -16,8 +16,36 @@ description: Use when building or modifying a Flaskteroids application.
 - Inspect existing files before generating; commands may overwrite files.
   Review generated changes, follow the application's MVC conventions and base
   classes, and use public framework APIs rather than recreating internals.
+- Inspect a comparable existing component before implementing a new one. Follow
+  local patterns rather than imposing generic Flask patterns on the application.
+- Keep changes scoped to the task. Generated files are application-owned code,
+  not disposable scaffolding. Do not regenerate or clean up unrelated files as
+  part of a feature.
 - Add or update tests with behavior changes and run the relevant test commands.
   Never commit encryption keys or expose plaintext credentials.
+
+## Preserve application behavior during UI changes
+
+Treat existing layouts as application infrastructure, not disposable starter
+markup. A visual redesign does not imply permission to replace the frontend
+stack or remove existing behavior.
+
+- Read the current layout, affected templates, and referenced assets before
+  editing. Modify existing templates rather than replacing them wholesale.
+- Preserve Turbo, template inheritance blocks, shared scripts, stylesheets,
+  and security-related markup unless the task explicitly requires changing
+  them. Their presence is not evidence that they are unused.
+- Use the existing layout blocks for page-specific content and assets.
+  Make shared layout changes when needed, but preserve its existing contracts.
+- Do not introduce another frontend framework or disable Turbo just to make
+  new UI code work. Check compatibility with the application's existing
+  navigation and form behavior first.
+- When a requested change requires removing or replacing an existing
+  integration, explain the behavior affected and confirm the scope first.
+
+For UI changes, verify relevant behavior as well as appearance. When Turbo
+is enabled, check navigation and form submissions through Turbo, not only
+a fresh page load. Add regression coverage for behavior the change could break.
 
 ## Framework-first implementation
 
