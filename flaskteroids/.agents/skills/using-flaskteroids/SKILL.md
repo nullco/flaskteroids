@@ -45,7 +45,7 @@ stack or remove existing behavior.
 
 For UI changes, verify relevant behavior as well as appearance. When Turbo
 is enabled, check navigation and form submissions through Turbo, not only
-a fresh page load. Add regression coverage for behavior the change could break.
+a fresh page load.
 
 ## Framework-first implementation
 
