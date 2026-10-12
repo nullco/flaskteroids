@@ -8,9 +8,7 @@ from pathlib import Path
 from flaskteroids.cli.flaskteroids import cli
 
 
-def test_generated_application_uses_core_testing_dependencies(
-    tmp_path, monkeypatch
-):
+def test_generated_application_declares_runtime_dependencies(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     cli.main(
         args=["new", "weblog"],
@@ -20,8 +18,15 @@ def test_generated_application_uses_core_testing_dependencies(
 
     generated = tomllib.loads((tmp_path / "weblog" / "pyproject.toml").read_text())
 
-    assert generated["project"]["dependencies"] == ["flaskteroids"]
+    assert generated["project"]["dependencies"] == ["flaskteroids", "gunicorn"]
     assert "dependency-groups" not in generated
+
+    dockerfile = (tmp_path / "weblog" / "Dockerfile").read_text()
+    assert (
+        "RUN pip install --no-cache-dir -r /requirements.txt flaskteroids\n"
+        in dockerfile
+    )
+    assert 'CMD ["gunicorn", "wsgi:app"' in dockerfile
 
 
 def test_generated_application_boots_in_development_and_production(

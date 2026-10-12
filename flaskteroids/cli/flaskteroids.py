@@ -148,6 +148,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "flaskteroids",
+    "gunicorn",
 ]
 
 [tool.pytest.ini_options]
@@ -414,7 +415,7 @@ RUN apt-get update \
 COPY --from=deps /requirements.txt /requirements.txt
 # Ensure pip installs runtime dependency 'flaskteroids' in case it was
 # omitted from the pinned requirements (ensures scaffolded apps run)
-RUN pip install --no-cache-dir -r /requirements.txt gunicorn flaskteroids
+RUN pip install --no-cache-dir -r /requirements.txt flaskteroids
 
 # Copy application source
 COPY . .
