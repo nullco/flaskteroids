@@ -16,7 +16,7 @@ def pytest_configure(config):
 
 
 def pytest_sessionstart(session):
-    os.environ.setdefault("FLASKTEROIDS_ENV", "test")
+    os.environ.setdefault("FLASK_ENV", "test")
     session.config._flaskteroids_worker_database = _configure_worker_database()
     _prepare_test_database(session.config.rootpath)
 

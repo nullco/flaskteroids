@@ -53,11 +53,33 @@ def configure(config):
 def test_uses_environment_variable_to_select_environment(
     tmp_path, routes_module, monkeypatch
 ):
-    monkeypatch.setenv("FLASKTEROIDS_ENV", "test")
+    monkeypatch.setenv("FLASK_ENV", "test")
 
     app = application_class(routes_module).initialize(root_path=tmp_path)
 
     assert app.env.test
+
+
+def test_explicit_environment_overrides_environment_variable(
+    tmp_path, routes_module, monkeypatch
+):
+    monkeypatch.setenv("FLASK_ENV", "production")
+
+    app = application_class(routes_module).initialize(
+        environment="test", root_path=tmp_path
+    )
+
+    assert app.env.test
+
+
+def test_defaults_to_development_without_environment_variable(
+    tmp_path, routes_module, monkeypatch
+):
+    monkeypatch.delenv("FLASK_ENV", raising=False)
+
+    app = application_class(routes_module).initialize(root_path=tmp_path)
+
+    assert app.env.development
 
 
 def test_runs_initializers_in_filename_order(tmp_path, routes_module):

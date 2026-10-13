@@ -27,10 +27,10 @@ flask run
 
 Open `http://127.0.0.1:5000` to see the welcome page.
 
-Flaskteroids uses the `development` environment by default. Set `FLASKTEROIDS_ENV` to select another environment:
+Flaskteroids uses the `development` environment by default. Set `FLASK_ENV` to select another environment:
 
 ```sh
-FLASKTEROIDS_ENV=test flask run
+FLASK_ENV=test flask run
 ```
 
 The generated application stores its secrets in encrypted credentials. Edit or inspect them with:

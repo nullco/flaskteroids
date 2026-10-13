@@ -59,7 +59,7 @@ def test_generated_application_boots_in_development_and_production(
     assert development.returncode == 0, development.stderr
 
     environment = os.environ | {
-        "FLASKTEROIDS_ENV": "production",
+        "FLASK_ENV": "production",
         "FLASKTEROIDS_MASTER_KEY": (root / "config" / "master.key")
         .read_text()
         .strip(),

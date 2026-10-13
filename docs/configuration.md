@@ -39,9 +39,11 @@ class Application(FlaskteroidsApplication):
 
 Flaskteroids selects the environment in this order:
 
-1. `FLASKTEROIDS_ENV`
-2. `FLASK_ENV`
-3. `development`
+1. The explicit `environment=` argument to `Application.initialize()`.
+2. `FLASK_ENV`.
+3. `development`.
+
+Flaskteroids reads `FLASK_ENV` to select configuration. Flask itself no longer uses this variable; use `flask run --debug` to enable its debugger.
 
 Flaskteroids applies the selected file under `config/environments/` after application-wide configuration:
 

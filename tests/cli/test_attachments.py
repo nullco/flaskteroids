@@ -16,7 +16,7 @@ def generated_app(tmp_path, monkeypatch):
     root = tmp_path / "uploads"
     environment = os.environ | {
         "PYTHONPATH": str(Path(__file__).parents[2]),
-        "FLASKTEROIDS_ENV": "test",
+        "FLASK_ENV": "test",
     }
 
     def run(*args):
