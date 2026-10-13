@@ -1,37 +1,55 @@
+from contextlib import ExitStack
+from types import SimpleNamespace
+
 import pytest
-from sqlalchemy.orm import sessionmaker
+from flask import Flask, has_app_context
 from sqlalchemy import create_engine
-from flaskteroids.model import Model, init
-import flaskteroids.registry as registry
+
+from flaskteroids.db import session as db_session
+from flaskteroids.extensions.db import SQLAlchemyExtension
 
 
 @pytest.fixture
-def engine():
-    return create_engine('sqlite:///:memory:')
+def engine(tmp_path):
+    engine = create_engine(
+        f"sqlite:///{tmp_path / 'models.sqlite'}", connect_args={"autocommit": False}
+    )
+    yield engine
+    engine.dispose()
 
 
-@pytest.fixture(autouse=True)
-def session(mocker, engine):
-    Session = sessionmaker(bind=engine)
-    from flaskteroids import model
-    return mocker.patch.object(model, 'session', Session())
+@pytest.fixture
+def session():
+    return db_session._get_current_object()
 
 
-@pytest.fixture(autouse=True)
-def current_app(mocker):
-    from flaskteroids import model
-    current_app = mocker.Mock()
-    current_app.config = {'SECRET_KEY': 'test'}
-    return mocker.patch.object(model, 'current_app', current_app)
+@pytest.fixture
+def current_app():
+    from flask import current_app
+
+    return current_app
 
 
-@pytest.fixture(autouse=True)
-def init_models(engine):
-    def _(Base, model_base_tuples):
-        Base.metadata.create_all(engine)
-        registry.get(Model)['models'] = {model.__name__: model for _, model in model_base_tuples}
-        for base, model in model_base_tuples:
-            registry.get(model)['base_class'] = base
-        for _, model in model_base_tuples:
-            init(model)
-    return _
+@pytest.fixture
+def init_models(engine, mocker):
+    with ExitStack() as contexts:
+
+        def initialize(base, model_base_tuples):
+            if has_app_context():
+                db_session.commit()
+            base.metadata.create_all(engine)
+            app = Flask(__name__)
+            app.config["SECRET_KEY"] = "test"
+            app.config.paths = SimpleNamespace(models="test_models")
+            app.database_url = str(engine.url)
+            mocker.patch(
+                "flaskteroids.extensions.db.discover_classes",
+                return_value={model.__name__: model for _, model in model_base_tuples},
+            )
+            mocker.patch(
+                "flaskteroids.extensions.db.create_engine", return_value=engine
+            )
+            SQLAlchemyExtension(app)
+            contexts.enter_context(app.app_context())
+
+        yield initialize

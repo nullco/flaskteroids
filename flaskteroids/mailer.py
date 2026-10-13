@@ -1,45 +1,59 @@
 import logging
-from functools import wraps
 from email.message import EmailMessage
+from functools import wraps
+
 from flask import current_app, render_template
 from jinja2 import TemplateNotFound
-from flaskteroids.jobs.job import Job
-from flaskteroids.actions import decorate_action, get_actions, register_actions
-from flaskteroids.rules import bind_rules
+
+from flaskteroids.actions import (
+    decorate_action,
+    get_actions,
+    mark_action_wrapper,
+    original_action,
+    register_actions,
+)
+from flaskteroids.declarations import actions_for
 from flaskteroids.inflector import inflector
+from flaskteroids.jobs.job import Job
+from flaskteroids.rules import bind_rules
 
 _logger = logging.getLogger(__name__)
 
 
 def init(cls):
+    definition = actions_for(cls)
+    if definition.prepared:
+        return cls
     register_actions(cls, ActionMailer)
     bind_rules(cls)
     _decorate_actions(cls)
+    definition.prepared = True
     return cls
 
 
 def _decorate_actions(cls):
     for name in get_actions(cls):
-        action = getattr(cls, name)
+        action = original_action(cls, name)
         setattr(cls, name, _decorate_action(cls, action))
 
 
 def _decorate_action(cls, action):
+    original = action
     action = decorate_action(cls, action)
 
     @wraps(action)
     def wrapper(*args, **kwargs):
         message_delivery = action(*args, **kwargs)
-        assert message_delivery, 'Actions must return a MessageDelivery object'
+        assert message_delivery, "Actions must return a MessageDelivery object"
         builder = message_delivery.builder
         if not builder.template_name:
             builder.template_name = action.__name__
         return message_delivery
-    return wrapper
+
+    return mark_action_wrapper(wrapper, original)
 
 
 class ActionMailer:
-
     def mail(self, *, from_=None, to, subject):
         return MessageDelivery(
             MessageBuilder(
@@ -47,19 +61,24 @@ class ActionMailer:
                 to=to,
                 subject=subject,
                 template_path=inflector.underscore(self.__class__.__name__),
-                template_params=self.__dict__
+                template_params=self.__dict__,
             )
         )
 
 
 class MessageBuilder:
-    def __init__(self, *,
-                 from_, to, subject,
-                 template_path=None,
-                 template_name=None,
-                 template_params=None):
+    def __init__(
+        self,
+        *,
+        from_,
+        to,
+        subject,
+        template_path=None,
+        template_name=None,
+        template_params=None,
+    ):
         defaults = current_app.config.action_mailer.default_options
-        self.from_ = from_ or defaults.get('from_') or 'no-reply@flaskteroids.me'
+        self.from_ = from_ or defaults.get("from_") or "no-reply@flaskteroids.me"
         self.to = to
         self.subject = subject
         self.template_path = template_path
@@ -68,23 +87,23 @@ class MessageBuilder:
 
     def build(self):
         msg = EmailMessage()
-        msg['Subject'] = self.subject
-        msg['From'] = self.from_
-        msg['To'] = self.to
-        txt = self._render_content(type_='txt')
-        html = self._render_content(type_='html')
+        msg["Subject"] = self.subject
+        msg["From"] = self.from_
+        msg["To"] = self.to
+        txt = self._render_content(type_="txt")
+        html = self._render_content(type_="html")
         if txt:
             msg.set_content(txt)
         if html:
-            msg.add_alternative(html, subtype='html')
+            msg.add_alternative(html, subtype="html")
         return msg
 
     def _render_content(self, type_: str):
-        path = f'{self.template_path}/{self.template_name}.{type_}'
+        path = f"{self.template_path}/{self.template_name}.{type_}"
         try:
             return render_template(path, **self.template_params)
         except TemplateNotFound:
-            _logger.debug(f'template at <{path}> not found')
+            _logger.debug(f"template at <{path}> not found")
             return None
 
     def to_dict(self):
@@ -96,29 +115,31 @@ class MessageBuilder:
 
 
 class MessageDeliveryJob(Job):
-
     def perform(self, *args, **kwargs):
-        message_builder = MessageBuilder.from_dict(kwargs['message_builder'])
+        message_builder = MessageBuilder.from_dict(kwargs["message_builder"])
         msg = message_builder.build()
         if not msg:
-            _logger.debug('Nothing to send, ignoring...')
+            _logger.debug("Nothing to send, ignoring...")
             return
-        _logger.debug('message to be sent')
+        _logger.debug("message to be sent")
         _logger.debug(msg)
         cfg = current_app.config.action_mailer
         if not cfg.perform_deliveries:
-            _logger.debug('sending mail is disabled, ignoring...')
+            _logger.debug("sending mail is disabled, ignoring...")
             return
         current_app.extensions["flaskteroids.mail"].deliver(msg)
 
 
 class MessageDelivery:
-
     def __init__(self, builder: MessageBuilder) -> None:
         self.builder = builder
 
     def deliver_now(self, *args, **kwargs):
-        MessageDeliveryJob().perform(*args, message_builder=self.builder.to_dict(), **kwargs)
+        MessageDeliveryJob().perform(
+            *args, message_builder=self.builder.to_dict(), **kwargs
+        )
 
     def deliver_later(self, *args, **kwargs):
-        MessageDeliveryJob().perform_later(*args, message_builder=self.builder.to_dict(), **kwargs)
+        MessageDeliveryJob().perform_later(
+            *args, message_builder=self.builder.to_dict(), **kwargs
+        )

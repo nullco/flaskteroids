@@ -7,13 +7,13 @@ from flask import current_app
 from sqlalchemy import insert, select
 from werkzeug.datastructures import FileStorage
 
-from flaskteroids import registry
 from flaskteroids.attachments.blob import Attachment, Blob, Upload, storage
 from flaskteroids.attachments.operations import purge_blob_after_commit, upload_blob
 from flaskteroids.attachments.schema import attachments
 from flaskteroids.attachments.services import StorageError
 from flaskteroids.attachments.transactions import after_commit, defer_uploads
 from flaskteroids.db import session
+from flaskteroids.declarations import model_for
 from flaskteroids.exceptions import ProgrammerError
 
 
@@ -56,16 +56,13 @@ def _declare(name, many, service, dependent, max_size, content_types):
 
     def bind(cls):
         inherited = any(
-            name in registry.get(base).get("attachments", {})
+            name in model_for(base).attachments
             for base in cls.__mro__[1:]
+            if base is not object
         )
-        base_class = registry.get(cls).get("base_class")
-        column_conflict = (
-            base_class is not None and name in base_class.__table__.columns
-        )
-        if column_conflict or name in dir(cls) and not inherited:
+        if name in dir(cls) and not inherited:
             raise ProgrammerError(f"Attachment {name} conflicts with a model attribute")
-        registry.get(cls).setdefault("attachments", {})[name] = definition
+        model_for(cls).attachments[name] = definition
         wrapper = AttachedMany if many else AttachedOne
         setattr(cls, name, property(lambda instance: wrapper(instance, definition)))
 
@@ -73,7 +70,7 @@ def _declare(name, many, service, dependent, max_size, content_types):
 
 
 def assign(instance, name, attachable):
-    definition = registry.get(instance.__class__).get("attachments", {}).get(name)
+    definition = model_for(instance.__class__).attachments.get(name)
     if definition is None:
         return False
     if isinstance(attachable, FileStorage) and not attachable.filename:
@@ -129,7 +126,7 @@ def assign(instance, name, attachable):
 
 
 def validate(instance):
-    definitions = registry.get(instance.__class__).get("attachments", {})
+    definitions = model_for(instance.__class__).attachments
     for name, values in instance._attachment_changes.items():
         definition = definitions[name]
         for value in values:
@@ -147,7 +144,7 @@ def validate(instance):
 
 
 def persist(instance):
-    definitions = registry.get(instance.__class__).get("attachments", {})
+    definitions = model_for(instance.__class__).attachments
     removals = []
     for name, values in list(instance._attachment_changes.items()):
         definition = definitions[name]
@@ -203,8 +200,8 @@ def persist(instance):
 
 
 def cache_for_commit(instance):
-    if registry.get(instance.__class__).get("callbacks", {}).get("after_commit"):
-        definitions = registry.get(instance.__class__).get("attachments", {})
+    if model_for(instance.__class__).callbacks.get("after_commit"):
+        definitions = model_for(instance.__class__).attachments
         for definition in definitions.values():
             entries = AttachedMany(instance, definition).attachments
             instance._attachment_cache[definition.name] = [
@@ -213,7 +210,7 @@ def cache_for_commit(instance):
 
 
 def destroy(instance):
-    for definition in registry.get(instance.__class__).get("attachments", {}).values():
+    for definition in model_for(instance.__class__).attachments.values():
         defer_uploads(
             session,
             (instance.__class__.__name__, instance.id, definition.name),

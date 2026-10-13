@@ -2,6 +2,20 @@
 
 Flaskteroids extends the `flask` CLI with generators, database tasks, credentials commands, and test runners. Run application commands from the application root. Use `flask --help` to list commands and `flask <command> --help` for usage.
 
+## Shell
+
+`flask shell` provides your models and `session`:
+
+```python
+user = User.create(name='Alice')
+session.commit()
+# Or discard pending work:
+session.rollback()
+```
+
+Call `session.commit()` to save pending changes or `session.rollback()` to
+discard them. Exiting the shell normally also commits pending changes.
+
 ## Credentials
 
 Edit or inspect shared encrypted credentials:

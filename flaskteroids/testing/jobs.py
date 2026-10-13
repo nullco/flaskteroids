@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+from flask import current_app, has_app_context
+
 from flaskteroids.jobs.job import Job
 
 
@@ -24,7 +26,7 @@ class TestQueueAdapter:
     def enqueue(self, job_class, args, kwargs):
         job = EnqueuedJob(job_class=job_class, args=tuple(args), kwargs=dict(kwargs))
         if self.performing_enqueued_jobs:
-            job_class().perform(*job.args, **job.kwargs)
+            self._perform(job)
         else:
             self.enqueued_jobs.append(job)
         return job
@@ -32,7 +34,13 @@ class TestQueueAdapter:
     def perform_all(self):
         while self.enqueued_jobs:
             job = self.enqueued_jobs.pop(0)
-            job.job_class().perform(*job.args, **job.kwargs)
+            self._perform(job)
+
+    def _perform(self, job):
+        if has_app_context() and current_app._get_current_object() is self.application:
+            return job.job_class().perform(*job.args, **job.kwargs)
+        with self.application.app_context():
+            return job.job_class().perform(*job.args, **job.kwargs)
 
     def clear(self):
         self.enqueued_jobs.clear()

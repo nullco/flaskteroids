@@ -27,6 +27,29 @@ class Post(Model):
     pass
 ```
 
+## Custom rules and inheritance
+
+A custom rule receives a class. Use it to set class attributes. Put database
+queries and other work that needs an application in an action, callback, or
+initializer instead.
+
+```python
+def searchable(*names):
+    def prepare(cls):
+        cls.search_fields = names
+    return prepare
+
+
+@rules(searchable('title'))
+class Post(Model):
+    pass
+```
+
+Rules run once for each class. Inherited rules run before the child's rules, in
+base-class order. A shared ancestor contributes its rules once. Declaring the
+same rule twice runs it twice. If a rule uses a list or dictionary, create a new
+one for each class so children do not change their parents' values.
+
 ## Associations
 
 Associations define relationships between models.

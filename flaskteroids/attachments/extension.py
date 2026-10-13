@@ -10,11 +10,20 @@ from flaskteroids.attachments.blob import Blob
 from flaskteroids.attachments.filenames import content_disposition
 from flaskteroids.attachments.services import DiskService, S3Service, StorageError
 from flaskteroids.attachments.signatures import verified_token
-from flaskteroids.exceptions import RecordNotFoundException
+from flaskteroids.exceptions import ProgrammerError, RecordNotFoundException
 
 
 class AttachmentsExtension:
     def __init__(self, app):
+        self.init_app(app)
+
+    def init_app(self, app):
+        if getattr(self, "_app", app) is not app:
+            raise ProgrammerError(
+                "An attachments extension cannot be shared between applications."
+            )
+        if "flaskteroids.attachments" in app.extensions:
+            return
         self.service_name = app.config.attachments.service or (
             "test" if app.env.test else "local"
         )
@@ -30,9 +39,10 @@ class AttachmentsExtension:
         if not isinstance(self.configurations, dict):
             raise StorageError("config/storage.yml must contain a mapping")
         self.services = {}
-        app.extensions["flaskteroids.attachments"] = self
         if app.config.attachments.draw_routes:
             self._register_routes(app)
+        self._app = app
+        app.extensions["flaskteroids.attachments"] = self
 
     def service(self, name=None):
         name = name or self.service_name

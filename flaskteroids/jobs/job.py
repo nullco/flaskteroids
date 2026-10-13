@@ -1,12 +1,10 @@
-import flaskteroids.registry as registry
+from flask import current_app
 
 
 class Job:
-
     def perform(self, *args, **kwargs):
         pass
 
     def perform_later(self, *args, **kwargs):
-        adapter = registry.get(self.__class__).get("queue_adapter")
-        assert adapter, "Job not registered"
-        return adapter.enqueue(self.__class__, args, kwargs)
+        jobs = current_app.extensions["flaskteroids.jobs"]
+        return jobs.enqueue(self.__class__, args, kwargs)

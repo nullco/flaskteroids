@@ -43,6 +43,12 @@ class PostsController(ActionController):
         self.post = Post.find(params["id"])
 ```
 
+### Inherited actions
+
+Children inherit actions and callback rules. Callbacks without `only` also cover
+actions the child adds. Calling `super().action()` runs the parent action and its
+callbacks. The same rules apply to mailers.
+
 ### Around and after callbacks
 
 `around_action` methods are generators. Code before `yield` runs before the

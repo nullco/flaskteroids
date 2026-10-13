@@ -1,5 +1,5 @@
 import pytest
-from flask import Flask
+from flask import current_app
 from itsdangerous import URLSafeTimedSerializer
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import declarative_base
@@ -57,10 +57,8 @@ def account_model(request, init_models):
 
 
 @pytest.fixture
-def flask_app():
-    app = Flask(__name__)
-    app.secret_key = "serialization-test"
-    return app
+def flask_app(account_model):
+    return current_app._get_current_object()
 
 
 @pytest.fixture

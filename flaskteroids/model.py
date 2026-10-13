@@ -1,16 +1,15 @@
 import hmac
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from functools import partial
 from typing import Any, NotRequired, TypedDict
 
 from flask import current_app
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 from sqlalchemy import func, inspect, select
-from sqlalchemy.orm import relationship, selectinload
+from sqlalchemy.orm import selectinload
 from werkzeug.security import check_password_hash, generate_password_hash
 
-import flaskteroids.registry as registry
 from flaskteroids import fields
 from flaskteroids.attachments import attached as attached_storage
 from flaskteroids.attachments import has_many_attached, has_one_attached
@@ -38,44 +37,45 @@ from flaskteroids.callbacks import (
     run_callbacks,
 )
 from flaskteroids.db import session
+from flaskteroids.declarations import AssociationDefinition, model_for
 from flaskteroids.exceptions import ProgrammerError, RecordNotFoundException
 from flaskteroids.inflector import inflector
 from flaskteroids.rules import bind_rules
 
 __all__ = [
-    'Model',
-    'ModelMeta',
-    'ModelQuery',
-    'init',
-    'RecordNotFoundException',
-    'Error',
-    'Errors',
-    'PasswordAuthenticator',
-    'has_secure_password',
-    'belongs_to',
-    'has_many',
-    'has_one_attached',
-    'has_many_attached',
-    'validates',
-    'Relation',
-    'before_validation',
-    'after_validation',
-    'before_save',
-    'around_save',
-    'after_save',
-    'before_create',
-    'around_create',
-    'after_create',
-    'before_update',
-    'around_update',
-    'after_update',
-    'before_destroy',
-    'around_destroy',
-    'after_destroy',
-    'after_commit',
-    'after_rollback',
-    'after_initialize',
-    'after_find',
+    "Error",
+    "Errors",
+    "Model",
+    "ModelMeta",
+    "ModelQuery",
+    "PasswordAuthenticator",
+    "RecordNotFoundException",
+    "Relation",
+    "after_commit",
+    "after_create",
+    "after_destroy",
+    "after_find",
+    "after_initialize",
+    "after_rollback",
+    "after_save",
+    "after_update",
+    "after_validation",
+    "around_create",
+    "around_destroy",
+    "around_save",
+    "around_update",
+    "before_create",
+    "before_destroy",
+    "before_save",
+    "before_update",
+    "before_validation",
+    "belongs_to",
+    "has_many",
+    "has_many_attached",
+    "has_one_attached",
+    "has_secure_password",
+    "init",
+    "validates",
 ]
 
 _logger = logging.getLogger(__name__)
@@ -94,11 +94,10 @@ class Error:
         return self._args[-1]
 
     def __repr__(self):
-        return f'<ModelError:{hex(id(self))} {{args={self._args}}}>'
+        return f"<ModelError:{hex(id(self))} {{args={self._args}}}>"
 
 
 class Errors:
-
     def __init__(self) -> None:
         self._errors = []
 
@@ -128,43 +127,27 @@ class Errors:
         return len(self._errors)
 
 
-def _register_association(name, rel, cls, related_cls, fk_name):
-    ns = registry.get(cls)
-    key = (related_cls.__name__, fk_name)
-    if 'associations' not in ns:
-        ns['associations'] = {}
-    ns['associations'][key] = {'rel': rel, 'name': name, 'class': related_cls, 'fk_name': fk_name}
-
-
-def _link_associations(name, rel, cls, related_cls, fk_name):
-    ns = registry.get(related_cls)
-    key = (cls.__name__, fk_name)
-    if key in ns.get('associations', {}):
-        rel.back_populates = ns['associations'][key]['name']
-        bp = ns['associations'][key]['rel']
-        bp.back_populates = name
-
-
 def _password_reset_serializer(model_cls, pwname):
-    salt = f'pwres:{model_cls.__module__}.{model_cls.__qualname__}:{pwname}'
-    return URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt=salt)
+    salt = f"pwres:{model_cls.__module__}.{model_cls.__qualname__}:{pwname}"
+    return URLSafeTimedSerializer(current_app.config["SECRET_KEY"], salt=salt)
 
 
 def _password_reset_fingerprint(serializer, password_digest):
-    return hmac.new(serializer.secret_key, f'pwres:{password_digest}'.encode(), 'sha256').hexdigest()
+    return hmac.new(
+        serializer.secret_key, f"pwres:{password_digest}".encode(), "sha256"
+    ).hexdigest()
 
 
 class PasswordAuthenticator:
     @classmethod
     def authenticate_by(cls, **kwargs):
-        ns = registry.get(cls)
-        pwname = ns.get('password_field')
+        pwname = model_for(cls).password_field
         if not pwname:
             return
         password = kwargs.pop(pwname)
         entry = cls.find_by(**kwargs)
         if not entry:
-            check_password_hash('a', 'b')  # To protect against timing attacks
+            check_password_hash("a", "b")  # To protect against timing attacks
             return None
         if not entry.authenticate(password):
             return None
@@ -172,96 +155,90 @@ class PasswordAuthenticator:
 
     @classmethod
     def find_by_password_reset_token(cls, token):
-        pwname = registry.get(cls).get('password_field')
+        pwname = model_for(cls).password_field
         if not pwname:
-            raise ProgrammerError('Password reset tokens require has_secure_password().')
+            raise ProgrammerError(
+                "Password reset tokens require has_secure_password()."
+            )
         serializer = _password_reset_serializer(cls, pwname)
         payload = serializer.loads(token, max_age=900)
         if (
             not isinstance(payload, dict)
-            or type(payload.get('id')) is not int
-            or not isinstance(payload.get('fingerprint'), str)
-            or not payload['fingerprint'].isascii()
+            or type(payload.get("id")) is not int
+            or not isinstance(payload.get("fingerprint"), str)
+            or not payload["fingerprint"].isascii()
         ):
-            raise BadSignature('Invalid password reset token.')
-        entry = cls.find(payload['id'])
-        fingerprint = _password_reset_fingerprint(serializer, getattr(entry, f'{pwname}_digest'))
-        if not hmac.compare_digest(payload['fingerprint'], fingerprint):
-            raise BadSignature('Password reset token has been invalidated.')
+            raise BadSignature("Invalid password reset token.")
+        entry = cls.find(payload["id"])
+        fingerprint = _password_reset_fingerprint(
+            serializer, getattr(entry, f"{pwname}_digest")
+        )
+        if not hmac.compare_digest(payload["fingerprint"], fingerprint):
+            raise BadSignature("Password reset token has been invalidated.")
         return entry
 
     def authenticate(self, password):
-        ns = registry.get(self.__class__)
-        pwname = ns.get('password_field')
+        pwname = model_for(self.__class__).password_field
         if not pwname:
             return False
-        password_digest = getattr(self, f'{pwname}_digest')
+        password_digest = getattr(self, f"{pwname}_digest")
         return check_password_hash(password_digest, password)
 
 
-def has_secure_password(pwname='password'):
+def has_secure_password(pwname="password"):
     def bind(cls):
 
-        ns = registry.get(cls)
-        ns['password_field'] = pwname
-        virtual_fields = ns.setdefault('virtual_fields', {})
+        definition = model_for(cls)
+        definition.password_field = pwname
+        virtual_fields = definition.virtual_fields
 
         def _set_password_digest(self):
-            value = getattr(self, f'{pwname}')
-            setattr(self, f'{pwname}_digest', generate_password_hash(value))
+            value = getattr(self, f"{pwname}")
+            setattr(self, f"{pwname}_digest", generate_password_hash(value))
 
-        virtual_fields[pwname] = {
-            'set_fn': _set_password_digest
-        }
+        virtual_fields[pwname] = {"set_fn": _set_password_digest}
 
         def _set_password_reset_token(self):
             serializer = _password_reset_serializer(self.__class__, pwname)
-            fingerprint = _password_reset_fingerprint(serializer, getattr(self, f'{pwname}_digest'))
-            token = serializer.dumps({'id': self.id, 'fingerprint': fingerprint})
-            self._virtual_fields[f'{pwname}_reset_token'] = token
+            fingerprint = _password_reset_fingerprint(
+                serializer, getattr(self, f"{pwname}_digest")
+            )
+            token = serializer.dumps({"id": self.id, "fingerprint": fingerprint})
+            self._virtual_fields[f"{pwname}_reset_token"] = token
 
-        virtual_fields[f'{pwname}_reset_token'] = {
-            'read_only': True,
-            'cache': False,
-            'set_fn': _set_password_reset_token
+        virtual_fields[f"{pwname}_reset_token"] = {
+            "read_only": True,
+            "cache": False,
+            "set_fn": _set_password_reset_token,
         }
 
-        validates(pwname, length={'minimum': 1, 'maximum': 72})(cls)
+        validates(pwname, length={"minimum": 1, "maximum": 72})(cls)
         validates(pwname, confirmation=True)(cls)
+
     return bind
 
 
-def belongs_to(name: str, class_name: str | None = None, foreign_key: str | None = None):
+def belongs_to(
+    name: str, class_name: str | None = None, foreign_key: str | None = None
+):
     def bind(cls):
-        ns = registry.get(Model)
-        models = ns['models']
-        related_cls_name = class_name or inflector.camelize(name)
-        related_cls = models.get(related_cls_name)
-        if not related_cls:
-            raise ProgrammerError(f'{related_cls_name} model not found')
-        try:
-            related_base = _base(related_cls)
-            base = _base(cls)
-        except Exception:
-            return  # TODO: Handle better this
-        fk_name = foreign_key or inflector.foreign_key(related_cls.__name__)
-        fk = getattr(base, fk_name)
-        rel = relationship(related_base, primaryjoin=related_base.id == fk)
-        setattr(base, name, rel)
-        _register_association(name, rel, cls, related_cls, fk_name)
-        _link_associations(name, rel, cls, related_cls, fk_name)
+        target = class_name or inflector.camelize(name)
+        fk_name = foreign_key or inflector.foreign_key(target)
+        definition = model_for(cls)
+        definition.associations[name] = AssociationDefinition(
+            name, "belongs_to", target, fk_name
+        )
 
         def rel_wrapper(self):
-            related_base_instance = getattr(self._base_instance, name)
-            if not related_base_instance:
+            association = _get_association(self.__class__, name=name)
+            related_base_instance = getattr(self._base_instance, association.name)
+            if related_base_instance is None:
                 return None
-            return _build(related_cls, related_base_instance)
+            return _build(association.target, related_base_instance)
 
         setattr(cls, name, property(rel_wrapper))
+        definition.validators.append(partial(_validate_fk, field=fk_name))
 
-        registry.get(cls).setdefault('validates', []).append(
-            partial(_validate_fk, field=fk_name)
-        )
     return bind
 
 
@@ -285,41 +262,37 @@ class Relation:
         return repr([v for v in self])
 
     def create(self, **kwargs):
+        association = _get_association(self._instance.__class__, name=self._name)
+        kwargs.setdefault(association.foreign_key, self._instance.id)
         related_instance = self._related_cls.new(**kwargs)
-        self._entries().append(related_instance._base_instance)
+        entries = self._entries()
+        if not related_instance.save():
+            return related_instance
+        if related_instance._base_instance not in entries:
+            entries.append(related_instance._base_instance)
         self._instance.save()
         return related_instance
 
 
-def has_many(name: str, class_name: str | None = None, foreign_key: str | None = None, dependent: str | None = None):
+def has_many(
+    name: str,
+    class_name: str | None = None,
+    foreign_key: str | None = None,
+    dependent: str | None = None,
+):
     def bind(cls):
-        ns = registry.get(Model)
-        models = ns['models']
-        related_cls_name = class_name or inflector.camelize(inflector.singularize(name))
-        related_cls = models.get(related_cls_name)
-        if not related_cls:
-            raise ProgrammerError(f'{related_cls_name} model not found')
-        try:
-            related_base = _base(related_cls)
-            base = _base(cls)
-        except Exception:
-            return  # TODO: Handle better this
+        target = class_name or inflector.camelize(inflector.singularize(name))
         fk_name = foreign_key or inflector.foreign_key(cls.__name__)
-        fk = getattr(related_base, fk_name)
-        match dependent:
-            case 'destroy':
-                cascade = 'all, delete-orphan'
-            case _:
-                cascade = 'save-update, merge'
-        rel = relationship(related_base, primaryjoin=base.id == fk, cascade=cascade)
-        setattr(base, name, rel)
-        _register_association(name, rel, cls, related_cls, fk_name)
-        _link_associations(name, rel, cls, related_cls, fk_name)
+        model_for(cls).associations[name] = AssociationDefinition(
+            name, "has_many", target, fk_name, dependent
+        )
 
         def rel_wrapper(self):
-            return Relation(self, related_cls, name)
+            association = _get_association(self.__class__, name=name)
+            return Relation(self, association.target, association.name)
 
         setattr(cls, name, property(rel_wrapper))
+
     return bind
 
 
@@ -341,27 +314,31 @@ class ComparisonConfig(TypedDict):
     other_than: NotRequired[Any]
 
 
-def validates(field, *,
-              presence: None | PresenceConfig | bool = None,
-              length: None | LenghtConfig = None,
-              confirmation: None | bool = None,
-              comparison: None | ComparisonConfig = None):
+def validates(
+    field,
+    *,
+    presence: None | PresenceConfig | bool = None,
+    length: None | LenghtConfig = None,
+    confirmation: None | bool = None,
+    comparison: None | ComparisonConfig = None,
+):
     options = {
-        'presence': {'config': presence, 'validator': _validate_presence},
-        'length': {'config': length, 'validator': _validate_length},
-        'confirmation': {'config': confirmation, 'validator': _validate_confirmation},
-        'comparison': {'config': comparison, 'validator': _validate_comparison},
+        "presence": {"config": presence, "validator": _validate_presence},
+        "length": {"config": length, "validator": _validate_length},
+        "confirmation": {"config": confirmation, "validator": _validate_confirmation},
+        "comparison": {"config": comparison, "validator": _validate_comparison},
     }
-    options = {k: v for k, v in options.items() if v['config'] is not None}
+    options = {k: v for k, v in options.items() if v["config"] is not None}
 
     def bind(model_cls):
-        ns = registry.get(model_cls)
+        definition = model_for(model_cls)
         for value in options.values():
-            ns.setdefault('validates', []).append(
-                partial(value['validator'], field=field, config=value['config'])
+            definition.validators.append(
+                partial(value["validator"], field=field, config=value["config"])
             )
-        if 'confirmation' in options:
-            ns.setdefault('virtual_fields', {})[f'{field}_confirmation'] = {}
+        if "confirmation" in options:
+            definition.virtual_fields[f"{field}_confirmation"] = {}
+
     return bind
 
 
@@ -369,12 +346,12 @@ def _validate_presence(*, instance, field, config):
     if not config:
         return []
     if isinstance(config, bool):
-        config = {'message': f'Field {field} is blank'}
+        config = {"message": f"Field {field} is blank"}
 
     errors = []
     value = getattr(instance, field)
-    if value is None or value == '':
-        errors.append((f'{field}.presence', config['message']))
+    if value is None or value == "":
+        errors.append((f"{field}.presence", config["message"]))
     return errors
 
 
@@ -385,12 +362,14 @@ def _validate_length(*, instance, field, config: LenghtConfig | None):
     value = getattr(instance, field)
 
     if value is not None:
-        minimum = config.get('minimum')
-        maximum = config.get('maximum')
+        minimum = config.get("minimum")
+        maximum = config.get("maximum")
         if minimum is not None and len(value) < minimum:
-            errors.append((f'{field}.length', f"Field {field} is lower than {minimum}"))
+            errors.append((f"{field}.length", f"Field {field} is lower than {minimum}"))
         if maximum is not None and len(value) > maximum:
-            errors.append((f'{field}.length', f"Field {field} is higher than {maximum}"))
+            errors.append(
+                (f"{field}.length", f"Field {field} is higher than {maximum}")
+            )
     return errors
 
 
@@ -400,11 +379,13 @@ def _validate_confirmation(*, instance, field, config: None | bool):
     errors = []
     value = getattr(instance, field)
     if value is not None:
-        confirmation_field = f'{field}_confirmation'
+        confirmation_field = f"{field}_confirmation"
         if confirmation_field in instance._virtual_fields:
             confirmation_value = instance._virtual_fields.get(confirmation_field)
             if confirmation_value != value:
-                errors.append((f'{field}.confirmation', f"Field {field} values do not match"))
+                errors.append(
+                    (f"{field}.confirmation", f"Field {field} values do not match")
+                )
     return errors
 
 
@@ -425,12 +406,15 @@ def _validate_comparison(*, instance, field, config):
         return errors
 
     comparisons = {
-        'greater_than': (lambda a, b: a > b, 'must be greater than'),
-        'less_than': (lambda a, b: a < b, 'must be less than'),
-        'greater_than_or_equal_to': (lambda a, b: a >= b, 'must be greater than or equal to'),
-        'less_than_or_equal_to': (lambda a, b: a <= b, 'must be less than or equal to'),
-        'equal_to': (lambda a, b: a == b, 'must be equal to'),
-        'other_than': (lambda a, b: a != b, 'must be other than'),
+        "greater_than": (lambda a, b: a > b, "must be greater than"),
+        "less_than": (lambda a, b: a < b, "must be less than"),
+        "greater_than_or_equal_to": (
+            lambda a, b: a >= b,
+            "must be greater than or equal to",
+        ),
+        "less_than_or_equal_to": (lambda a, b: a <= b, "must be less than or equal to"),
+        "equal_to": (lambda a, b: a == b, "must be equal to"),
+        "other_than": (lambda a, b: a != b, "must be other than"),
     }
 
     for comparator, raw_compare_value in config.items():
@@ -444,11 +428,22 @@ def _validate_comparison(*, instance, field, config):
         check_fn, message = comparisons[comparator]
         try:
             if not check_fn(value, compare_value):
-                _logger.debug(f"Comparison failed: instance={instance!r}, field={field}, value={value}, comparator={comparator}, compare_value={compare_value}")
-                errors.append((f'{field}.comparison', f"Field {field} {message} {compare_value}"))
+                _logger.debug(
+                    f"Comparison failed: instance={instance!r}, field={field}, value={value}, comparator={comparator}, compare_value={compare_value}"
+                )
+                errors.append(
+                    (f"{field}.comparison", f"Field {field} {message} {compare_value}")
+                )
         except TypeError:
-            _logger.debug(f"Comparison type error: instance={instance!r}, field={field}, value={value}, comparator={comparator}, compare_value={compare_value}")
-            errors.append((f'{field}.comparison', f"Field {field} cannot be compared with {compare_value}"))
+            _logger.debug(
+                f"Comparison type error: instance={instance!r}, field={field}, value={value}, comparator={comparator}, compare_value={compare_value}"
+            )
+            errors.append(
+                (
+                    f"{field}.comparison",
+                    f"Field {field} cannot be compared with {compare_value}",
+                )
+            )
 
     return errors
 
@@ -461,41 +456,34 @@ def _validate_fk(*, instance, field, config=True):
         return []
     value = getattr(instance, field)
     if not value:
-        return [(field, f'{association["name"]} must exist')]
-    related_cls = association['class']
+        return [(field, f"{association.name} must exist")]
+    related_cls = association.target
     try:
         related_cls.find(value)
         return []
     except RecordNotFoundException:
-        return [(field, f'{association["name"]} must exist')]
+        return [(field, f"{association.name} must exist")]
 
 
 def _get_association(model_cls, *, name):
-    ns = registry.get(model_cls)
-    associations = ns.get('associations') or {}
-    for cn, fk in associations.keys():
-        if fk == name or associations[(cn, fk)]['name'] == name:
-            return associations[(cn, fk)]
+    db = current_app.extensions["flaskteroids.db"]
+    for association in db.binding(model_cls).associations.values():
+        if association.foreign_key == name or association.name == name:
+            db.binding(association.target)
+            return association
 
 
 def _build(model_cls, base_instance):
     res = object.__new__(model_cls)
     res._initialize()
     res._base_instance = base_instance
-    run_callbacks(res, 'initialize', None, lambda: None)
-    run_callbacks(res, 'find', None, lambda: None)
+    run_callbacks(res, "initialize", None, lambda: None)
+    run_callbacks(res, "find", None, lambda: None)
     return res
 
 
 def _base(model_cls):
-    base = registry.get(model_cls).get('base_class')
-    if not base:
-        raise ProgrammerError(
-            f'Base class not found for model {model_cls.__name__}.\n'
-            'Make sure there is a table in the database backing it up.',
-            'Did you create/run database migrations?'
-        )
-    return base
+    return current_app.extensions["flaskteroids.db"].binding(model_cls).mapped_class
 
 
 class ModelQuery:
@@ -509,7 +497,9 @@ class ModelQuery:
     def find(self, id):
         found = self.where(id=id).first()
         if not found:
-            raise RecordNotFoundException(f"{self._model_cls.__name__} record with id {id} was not found")
+            raise RecordNotFoundException(
+                f"{self._model_cls.__name__} record with id {id} was not found"
+            )
         return found
 
     def where(self, *args, **kwargs):
@@ -521,7 +511,10 @@ class ModelQuery:
 
     def includes(self, *args):
         for rel in args:
-            self._query = self._query.options(selectinload(getattr(self._model_base, rel)))
+            _get_association(self._model_cls, name=rel)
+            self._query = self._query.options(
+                selectinload(getattr(self._model_base, rel))
+            )
         return self
 
     def all(self):
@@ -551,7 +544,7 @@ class ModelQuery:
     def order(self, **kwargs):
         for k, v in kwargs.items():
             field = getattr(self._model_base, k)
-            clause = field.desc() if v == 'desc' else field.asc()
+            clause = field.desc() if v == "desc" else field.asc()
             self._query = self._query.order_by(clause)
         return self
 
@@ -588,8 +581,14 @@ class ModelMeta(type):
 
 
 class Model(metaclass=ModelMeta):
-
-    _fields = ['_changes', '_virtual_fields', '_base_instance', '_errors', '_attachment_changes', '_attachment_cache']
+    _fields = (
+        "_changes",
+        "_virtual_fields",
+        "_base_instance",
+        "_errors",
+        "_attachment_changes",
+        "_attachment_cache",
+    )
 
     def _initialize(self):
         self._attachment_changes = {}
@@ -603,7 +602,7 @@ class Model(metaclass=ModelMeta):
         self._initialize()
         for k, v in kwargs.items():
             setattr(self, k, v)
-        run_callbacks(self, 'initialize', None, lambda: None)
+        run_callbacks(self, "initialize", None, lambda: None)
 
     @property
     def errors(self):
@@ -614,15 +613,17 @@ class Model(metaclass=ModelMeta):
         return list(self._base_instance.__table__.columns.keys())
 
     def __getattr__(self, name):
-        ns = registry.get(self.__class__)
-        vfd = ns.setdefault('virtual_fields', {})
-        if name in vfd and vfd[name].get('read_only', False):
-            if name not in self._virtual_fields or not vfd[name].get('cache', True):
-                set_fn = vfd[name].get('set_fn')
-                if set_fn:
-                    set_fn(self)
-        if name in self._virtual_fields:
-            return self._virtual_fields[name]
+        vfd = model_for(self.__class__).virtual_fields
+        if (
+            name in vfd
+            and vfd[name].get("read_only", False)
+            and (name not in self._virtual_fields or not vfd[name].get("cache", True))
+        ):
+            set_fn = vfd[name].get("set_fn")
+            if set_fn:
+                set_fn(self)
+        if name in vfd:
+            return self._virtual_fields.get(name)
         if name in self._changes:
             return self._changes[name]
         return getattr(self._base_instance, name)
@@ -633,46 +634,57 @@ class Model(metaclass=ModelMeta):
             return
         if attached_storage.assign(self, name, value):
             return
-        ns = registry.get(self.__class__)
-        vfd = ns.setdefault('virtual_fields', {})
+        vfd = model_for(self.__class__).virtual_fields
         if name in vfd:
-            if vfd[name].get('read_only', False):
-                raise AttributeError('You are trying to update a read-only attribute')
+            if vfd[name].get("read_only", False):
+                raise AttributeError("You are trying to update a read-only attribute")
             self._virtual_fields[name] = value
-            set_fn = vfd[name].get('set_fn')
+            set_fn = vfd[name].get("set_fn")
             if set_fn:
                 set_fn(self)
         elif name in self._base_instance.__table__.columns:
             column = self._base_instance.__table__.columns[name]
-            self._changes[name] = fields.from_column_type(column.type).as_primitive(value)
+            self._changes[name] = fields.from_column_type(column.type).as_primitive(
+                value
+            )
         else:
             association = _get_association(self.__class__, name=name)
             if association:
                 self._changes[name] = value
-                if association['fk_name'] != name:
-                    self._changes[association['fk_name']] = value.id
+                if association.foreign_key != name:
+                    self._changes[association.foreign_key] = value.id
+                    self._changes[name] = value._base_instance
 
     def __json__(self):
-        password_field = registry.get(self.__class__).get('password_field', 'password')
+        password_field = model_for(self.__class__).password_field or "password"
         sensitive = {
-            f'{field}{suffix}'
-            for field in {'password', password_field}
-            for suffix in ('', '_confirmation', '_digest', '_reset_token')
+            f"{field}{suffix}"
+            for field in {"password", password_field}
+            for suffix in ("", "_confirmation", "_digest", "_reset_token")
         }
         return {
-            name: self._changes[name] if name in self._changes else getattr(self._base_instance, name)
+            name: self._changes[name]
+            if name in self._changes
+            else getattr(self._base_instance, name)
             for name in self.column_names
             if name not in sensitive
         }
 
     def _form_data(self):
-        virtual_fields = registry.get(self.__class__).get('virtual_fields', {})
+        virtual_fields = model_for(self.__class__).virtual_fields
         writable_values = {
-            name: value for name, value in self._virtual_fields.items()
-            if not virtual_fields.get(name, {}).get('read_only', False)
+            name: value
+            for name, value in self._virtual_fields.items()
+            if not virtual_fields.get(name, {}).get("read_only", False)
         }
-        stored_values = {name: getattr(self._base_instance, name) for name in self.column_names}
-        column_changes = {name: value for name, value in self._changes.items() if name in stored_values}
+        stored_values = {
+            name: getattr(self._base_instance, name) for name in self.column_names
+        }
+        column_changes = {
+            name: value
+            for name, value in self._changes.items()
+            if name in stored_values
+        }
         return writable_values | stored_values | column_changes
 
     @classmethod
@@ -746,32 +758,35 @@ class Model(metaclass=ModelMeta):
         attached_storage.cache_for_commit(self)
 
     def save(self, validate=True):
-        operation = 'create' if self.is_new_record() else 'update'
+        operation = "create" if self.is_new_record() else "update"
 
         if validate:
-            if run_callbacks(self, 'validation', operation, self._validate) is _HALTED:
+            if run_callbacks(self, "validation", operation, self._validate) is _HALTED:
                 return False
             if self._errors:
                 return False
 
-        if run_callbacks(self, 'save', operation, self._create_or_update, operation) is _HALTED:
+        if (
+            run_callbacks(self, "save", operation, self._create_or_update, operation)
+            is _HALTED
+        ):
             return False
 
         queue_after_commit(self, operation, session)
         return True
 
     def _validate(self):
-        validate_rules = registry.get(self.__class__).get('validates') or []
+        validate_rules = model_for(self.__class__).validators
         self._errors = Errors()
         for vr in validate_rules:
             self._errors.extend(vr(instance=self))
         attached_storage.validate(self)
 
     def _create_or_update(self, operation):
-        if operation == 'create':
-            result = run_callbacks(self, 'create', None, self._create_record)
+        if operation == "create":
+            result = run_callbacks(self, "create", None, self._create_record)
         else:
-            result = run_callbacks(self, 'update', None, self._update_record)
+            result = run_callbacks(self, "update", None, self._update_record)
         if result is not _HALTED:
             attached_storage.persist(self)
         return result
@@ -780,7 +795,7 @@ class Model(metaclass=ModelMeta):
         for field, value in self._changes.items():
             setattr(self._base_instance, field, value)
         self._changes.clear()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         self._base_instance.created_at = now
         self._base_instance.updated_at = now
         session.add(self._base_instance)
@@ -790,7 +805,7 @@ class Model(metaclass=ModelMeta):
         for field, value in self._changes.items():
             setattr(self._base_instance, field, value)
         self._changes.clear()
-        self._base_instance.updated_at = datetime.now(timezone.utc)
+        self._base_instance.updated_at = datetime.now(UTC)
         session.flush()
 
     def is_persisted(self):
@@ -800,9 +815,9 @@ class Model(metaclass=ModelMeta):
         return not self.is_persisted()
 
     def destroy(self):
-        if run_callbacks(self, 'destroy', None, self._destroy_record) is _HALTED:
+        if run_callbacks(self, "destroy", None, self._destroy_record) is _HALTED:
             return False
-        queue_after_commit(self, 'destroy', session)
+        queue_after_commit(self, "destroy", session)
         return True
 
     def _destroy_record(self):
@@ -812,4 +827,4 @@ class Model(metaclass=ModelMeta):
 
     def __repr__(self) -> str:
         values = {c: getattr(self._base_instance, c) for c in self.column_names}
-        return f'<{self.__class__.__name__}:{hex(id(self))} {values}>'
+        return f"<{self.__class__.__name__}:{hex(id(self))} {values}>"

@@ -24,6 +24,16 @@ description: Use when building or modifying a Flaskteroids application.
 - Add or update tests with behavior changes and run the relevant test commands.
   Never commit encryption keys or expose plaintext credentials.
 
+## Application context
+
+- Use models and enqueue jobs inside an application context. Requests and jobs
+  already have one. Keep records, queries, and files in the app that created them.
+- Custom rules set class attributes. Put database queries and work that needs an
+  application in actions, callbacks, or initializers.
+- In `flask shell`, use `session.commit()` to save pending changes or
+  `session.rollback()` to discard them. Normal context exit also commits.
+- Restart the application after changing its database schema.
+
 ## Preserve application behavior during UI changes
 
 Treat existing layouts as application infrastructure, not disposable starter
