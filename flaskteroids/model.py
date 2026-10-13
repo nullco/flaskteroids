@@ -650,16 +650,27 @@ class Model(metaclass=ModelMeta):
                     self._changes[association['fk_name']] = value.id
 
     def __json__(self):
-        ns = registry.get(self.__class__)
-        vfd = ns.setdefault('virtual_fields', {})
-        for name in vfd:
-            if vfd[name].get('read_only', False):
-                if name not in self._virtual_fields or not vfd[name].get('cache', True):
-                    set_fn = vfd[name].get('set_fn')
-                    if set_fn:
-                        set_fn(self)
-        stored_values = {c: getattr(self._base_instance, c) for c in self.column_names}
-        return self._virtual_fields | stored_values | self._changes
+        password_field = registry.get(self.__class__).get('password_field', 'password')
+        sensitive = {
+            f'{field}{suffix}'
+            for field in {'password', password_field}
+            for suffix in ('', '_confirmation', '_digest', '_reset_token')
+        }
+        return {
+            name: self._changes[name] if name in self._changes else getattr(self._base_instance, name)
+            for name in self.column_names
+            if name not in sensitive
+        }
+
+    def _form_data(self):
+        virtual_fields = registry.get(self.__class__).get('virtual_fields', {})
+        writable_values = {
+            name: value for name, value in self._virtual_fields.items()
+            if not virtual_fields.get(name, {}).get('read_only', False)
+        }
+        stored_values = {name: getattr(self._base_instance, name) for name in self.column_names}
+        column_changes = {name: value for name, value in self._changes.items() if name in stored_values}
+        return writable_values | stored_values | column_changes
 
     @classmethod
     def new(cls, **kwargs):

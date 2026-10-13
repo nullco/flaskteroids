@@ -1,0 +1,169 @@
+import pytest
+from flask import Flask
+from itsdangerous import URLSafeTimedSerializer
+from sqlalchemy import Column, Integer, String
+from sqlalchemy.orm import declarative_base
+
+from flaskteroids.controller import render
+from flaskteroids.helpers import form_with
+from flaskteroids.model import (
+    Model,
+    PasswordAuthenticator,
+    has_secure_password,
+    validates,
+)
+from flaskteroids.rules import rules
+
+Base = declarative_base()
+
+
+class AccountTable(Base):
+    __tablename__ = "accounts"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+    password_digest = Column(String)
+
+
+class PasscodeAccountTable(Base):
+    __tablename__ = "passcode_accounts"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+    password_digest = Column(String)
+    passcode_digest = Column(String)
+
+
+@rules(has_secure_password(), validates("name", confirmation=True))
+class Account(Model, PasswordAuthenticator):
+    pass
+
+
+@rules(has_secure_password("passcode"), validates("name", confirmation=True))
+class PasscodeAccount(Model, PasswordAuthenticator):
+    pass
+
+
+@pytest.fixture(params=["password", "passcode"])
+def account_model(request, init_models):
+    password_field = request.param
+    table, model = (
+        (AccountTable, Account)
+        if password_field == "password"
+        else (PasscodeAccountTable, PasscodeAccount)
+    )
+    init_models(Base, [(table, model)])
+    return model, password_field
+
+
+@pytest.fixture
+def flask_app():
+    app = Flask(__name__)
+    app.secret_key = "serialization-test"
+    return app
+
+
+@pytest.fixture
+def json_response(flask_app):
+    def response(value):
+        with flask_app.test_request_context():
+            return render(json=value).get_json()
+
+    return response
+
+
+@pytest.mark.parametrize("state", ["new", "created", "loaded", "updated", "pending"])
+def test_model_json_excludes_authentication_fields(account_model, json_response, state):
+    account, password_field = account_model
+    values = {
+        "name": "Alice",
+        "name_confirmation": "Alice",
+        password_field: "secret-password",
+        f"{password_field}_confirmation": "secret-password",
+    }
+    user = account.new(**values) if state == "new" else account.create(**values)
+    if state == "loaded":
+        user = account.find(user.id)
+    elif state == "updated":
+        assert user.update(
+            **{
+                password_field: "replacement-password",
+                f"{password_field}_confirmation": "replacement-password",
+            }
+        )
+    elif state == "pending":
+        user.name = "Bob"
+        setattr(user, password_field, "replacement-password")
+
+    assert json_response(user) == {"id": user.id, "name": user.name}
+
+
+def test_query_json_excludes_authentication_fields(account_model, json_response):
+    account, password_field = account_model
+    user = account.create(name="Alice", **{password_field: "secret-password"})
+
+    assert json_response(account.all()) == [{"id": user.id, "name": "Alice"}]
+
+
+def test_json_does_not_generate_reset_tokens(account_model, json_response, mocker):
+    account, password_field = account_model
+    user = account.create(name="Alice", **{password_field: "secret-password"})
+    dumps = mocker.spy(URLSafeTimedSerializer, "dumps")
+
+    json_response(user)
+    json_response(account.all())
+
+    dumps.assert_not_called()
+    token = getattr(user, f"{password_field}_reset_token")
+    assert account.find_by_password_reset_token(token).id == user.id
+    assert json_response(user) == {"id": user.id, "name": "Alice"}
+    dumps.assert_called_once()
+
+
+def test_custom_json_serialization_still_works(account_model, json_response, mocker):
+    account, password_field = account_model
+
+    def serialize(self):
+        data = super(account, self).__json__()
+        return {"display_name": data["name"]}
+
+    mocker.patch.object(account, "__json__", serialize)
+    user = account.create(name="Alice", **{password_field: "secret-password"})
+
+    assert json_response(user) == {"display_name": "Alice"}
+    assert json_response(account.all()) == [{"display_name": "Alice"}]
+
+
+@pytest.mark.parametrize("persisted", [False, True])
+def test_forms_do_not_use_response_serialization(
+    account_model, flask_app, mocker, persisted
+):
+    account, password_field = account_model
+    mocker.patch.object(
+        account, "__json__", lambda self: {"public_name": "Not form data"}
+    )
+    values = {
+        "name": "Alice",
+        "name_confirmation": "Alice",
+        password_field: "secret-password",
+    }
+    user = account.create(**values) if persisted else account.new(**values)
+    if persisted:
+        getattr(user, f"{password_field}_reset_token")
+    user.name = "Bob"
+    user.name_confirmation = "Bob"
+    dumps = mocker.spy(URLSafeTimedSerializer, "dumps")
+    mocker.patch("flaskteroids.helpers.url_for", return_value="/accounts/")
+
+    with flask_app.test_request_context():
+        html = form_with(
+            model=user,
+            caller=lambda form: (
+                form.text_field("name") + form.text_field("name_confirmation")
+            ),
+        )
+
+    assert html.count('value="Bob"') == 2
+    assert "Not form data" not in html
+    dumps.assert_called_once()
+    assert dumps.call_args.kwargs == {"salt": "csrf-token"}

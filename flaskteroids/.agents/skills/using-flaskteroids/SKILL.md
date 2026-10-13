@@ -67,7 +67,15 @@ dependency internals or introduce a parallel implementation of a supported featu
   an authorization callback with proxy routing, or custom authorized controllers.
   Direct service URLs bypass the callback until they expire.
 - Use `form_with`, field helpers, and framework CSRF protection instead of hand-built
-  equivalents where helpers support the required behavior.
+  equivalents where helpers support the required behavior. Helpers escape ordinary
+  text and attributes. Use `Markup` only for trusted HTML, never for user input.
+  Links allow relative, HTTP(S), mailto, and tel URLs; form actions allow relative
+  and HTTP(S) URLs. Validate user-supplied destination hosts separately.
+- Model JSON responses include database columns and pending column changes, but
+  omit authentication secrets and virtual fields. Customize the existing `__json__()`
+  protocol to select response attributes, preferably starting with `super().__json__()`.
+  Do not add passwords, digests, confirmations, or reset tokens to ordinary responses.
+  Model-backed forms obtain values independently of response serialization.
 - Use Flaskteroids jobs and mailers (`perform_later`, `deliver_later`) rather than
   registering raw Celery tasks or managing Celery dispatch directly.
 - Use framework configuration, credentials, migrations, and testing abstractions

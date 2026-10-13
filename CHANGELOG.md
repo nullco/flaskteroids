@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+### Changed
+
+- Model JSON now includes only database columns and pending column changes,
+  excluding password attributes, digests, confirmations, and reset tokens,
+  including custom secure-password field names. Virtual fields and associations
+  require an explicit `__json__()` override. Model-backed forms no longer use
+  response serialization to populate their fields.
+- HTML helpers escape ordinary text and attributes. Trusted `Markup` is supported
+  for link/button text and select labels, while field values remain escaped.
+  Unsupported URL schemes, control characters in URLs, and invalid HTML attribute
+  names now raise `ValueError`.
+
+### Fixed
+
+- Stop JSON serialization and form rendering from generating password reset tokens.
+- Escape select options and prompts, labels, textarea field names, and submit
+  values. Compare unescaped select values so values containing HTML characters
+  remain selectable without double escaping.
+
 ## 0.4.0 - 2026-10-12
 
 ### Added

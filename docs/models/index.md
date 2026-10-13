@@ -186,6 +186,36 @@ The decorator adds:
 - Password reset tokens that expire after 15 minutes and become invalid after a
   successful password change
 
+## JSON serialization
+
+`render(json=record)` and `render(json=Model.all())` serialize database columns,
+including pending column changes. They omit `password`, `password_confirmation`,
+`password_digest`, and `password_reset_token`. The corresponding attributes for
+custom `has_secure_password()` field names are omitted too.
+
+Virtual fields and associations are not included automatically. Serialization
+does not generate reset tokens or evaluate read-only virtual fields. Read
+`user.password_reset_token` explicitly when issuing a password reset.
+
+To select fewer columns or add an application-specific value, override the existing
+`__json__()` protocol. Queries use the same override for each record:
+
+```python
+class User(Model):
+    def __json__(self):
+        data = super().__json__()
+        return {"id": data["id"], "name": data["name"]}
+```
+
+All other database columns are included by default. Filter application-specific
+secrets in your override, and do not add authentication fields back to the result.
+`form_with(model=record)` extracts form values independently of `__json__()`.
+Changing response serialization does not change model-backed form values.
+
+Applications upgrading from the previous behavior must explicitly select any
+virtual fields they intend to publish. Passwords, digests, and reset tokens must
+not be published through ordinary record responses.
+
 ## Callbacks
 
 Callbacks run at specific points in a model's lifecycle. Declare them inside `@rules`, alongside associations and validations.
