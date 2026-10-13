@@ -59,6 +59,13 @@ dependency internals or introduce a parallel implementation of a supported featu
 - Use application controllers, `config/routes.py`, resourceful routing, strong
   parameters (`params.expect`), and framework response helpers instead of standalone
   Flask routes or manually rebuilding the request pipeline.
+- Use attachment declarations, `config/storage.yml`, and `attachments:install`
+  for file uploads rather than independent storage plumbing.
+  Model attachments upload after commit. Use `blob_path` or `blob_url` for
+  permanent application links; `blob.url()` returns an expiring service URL.
+  Signed links grant access by default. For private files, use
+  an authorization callback with proxy routing, or custom authorized controllers.
+  Direct service URLs bypass the callback until they expire.
 - Use `form_with`, field helpers, and framework CSRF protection instead of hand-built
   equivalents where helpers support the required behavior.
 - Use Flaskteroids jobs and mailers (`perform_later`, `deliver_later`) rather than

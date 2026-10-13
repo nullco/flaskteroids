@@ -1,42 +1,46 @@
 import hmac
 import logging
-from typing import TypedDict, Any, NotRequired
 from datetime import datetime, timezone
 from functools import partial
-from itsdangerous import BadSignature, URLSafeTimedSerializer
-from werkzeug.security import check_password_hash, generate_password_hash
-from sqlalchemy import select, inspect, func
-from sqlalchemy.orm import relationship, selectinload
-from flaskteroids.db import session
-from flaskteroids import fields
+from typing import Any, NotRequired, TypedDict
+
 from flask import current_app
-from flaskteroids.exceptions import ProgrammerError
+from itsdangerous import BadSignature, URLSafeTimedSerializer
+from sqlalchemy import func, inspect, select
+from sqlalchemy.orm import relationship, selectinload
+from werkzeug.security import check_password_hash, generate_password_hash
+
 import flaskteroids.registry as registry
-from flaskteroids.rules import bind_rules
-from flaskteroids.inflector import inflector
+from flaskteroids import fields
+from flaskteroids.attachments import attached as attached_storage
+from flaskteroids.attachments import has_many_attached, has_one_attached
 from flaskteroids.callbacks import (
-    run_callbacks,
     _HALTED,
-    queue_after_commit,
-    before_validation,
-    after_validation,
-    before_save,
-    around_save,
-    after_save,
-    before_create,
-    around_create,
-    after_create,
-    before_update,
-    around_update,
-    after_update,
-    before_destroy,
-    around_destroy,
-    after_destroy,
     after_commit,
-    after_rollback,
-    after_initialize,
+    after_create,
+    after_destroy,
     after_find,
+    after_initialize,
+    after_rollback,
+    after_save,
+    after_update,
+    after_validation,
+    around_create,
+    around_destroy,
+    around_save,
+    around_update,
+    before_create,
+    before_destroy,
+    before_save,
+    before_update,
+    before_validation,
+    queue_after_commit,
+    run_callbacks,
 )
+from flaskteroids.db import session
+from flaskteroids.exceptions import ProgrammerError, RecordNotFoundException
+from flaskteroids.inflector import inflector
+from flaskteroids.rules import bind_rules
 
 __all__ = [
     'Model',
@@ -50,6 +54,8 @@ __all__ = [
     'has_secure_password',
     'belongs_to',
     'has_many',
+    'has_one_attached',
+    'has_many_attached',
     'validates',
     'Relation',
     'before_validation',
@@ -78,10 +84,6 @@ _logger = logging.getLogger(__name__)
 def init(cls):
     bind_rules(cls)
     return cls
-
-
-class RecordNotFoundException(Exception):
-    pass
 
 
 class Error:
@@ -584,9 +586,11 @@ class ModelMeta(type):
 
 class Model(metaclass=ModelMeta):
 
-    _fields = ['_changes', '_virtual_fields', '_base_instance', '_errors']
+    _fields = ['_changes', '_virtual_fields', '_base_instance', '_errors', '_attachment_changes', '_attachment_cache']
 
     def _initialize(self):
+        self._attachment_changes = {}
+        self._attachment_cache = {}
         self._virtual_fields = {}
         self._changes = {}
         self._base_instance = _base(self.__class__)()
@@ -623,6 +627,8 @@ class Model(metaclass=ModelMeta):
     def __setattr__(self, name, value):
         if name in self._fields:
             super().__setattr__(name, value)
+            return
+        if attached_storage.assign(self, name, value):
             return
         ns = registry.get(self.__class__)
         vfd = ns.setdefault('virtual_fields', {})
@@ -718,7 +724,12 @@ class Model(metaclass=ModelMeta):
     def reload(self):
         session.refresh(self._base_instance)
         self._changes.clear()
+        self._attachment_changes.clear()
+        self._attachment_cache.clear()
         return self
+
+    def _prepare_commit(self):
+        attached_storage.cache_for_commit(self)
 
     def save(self, validate=True):
         operation = 'create' if self.is_new_record() else 'update'
@@ -740,11 +751,16 @@ class Model(metaclass=ModelMeta):
         self._errors = Errors()
         for vr in validate_rules:
             self._errors.extend(vr(instance=self))
+        attached_storage.validate(self)
 
     def _create_or_update(self, operation):
         if operation == 'create':
-            return run_callbacks(self, 'create', None, self._create_record)
-        return run_callbacks(self, 'update', None, self._update_record)
+            result = run_callbacks(self, 'create', None, self._create_record)
+        else:
+            result = run_callbacks(self, 'update', None, self._update_record)
+        if result is not _HALTED:
+            attached_storage.persist(self)
+        return result
 
     def _create_record(self):
         for field, value in self._changes.items():
@@ -776,6 +792,7 @@ class Model(metaclass=ModelMeta):
         return True
 
     def _destroy_record(self):
+        attached_storage.destroy(self)
         session.delete(self._base_instance)
         session.flush()
 

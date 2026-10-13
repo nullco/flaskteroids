@@ -397,7 +397,7 @@ Always use a deterministic order, such as `id`, for pagination. Limits and offse
 
 Repeated calls replace the previous value. `limit(None)` or `offset(None)` clears that clause. Queries execute when you request records or a count.
 
-`count()`, `first()`, and `last()` respect the selected page. Like Rails, `last()` loads the selected records when a limit or offset is present.
+`count()`, `first()`, and `last()` respect the selected page. `last()` loads the selected records when a limit or offset is present.
 
 ## CRUD operations
 

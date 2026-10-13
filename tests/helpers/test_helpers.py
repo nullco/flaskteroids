@@ -63,6 +63,20 @@ class TestHelpers:
         render_template.assert_called_once_with('test.html', name='value')
         assert '<div>test</div>' in str(result)
 
+    def test_form_with_detects_file_fields(self):
+        result = form_with(url='/upload', caller=lambda form: form.file_field('avatar'))
+        assert 'enctype="multipart/form-data"' in result
+        assert 'type="file"' in result
+        assert 'csrf_token' in result
+
+    def test_form_with_without_uploads_is_not_multipart(self):
+        result = form_with(url='/upload', caller=lambda form: form.text_field('name'))
+        assert 'enctype=' not in result
+
+    def test_form_with_supports_explicit_multipart(self):
+        result = form_with(url='/upload', multipart=True)
+        assert 'enctype="multipart/form-data"' in result
+
     def test_csrf_token_generates_token(self):
         result = csrf_token()
         assert result

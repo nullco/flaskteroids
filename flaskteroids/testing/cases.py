@@ -219,6 +219,9 @@ class SystemTest(IntegrationTest):
     def fill_in(self, label, *, with_):
         self.page.get_by_label(label).fill(str(with_))
 
+    def attach_file(self, label, path):
+        self.page.get_by_label(label).set_input_files(path)
+
     def assert_text(self, text):
         from playwright.sync_api import expect
 

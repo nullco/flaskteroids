@@ -125,6 +125,19 @@ Generate user and session models, login pages, and password management:
 - Views and mailers for password resets.
 - Routes for session and password management.
 
+## Attachments
+
+Set up file attachments:
+
+```sh
+flask attachments:install
+flask db:migrate
+```
+
+The install command preserves existing storage configuration and does not create
+duplicate migrations. Models, resources, and scaffolds accept `avatar:attachment`
+and `documents:attachments`. See [Attachments](attachments.md).
+
 ## Tests
 
 Run model, integration, job, and mailer tests with `flask test`. Run browser tests with `flask test:system`. Both commands accept pytest arguments. See [Testing](../testing.md) for setup and examples.

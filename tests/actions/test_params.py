@@ -5,6 +5,22 @@ from flaskteroids.exceptions import InvalidParameter, MissingParameter
 
 class TestExpectParameters:
 
+    def test_file_upload_is_a_permitted_scalar(self):
+        from io import BytesIO
+        from werkzeug.datastructures import FileStorage
+
+        upload = FileStorage(BytesIO(b'file'), filename='file.txt')
+        params = ActionParameters.new({'user': {'avatar': upload, 'files': [upload]}})
+        assert params.expect(user=['avatar', ('files', [])]) == {
+            'avatar': upload,
+            'files': [upload],
+        }
+
+    def test_arbitrary_objects_are_not_permitted_uploads(self):
+        params = ActionParameters.new({'user': {'avatar': object()}})
+        with pytest.raises(InvalidParameter):
+            params.expect(user=['avatar'])
+
     @pytest.mark.parametrize('raw_input, expect_input, expect_output', [
         (
             {'user': 'admin', 'password': 'S3cr3t!'},

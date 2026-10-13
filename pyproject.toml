@@ -38,6 +38,9 @@ dependencies = [
     "pytest-xdist>=3.8.0",
 ]
 
+[project.optional-dependencies]
+s3 = ["boto3>=1.35"]
+
 [project.scripts]
 flaskteroids = "flaskteroids.cli.flaskteroids:cli"
 

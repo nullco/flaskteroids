@@ -5,6 +5,10 @@
 ### Added
 
 - Support for Python 3.14 and 3.15, with CI coverage.
+- File attachments with disk and optional S3-compatible storage, signed download
+  links, upload validation, and background deletion.
+- `flask attachments:install`, `config/storage.yml`, attachment generator
+  fields, multipart form helpers, fixture uploads, and isolated test storage.
 
 ### Changed
 
@@ -13,6 +17,16 @@
 - Display the PyPI version badge in green.
 - Declare Python 3.12 through 3.15 in package classifiers, matching the CI matrix,
   so the Python badge lists specific supported versions.
+
+### Fixed
+
+- Use modern SQLite transaction control so releasing a savepoint does not commit
+  attachment changes before the outer transaction commits. Enable SQLite foreign
+  keys to protect referenced blobs and other database relationships.
+- Keep model commit and rollback callbacks scoped to their transactions and
+  savepoints.
+- Generated login controllers now pass scalar fields correctly to `params.expect`.
+- Scaffold creation saves once rather than calling both `create` and `save`.
 
 ## 0.3.1 - 2026-10-10
 
@@ -41,7 +55,7 @@
 
 ### Added
 
-- Model validations and Rails-style lifecycle callbacks, including transaction
+- Model validations and lifecycle callbacks, including transaction
   commit and rollback callbacks.
 - Application configuration with environment-specific settings, `database.yml`,
   encrypted credentials, and boot-time initializers.

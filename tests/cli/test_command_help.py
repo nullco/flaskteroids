@@ -66,6 +66,13 @@ APPLICATION_HELP = {
         "overwritten",
         "Does not include user registration",
     ],
+    ("attachments:install",): [
+        "attachment tables migration",
+        "flask db:init",
+        "config/storage.yml",
+        "flask db:migrate",
+        "duplicate migrations",
+    ],
     ("db:init",): ["db/migrate", "does not apply migrations", "absent or empty"],
     ("db:migrate",): ["all pending", "current environment", "delete data"],
     ("db:rollback",): ["one database migration", "manual reversal code", "delete data"],

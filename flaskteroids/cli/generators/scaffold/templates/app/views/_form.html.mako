@@ -36,6 +36,12 @@
       {{ form.text_field('${ref['name']}') }}
     </div>
 % endfor
+% for attachment in attachments:
+  <div>
+    {{ form.label('${attachment['name']}', style='display: block') }}
+    {{ form.file_field('${attachment['name']}'${', multiple=True' if attachment['type'] == 'attachments' else ''}) }}
+  </div>
+% endfor
 
   <div>
     {{ form.submit() }}

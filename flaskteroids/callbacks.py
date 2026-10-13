@@ -1,8 +1,10 @@
 import logging
 from weakref import WeakKeyDictionary
+
 from sqlalchemy import event as sa_event
 from sqlalchemy.orm import Session as _SQLASession
 from werkzeug.local import LocalProxy
+
 from flaskteroids import registry
 from flaskteroids.exceptions import ProgrammerError
 
@@ -211,6 +213,7 @@ def _finalize_around(generators):
 # --- after_commit / after_rollback transaction hooks ---
 
 _pending = WeakKeyDictionary()
+_nested_commits = WeakKeyDictionary()
 
 
 def _resolve_session(session_obj):
@@ -227,18 +230,46 @@ def queue_after_commit(instance, operation, session_obj):
     sess = _resolve_session(session_obj)
     # One entry per record per transaction (latest operation wins), so saving
     # the same record multiple times in one transaction fires once, like Rails.
-    _pending.setdefault(sess, {})[id(instance)] = (instance, operation)
+    transaction = sess.get_nested_transaction() or sess.get_transaction()
+    entries = _pending.setdefault(sess, {}).setdefault(transaction, {})
+    entries[id(instance)] = (instance, operation)
+
+
+@sa_event.listens_for(_SQLASession, 'before_commit')
+def _prepare_commit(session_obj):
+    if session_obj.get_nested_transaction() is not None:
+        return
+    transaction = session_obj.get_transaction()
+    for instance, operation in _pending.get(session_obj, {}).get(transaction, {}).values():
+        if operation != 'destroy':
+            instance._prepare_commit()
 
 
 @sa_event.listens_for(_SQLASession, 'after_commit')
 def _on_session_commit(session_obj):
-    entries = _pending.pop(session_obj, {})
+    nested = session_obj.get_nested_transaction()
+    if nested is not None:
+        _nested_commits.setdefault(session_obj, set()).add(nested)
+        return
+    transaction = session_obj.get_transaction()
+    entries = _pending.get(session_obj, {}).pop(transaction, {})
     for instance, operation in entries.values():
         run_callbacks(instance, 'commit', operation, lambda: None)
 
 
 @sa_event.listens_for(_SQLASession, 'after_rollback')
 def _on_session_rollback(session_obj):
-    entries = _pending.pop(session_obj, {})
+    transaction = session_obj.get_nested_transaction() or session_obj.get_transaction()
+    entries = _pending.get(session_obj, {}).pop(transaction, {})
     for instance, operation in entries.values():
         run_callbacks(instance, 'rollback', operation, lambda: None)
+
+
+@sa_event.listens_for(_SQLASession, 'after_transaction_end')
+def _on_transaction_end(session_obj, transaction):
+    entries = _pending.get(session_obj, {}).pop(transaction, {})
+    committed = _nested_commits.get(session_obj, set())
+    if transaction.nested and transaction in committed:
+        committed.remove(transaction)
+        parent = _pending.setdefault(session_obj, {}).setdefault(transaction.parent, {})
+        parent.update(entries)

@@ -26,7 +26,7 @@ def button_to(message, instance, method):
         """))
 
 
-def form_with(model=None, caller=None, url='', method='POST'):
+def form_with(model=None, caller=None, url='', method='POST', multipart=False):
     prefix = None
     data = None
     if model:
@@ -38,11 +38,13 @@ def form_with(model=None, caller=None, url='', method='POST'):
         data = model.__json__()
     methods = ['GET', 'POST']
     form = Form(prefix, data)
+    body = caller(form) if caller else ''
+    encoding = ' enctype="multipart/form-data"' if multipart or form.multipart else ''
     return textwrap.dedent(f"""
-        <form action="{url}" method="{'POST' if method not in methods else method}">
+        <form action="{url}" method="{'POST' if method not in methods else method}"{encoding}>
            <input type="hidden" name="csrf_token" value="{csrf_token()}">
            <input type="hidden" name="_method" value="{method if method not in methods else ''}">
-           {caller(form) if caller else ''}
+           {body}
         </form>
     """)
 

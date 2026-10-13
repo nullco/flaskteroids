@@ -64,6 +64,27 @@ class Configuration(FlaskConfig):
                 "queue_adapter": CeleryQueueAdapter,
             }
         )
+        self.attachments = Options(
+            {
+                "service": None,
+                "max_upload_size": None,
+                "urls_expire_in": None,
+                "service_urls_expire_in": 300,
+                "resolve_model_to_route": "redirect",
+                "content_types_to_serve_as_binary": [
+                    "text/html", "image/svg+xml", "application/postscript",
+                    "application/x-shockwave-flash", "text/xml", "application/xml",
+                    "application/xhtml+xml", "application/mathml+xml", "text/cache-manifest",
+                ],
+                "content_types_allowed_inline": [
+                    "image/webp", "image/avif", "image/png", "image/gif", "image/jpeg",
+                    "image/tiff", "image/bmp", "image/vnd.adobe.photoshop",
+                    "image/vnd.microsoft.icon", "application/pdf",
+                ],
+                "draw_routes": True,
+                "authorize": None,
+            }
+        )
         self.action_mailer = Options(
             {
                 "perform_deliveries": False,

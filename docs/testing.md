@@ -1,6 +1,6 @@
 # Testing
 
-Flaskteroids uses pytest with Rails-style test classes and assertions. The package includes pytest, pytest-xdist for parallel runs, and Playwright for browser tests. Generated applications include a `test/` directory, test configuration, and a GitHub Actions workflow.
+Tests use pytest, with pytest-xdist for parallel runs and Playwright for browser tests. Generated applications include a `test/` directory, test configuration, and a GitHub Actions workflow.
 
 Run model, controller, job, and mailer tests with:
 
@@ -21,7 +21,13 @@ flask test -n auto
 flask test test/controllers/posts_controller_test.py
 ```
 
-The commands select the `test` environment and apply pending migrations to the test database before collecting tests. Each test that inherits from a Flaskteroids test class runs in a transaction. The framework rolls it back after the test.
+The commands use the `test` environment and apply pending migrations. Tests that inherit from Flaskteroids test classes roll back database changes after each test.
+
+File uploads use `fixture_file_upload('avatar.png')` with files in
+`test/fixtures/files`. The pytest plugin uses temporary disk storage for each
+test, including applications configured to use S3. Browser tests can use
+`self.attach_file('Avatar', 'test/fixtures/files/avatar.png')`. See
+[Attachments](other/attachments.md#tests).
 
 ## Test types
 
