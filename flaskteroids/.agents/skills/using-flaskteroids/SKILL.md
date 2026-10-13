@@ -58,7 +58,15 @@ dependency internals or introduce a parallel implementation of a supported featu
   session management, mapped model classes, or relationship plumbing.
 - Use application controllers, `config/routes.py`, resourceful routing, strong
   parameters (`params.expect`), and framework response helpers instead of standalone
-  Flask routes or manually rebuilding the request pipeline.
+  Flask routes or manually rebuilding the request pipeline. `render(json=value,
+  status=...)` supports ordinary JSON values, models, queries, and model errors.
+  Errors serialize as full-message lists; use status 422 for validation failures.
+  Only `None` returned by an action triggers implicit template rendering.
+- Declare controller callbacks through `before_action`, `around_action`, and
+  `after_action`. Around callbacks are generators that yield once and unwind in
+  reverse order, including on failures. Cleanup resumes them normally rather than
+  throwing the action exception into them. After callbacks require successful
+  action execution and cleanup. Do not use after callbacks for failure cleanup.
 - Use attachment declarations, `config/storage.yml`, and `attachments:install`
   for file uploads rather than independent storage plumbing.
   Model attachments upload after commit. Use `blob_path` or `blob_url` for

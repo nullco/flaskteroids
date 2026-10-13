@@ -4,6 +4,10 @@
 
 ### Changed
 
+- Only `None` triggers implicit controller template rendering. Explicit empty
+  responses are returned unchanged.
+- Around-action generators may halt before yielding by returning a response.
+  Generators that run the action must yield exactly once.
 - Model JSON now includes only database columns and pending column changes,
   excluding password attributes, digests, confirmations, and reset tokens,
   including custom secure-password field names. Virtual fields and associations
@@ -16,6 +20,13 @@
 
 ### Fixed
 
+- Preserve JSON response status codes and support ordinary JSON payloads,
+  including empty values and `null`. Model errors serialize as full-message
+  lists, so scaffold JSON validation failures return 422 rather than 500.
+- Unwind entered around-action generators on action and setup failures. Continue
+  cleanup after a cleanup error without replacing the original exception; log
+  secondary failures and attach them as exception notes. After callbacks run
+  only after the action and around cleanup succeed.
 - Stop JSON serialization and form rendering from generating password reset tokens.
 - Escape select options and prompts, labels, textarea field names, and submit
   values. Compare unescaped select values so values containing HTML characters

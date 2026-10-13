@@ -24,7 +24,7 @@ def _decorate_action(cls, action):
     @wraps(action)
     def wrapper(self, *args, **kwargs):
         res = action(self, *args, **kwargs)
-        if res:
+        if res is not None:
             return res
         return render(action.__name__)
     return wrapper
@@ -57,8 +57,10 @@ def render(action=None, *, status=200, json=None):
         cname = inflector.underscore(g.controller.__class__.__name__.replace("Controller", ""))
         view = render_template(f'{cname}/{action}.html', **{**g.controller.__dict__, 'params': params})
         return make_response(view, status)
-    elif json:
-        return jsonify(json.__json__())
+    else:
+        serializer = getattr(json, '__json__', None)
+        data = serializer() if callable(serializer) else json
+        return make_response(jsonify(data), status)
 
 
 def head(status=200, headers=None):

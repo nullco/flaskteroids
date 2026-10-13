@@ -34,20 +34,49 @@ def decorate_action(cls, action_fn):
             res = ba(*args, **kwargs)
             if res:
                 return res
-        around_action = [
-            getattr(cls, aa)(*args, **kwargs)
-            for aa in ns.get('around_action', {}).get(action_fn.__name__, [])
-        ]
-        for aa in around_action:
-            next(aa)
-        res = action_fn(*args, **kwargs)
-        for aa in reversed(around_action):
-            next(aa, None)
+        generators = []
+        original_error = None
+        try:
+            for name in ns.get('around_action', {}).get(action_fn.__name__, []):
+                generator = getattr(cls, name)(*args, **kwargs)
+                try:
+                    next(generator)
+                except StopIteration as stopped:
+                    return stopped.value
+                generators.append((name, generator))
+            res = action_fn(*args, **kwargs)
+        except BaseException as exc:
+            original_error = exc
+            raise
+        finally:
+            _finalize_around(generators, original_error)
         after_action = [getattr(cls, aa) for aa in ns.get('after_action', {}).get(action_fn.__name__, [])]
         for aa in after_action:
             aa(*args, **kwargs)
         return res
     return wrapper
+
+
+def _finalize_around(generators, original_error):
+    error = original_error
+    for name, generator in reversed(generators):
+        try:
+            try:
+                next(generator)
+            except StopIteration:
+                pass
+            else:
+                raise ProgrammerError(f'Around action <{name}> must yield exactly once')
+            finally:
+                generator.close()
+        except BaseException as exc:
+            if error is None:
+                error = exc
+            else:
+                error.add_note(f'Around-action cleanup <{name}> failed: {exc!r}')
+                _logger.exception('Around-action cleanup <%s> failed', name)
+    if original_error is None and error is not None:
+        raise error
 
 
 def before_action(method_name: str, *, only=None):

@@ -111,6 +111,9 @@ class Errors:
     def full_messages(self):
         return [e.full_message() for e in self._errors]
 
+    def __json__(self):
+        return self.full_messages()
+
     @property
     def count(self):
         return len(self._errors)

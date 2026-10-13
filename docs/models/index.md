@@ -462,7 +462,8 @@ post.destroy()
 
 ## Validation errors
 
-Models include an `errors` object for validation errors.
+Models include an `errors` object for validation errors. `render(json=record.errors,
+status=422)` returns a JSON list of full messages, or `[]` when there are no errors.
 
 ```python
 post = Post.new(title="")  # Invalid: title is required
