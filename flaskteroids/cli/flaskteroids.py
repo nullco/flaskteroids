@@ -5,6 +5,7 @@ import click
 import yaml
 
 from flaskteroids.cli.agent_skills import agent_skills
+from flaskteroids.cli.attachments import STORAGE_YAML
 from flaskteroids.cli.artifacts import ArtifactsBuilder, ArtifactsBuilderException
 from flaskteroids.cli.generators.templates import template
 from flaskteroids.credentials import encrypt, generate_key
@@ -57,6 +58,7 @@ def new(app_name):
         ab.file("config/environments/production.py", _production_environment())
         ab.file("config/initializers/.keep")
         ab.file("config/database.yml", _database_yml())
+        ab.file("config/storage.yml", STORAGE_YAML)
         credentials_key = generate_key()
         credentials = yaml.safe_dump(
             {"secret_key_base": secrets.token_hex(64)}, sort_keys=False
@@ -113,6 +115,7 @@ def _gitignore():
     return """
 __pycache__/
 .venv/
+tmp/
 storage/*
 !storage/.keep
 config/master.key
@@ -148,6 +151,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "flaskteroids",
+    "gunicorn",
 ]
 
 [tool.pytest.ini_options]
@@ -177,6 +181,7 @@ from flaskteroids.testing import (
     ModelTest,
     SystemTest,
     delete,
+    fixture_file_upload,
     get,
     patch,
     post,
@@ -190,6 +195,7 @@ __all__ = [
     "ModelTest",
     "SystemTest",
     "delete",
+    "fixture_file_upload",
     "get",
     "patch",
     "post",
@@ -300,6 +306,7 @@ def configure(config):
     config.consider_all_requests_local = True
     config.action_controller.perform_caching = False
     config.action_mailer.perform_deliveries = False
+    config.attachments.service = 'local'
     """
 
 
@@ -314,6 +321,7 @@ def configure(config):
     config.action_controller.perform_caching = False
     config.action_controller.allow_forgery_protection = False
     config.active_job.queue_adapter = TestQueueAdapter
+    config.attachments.service = 'test'
     config.action_mailer.delivery_method = TestDeliveryMethod
     config.action_mailer.perform_deliveries = True
     """
@@ -329,6 +337,7 @@ def configure(config):
     config.consider_all_requests_local = False
     config.require_master_key = True
     config.action_mailer.perform_deliveries = True
+    config.attachments.service = os.environ.get('ATTACHMENTS_SERVICE', 'local')
     config.active_job.broker_url = os.environ.get(
         'CELERY_BROKER_URL', config.active_job.broker_url
     )
@@ -414,7 +423,7 @@ RUN apt-get update \
 COPY --from=deps /requirements.txt /requirements.txt
 # Ensure pip installs runtime dependency 'flaskteroids' in case it was
 # omitted from the pinned requirements (ensures scaffolded apps run)
-RUN pip install --no-cache-dir -r /requirements.txt gunicorn flaskteroids
+RUN pip install --no-cache-dir -r /requirements.txt flaskteroids
 
 # Copy application source
 COPY . .

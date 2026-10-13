@@ -41,6 +41,7 @@ nav:
     - CLI: other/cli.md
     - Fields: other/fields.md
     - Forms: other/forms.md
+    - Attachments: other/attachments.md
     - Background jobs: other/jobs.md
     - Mailers: other/mailers.md
 

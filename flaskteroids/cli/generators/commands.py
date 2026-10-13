@@ -70,6 +70,8 @@ def generate_model(name, fields):
     """Generate a model, migration, and tests.
 
     NAME is a singular CamelCase model name, such as Post.
+    avatar:attachment and documents:attachments declare file attachments.
+    Install their tables with flask attachments:install before migrating.
     """
     model.generate(name, list(fields))
 
@@ -123,7 +125,9 @@ def generate_scaffold(name, fields):
 
     Use a singular model NAME, such as Post. Includes the model, migration,
     controller, views, routes, and browser test. Complete fixtures for any
-    required references before running tests.
+    required references before running tests. avatar:attachment and
+    documents:attachments include file inputs and permitted upload parameters.
+    Install their tables with flask attachments:install before migrating.
     """
     scaffold.generate(name, list(fields))
 
@@ -141,6 +145,8 @@ def generate_resource(name, fields):
     Includes a model, migration, empty controller, and routes. Use a singular
     model NAME, such as Post. Unlike scaffold, this does not
     generate actions, views, or fixtures; implement the actions you need.
+    avatar:attachment and documents:attachments declare file attachments.
+    Install their tables with flask attachments:install before migrating.
     """
     resource.generate(name, list(fields))
 

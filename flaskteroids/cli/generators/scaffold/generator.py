@@ -27,6 +27,8 @@ def generate(name: str, args: list[str]):
         _controller_test(params),
     )
     ab.file(f'test/fixtures/{plural}.yml', _fixtures(params))
+    if params['attachments']:
+        ab.file('test/fixtures/files/attachment.txt', 'An example attachment.\n')
     ab.file(f'test/system/{plural}_test.py', _system_test(params))
     ab.modify_py_file('config/routes.py', add_routes([
         f"route.resources('{plural}')",
@@ -38,11 +40,18 @@ def _controller_test(params):
     singular = params["singular"]
     plural = params["plural"]
     model = params["model"]
-    attributes = ",\n                        ".join(
+    values = [
         f'"{field["name"]}": self.{singular}.{field["name"]}'
         for field in params["fields"]
-    )
-    return f'''from test.test_helper import IntegrationTest, delete, get, patch, post
+    ]
+    for attachment in params['attachments']:
+        upload = 'fixture_file_upload("attachment.txt")'
+        if attachment['type'] == 'attachments':
+            upload = f'[{upload}]'
+        values.append(f'"{attachment["name"]}": {upload}')
+    attributes = ",\n                        ".join(values)
+    upload_import = '\nfrom flaskteroids.testing import fixture_file_upload' if params['attachments'] else ''
+    return f'''from test.test_helper import IntegrationTest, delete, get, patch, post{upload_import}
 from app.models.{singular} import {model}
 from flaskteroids.routes import (
     edit_{singular}_url,

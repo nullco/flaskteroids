@@ -1,16 +1,31 @@
 import logging
-from sqlalchemy.ext.automap import automap_base
-from sqlalchemy.exc import InvalidRequestError
-from sqlalchemy import create_engine, MetaData
-from sqlalchemy.orm import sessionmaker, scoped_session
-from flask import g
-from flaskteroids.discovery import discover_classes
-import flaskteroids.registry as registry
-from flaskteroids.model import Model, init
-from flaskteroids.inflector import inflector
 
+from flask import g
+from sqlalchemy import MetaData, create_engine, event
+from sqlalchemy.engine import make_url
+from sqlalchemy.exc import InvalidRequestError
+from sqlalchemy.ext.automap import automap_base
+from sqlalchemy.orm import scoped_session, sessionmaker
+
+from flaskteroids import registry
+from flaskteroids.discovery import discover_classes
+from flaskteroids.inflector import inflector
+from flaskteroids.model import Model, init
 
 _logger = logging.getLogger(__name__)
+
+
+def _enable_sqlite_foreign_keys(connection, connection_record):
+    autocommit = connection.autocommit
+    connection.autocommit = True
+    try:
+        cursor = connection.cursor()
+        try:
+            cursor.execute('PRAGMA foreign_keys=ON')
+        finally:
+            cursor.close()
+    finally:
+        connection.autocommit = autocommit
 
 
 class SQLAlchemyExtension:
@@ -20,7 +35,12 @@ class SQLAlchemyExtension:
             self.init_app(app)
 
     def init_app(self, app):
-        self._engine = create_engine(app.database_url)
+        options = {}
+        if make_url(app.database_url).get_backend_name() == 'sqlite':
+            options['connect_args'] = {'autocommit': False}
+        self._engine = create_engine(app.database_url, **options)
+        if options:
+            event.listen(self._engine, 'connect', _enable_sqlite_foreign_keys)
         self._models_module = app.config.paths.models
         self._metadata = MetaData()
         self._session_factory = scoped_session(sessionmaker(bind=self._engine, autoflush=False))
@@ -32,19 +52,28 @@ class SQLAlchemyExtension:
 
         @app.teardown_appcontext
         def _(exception=None):
-            db_session = g.pop('db_session', None)
-            if db_session:
-                if exception:
+            db_session = g.get('db_session')
+            if db_session is None:
+                return
+            try:
+                if exception is not None:
                     _logger.debug('rolling transaction due to error')
                     db_session.rollback()
                 else:
                     _logger.debug('committing transaction')
                     db_session.commit()
+            finally:
                 _logger.debug('closing session')
-                db_session.close()
+                try:
+                    db_session.close()
+                finally:
+                    g.pop('db_session', None)
 
     def create_session(self):
         return self._session_factory()
+
+    def new_session(self):
+        return self._session_factory.session_factory()
 
     @property
     def models(self):
@@ -55,7 +84,7 @@ class SQLAlchemyExtension:
         ns = registry.get(Model)
         ns['models'] = models
         self._models = models
-        tables = [self._get_table_name(name) for name in self._models.keys()]
+        tables = [self._get_table_name(name) for name in self._models]
         try:
             self._metadata.reflect(self._engine, only=tables)
         except InvalidRequestError:

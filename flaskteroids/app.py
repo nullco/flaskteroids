@@ -16,6 +16,9 @@ from flaskteroids.cli.generators import commands as generate_commands
 from flaskteroids.cli.db import commands as db_commands
 from flaskteroids.cli import credentials as credentials_commands
 from flaskteroids.cli import testing as testing_commands
+from flaskteroids.cli.attachments import install as attachments_install
+from flaskteroids.attachments.extension import AttachmentsExtension
+from flaskteroids.attachments import UploadTooLarge, blob_path, blob_url
 
 
 _logger = logging.getLogger(__name__)
@@ -31,6 +34,7 @@ def initialize_app(app):
     _setup_csrf(app)
     _setup_jobs(app)
     _setup_mailers(app)
+    AttachmentsExtension(app)
 
 
 def finalize_app(app):
@@ -56,6 +60,7 @@ def _register_error_handlers(app):
         return _
 
     app.register_error_handler(model.RecordNotFoundException, handle_error(HTTPStatus.NOT_FOUND))
+    app.register_error_handler(UploadTooLarge, handle_error(HTTPStatus.REQUEST_ENTITY_TOO_LARGE))
 
 
 def _register_cli_commands(app):
@@ -68,6 +73,7 @@ def _register_cli_commands(app):
     app.cli.add_command(credentials_commands.edit)
     app.cli.add_command(testing_commands.test)
     app.cli.add_command(testing_commands.test_system)
+    app.cli.add_command(attachments_install)
 
 
 def _prepare_shell_context(app):
@@ -105,6 +111,8 @@ def _prepare_template_contexts(app):
     app.jinja_env.globals['link_to'] = helpers.link_to
     app.jinja_env.globals['form_with'] = helpers.form_with
     app.jinja_env.globals['csrf_token'] = CSRFToken(app.config.get('SECRET_KEY')).generate
+    app.jinja_env.globals['blob_path'] = blob_path
+    app.jinja_env.globals['blob_url'] = blob_url
 
     @app.context_processor
     def _():

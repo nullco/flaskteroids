@@ -32,7 +32,7 @@ class ${controller}Controller(ApplicationController):
         pass
 
     def create(self):
-        self.${model_ref} = ${model}.create(**self._${model_ref}_params())
+        self.${model_ref} = ${model}.new(**self._${model_ref}_params())
         if self.${model_ref}.save():
             return respond(
                 html=lambda: redirect_to(url_for('show_${singular}', id=self.${singular}.id), notice="${singular.title()} was successfully created."),
@@ -67,4 +67,9 @@ class ${controller}Controller(ApplicationController):
         self.${model_ref} = ${model}.find(id=params['id'])
 
     def _${model_ref}_params(self):
-        return params.expect(${model_ref}=[${', '.join("'" + field['name'] + "'" for field in fields)}])
+        permitted = [${', '.join("'" + field['name'] + "'" for field in fields)}]
+% for attachment in attachments:
+        if '${attachment['name']}' in params.get('${model_ref}', {}):
+            permitted.append(${"('" + attachment['name'] + "', [])" if attachment['type'] == 'attachments' else "'" + attachment['name'] + "'"})
+% endfor
+        return params.expect(${model_ref}=permitted)

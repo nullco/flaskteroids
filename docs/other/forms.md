@@ -26,6 +26,9 @@ Use `form_with` to build model-backed forms and `params.expect` to filter submit
 ```
 
 Field helpers include `text_field`, `text_area`, `password_field`, and `checkbox`.
+Use `file_field('avatar')` or `file_field('documents', multiple=True)` for uploads.
+`form_with` detects these fields and adds multipart encoding. See
+[Attachments](attachments.md) for attachment forms and permitted parameters.
 
 ## Strong parameters
 

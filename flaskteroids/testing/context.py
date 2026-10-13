@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 from contextvars import ContextVar
 
+from flask import g, has_app_context
 
 _current_client = ContextVar("flaskteroids_test_client")
 _current_response = ContextVar("flaskteroids_test_response", default=None)
@@ -26,6 +27,12 @@ def _request(method, url, *, params=None, **options):
     if params is not None:
         options.setdefault("data", _flatten_params(params))
     response = client.open(url, method=method, **options)
+    if has_app_context() and "db_session" in g:
+        ambient = g.db_session
+        pending = ambient.dirty | ambient.deleted
+        for instance in list(ambient.identity_map.values()):
+            if instance not in pending:
+                ambient.expire(instance)
     _current_response.set(response)
     return response
 
@@ -55,9 +62,11 @@ def delete(url, *, params=None, **options):
 def _flatten_params(values, prefix=None):
     flattened = {}
     for key, value in values.items():
-        name = f"{prefix}.{key}" if prefix else str(key)
+        name = f"{prefix}[{key}]" if prefix else str(key)
         if isinstance(value, dict):
             flattened.update(_flatten_params(value, name))
+        elif isinstance(value, list):
+            flattened[f"{name}[]"] = value
         else:
             flattened[name] = value
     return flattened

@@ -7,9 +7,10 @@ class Form:
     def __init__(self, prefix: str | None, data: dict | None = None) -> None:
         self._prefix = prefix
         self._data = data or {}
+        self.multipart = False
 
     def _build_attributes(self, attrs):
-        return " ".join(f'{k}="{v}"' for k, v in attrs.items())
+        return " ".join(f'{escape(k)}="{escape(v)}"' for k, v in attrs.items())
 
     def _get_name(self, field):
         if not self._prefix:
@@ -42,7 +43,9 @@ class Form:
         })
         return Markup(f'<input {attrs}>')
 
-    def hidden_field(self, field, **kwargs):
+    def hidden_field(self, field, *, multiple=False, **kwargs):
+        if multiple:
+            kwargs['name'] = self._get_name(field) + '[]'
         return self._input_type('hidden', field, **kwargs)
 
     def text_field(self, field, **kwargs):
@@ -61,6 +64,18 @@ class Form:
         {self._input_type('checkbox', field, value='1', **attrs)}
         """
         return Markup(checkbox)
+
+    def file_field(self, field, *, multiple=False, include_hidden=True, **kwargs):
+        self.multipart = True
+        attrs = self._build_attributes({
+            'type': 'file',
+            'id': self._get_id(field),
+            'name': self._get_name(field) + ('[]' if multiple else ''),
+            **({'multiple': 'multiple'} if multiple else {}),
+            **kwargs,
+        })
+        hidden = self.hidden_field(field, multiple=True, value='') if multiple and include_hidden else ''
+        return Markup(f'{hidden}<input {attrs}>')
 
     def password_field(self, field, **kwargs):
         return self._input_type('password', field, **kwargs)

@@ -136,6 +136,11 @@ class RoutesExtension:
             action = getattr(controller_instance, caction)
             flat_params = {}
             flat_params.update(request.form.to_dict(False))
+            for key, values in request.files.lists():
+                if key.endswith('[]'):
+                    flat_params.setdefault(key, []).extend(values)
+                else:
+                    flat_params[key] = values
             flat_params.update(kwargs)  # looks like url template params come here
             flat_params.update(request.args.to_dict(False))
             flat_params.pop('csrf_token', None)
@@ -259,11 +264,13 @@ def _unflatten_params(flat_dict):
     result = {}
 
     for flat_key, value in flat_dict.items():
-        if isinstance(value, list):
-            value = value[-1]
-        parts = re.findall(r'\w+|\[\]', flat_key.replace(']', ''))
+        parts = re.findall(r'\w+|\[\]', flat_key)
         keys = [parts[0]] + [part if part != '[]' else '' for part in parts[1:]]
-
-        result = insert(result, keys, value)
+        if isinstance(value, list):
+            values = value if keys[-1] == '' else value[-1:]
+        else:
+            values = [value]
+        for entry in values:
+            result = insert(result, keys, entry)
 
     return result

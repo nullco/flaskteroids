@@ -6,6 +6,7 @@ import flaskteroids.registry as registry
 from flaskteroids.discovery import discover_classes
 from flaskteroids.mailer import MessageDeliveryJob
 from flaskteroids.jobs.job import Job
+from flaskteroids.attachments.jobs import PurgeJob
 
 _logger = logging.getLogger(__name__)
 
@@ -31,6 +32,7 @@ class JobsExtension:
         for job_name, job_class in self._jobs.items():
             self.register_job(f"{jobs_module}.{job_name}", job_class)
         self.register_job(MessageDeliveryJob.__name__, MessageDeliveryJob)
+        self.register_job("flaskteroids.attachments.PurgeJob", PurgeJob)
         app.extensions["flaskteroids.jobs"] = self
 
     def register_job(self, job_name, job_class):

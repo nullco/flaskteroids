@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pytest
 
+from flaskteroids.testing.storage import temporary_storage
+
 
 def pytest_configure(config):
     config.addinivalue_line(
@@ -43,6 +45,12 @@ def app(application):
 @pytest.fixture
 def client(application):
     return application.test_client()
+
+
+@pytest.fixture(autouse=True)
+def attachment_storage(application):
+    with temporary_storage(application) as storage:
+        yield storage
 
 
 def _configure_worker_database():

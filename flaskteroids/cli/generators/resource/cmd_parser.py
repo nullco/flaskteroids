@@ -1,14 +1,15 @@
 import re
 from flaskteroids.inflector import inflector
 from flaskteroids.cli.generators import cmd_parser
-from flaskteroids.cli.generators.fields import field_pattern, association_pattern
+from flaskteroids.cli.generators.fields import field_pattern, association_pattern, attachment_pattern
 
 
 class _ResourceCommand:
     pattern = re.compile(r'([a-z_]+)')
     args = {
         'fields': field_pattern,
-        'reference': association_pattern
+        'reference': association_pattern,
+        'attachment': attachment_pattern,
     }
 
     @classmethod
@@ -26,6 +27,10 @@ class _ResourceCommand:
             'fields': [
                 {'name': m.group(1), 'type': m.group(2)}
                 for m in args_matches['fields']
+            ],
+            'attachments': [
+                {'name': m.group(1), 'type': m.group(2)}
+                for m in args_matches['attachment']
             ],
             'references': [
                 {'name': m.group(1), 'type': m.group(2)}

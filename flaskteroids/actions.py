@@ -1,5 +1,6 @@
 import logging
 from werkzeug.local import LocalProxy
+from werkzeug.datastructures import FileStorage
 from functools import wraps
 from typing import Any
 from collections import UserDict, defaultdict
@@ -177,13 +178,13 @@ class ActionParameters(UserDict):
             elif value[k] is None:
                 expected[k] = None
             elif v is Any:
-                if type(value[k]) not in (int, float, str, bool):
+                if type(value[k]) not in (int, float, str, bool) and not isinstance(value[k], FileStorage):
                     raise InvalidParameter(key, k, 'Invalid parameter type. Not a scalar')
                 expected[k] = value[k]
             elif v is list:
                 if not isinstance(value[k], list):
                     raise InvalidParameter(key, k, 'Invalid parameter type. Not a list')
-                if any(type(vi) not in (int, float, str, bool) for vi in value[k]):
+                if any(type(vi) not in (int, float, str, bool) and not isinstance(vi, FileStorage) for vi in value[k]):
                     raise InvalidParameter(key, k, 'Invalid parameter type. Not a scalars list')
                 expected[k] = value[k]
             elif isinstance(v, list):

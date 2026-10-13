@@ -10,6 +10,10 @@ class UserError(Exception):
         super().__init__(*args)
 
 
+class RecordNotFoundException(Exception):
+    pass
+
+
 class InvalidParameter(UserError):
     pass
 

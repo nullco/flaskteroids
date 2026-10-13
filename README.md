@@ -21,17 +21,18 @@
 
 ---
 
-Flaskteroids brings Rails conventions to Python. It uses Rails 8 as the reference for application structure and framework behavior, with Flask handling HTTP requests, SQLAlchemy and Alembic handling the database, and Celery running background jobs.
+Flask handles HTTP requests, SQLAlchemy and Alembic handle the database, and Celery runs background jobs.
 
 Models, controllers, and templates live in conventional directories. The framework discovers them without manual registration. Flask APIs and extensions remain available when you need them.
 
 ## What's included
 
 - Resource routing with CRUD routes and path helpers.
-- Active Record-style models with associations, validations, and lifecycle callbacks.
+- Models with associations, validations, and lifecycle callbacks.
 - Jinja templates, form helpers, and HTML or JSON responses.
 - Generators for models, migrations, controllers, scaffolds, mailers, and authentication.
 - Background jobs and email delivery.
+- File attachments with disk and S3-compatible storage.
 - Environment settings, `database.yml`, encrypted credentials, and boot-time initializers.
 - Pytest-based transactional tests, YAML fixtures, job and mail assertions, and Playwright browser tests.
 
