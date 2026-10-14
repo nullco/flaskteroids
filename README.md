@@ -46,41 +46,51 @@ pip install flaskteroids
 
 ## Getting started
 
-Create an application. Git, Bash/POSIX, and uv must be installed.
+Create an application. Git, Bash, and [uv](https://docs.astral.sh/uv/getting-started/installation/) must be installed.
 
 ```sh
 flaskteroids new my_app
 cd my_app
+source .venv/bin/activate
 ```
 
-Generation installs dependencies, creates the app lock, prepares SQLite and
-initializes Git. Use `bin/setup` for fresh checkouts or changed dependencies;
-`--skip-install` defers installation/preparation. Commit `uv.lock`.
-Start the server without activating an environment:
+Generation installs dependencies and prepares your development database.
+Start the server:
 
 ```sh
-bin/flask run
-bin/flask test
-bin/flask test:system
+flask run
 ```
 
-Open `http://127.0.0.1:5000` to see the welcome page.
+Open <http://127.0.0.1:5000> to see the welcome page.
+
+```sh
+flask test
+flask test:system
+```
+
+The app includes a health test. An empty system suite succeeds without a browser.
 
 ## Add a posts resource
 
 Stop the server and run these commands inside `my_app`:
 
 ```sh
-bin/flask generate scaffold Post title:string content:text
-bin/flask db:prepare
-bin/flask run
+flask generate scaffold Post title:string content:text
+flask db:prepare
+flask run
 ```
 
 The scaffold generates a model, migration, controller, views, and routes. Visit
 `http://127.0.0.1:5000/posts/` to create, view, edit, and delete posts.
 
-See the [documentation](https://nullco.github.io/flaskteroids/) for configuration,
-testing, and the API guides.
+## Next steps
+
+- Run `bin/setup` for a fresh checkout or after changing dependencies. Commit `uv.lock`.
+- To defer installation, use `flaskteroids new my_app --skip-install`, then run `bin/setup` later.
+- See [Testing](https://nullco.github.io/flaskteroids/testing/) for browser setup and [Configuration](https://nullco.github.io/flaskteroids/configuration/) for environments and secrets.
+- Your generated `deploy/README.md` explains Docker and deployment.
+
+See the [documentation](https://nullco.github.io/flaskteroids/) for the API guides.
 
 ## Agent skills
 
