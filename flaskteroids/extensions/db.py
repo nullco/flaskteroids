@@ -103,7 +103,8 @@ class SQLAlchemyExtension:
         binding = self._bindings[model_cls]
         if binding.mapped_class is None:
             raise ProgrammerError(
-                f"No backing table for model {model_cls.__name__}. "
+                f"No backing table for model {model_cls.__name__} "
+                f"(expected table {self._get_table_name(model_cls.__name__)}). "
                 "Did you create/run database migrations? Construct a fresh application after migrating."
             )
         return binding
@@ -116,13 +117,22 @@ class SQLAlchemyExtension:
         )
         for model in self._models.values():
             init(model)
-        self._reflect_tables()
+        available_tables = self._reflect_tables()
         base = automap_base(metadata=self._metadata)
         base.prepare(generate_relationship=self._skip_relationships)
-        bindings = {
-            model: ModelBinding(getattr(base.classes, self._get_table_name(name), None))
-            for name, model in self._models.items()
-        }
+        bindings = {}
+        for name, model in self._models.items():
+            table_name = self._get_table_name(name)
+            mapped = getattr(base.classes, table_name, None)
+            if mapped is None and table_name in available_tables:
+                table = self._metadata.tables[table_name]
+                reason = (
+                    "no primary key" if not table.primary_key else "no usable mapping"
+                )
+                raise ProgrammerError(
+                    f"Model {model.__name__} table {table_name} is malformed: {reason}."
+                )
+            bindings[model] = ModelBinding(mapped)
         for model, binding in bindings.items():
             for definition in model_for(model).associations.values():
                 target = self._models.get(definition.target)
@@ -133,6 +143,7 @@ class SQLAlchemyExtension:
                 binding.associations[definition.name] = ResolvedAssociation(
                     target, definition.name, definition.foreign_key
                 )
+        configured_associations = []
         for model, binding in bindings.items():
             mapped = binding.mapped_class
             if mapped is None:
@@ -152,43 +163,66 @@ class SQLAlchemyExtension:
                 ]
                 if len(inverse) > 1:
                     raise ProgrammerError(
-                        f"Ambiguous inverse for {model.__name__}.{definition.name}"
+                        f"Ambiguous inverse for {model.__name__}.{definition.name}: "
+                        f"target {association.target.__name__}, column {definition.foreign_key}, "
+                        f"inverses {', '.join(inverse)}."
                     )
                 fk_owner = mapped if definition.kind == "belongs_to" else target
                 if definition.foreign_key not in fk_owner.__table__.columns:
                     raise ProgrammerError(
                         f"Invalid association {model.__name__}.{definition.name}: "
-                        f"column {definition.foreign_key} does not exist on {fk_owner.__table__.name}."
+                        f"target {association.target.__name__}, column {definition.foreign_key} "
+                        f"does not exist on {fk_owner.__table__.name}."
                     )
-                if definition.kind == "belongs_to":
-                    fk = getattr(mapped, definition.foreign_key)
-                    join = target.id == fk
-                    cascade = "save-update, merge"
-                else:
-                    fk = getattr(target, definition.foreign_key)
-                    join = mapped.id == fk
+                identity_owner = target if definition.kind == "belongs_to" else mapped
+                if "id" not in identity_owner.__table__.columns:
+                    raise ProgrammerError(
+                        f"Invalid association {model.__name__}.{definition.name}: "
+                        f"target {association.target.__name__}, table {identity_owner.__table__.name} "
+                        "requires identity column id."
+                    )
+                try:
+                    fk = getattr(fk_owner, definition.foreign_key)
                     cascade = (
                         "all, delete-orphan"
                         if definition.dependent == "destroy"
                         else "save-update, merge"
                     )
-                setattr(
-                    mapped,
-                    definition.name,
-                    relationship(
-                        target,
-                        primaryjoin=join,
-                        foreign_keys=[fk],
-                        cascade=cascade,
-                        back_populates=inverse[0] if inverse else None,
-                    ),
-                )
+                    setattr(
+                        mapped,
+                        definition.name,
+                        relationship(
+                            target,
+                            primaryjoin=identity_owner.id == fk,
+                            foreign_keys=[fk],
+                            cascade=cascade,
+                            back_populates=inverse[0] if inverse else None,
+                        ),
+                    )
+                except Exception as error:
+                    error.add_note(
+                        f"While configuring {model.__name__}.{definition.name}: "
+                        f"target {association.target.__name__} ({target.__table__.name}), "
+                        f"foreign key {fk_owner.__table__.name}.{definition.foreign_key}"
+                    )
+                    raise
+                configured_associations.append(f"{model.__name__}.{definition.name}")
             for name in model_for(model).attachments:
                 if name in mapped.__table__.columns:
                     raise ProgrammerError(
                         f"Attachment {name} conflicts with a model column on {model.__name__}"
                     )
-        base.registry.configure()
+        try:
+            base.registry.configure()
+        except Exception as error:
+            # Configuration checks the entire registry, not just the last relationship.
+            models = ", ".join(model.__name__ for model in bindings)
+            associations = ", ".join(configured_associations)
+            error.add_note(
+                f"While configuring application mappings for {models}; "
+                f"associations: {associations}"
+            )
+            raise
         self._bindings = bindings
 
     def _reflect_tables(self):
@@ -223,6 +257,7 @@ class SQLAlchemyExtension:
                                 table.foreign_keys.discard(element)
                                 element.parent.foreign_keys.discard(element)
                             break
+        return available
 
     def _get_table_name(self, model_name):
         return inflector.tableize(model_name)

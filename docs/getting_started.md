@@ -52,7 +52,7 @@ flask generate scaffold Post title:string content:text
 
 This creates a model, database migration, controller, views, and routes for posts with `title` and `content` fields.
 
-Apply the migration and restart the server:
+Apply the migration, then restart the server so it picks up the new table:
 
 ```sh
 flask db:migrate

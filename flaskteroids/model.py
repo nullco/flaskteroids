@@ -231,6 +231,8 @@ def belongs_to(
 
         def rel_wrapper(self):
             association = _get_association(self.__class__, name=name)
+            if association.name in self._changes:
+                return self._changes[association.name]
             related_base_instance = getattr(self._base_instance, association.name)
             if related_base_instance is None:
                 return None
@@ -466,11 +468,46 @@ def _validate_fk(*, instance, field, config=True):
 
 
 def _get_association(model_cls, *, name):
+    definition = next(
+        (
+            entry
+            for entry in model_for(model_cls).associations.values()
+            if entry.name == name or entry.foreign_key == name
+        ),
+        None,
+    )
+    if definition is None:
+        return None
     db = current_app.extensions["flaskteroids.db"]
-    for association in db.binding(model_cls).associations.values():
-        if association.foreign_key == name or association.name == name:
-            db.binding(association.target)
-            return association
+    association = db.binding(model_cls).associations[definition.name]
+    try:
+        db.binding(association.target)
+    except ProgrammerError as error:
+        error.add_note(f"While using {model_cls.__name__}.{definition.name}")
+        raise
+    return association
+
+
+def _declared_attribute(model_cls, name):
+    # Dynamic class lookup invokes ModelMeta and may require a database mapping.
+    for owner in model_cls.__mro__:
+        if name in vars(owner):
+            return owner, vars(owner)[name]
+    return None, None
+
+
+def _reserved_attribute(name):
+    return name.startswith("_flaskteroids_") or any(
+        name in vars(owner) for owner in (Model, PasswordAuthenticator, object)
+    )
+
+
+def _check_assignment_kwargs(model_cls, kwargs):
+    for name in kwargs:
+        if name in Model._fields or _reserved_attribute(name):
+            raise AttributeError(
+                f"{model_cls.__name__}.{name} is reserved framework state or API."
+            )
 
 
 def _build(model_cls, base_instance):
@@ -599,6 +636,7 @@ class Model(metaclass=ModelMeta):
         self._errors = Errors()
 
     def __init__(self, **kwargs):
+        _check_assignment_kwargs(self.__class__, kwargs)
         self._initialize()
         for k, v in kwargs.items():
             setattr(self, k, v)
@@ -629,31 +667,61 @@ class Model(metaclass=ModelMeta):
         return getattr(self._base_instance, name)
 
     def __setattr__(self, name, value):
-        if name in self._fields:
-            super().__setattr__(name, value)
+        if name in Model._fields:
+            object.__setattr__(self, name, value)
             return
         if attached_storage.assign(self, name, value):
             return
-        vfd = model_for(self.__class__).virtual_fields
-        if name in vfd:
-            if vfd[name].get("read_only", False):
-                raise AttributeError("You are trying to update a read-only attribute")
+        definition = model_for(self.__class__)
+        field_name = f"{self.__class__.__name__}.{name}"
+        if name in definition.virtual_fields:
+            virtual_field = definition.virtual_fields[name]
+            if virtual_field.get("read_only", False):
+                raise AttributeError(f"{field_name} is a read-only virtual field.")
             self._virtual_fields[name] = value
-            set_fn = vfd[name].get("set_fn")
+            set_fn = virtual_field.get("set_fn")
             if set_fn:
                 set_fn(self)
-        elif name in self._base_instance.__table__.columns:
+            return
+        if name in self._base_instance.__table__.columns:
             column = self._base_instance.__table__.columns[name]
-            self._changes[name] = fields.from_column_type(column.type).as_primitive(
-                value
-            )
-        else:
+            converted = fields.from_column_type(column.type).as_primitive(value)
+            self._changes[name] = converted
+            return
+        if name in definition.associations:
+            if definition.associations[name].kind == "has_many":
+                raise AttributeError(
+                    f"{field_name} cannot be replaced; use Relation iteration and create()."
+                )
             association = _get_association(self.__class__, name=name)
-            if association:
-                self._changes[name] = value
-                if association.foreign_key != name:
-                    self._changes[association.foreign_key] = value.id
-                    self._changes[name] = value._base_instance
+            if value is not None and not isinstance(value, association.target):
+                raise TypeError(
+                    f"{field_name} expects {association.target.__name__} or None."
+                )
+            foreign_key = value.id if value is not None else None
+            self._changes[association.foreign_key] = foreign_key
+            self._changes[name] = value
+            return
+        if _reserved_attribute(name):
+            raise AttributeError(f"{field_name} is reserved framework state or API.")
+        owner, declared = _declared_attribute(self.__class__, name)
+        if owner is not None:
+            if hasattr(type(declared), "__set__"):
+                if isinstance(declared, property) and declared.fset is None:
+                    raise AttributeError(f"{field_name} is a read-only property.")
+                object.__setattr__(self, name, value)
+                return
+            if callable(declared) or hasattr(type(declared), "__get__"):
+                raise AttributeError(
+                    f"{field_name} is a read-only method or descriptor."
+                )
+        if owner is not None or name.startswith("_"):
+            object.__setattr__(self, name, value)
+            return
+        raise AttributeError(
+            f"Unknown attribute {field_name}; declare a class default or writable property "
+            "for transient values, or use a private attribute."
+        )
 
     def __json__(self):
         password_field = model_for(self.__class__).password_field or "password"
@@ -743,6 +811,7 @@ class Model(metaclass=ModelMeta):
         return ModelQuery(cls).offset(value)
 
     def update(self, **kwargs):
+        _check_assignment_kwargs(self.__class__, kwargs)
         for field, value in kwargs.items():
             setattr(self, field, value)
         return self.save()
@@ -791,10 +860,16 @@ class Model(metaclass=ModelMeta):
             attached_storage.persist(self)
         return result
 
-    def _create_record(self):
+    def _apply_changes(self):
+        associations = model_for(self.__class__).associations
         for field, value in self._changes.items():
+            if field in associations and value is not None:
+                value = value._base_instance
             setattr(self._base_instance, field, value)
         self._changes.clear()
+
+    def _create_record(self):
+        self._apply_changes()
         now = datetime.now(UTC)
         self._base_instance.created_at = now
         self._base_instance.updated_at = now
@@ -802,9 +877,7 @@ class Model(metaclass=ModelMeta):
         session.flush()
 
     def _update_record(self):
-        for field, value in self._changes.items():
-            setattr(self._base_instance, field, value)
-        self._changes.clear()
+        self._apply_changes()
         self._base_instance.updated_at = datetime.now(UTC)
         session.flush()
 

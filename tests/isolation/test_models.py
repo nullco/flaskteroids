@@ -1,13 +1,17 @@
 from io import BytesIO
+from types import SimpleNamespace
 
 import pytest
+from flask import Flask
 from itsdangerous import BadSignature
 from sqlalchemy import text
-from sqlalchemy.exc import NoReferencedColumnError
+from sqlalchemy.exc import ArgumentError, NoReferencedColumnError, OperationalError
 
+from flaskteroids.application import Application
 from flaskteroids.db import session
 from flaskteroids.exceptions import ProgrammerError
-from flaskteroids.model import Model, before_save, belongs_to, init
+from flaskteroids.extensions.db import SQLAlchemyExtension
+from flaskteroids.model import Model, before_save, belongs_to, has_many, init
 from flaskteroids.rules import rules
 from tests.isolation.models.records import Author, Story
 
@@ -90,6 +94,49 @@ def test_incomplete_schema_never_uses_another_apps_mapping(make_app, tables):
                 with pytest.raises(ProgrammerError, match="Author.*migrations"):
                     Author.count()
         assert Author.count() == 1
+
+
+@pytest.mark.parametrize(
+    "operation", ["construct", "query", "expression", "eager_load", "relation_create"]
+)
+def test_unbacked_model_use_identifies_expected_table_and_recovery(make_app, operation):
+    with make_app("missing", tables=("authors",)).app_context():
+        author = Author.create(name="available", passcode="secret")
+        with pytest.raises(ProgrammerError, match="Story.*stories.*migrations.*fresh"):
+            if operation == "construct":
+                Story.new(title="draft")
+            elif operation == "query":
+                Story.count()
+            elif operation == "expression":
+                _ = Story.title == "draft"
+            elif operation == "eager_load":
+                Author.includes("stories").first()
+            else:
+                author.stories.create(title="draft")
+
+
+def test_partial_schema_does_not_block_unrelated_assignment(make_app, mocker):
+    @rules(belongs_to("author"))
+    class Story(Model):
+        delivery_hint = None
+
+    mocker.patch(
+        "flaskteroids.extensions.db.discover_classes",
+        return_value={"Story": Story, "Author": Author},
+    )
+    with make_app("partial", tables=("stories",)).app_context():
+        story = Story.new(title="draft", delivery_hint="preview")
+        story.title = "edited"
+        story.delivery_hint = "mail"
+        assert story.title == "edited"
+        assert story.delivery_hint == "mail"
+        with pytest.raises(AttributeError, match="Story.titel"):
+            story.titel = "typo"
+        with pytest.raises(
+            ProgrammerError, match="Author.*authors.*migrations"
+        ) as raised:
+            _ = story.author
+        assert "Story.author" in " ".join(raised.value.__notes__)
 
 
 def test_model_access_requires_an_app_context(make_app):
@@ -219,6 +266,133 @@ def test_migrations_require_a_fresh_app_to_bind_missing_models(make_app):
             Author.count()
     with migrated.app_context():
         assert Author.first().name == "migrated"
+
+
+def test_existing_table_without_primary_key_is_malformed(make_app, mocker):
+    app = make_app("malformed")
+    with app.app_context():
+        session.execute(text("DROP TABLE stories"))
+        session.execute(text("CREATE TABLE stories (title TEXT)"))
+
+    class Story(Model):
+        pass
+
+    mocker.patch(
+        "flaskteroids.extensions.db.discover_classes", return_value={"Story": Story}
+    )
+    with pytest.raises(ProgrammerError, match="Story.*stories.*primary key"):
+        make_app("malformed")
+
+
+def test_association_requires_target_identity_column(make_app, mocker):
+    app = make_app("identity", tables=())
+    with app.app_context():
+        session.execute(text("CREATE TABLE authors (key INTEGER PRIMARY KEY)"))
+        session.execute(
+            text("CREATE TABLE stories (id INTEGER PRIMARY KEY, author_id INTEGER)")
+        )
+
+    @rules(belongs_to("author"))
+    class Story(Model):
+        pass
+
+    class Author(Model):
+        pass
+
+    mocker.patch(
+        "flaskteroids.extensions.db.discover_classes",
+        return_value={"Story": Story, "Author": Author},
+    )
+    with pytest.raises(ProgrammerError, match="Story.author.*Author.*authors.*id"):
+        make_app("identity")
+
+
+def test_ambiguous_inverse_names_both_models_and_foreign_key(make_app, mocker):
+    @rules(
+        belongs_to("author"),
+        belongs_to("editor", class_name="Author", foreign_key="author_id"),
+    )
+    class Story(Model):
+        pass
+
+    @rules(has_many("stories"))
+    class Author(Model):
+        pass
+
+    mocker.patch(
+        "flaskteroids.extensions.db.discover_classes",
+        return_value={"Story": Story, "Author": Author},
+    )
+    with pytest.raises(ProgrammerError, match="Author.stories.*Story.*author_id"):
+        make_app("ambiguous")
+
+
+def test_genuine_mapper_configuration_failure_has_collective_context(make_app, mocker):
+    @rules(
+        belongs_to("mentor", class_name="Author", foreign_key="id"),
+        has_many("mentees", class_name="Author", foreign_key="id"),
+    )
+    class Author(Model):
+        pass
+
+    mocker.patch(
+        "flaskteroids.extensions.db.discover_classes", return_value={"Author": Author}
+    )
+    with pytest.raises(ArgumentError) as raised:
+        make_app("mapper")
+    notes = " ".join(raised.value.__notes__)
+    assert "Author.mentor" in notes
+    assert "Author.mentees" in notes
+
+
+def test_relationship_dependency_failure_is_preserved_and_not_published(
+    make_app, mocker
+):
+    error = RuntimeError("relationship dependency failed")
+    mocker.patch("flaskteroids.extensions.db.relationship", side_effect=error)
+    attempted = []
+
+    class ObservedApplication(Application):
+        def __init__(self, **kwargs):
+            attempted.append(self)
+            super().__init__(**kwargs)
+
+    with pytest.raises(RuntimeError) as raised:
+        make_app("failure", application_class=ObservedApplication)
+    assert raised.value is error
+    assert "Author.stories" in " ".join(error.__notes__)
+    assert "flaskteroids.db" not in attempted[0].extensions
+
+
+@pytest.mark.parametrize(
+    "boundary",
+    [
+        "sqlalchemy.engine.Engine.connect",
+        "sqlalchemy.engine.reflection.Inspector.reflect_table",
+    ],
+)
+def test_database_failures_are_not_missing_migrations(make_app, mocker, boundary):
+    original = make_app("database")
+    app = Flask(__name__)
+    app.database_url = original.database_url
+    app.config.paths = SimpleNamespace(models="tests.isolation.models")
+    error = OperationalError("database unavailable", {}, None)
+    mocker.patch(boundary, side_effect=error)
+    with pytest.raises(OperationalError) as raised:
+        SQLAlchemyExtension(app)
+    assert raised.value is error
+    assert "flaskteroids.db" not in app.extensions
+
+
+def test_successful_database_setup_is_a_no_op_when_repeated(make_app):
+    app = make_app("repeat")
+    extension = app.extensions["flaskteroids.db"]
+    with app.app_context():
+        author = Author.create(name="kept", passcode="secret")
+        extension.init_app(app)
+        extension.init_models()
+        assert Author.find(author.id).name == "kept"
+        assert Author.count() == 1
 
 
 def test_missing_model_callback_is_reported_without_a_database_context():

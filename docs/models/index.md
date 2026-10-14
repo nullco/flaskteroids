@@ -50,6 +50,31 @@ base-class order. A shared ancestor contributes its rules once. Declaring the
 same rule twice runs it twice. If a rule uses a list or dictionary, create a new
 one for each class so children do not change their parents' values.
 
+## Temporary attributes
+
+Unknown attributes raise `AttributeError`, helping you catch typos. This applies
+to both direct assignment and values passed to `new()`, `create()`, or `update()`.
+
+For values you don't want to save, declare a class default or use a private name:
+
+```python
+class Post(Model):
+    delivery_hint = None
+
+
+post = Post.new(title="Draft", delivery_hint="preview")
+post._render_cache = {}
+# post.titel = "Typo" raises AttributeError
+```
+
+Inherited defaults and properties with setters work too. A type annotation alone
+isn't enough. Read-only attributes and framework methods cannot be overwritten.
+
+Temporary values aren't saved or included in automatic JSON or form data.
+They survive `reload()` on the same instance; separately loaded instances start
+with class defaults. Initialize lists and dictionaries per instance, not as
+shared class defaults.
+
 ## Associations
 
 Associations define relationships between models.
@@ -87,6 +112,10 @@ class Post(Model):
     pass
 ```
 
+Set `post.user` to a `User` instance, or `None` to clear it, then call
+`post.save()`. Save new users first. A wrong model type raises `TypeError`;
+clearing a required association makes `save()` return `False`.
+
 ### has_many
 
 Use `has_many` for a one-to-many relationship. For example, a post has many comments:
@@ -110,6 +139,9 @@ for comment in comments:
 # Create associated records
 new_comment = post.comments.create(content="Great post!", author="John")
 ```
+
+Collections support iteration and `create()`, not `append()` or `remove()`.
+Replacing a collection with `post.comments = []` raises `AttributeError`.
 
 Set `dependent='destroy'` to delete associated records when you destroy the parent:
 
@@ -476,12 +508,23 @@ post.save()
 post.update(title="New Title", content="New Content")
 ```
 
+If `update()` encounters an unknown attribute, it raises without saving. Earlier
+valid assignments from that call aren't undone.
+
 ### Deleting records
 
 ```python
 post = Post.find(1)
 post.destroy()
 ```
+
+## Missing tables
+
+If a model's table doesn't exist yet, the app can still start, but using that
+model raises `ProgrammerError`. Run `flask db:migrate`, then restart the app.
+
+Other setup errors, such as an invalid association or a table without a primary
+key, must be fixed before the app can start.
 
 ## Validation errors
 

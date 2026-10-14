@@ -4,6 +4,10 @@
 
 ### Changed
 
+- Unknown model attributes now raise `AttributeError` instead of being ignored.
+  Use class defaults, properties with setters, or private attributes for temporary values.
+- Belongs-to assignments accept the target model or `None`; wrong types raise
+  `TypeError`. Has-many collections reject direct replacement; use `create()` to add records.
 - Removed `flaskteroids.registry.get`. Custom rules now use application-owned
   class attributes and must prepare classes without capturing app resources.
   Inherited rules visit each ancestor once, base-first in left-to-right order;
@@ -29,6 +33,10 @@
 
 ### Fixed
 
+- Missing optional packages remain optional; broken imports now stop setup
+  instead of being silently skipped.
+- Setup errors identify affected models and associations without hiding the
+  underlying failure. Tables without a primary key now fail clearly during setup.
 - Shared classes retain independent model mappings, associations, job adapters,
   mail delivery, and storage across applications. Repeated action preparation
   and successful app setup no longer stack callbacks, wrappers, or routes.

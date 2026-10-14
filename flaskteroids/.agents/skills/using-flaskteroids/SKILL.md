@@ -32,7 +32,9 @@ description: Use when building or modifying a Flaskteroids application.
   application in actions, callbacks, or initializers.
 - In `flask shell`, use `session.commit()` to save pending changes or
   `session.rollback()` to discard them. Normal context exit also commits.
-- Restart the application after changing its database schema.
+- Run `flask db:migrate` to create missing model tables, then restart the app.
+  The app can start before migration, but models need their tables before use.
+- Fix broken imports in model, controller, mailer, and job packages; don't suppress them.
 
 ## Preserve application behavior during UI changes
 
@@ -66,6 +68,12 @@ dependency internals or introduce a parallel implementation of a supported featu
 - Use the application's base models and Flaskteroids querying, associations,
   validations, callbacks, and secure-password APIs instead of direct SQLAlchemy
   session management, mapped model classes, or relationship plumbing.
+- Unknown public model attributes raise `AttributeError`. For temporary values,
+  declare class defaults or properties with setters, or use private attributes.
+  A type annotation alone isn't enough. Don't overwrite framework methods or state.
+- Assign belongs-to associations their target model or `None`; save new targets
+  first. Use iteration and `create()` for has-many collections, not replacement.
+  A rejected `update()` doesn't save or undo earlier assignments in that call.
 - Use application controllers, `config/routes.py`, resourceful routing, strong
   parameters (`params.expect`), and framework response helpers instead of standalone
   Flask routes or manually rebuilding the request pipeline. `render(json=value,
