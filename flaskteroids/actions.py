@@ -1,7 +1,7 @@
 import logging
 from collections import UserDict
 from functools import wraps
-from typing import Any
+from typing import Any, Literal
 
 from flask import g
 from werkzeug.datastructures import FileStorage
@@ -97,65 +97,54 @@ def _finalize_around(generators, original_error):
         raise error
 
 
+def _register_action(
+    cls: type,
+    method_name: str,
+    *,
+    only,
+    kind: Literal["before", "around", "after"],
+) -> None:
+    if not method_name.startswith("_"):
+        raise ProgrammerError(
+            f"{kind.capitalize()} action methods should follow conventions for private methods"
+        )
+    getattr(cls, method_name)
+    actions = only if only else None
+    definition = actions_for(cls)
+    if not actions:
+        actions = definition.names
+
+    if kind == "before":
+        chain = definition.before
+    elif kind == "around":
+        chain = definition.around
+    else:
+        chain = definition.after
+
+    for action_name in actions:
+        _logger.debug(
+            f"{kind}_action: setting {method_name} {kind} {action_name} on {cls.__name__}"
+        )
+        chain.setdefault(action_name, []).append(method_name)
+
+
 def before_action(method_name: str, *, only=None):
     def bind(cls):
-        if not method_name.startswith("_"):
-            raise ProgrammerError(
-                "Before action methods should follow conventions for private methods"
-            )
-        getattr(cls, method_name)
-        actions = only if only else None
-        definition = actions_for(cls)
-        if not actions:
-            actions = definition.names
-
-        for action_name in actions:
-            _logger.debug(
-                f"before_action: setting {method_name} before {action_name} on {cls.__name__}"
-            )
-            definition.before.setdefault(action_name, []).append(method_name)
+        _register_action(cls, method_name, only=only, kind="before")
 
     return bind
 
 
 def around_action(method_name: str, *, only=None):
     def bind(cls):
-        if not method_name.startswith("_"):
-            raise ProgrammerError(
-                "Around action methods should follow conventions for private methods"
-            )
-        getattr(cls, method_name)
-        actions = only if only else None
-        definition = actions_for(cls)
-        if not actions:
-            actions = definition.names
-
-        for action_name in actions:
-            _logger.debug(
-                f"around_action: setting {method_name} around {action_name} on {cls.__name__}"
-            )
-            definition.around.setdefault(action_name, []).append(method_name)
+        _register_action(cls, method_name, only=only, kind="around")
 
     return bind
 
 
 def after_action(method_name: str, *, only=None):
     def bind(cls):
-        if not method_name.startswith("_"):
-            raise ProgrammerError(
-                "After action methods should follow conventions for private methods"
-            )
-        getattr(cls, method_name)
-        actions = only if only else None
-        definition = actions_for(cls)
-        if not actions:
-            actions = definition.names
-
-        for action_name in actions:
-            _logger.debug(
-                f"after_action: setting {method_name} after {action_name} on {cls.__name__}"
-            )
-            definition.after.setdefault(action_name, []).append(method_name)
+        _register_action(cls, method_name, only=only, kind="after")
 
     return bind
 

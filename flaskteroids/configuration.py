@@ -1,16 +1,22 @@
+from collections.abc import Mapping
+from typing import Any
+
 from flask.config import Config as FlaskConfig
+
 from flaskteroids.jobs.adapters import CeleryQueueAdapter
 from flaskteroids.mail.delivery_methods import SMTPDeliveryMethod
 
 
 class Options:
-    def __init__(self, values=None, *, autovivify=False):
+    def __init__(
+        self, values: Mapping[str, Any] | None = None, *, autovivify: bool = False
+    ) -> None:
         object.__setattr__(self, "_values", {})
         object.__setattr__(self, "_autovivify", autovivify)
         for key, value in (values or {}).items():
             setattr(self, key, value)
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         values = object.__getattribute__(self, "_values")
         if name in values:
             return values[name]
@@ -20,21 +26,21 @@ class Options:
             return value
         raise AttributeError(name)
 
-    def __setattr__(self, name, value):
+    def __setattr__(self, name: str, value: Any) -> None:
         if isinstance(value, dict):
             value = Options(value)
         self._values[name] = value
 
-    def __getitem__(self, name):
+    def __getitem__(self, name: str) -> Any:
         return self._values[name]
 
-    def __setitem__(self, name, value):
+    def __setitem__(self, name: str, value: Any) -> None:
         setattr(self, name, value)
 
-    def get(self, name, default=None):
+    def get(self, name: str, default: Any = None) -> Any:
         return self._values.get(name, default)
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, Any]:
         return {
             key: value.to_dict() if isinstance(value, Options) else value
             for key, value in self._values.items()
@@ -42,6 +48,9 @@ class Options:
 
 
 class Configuration(FlaskConfig):
+    paths: Options
+    active_job: Options
+
     def __init__(self, root_path, defaults=None):
         super().__init__(root_path, defaults)
         self._defaults_version = None

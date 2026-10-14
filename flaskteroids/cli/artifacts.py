@@ -1,8 +1,8 @@
 import ast
-import sys
 import os
-import textwrap
 import subprocess
+import sys
+import textwrap
 from pathlib import Path
 
 
@@ -48,22 +48,16 @@ class ArtifactsBuilder:
             target.write(ast.unparse(tree))
         self._notify(f"    modify  {name}")
 
-    def run(self, cmd: str):
-        res = subprocess.run(
-            cmd.split(), cwd=self._base_path, capture_output=True, text=True
-        )
-        if res.returncode != 0:
-            raise ArtifactsBuilderException(
-                f"command {cmd} returned {res.returncode}:\n{res.stderr}"
-            )
-        self._notify(f"    run  {cmd}")
+    def run(self, cmd: str) -> None:
+        self._execute(cmd.split(), cmd)
 
-    def python_run(self, cmd: str):
-        res = subprocess.run(
-            [sys.executable, "-m", *cmd.split()],
-            cwd=self._base_path,
-            capture_output=True,
-            text=True,
+    def python_run(self, cmd: str) -> None:
+        self._execute([sys.executable, "-m", *cmd.split()], cmd)
+
+    def _execute(self, argv: list[str], cmd: str) -> None:
+        # Failed commands use the framework's status/stderr diagnostics below.
+        res = subprocess.run(  # noqa: PLW1510
+            argv, cwd=self._base_path, capture_output=True, text=True
         )
         if res.returncode != 0:
             raise ArtifactsBuilderException(

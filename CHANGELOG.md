@@ -4,6 +4,14 @@
 
 ### Changed
 
+- Renamed the misspelled `flaskteroids.model.LenghtConfig` validation configuration
+  type to `LengthConfig`; the old spelling has been removed.
+
+- Model internals now have focused validation, authentication, association, and
+  query modules; model APIs remain available from `flaskteroids.model`.
+- Legacy discovery imports from `flaskteroids.extensions.utils` now use the
+  canonical discovery functions. Missing optional packages remain optional, but
+  broken package dependencies propagate instead of being silently ignored.
 - Unknown model attributes now raise `AttributeError` instead of being ignored.
   Use class defaults, properties with setters, or private attributes for temporary values.
 - Belongs-to assignments accept the target model or `None`; wrong types raise

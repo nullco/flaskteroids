@@ -1,16 +1,33 @@
-import hmac
-import logging
-from datetime import UTC, datetime
-from functools import partial
-from typing import Any, NotRequired, TypedDict
+from __future__ import annotations
 
-from flask import current_app
-from itsdangerous import BadSignature, URLSafeTimedSerializer
-from sqlalchemy import func, inspect, select
-from sqlalchemy.orm import selectinload
-from werkzeug.security import check_password_hash, generate_password_hash
+from datetime import UTC, datetime
+from typing import Self
+
+from sqlalchemy import inspect
 
 from flaskteroids import fields
+from flaskteroids._models.associations import (
+    Relation,
+    _get_association,
+    belongs_to,
+    has_many,
+)
+from flaskteroids._models.authentication import (
+    PasswordAuthenticator,
+    has_secure_password,
+)
+from flaskteroids._models.query import ModelQuery
+from flaskteroids._models.records import _base
+
+# Configuration types remain directly importable, including those outside __all__.
+from flaskteroids._models.validation import (  # noqa: F401
+    ComparisonConfig,
+    Error,
+    Errors,
+    LengthConfig,
+    PresenceConfig,
+    validates,
+)
 from flaskteroids.attachments import attached as attached_storage
 from flaskteroids.attachments import has_many_attached, has_one_attached
 from flaskteroids.callbacks import (
@@ -37,14 +54,14 @@ from flaskteroids.callbacks import (
     run_callbacks,
 )
 from flaskteroids.db import session
-from flaskteroids.declarations import AssociationDefinition, model_for
-from flaskteroids.exceptions import ProgrammerError, RecordNotFoundException
-from flaskteroids.inflector import inflector
+from flaskteroids.declarations import model_for
+from flaskteroids.exceptions import RecordNotFoundException
 from flaskteroids.rules import bind_rules
 
 __all__ = [
     "Error",
     "Errors",
+    "LengthConfig",
     "Model",
     "ModelMeta",
     "ModelQuery",
@@ -78,414 +95,10 @@ __all__ = [
     "validates",
 ]
 
-_logger = logging.getLogger(__name__)
-
 
 def init(cls):
     bind_rules(cls)
     return cls
-
-
-class Error:
-    def __init__(self, args) -> None:
-        self._args = args
-
-    def full_message(self):
-        return self._args[-1]
-
-    def __repr__(self):
-        return f"<ModelError:{hex(id(self))} {{args={self._args}}}>"
-
-
-class Errors:
-    def __init__(self) -> None:
-        self._errors = []
-
-    def append(self, error):
-        self._errors.append(Error(error))
-
-    def extend(self, errors):
-        self._errors.extend([Error(e) for e in errors])
-
-    def full_messages(self):
-        return [e.full_message() for e in self._errors]
-
-    def __json__(self):
-        return self.full_messages()
-
-    @property
-    def count(self):
-        return len(self._errors)
-
-    def __bool__(self):
-        return bool(self._errors)
-
-    def __repr__(self):
-        return repr([e for e in self._errors])
-
-    def __len__(self):
-        return len(self._errors)
-
-
-def _password_reset_serializer(model_cls, pwname):
-    salt = f"pwres:{model_cls.__module__}.{model_cls.__qualname__}:{pwname}"
-    return URLSafeTimedSerializer(current_app.config["SECRET_KEY"], salt=salt)
-
-
-def _password_reset_fingerprint(serializer, password_digest):
-    return hmac.new(
-        serializer.secret_key, f"pwres:{password_digest}".encode(), "sha256"
-    ).hexdigest()
-
-
-class PasswordAuthenticator:
-    @classmethod
-    def authenticate_by(cls, **kwargs):
-        pwname = model_for(cls).password_field
-        if not pwname:
-            return
-        password = kwargs.pop(pwname)
-        entry = cls.find_by(**kwargs)
-        if not entry:
-            check_password_hash("a", "b")  # To protect against timing attacks
-            return None
-        if not entry.authenticate(password):
-            return None
-        return entry
-
-    @classmethod
-    def find_by_password_reset_token(cls, token):
-        pwname = model_for(cls).password_field
-        if not pwname:
-            raise ProgrammerError(
-                "Password reset tokens require has_secure_password()."
-            )
-        serializer = _password_reset_serializer(cls, pwname)
-        payload = serializer.loads(token, max_age=900)
-        if (
-            not isinstance(payload, dict)
-            or type(payload.get("id")) is not int
-            or not isinstance(payload.get("fingerprint"), str)
-            or not payload["fingerprint"].isascii()
-        ):
-            raise BadSignature("Invalid password reset token.")
-        entry = cls.find(payload["id"])
-        fingerprint = _password_reset_fingerprint(
-            serializer, getattr(entry, f"{pwname}_digest")
-        )
-        if not hmac.compare_digest(payload["fingerprint"], fingerprint):
-            raise BadSignature("Password reset token has been invalidated.")
-        return entry
-
-    def authenticate(self, password):
-        pwname = model_for(self.__class__).password_field
-        if not pwname:
-            return False
-        password_digest = getattr(self, f"{pwname}_digest")
-        return check_password_hash(password_digest, password)
-
-
-def has_secure_password(pwname="password"):
-    def bind(cls):
-
-        definition = model_for(cls)
-        definition.password_field = pwname
-        virtual_fields = definition.virtual_fields
-
-        def _set_password_digest(self):
-            value = getattr(self, f"{pwname}")
-            setattr(self, f"{pwname}_digest", generate_password_hash(value))
-
-        virtual_fields[pwname] = {"set_fn": _set_password_digest}
-
-        def _set_password_reset_token(self):
-            serializer = _password_reset_serializer(self.__class__, pwname)
-            fingerprint = _password_reset_fingerprint(
-                serializer, getattr(self, f"{pwname}_digest")
-            )
-            token = serializer.dumps({"id": self.id, "fingerprint": fingerprint})
-            self._virtual_fields[f"{pwname}_reset_token"] = token
-
-        virtual_fields[f"{pwname}_reset_token"] = {
-            "read_only": True,
-            "cache": False,
-            "set_fn": _set_password_reset_token,
-        }
-
-        validates(pwname, length={"minimum": 1, "maximum": 72})(cls)
-        validates(pwname, confirmation=True)(cls)
-
-    return bind
-
-
-def belongs_to(
-    name: str, class_name: str | None = None, foreign_key: str | None = None
-):
-    def bind(cls):
-        target = class_name or inflector.camelize(name)
-        fk_name = foreign_key or inflector.foreign_key(target)
-        definition = model_for(cls)
-        definition.associations[name] = AssociationDefinition(
-            name, "belongs_to", target, fk_name
-        )
-
-        def rel_wrapper(self):
-            association = _get_association(self.__class__, name=name)
-            if association.name in self._changes:
-                return self._changes[association.name]
-            related_base_instance = getattr(self._base_instance, association.name)
-            if related_base_instance is None:
-                return None
-            return _build(association.target, related_base_instance)
-
-        setattr(cls, name, property(rel_wrapper))
-        definition.validators.append(partial(_validate_fk, field=fk_name))
-
-    return bind
-
-
-class Relation:
-    def __init__(self, instance, related_cls, name) -> None:
-        self._instance = instance
-        self._related_cls = related_cls
-        self._name = name
-
-    def _entries(self):
-        return getattr(self._instance._base_instance, self._name)
-
-    def __len__(self):
-        return len(self._entries())
-
-    def __iter__(self):
-        for v in self._entries():
-            yield _build(self._related_cls, v)
-
-    def __repr__(self) -> str:
-        return repr([v for v in self])
-
-    def create(self, **kwargs):
-        association = _get_association(self._instance.__class__, name=self._name)
-        kwargs.setdefault(association.foreign_key, self._instance.id)
-        related_instance = self._related_cls.new(**kwargs)
-        entries = self._entries()
-        if not related_instance.save():
-            return related_instance
-        if related_instance._base_instance not in entries:
-            entries.append(related_instance._base_instance)
-        self._instance.save()
-        return related_instance
-
-
-def has_many(
-    name: str,
-    class_name: str | None = None,
-    foreign_key: str | None = None,
-    dependent: str | None = None,
-):
-    def bind(cls):
-        target = class_name or inflector.camelize(inflector.singularize(name))
-        fk_name = foreign_key or inflector.foreign_key(cls.__name__)
-        model_for(cls).associations[name] = AssociationDefinition(
-            name, "has_many", target, fk_name, dependent
-        )
-
-        def rel_wrapper(self):
-            association = _get_association(self.__class__, name=name)
-            return Relation(self, association.target, association.name)
-
-        setattr(cls, name, property(rel_wrapper))
-
-    return bind
-
-
-class PresenceConfig(TypedDict):
-    message: NotRequired[str]
-
-
-class LenghtConfig(TypedDict):
-    minimum: NotRequired[int]
-    maximum: NotRequired[int]
-
-
-class ComparisonConfig(TypedDict):
-    greater_than: NotRequired[Any]
-    less_than: NotRequired[Any]
-    less_than_or_equal_to: NotRequired[Any]
-    greater_than_or_equal_to: NotRequired[Any]
-    equal_to: NotRequired[Any]
-    other_than: NotRequired[Any]
-
-
-def validates(
-    field,
-    *,
-    presence: None | PresenceConfig | bool = None,
-    length: None | LenghtConfig = None,
-    confirmation: None | bool = None,
-    comparison: None | ComparisonConfig = None,
-):
-    options = {
-        "presence": {"config": presence, "validator": _validate_presence},
-        "length": {"config": length, "validator": _validate_length},
-        "confirmation": {"config": confirmation, "validator": _validate_confirmation},
-        "comparison": {"config": comparison, "validator": _validate_comparison},
-    }
-    options = {k: v for k, v in options.items() if v["config"] is not None}
-
-    def bind(model_cls):
-        definition = model_for(model_cls)
-        for value in options.values():
-            definition.validators.append(
-                partial(value["validator"], field=field, config=value["config"])
-            )
-        if "confirmation" in options:
-            definition.virtual_fields[f"{field}_confirmation"] = {}
-
-    return bind
-
-
-def _validate_presence(*, instance, field, config):
-    if not config:
-        return []
-    if isinstance(config, bool):
-        config = {"message": f"Field {field} is blank"}
-
-    errors = []
-    value = getattr(instance, field)
-    if value is None or value == "":
-        errors.append((f"{field}.presence", config["message"]))
-    return errors
-
-
-def _validate_length(*, instance, field, config: LenghtConfig | None):
-    if not config:
-        return []
-    errors = []
-    value = getattr(instance, field)
-
-    if value is not None:
-        minimum = config.get("minimum")
-        maximum = config.get("maximum")
-        if minimum is not None and len(value) < minimum:
-            errors.append((f"{field}.length", f"Field {field} is lower than {minimum}"))
-        if maximum is not None and len(value) > maximum:
-            errors.append(
-                (f"{field}.length", f"Field {field} is higher than {maximum}")
-            )
-    return errors
-
-
-def _validate_confirmation(*, instance, field, config: None | bool):
-    if not config:
-        return []
-    errors = []
-    value = getattr(instance, field)
-    if value is not None:
-        confirmation_field = f"{field}_confirmation"
-        if confirmation_field in instance._virtual_fields:
-            confirmation_value = instance._virtual_fields.get(confirmation_field)
-            if confirmation_value != value:
-                errors.append(
-                    (f"{field}.confirmation", f"Field {field} values do not match")
-                )
-    return errors
-
-
-def _resolve_comparison_value(instance, compare_value):
-    if callable(compare_value):
-        return compare_value()
-    if isinstance(compare_value, str):
-        return getattr(instance, compare_value, None)
-    return compare_value
-
-
-def _validate_comparison(*, instance, field, config):
-    if not config:
-        return []
-    errors = []
-    value = getattr(instance, field)
-    if value is None:
-        return errors
-
-    comparisons = {
-        "greater_than": (lambda a, b: a > b, "must be greater than"),
-        "less_than": (lambda a, b: a < b, "must be less than"),
-        "greater_than_or_equal_to": (
-            lambda a, b: a >= b,
-            "must be greater than or equal to",
-        ),
-        "less_than_or_equal_to": (lambda a, b: a <= b, "must be less than or equal to"),
-        "equal_to": (lambda a, b: a == b, "must be equal to"),
-        "other_than": (lambda a, b: a != b, "must be other than"),
-    }
-
-    for comparator, raw_compare_value in config.items():
-        if comparator not in comparisons:
-            continue
-
-        compare_value = _resolve_comparison_value(instance, raw_compare_value)
-        if compare_value is None:
-            continue
-
-        check_fn, message = comparisons[comparator]
-        try:
-            if not check_fn(value, compare_value):
-                _logger.debug(
-                    f"Comparison failed: instance={instance!r}, field={field}, value={value}, comparator={comparator}, compare_value={compare_value}"
-                )
-                errors.append(
-                    (f"{field}.comparison", f"Field {field} {message} {compare_value}")
-                )
-        except TypeError:
-            _logger.debug(
-                f"Comparison type error: instance={instance!r}, field={field}, value={value}, comparator={comparator}, compare_value={compare_value}"
-            )
-            errors.append(
-                (
-                    f"{field}.comparison",
-                    f"Field {field} cannot be compared with {compare_value}",
-                )
-            )
-
-    return errors
-
-
-def _validate_fk(*, instance, field, config=True):
-    if not config:
-        return []
-    association = _get_association(instance.__class__, name=field)
-    if not association:
-        return []
-    value = getattr(instance, field)
-    if not value:
-        return [(field, f"{association.name} must exist")]
-    related_cls = association.target
-    try:
-        related_cls.find(value)
-        return []
-    except RecordNotFoundException:
-        return [(field, f"{association.name} must exist")]
-
-
-def _get_association(model_cls, *, name):
-    definition = next(
-        (
-            entry
-            for entry in model_for(model_cls).associations.values()
-            if entry.name == name or entry.foreign_key == name
-        ),
-        None,
-    )
-    if definition is None:
-        return None
-    db = current_app.extensions["flaskteroids.db"]
-    association = db.binding(model_cls).associations[definition.name]
-    try:
-        db.binding(association.target)
-    except ProgrammerError as error:
-        error.add_note(f"While using {model_cls.__name__}.{definition.name}")
-        raise
-    return association
 
 
 def _declared_attribute(model_cls, name):
@@ -508,107 +121,6 @@ def _check_assignment_kwargs(model_cls, kwargs):
             raise AttributeError(
                 f"{model_cls.__name__}.{name} is reserved framework state or API."
             )
-
-
-def _build(model_cls, base_instance):
-    res = object.__new__(model_cls)
-    res._initialize()
-    res._base_instance = base_instance
-    run_callbacks(res, "initialize", None, lambda: None)
-    run_callbacks(res, "find", None, lambda: None)
-    return res
-
-
-def _base(model_cls):
-    return current_app.extensions["flaskteroids.db"].binding(model_cls).mapped_class
-
-
-class ModelQuery:
-    def __init__(self, model_cls):
-        self._model_cls = model_cls
-        self._model_base = _base(model_cls)
-        self._query = select(self._model_base)
-        self._limit = None
-        self._offset = None
-
-    def find(self, id):
-        found = self.where(id=id).first()
-        if not found:
-            raise RecordNotFoundException(
-                f"{self._model_cls.__name__} record with id {id} was not found"
-            )
-        return found
-
-    def where(self, *args, **kwargs):
-        if args:
-            self._query = self._query.filter(*args)
-        if kwargs:
-            self._query = self._query.filter_by(**kwargs)
-        return self
-
-    def includes(self, *args):
-        for rel in args:
-            _get_association(self._model_cls, name=rel)
-            self._query = self._query.options(
-                selectinload(getattr(self._model_base, rel))
-            )
-        return self
-
-    def all(self):
-        yield from self.__iter__()
-
-    def first(self):
-        res = session.execute(self._query).scalars().first()
-        if not res:
-            return None
-        return _build(self._model_cls, res)
-
-    def last(self):
-        if self._limit is not None or self._offset is not None:
-            records = session.execute(self._query).scalars().all()
-            return _build(self._model_cls, records[-1]) if records else None
-        primary_key = inspect(self._model_base).primary_key[0]
-        query = self._query.order_by(primary_key.desc())
-        res = session.execute(query).scalars().first()
-        if not res:
-            return None
-        return _build(self._model_cls, res)
-
-    def count(self):
-        query = select(func.count()).select_from(self._query.subquery())
-        return session.execute(query).scalar_one()
-
-    def order(self, **kwargs):
-        for k, v in kwargs.items():
-            field = getattr(self._model_base, k)
-            clause = field.desc() if v == "desc" else field.asc()
-            self._query = self._query.order_by(clause)
-        return self
-
-    def limit(self, value: int | None):
-        self._query = self._query.limit(value)
-        self._limit = value
-        return self
-
-    def offset(self, value: int | None):
-        self._query = self._query.offset(value)
-        self._offset = value
-        return self
-
-    def __iter__(self):
-        res = session.execute(self._query).scalars()
-        for r in res:
-            yield _build(self._model_cls, r)
-
-    def __repr__(self):
-        return repr([r for r in self])
-
-    def to_sql(self):
-        return str(self._query.compile(compile_kwargs={"literal_binds": True}))
-
-    def __json__(self):
-        res = session.execute(self._query).scalars()
-        return [_build(self._model_cls, r).__json__() for r in res]
 
 
 class ModelMeta(type):
@@ -756,58 +268,58 @@ class Model(metaclass=ModelMeta):
         return writable_values | stored_values | column_changes
 
     @classmethod
-    def new(cls, **kwargs):
+    def new(cls, **kwargs) -> Self:
         instance = cls(**kwargs)
         return instance
 
     @classmethod
-    def create(cls, **kwargs):
+    def create(cls, **kwargs) -> Self:
         instance = cls.new(**kwargs)
         instance.save()
         return instance
 
     @classmethod
-    def all(cls):
+    def all(cls) -> ModelQuery[Self]:
         return ModelQuery(cls)
 
     @classmethod
-    def count(cls):
+    def count(cls) -> int:
         return ModelQuery(cls).count()
 
     @classmethod
-    def first(cls):
+    def first(cls) -> Self | None:
         return ModelQuery(cls).first()
 
     @classmethod
-    def last(cls):
+    def last(cls) -> Self | None:
         return ModelQuery(cls).last()
 
     @classmethod
-    def includes(cls, *args):
+    def includes(cls, *args: str) -> ModelQuery[Self]:
         return ModelQuery(cls).includes(*args)
 
     @classmethod
-    def find(cls, id):
+    def find(cls, id) -> Self:
         return ModelQuery(cls).find(id)
 
     @classmethod
-    def find_by(cls, **kwargs):
+    def find_by(cls, **kwargs) -> Self | None:
         return ModelQuery(cls).where(**kwargs).first()
 
     @classmethod
-    def where(cls, *args, **kwargs):
+    def where(cls, *args, **kwargs) -> ModelQuery[Self]:
         return ModelQuery(cls).where(*args, **kwargs)
 
     @classmethod
-    def order(cls, **kwargs):
+    def order(cls, **kwargs: str) -> ModelQuery[Self]:
         return ModelQuery(cls).order(**kwargs)
 
     @classmethod
-    def limit(cls, value: int | None):
+    def limit(cls, value: int | None) -> ModelQuery[Self]:
         return ModelQuery(cls).limit(value)
 
     @classmethod
-    def offset(cls, value: int | None):
+    def offset(cls, value: int | None) -> ModelQuery[Self]:
         return ModelQuery(cls).offset(value)
 
     def update(self, **kwargs):

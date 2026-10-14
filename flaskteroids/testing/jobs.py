@@ -1,29 +1,37 @@
-from dataclasses import dataclass
+from __future__ import annotations
 
-from flask import current_app, has_app_context
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
+
+from flask import Flask, current_app, has_app_context
 
 from flaskteroids.jobs.job import Job
+
+if TYPE_CHECKING:
+    from flaskteroids.configuration import Options
 
 
 @dataclass(frozen=True)
 class EnqueuedJob:
     job_class: type[Job]
-    args: tuple
-    kwargs: dict
+    args: tuple[Any, ...]
+    kwargs: dict[str, Any]
 
 
 class TestQueueAdapter:
     __test__ = False
 
-    def __init__(self, application, config):
+    def __init__(self, application: Flask, config: Options) -> None:
         self.application = application
-        self.enqueued_jobs = []
+        self.enqueued_jobs: list[EnqueuedJob] = []
         self.performing_enqueued_jobs = False
 
-    def register(self, job_name, job_class):
+    def register(self, job_name: str, job_class: type[Job]) -> None:
         pass
 
-    def enqueue(self, job_class, args, kwargs):
+    def enqueue(
+        self, job_class: type[Job], args: tuple[Any, ...], kwargs: dict[str, Any]
+    ) -> EnqueuedJob:
         job = EnqueuedJob(job_class=job_class, args=tuple(args), kwargs=dict(kwargs))
         if self.performing_enqueued_jobs:
             self._perform(job)
@@ -31,7 +39,7 @@ class TestQueueAdapter:
             self.enqueued_jobs.append(job)
         return job
 
-    def perform_all(self):
+    def perform_all(self) -> None:
         while self.enqueued_jobs:
             job = self.enqueued_jobs.pop(0)
             self._perform(job)
@@ -42,6 +50,6 @@ class TestQueueAdapter:
         with self.application.app_context():
             return job.job_class().perform(*job.args, **job.kwargs)
 
-    def clear(self):
+    def clear(self) -> None:
         self.enqueued_jobs.clear()
         self.performing_enqueued_jobs = False

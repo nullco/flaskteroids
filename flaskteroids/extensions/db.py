@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 from dataclasses import dataclass, field
 
@@ -6,7 +8,7 @@ from sqlalchemy import MetaData, Table, create_engine, event, inspect
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import NoReferencedTableError
 from sqlalchemy.ext.automap import automap_base
-from sqlalchemy.orm import relationship, sessionmaker
+from sqlalchemy.orm import Session, relationship, sessionmaker
 
 from flaskteroids.declarations import model_for
 from flaskteroids.discovery import discover_classes
@@ -19,7 +21,7 @@ _logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class ResolvedAssociation:
-    target: type
+    target: type[Model]
     name: str
     foreign_key: str
 
@@ -85,17 +87,17 @@ class SQLAlchemyExtension:
         self._app = app
         app.extensions["flaskteroids.db"] = self
 
-    def create_session(self):
+    def create_session(self) -> Session:
         return self._session_factory()
 
-    def new_session(self):
+    def new_session(self) -> Session:
         return self._session_factory()
 
     @property
-    def models(self):
+    def models(self) -> dict[str, type[Model]]:
         return self._models
 
-    def binding(self, model_cls):
+    def binding(self, model_cls: type[Model]) -> ModelBinding:
         if model_cls not in self._bindings:
             raise ProgrammerError(
                 f"Model {model_cls.__name__} is not registered in this application."
@@ -120,7 +122,7 @@ class SQLAlchemyExtension:
         available_tables = self._reflect_tables()
         base = automap_base(metadata=self._metadata)
         base.prepare(generate_relationship=self._skip_relationships)
-        bindings = {}
+        bindings: dict[type[Model], ModelBinding] = {}
         for name, model in self._models.items():
             table_name = self._get_table_name(name)
             mapped = getattr(base.classes, table_name, None)
