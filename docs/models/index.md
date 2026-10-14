@@ -248,14 +248,21 @@ The rule and authenticator provide:
 `render(json=record)` and `render(json=Model.all())` serialize database columns,
 including pending column changes. They omit `password`, `password_confirmation`,
 `password_digest`, and `password_reset_token`. The corresponding attributes for
-custom `has_secure_password()` field names are omitted too.
+custom `has_secure_password()` field names are omitted too. The same serialization
+and filtering apply to records and queries nested in dictionaries, lists, or tuples:
+
+```python
+return render(json=[first_post, second_post])
+return render(json={"posts": Post.all()})
+```
 
 Virtual fields and associations are not included automatically. Serialization
 does not generate reset tokens or evaluate read-only virtual fields. Read
 `user.password_reset_token` explicitly when issuing a password reset.
 
 To select fewer columns or add an application-specific value, override the existing
-`__json__()` protocol. Queries use the same override for each record:
+`__json__()` protocol. Queries and nested collections use the same override for
+each record:
 
 ```python
 class User(Model):

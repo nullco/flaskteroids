@@ -102,12 +102,20 @@ preserves the requested status, including `HTTPStatus` values.
 
 Supported payloads include dictionaries, lists, strings, numbers, booleans, and
 `None`. Empty dictionaries, lists, and strings remain JSON values; `None` becomes
-JSON `null`. Values inside ordinary dictionaries and lists must be serializable
-by Flask's JSON provider.
+JSON `null`. Tuples become JSON arrays.
 
-Models, queries, and other top-level objects with a callable `__json__()` use
-that protocol. Model errors serialize as the list returned by
-`errors.full_messages()`, including `[]` when there are no errors:
+Models, queries, and other objects with a callable `__json__()` use that protocol,
+including when nested inside dictionaries, lists, or tuples. Values returned by
+`__json__()` are processed recursively too. Other values are passed to Flask's
+JSON provider, preserving its supported types and custom serialization.
+
+```python
+return render(json=[post, another_post])
+return render(json={"posts": Post.all(), "featured": post})
+```
+
+Model errors serialize as the list returned by `errors.full_messages()`, including
+`[]` when there are no errors:
 
 ```python
 return render(json=post.errors, status=422)

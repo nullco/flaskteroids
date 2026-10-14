@@ -75,9 +75,18 @@ def render(action=None, *, status=200, json=None):
         )
         return make_response(view, status)
     else:
-        serializer = getattr(json, "__json__", None)
-        data = serializer() if callable(serializer) else json
-        return make_response(jsonify(data), status)
+        return make_response(jsonify(_serialize_json(json)), status)
+
+
+def _serialize_json(value):
+    serializer = getattr(value, "__json__", None)
+    if callable(serializer):
+        return _serialize_json(serializer())
+    if isinstance(value, dict):
+        return {key: _serialize_json(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_serialize_json(item) for item in value]
+    return value
 
 
 def head(status=200, headers=None):

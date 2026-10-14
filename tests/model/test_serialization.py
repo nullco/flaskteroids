@@ -93,14 +93,33 @@ def test_model_json_excludes_authentication_fields(account_model, json_response,
         user.name = "Bob"
         setattr(user, password_field, "replacement-password")
 
-    assert json_response(user) == {"id": user.id, "name": user.name}
+    expected = {"id": user.id, "name": user.name}
+    assert json_response(user) == expected
+    assert json_response([user]) == [expected]
+    assert json_response({"data": {"users": [user]}}) == {"data": {"users": [expected]}}
+
+
+def test_model_list_preserves_order_and_input(account_model, json_response):
+    account, _ = account_model
+    first = account.new(name="Alice")
+    second = account.new(name="Bob")
+    users = [second, first, second]
+
+    assert json_response(users) == [
+        {"id": None, "name": "Bob"},
+        {"id": None, "name": "Alice"},
+        {"id": None, "name": "Bob"},
+    ]
+    assert users == [second, first, second]
 
 
 def test_query_json_excludes_authentication_fields(account_model, json_response):
     account, password_field = account_model
     user = account.create(name="Alice", **{password_field: "secret-password"})
 
-    assert json_response(account.all()) == [{"id": user.id, "name": "Alice"}]
+    expected = [{"id": user.id, "name": "Alice"}]
+    assert json_response(account.all()) == expected
+    assert json_response({"users": account.all()}) == {"users": expected}
 
 
 def test_json_does_not_generate_reset_tokens(account_model, json_response, mocker):
@@ -110,6 +129,8 @@ def test_json_does_not_generate_reset_tokens(account_model, json_response, mocke
 
     json_response(user)
     json_response(account.all())
+    json_response([user])
+    json_response({"users": [user], "query": account.all()})
 
     dumps.assert_not_called()
     token = getattr(user, f"{password_field}_reset_token")
@@ -130,6 +151,8 @@ def test_custom_json_serialization_still_works(account_model, json_response, moc
 
     assert json_response(user) == {"display_name": "Alice"}
     assert json_response(account.all()) == [{"display_name": "Alice"}]
+    assert json_response([user]) == [{"display_name": "Alice"}]
+    assert json_response({"users": [user]}) == {"users": [{"display_name": "Alice"}]}
 
 
 @pytest.mark.parametrize("persisted", [False, True])
