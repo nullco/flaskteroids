@@ -109,6 +109,14 @@ with no permitted attributes after filtering. Required scalar roots, such as
 zero. Incorrect supplied types raise `InvalidParameter`; making fields optional
 does not relax the expected structure.
 
+During HTTP requests, Flaskteroids automatically translates `MissingParameter`
+and `InvalidParameter` into **400 Bad Request** responses; controllers do not
+need to catch them. The default response is an HTML error page, including when
+JSON is requested. Applications can customize either response with Flask's
+`register_error_handler()` in an initializer (for example, to return JSON).
+Direct calls outside request dispatch still raise these exceptions. Programmer
+errors and unrelated exceptions are not translated into 400 responses.
+
 ## CSRF protection
 
 Flaskteroids checks CSRF tokens on state-changing requests, meaning all methods except GET, HEAD, OPTIONS, and TRACE. `form_with` includes the token for you.

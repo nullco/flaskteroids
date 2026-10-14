@@ -18,6 +18,7 @@ from flaskteroids.cli.db import commands as db_commands
 from flaskteroids.cli.generators import commands as generate_commands
 from flaskteroids.csrf import CSRFToken
 from flaskteroids.db import session
+from flaskteroids.exceptions import InvalidParameter, MissingParameter
 from flaskteroids.extensions.db import SQLAlchemyExtension
 from flaskteroids.extensions.jobs import JobsExtension
 from flaskteroids.extensions.mail import MailExtension
@@ -71,6 +72,8 @@ def _register_error_handlers(app):
 
         return _
 
+    for exception in (MissingParameter, InvalidParameter):
+        app.register_error_handler(exception, handle_error(HTTPStatus.BAD_REQUEST))
     app.register_error_handler(
         model.RecordNotFoundException, handle_error(HTTPStatus.NOT_FOUND)
     )

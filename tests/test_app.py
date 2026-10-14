@@ -4,6 +4,13 @@ from http import HTTPStatus
 import pytest
 
 from flaskteroids.application import Application
+from flaskteroids.controller import render
+from flaskteroids.exceptions import (
+    InvalidParameter,
+    MissingParameter,
+    ProgrammerError,
+    UserError,
+)
 
 
 def test_broken_models_package_stops_setup(discovery_package, tmp_path):
@@ -45,6 +52,60 @@ def test_users_create(client):
         "/users/", data={"csrf_token": csrf_token, "user.username": "test"}
     )
     assert res.status_code == HTTPStatus.FOUND
+
+
+@pytest.mark.parametrize("accept", ["text/html", "application/json"])
+@pytest.mark.parametrize(
+    "data, message",
+    [
+        ({}, "Parameter is missing or empty"),
+        ({"user.admin": "true"}, "Parameter is missing or empty"),
+        ({"user": "wrong"}, "Invalid parameter type. Not a dict"),
+        ({"user.username.name": "wrong"}, "Invalid parameter type. Not a scalar"),
+    ],
+)
+def test_parameter_errors_return_bad_request(client, accept, data, message):
+    client.application.config.update(TESTING=True, PROPAGATE_EXCEPTIONS=True)
+    csrf_token = _extract_csrf_token(client.get("/users/new/"))
+
+    response = client.post(
+        "/users/",
+        data={"csrf_token": csrf_token, **data},
+        headers={"Accept": accept},
+    )
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert response.mimetype == "text/html"
+    assert "Bad Request" in response.text
+    assert message in response.text
+
+
+@pytest.mark.parametrize(
+    "exception, data",
+    [(MissingParameter, {}), (InvalidParameter, {"user": "wrong"})],
+)
+def test_parameter_error_handlers_can_be_overridden(client, exception, data):
+    @client.application.errorhandler(exception)
+    def parameter_error(error):
+        return render(json={"error": type(error).__name__}, status=400)
+
+    csrf_token = _extract_csrf_token(client.get("/users/new/"))
+    response = client.post("/users/", data={"csrf_token": csrf_token, **data})
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert response.get_json() == {"error": exception.__name__}
+
+
+@pytest.mark.parametrize("exception", [ProgrammerError, UserError, RuntimeError])
+def test_unrelated_errors_are_not_bad_requests(app, client, exception):
+    app.config.update(TESTING=True, PROPAGATE_EXCEPTIONS=True)
+
+    @app.get("/unrelated-error/")
+    def unrelated_error():
+        raise exception("Unexpected failure")
+
+    with pytest.raises(exception, match="Unexpected failure"):
+        client.get("/unrelated-error/")
 
 
 def test_users_update(client):
