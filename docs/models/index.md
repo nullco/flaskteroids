@@ -162,7 +162,9 @@ Validations check model attributes before saving. A failed validation prevents t
 
 ### Presence
 
-Reject empty values:
+Reject `None`, empty strings, and whitespace-only strings (including Unicode
+whitespace). Validation does not trim or otherwise change the attribute:
+`" hello "` is valid and is stored unchanged. Numeric zero remains valid.
 
 ```python
 from flaskteroids.model import Model, validates

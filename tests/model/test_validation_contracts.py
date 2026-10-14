@@ -52,8 +52,9 @@ def test_errors_public_container():
 
 
 @pytest.mark.parametrize("presence", [None, False, {}])
-def test_disabled_presence(entry_model, presence):
-    entry = entry_model(validates("name", presence=presence)).new(name="")
+@pytest.mark.parametrize("name", ["", "   "])
+def test_disabled_presence(entry_model, presence, name):
+    entry = entry_model(validates("name", presence=presence)).new(name=name)
     assert entry.save() is True
     assert not entry.errors
 
@@ -92,14 +93,51 @@ def test_presence_rejects_omitted_and_explicit_null_attributes(entry_model, attr
     assert Entry.count() == 0
 
 
-def test_presence_rejects_null_update_without_changing_persisted_value(entry_model):
+@pytest.mark.parametrize("name", ["", "   ", "\t\n\r", "\u00a0", "\u2003\u3000"])
+@pytest.mark.parametrize("presence", [True, {"message": "required"}])
+def test_presence_rejects_blank_strings(entry_model, name, presence):
+    Entry = entry_model(validates("name", presence=presence))
+    entry = Entry.new(name=name)
+
+    assert entry.save() is False
+    assert entry.name == name
+    assert entry.errors.full_messages() == [
+        "Field name is blank" if presence is True else "required"
+    ]
+    assert Entry.count() == 0
+
+
+@pytest.mark.parametrize(
+    "name", ["hello", " hello ", "\t hello\n", "\u00a0hello\u3000"]
+)
+def test_presence_preserves_nonblank_strings(entry_model, name):
+    Entry = entry_model(validates("name", presence=True))
+    entry = Entry.new(name=name)
+
+    assert entry.save() is True
+    assert not entry.errors
+    assert entry.reload().name == name
+
+
+def test_presence_accepts_zero(entry_model):
+    entry = entry_model(validates("quantity", presence=True)).new(quantity=0)
+
+    assert entry.save() is True
+    assert not entry.errors
+    assert entry.reload().quantity == 0
+
+
+@pytest.mark.parametrize("name", [None, "   ", "\t\n", "\u00a0"])
+def test_presence_rejects_blank_update_without_changing_persisted_value(
+    entry_model, name
+):
     Entry = entry_model(validates("name", presence=True))
     entry = Entry.create(name="Existing")
 
     assert entry.update(quantity=1) is True
     assert entry.name == "Existing"
-    assert entry.update(name=None) is False
-    assert entry.name is None
+    assert entry.update(name=name) is False
+    assert entry.name == name
     assert entry.errors.full_messages() == ["Field name is blank"]
     assert entry.reload().name == "Existing"
 

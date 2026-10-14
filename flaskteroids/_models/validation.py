@@ -111,7 +111,7 @@ def _validate_presence(
 
     errors = []
     value = getattr(instance, field)
-    if value is None or value == "":
+    if value is None or (isinstance(value, str) and not value.strip()):
         errors.append((f"{field}.presence", config["message"]))
     return errors
 
