@@ -12,6 +12,7 @@ from packaging.version import InvalidVersion, Version
 
 from flaskteroids.cli.agent_skills import agent_skills
 from flaskteroids.cli.artifacts import ArtifactsBuilder, ArtifactsBuilderException
+from flaskteroids.cli.assets import precompile as assets_precompile
 from flaskteroids.cli.attachments import STORAGE_YAML
 from flaskteroids.cli.db.config import initialize_migrations
 from flaskteroids.cli.generators.templates import template
@@ -20,7 +21,7 @@ from flaskteroids.credentials import encrypt, generate_key
 
 @click.group()
 def cli():
-    """Create applications and locate agent skills.
+    """Create applications, compile assets, and locate agent skills.
 
     For application commands, run bin/flask --help from the application root.
     Use COMMAND --help for usage and examples.
@@ -28,6 +29,7 @@ def cli():
 
 
 cli.add_command(agent_skills)
+cli.add_command(assets_precompile)
 
 
 @cli.command("new")

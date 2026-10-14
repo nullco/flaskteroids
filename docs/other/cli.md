@@ -27,6 +27,16 @@ It defaults to development only when FLASK_ENV is unset and honors DATABASE_URL.
 Commit `uv.lock`; CI and Docker use `uv sync --locked`. Prerelease/development
 generators pin their exact version; unpublished versions need an explicit source.
 
+## Asset precompilation
+
+```sh
+bin/flask assets:precompile
+flaskteroids assets:precompile --root /path/to/app
+```
+
+Compile without application boot. See [Assets](assets.md) for build options
+and production serving.
+
 ## Database preparation
 
 ```sh

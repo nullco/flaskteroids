@@ -31,6 +31,10 @@ successful with a no-tests message; direct pytest retains its strict exit status
 Install browsers explicitly when adding system tests:
 `.venv/bin/playwright install chromium`.
 
+Assets live in `app/assets` and are linked by the generated layout.
+See [Assets](https://nullco.github.io/flaskteroids/other/assets/) for helpers,
+build commands, and configuration.
+
 Never commit `config/master.key` or plaintext secrets. Production requires the matching
 `FLASKTEROIDS_MASTER_KEY`; `SECRET_KEY_BASE` is not a substitute.
 See [deploy/README.md](deploy/README.md) for Docker, persistent storage and release steps.

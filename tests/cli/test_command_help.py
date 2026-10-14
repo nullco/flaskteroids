@@ -17,6 +17,13 @@ STANDALONE_HELP = {
         "overwritten",
         "flaskteroids new my_app",
     ],
+    ("assets:precompile",): [
+        "--root",
+        "--source",
+        "--output",
+        "without booting",
+        "bin/flask assets:precompile",
+    ],
     ("agent-skills",): ["No running app is required", "installed Flaskteroids version"],
     ("agent-skills", "path"): [
         "absolute agent skills path",
@@ -25,6 +32,7 @@ STANDALONE_HELP = {
 }
 
 APPLICATION_HELP = {
+    ("assets:precompile",): ["--root", "fingerprinted", "database", "Examples"],
     ("generate",): ["alias: g", "overwritten", "flask db:migrate"],
     ("g",): ["alias: g", "overwritten"],
     ("generate", "migration"): [

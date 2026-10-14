@@ -40,6 +40,10 @@ description: Use when building or modifying a Flaskteroids application.
   direct pytest is strict. Real failures stay nonzero. Install Chromium explicitly
   when system tests exist; an empty system suite needs no browser. Test adapters
   need no broker, SMTP or external storage.
+- Use `stylesheet_link_tag("application")` and `asset_path("logo.png")` for
+  `app/assets`. Run `bin/flask assets:precompile` during production builds
+  (included in Docker). See [Assets](https://nullco.github.io/flaskteroids/other/assets/)
+  for paths, CSS references, configuration, and limits.
 - Default Docker web startup prepares before workers. Coordinate a single release
   step for fleets; runtime keys and persistent storage are explicit prerequisites.
   Kamal integration is deferred, not replaced by unsafe remote-deployment examples.

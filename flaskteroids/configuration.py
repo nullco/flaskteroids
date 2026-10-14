@@ -3,6 +3,7 @@ from typing import Any
 
 from flask.config import Config as FlaskConfig
 
+from flaskteroids.assets import OUTPUT_PATH, SOURCE_PATH
 from flaskteroids.jobs.adapters import CeleryQueueAdapter
 from flaskteroids.mail.delivery_methods import SMTPDeliveryMethod
 
@@ -63,6 +64,14 @@ class Configuration(FlaskConfig):
                 "jobs": "app.jobs",
                 "mailers": "app.mailers",
                 "initializers": "config/initializers",
+            }
+        )
+        self.assets = Options(
+            {
+                "source_path": SOURCE_PATH,
+                "output_path": OUTPUT_PATH,
+                "prefix": "/assets",
+                "serve": True,
             }
         )
         self.active_job = Options(

@@ -119,6 +119,13 @@ def test_setup_failure_stops_and_never_claims_completion(
     assert ("db:prepare" in Path(env["TRACE"]).read_text()) is prepared
 
 
+def test_asset_launcher_uses_bootless_cli(scripts_app, script_environment):
+    result = run_script(scripts_app, "flask", script_environment, "assets:precompile")
+    assert result.returncode == 0, result.stderr
+    trace = Path(script_environment["TRACE"]).read_text().splitlines()
+    assert trace[-3:] == ["-m", "flaskteroids", "assets:precompile"]
+
+
 def test_setup_missing_uv_does_not_install_anything(scripts_app, script_environment):
     env = script_environment | {"PATH": "/usr/bin:/bin"}
     result = run_script(scripts_app, "setup", env)

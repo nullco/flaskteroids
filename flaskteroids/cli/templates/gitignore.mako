@@ -3,6 +3,7 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 tmp/
+public/assets/
 storage/*
 !storage/.keep
 config/master.key

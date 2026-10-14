@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Added
+
+- Rails-style asset helpers and `assets:precompile`, using Flask's native static
+  endpoint. Generated layouts and Docker builds integrate assets.
+  See [Assets](docs/other/assets.md).
+
 ### Changed
 
 - Assigning `None` to a boolean column now preserves null instead of casting it

@@ -10,6 +10,7 @@ ENV PATH="/app/.venv/bin:$PATH"
 WORKDIR /app
 COPY --from=deps /app/.venv /app/.venv
 COPY . .
+RUN bin/flask assets:precompile
 RUN addgroup --system app && adduser --system --ingroup app --home /app --no-create-home app \
     && mkdir -p /app/storage && chown -R app:app /app
 USER app

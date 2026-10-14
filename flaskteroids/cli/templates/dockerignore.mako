@@ -5,6 +5,7 @@ __pycache__/
 .ruff_cache/
 *.pyc
 tmp/
+public/assets/
 storage/*
 !storage/.keep
 config/master.key

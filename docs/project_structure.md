@@ -30,6 +30,7 @@ my_project/
 │   └── routes.py
 ├── db/
 │   └── migrate/
+├── public/assets/       # fingerprinted build output and manifest; not committed
 ├── storage/
 ├── test/
 ├── pyproject.toml
@@ -41,7 +42,8 @@ my_project/
 
 | Path | Contents |
 | --- | --- |
-| `app/assets` | Stylesheets and images. |
+| `app/assets` | Source stylesheets/images, served automatically in development/test. |
+| `public/assets` | Fingerprinted production assets and manifest, created by precompilation. |
 | `app/controllers` | Request-handling actions. |
 | `app/helpers` | Template helpers. |
 | `app/models` | Database-backed models and business logic. |
@@ -56,7 +58,7 @@ my_project/
 | `config/routes.py` | Application routes. |
 | `db/migrate` | Database migrations. |
 | `storage` | Local database files and uploads; keep persistent in containers. |
-| `bin/flask` | Thin app-interpreter launcher, no activation or runtime uv needed. |
+| `bin/flask` | App-interpreter command launcher. |
 | `bin/setup` | Repeatable uv sync and selected-database preparation. |
 | `bin/release migrate` | Explicit preparation for a coordinated release step. |
 | `bin/docker-entrypoint` | Prepare before default Gunicorn web startup only. |
@@ -70,5 +72,7 @@ Default generation installs and prepares; `--skip-install` defers that work to
 only migration files and stays strict; `db:prepare` applies existing migrations
 without resetting data, seeding, repairing files, or creating external databases.
 The generated app is a non-package uv project, not a distributable library.
+
+See [Assets](other/assets.md) for helpers and build configuration.
 
 See [Configuration](configuration.md) for the boot process, environments, credentials, and database setting precedence.

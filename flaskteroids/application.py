@@ -40,7 +40,10 @@ class Application(Flask):
     def __init__(self, *, environment=None, root_path=None):
         project_root = Path(root_path or self._project_root()).resolve()
         super().__init__(
-            self.__class__.__module__, root_path=str(project_root), template_folder=None
+            self.__class__.__module__,
+            root_path=str(project_root),
+            template_folder=None,
+            static_folder=None,
         )
         self.project_root = project_root
         self.env = Environment(

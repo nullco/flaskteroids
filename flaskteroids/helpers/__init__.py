@@ -4,6 +4,8 @@ from flask import current_app, render_template, url_for
 from markupsafe import Markup, escape
 
 from flaskteroids._html import attributes, validate_url
+from flaskteroids.assets import asset_path as asset_path
+from flaskteroids.assets import stylesheet_link_tag as stylesheet_link_tag
 from flaskteroids.csrf import CSRFToken
 from flaskteroids.form import Form
 from flaskteroids.inflector import inflector

@@ -6,11 +6,13 @@ from werkzeug.exceptions import default_exceptions
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from flaskteroids import helpers, model
+from flaskteroids.assets import init_assets
 from flaskteroids.attachments import UploadTooLarge, blob_path, blob_url
 from flaskteroids.attachments.extension import AttachmentsExtension
 from flaskteroids.cache.inmemory import InMemoryCache
 from flaskteroids.cli import credentials as credentials_commands
 from flaskteroids.cli import testing as testing_commands
+from flaskteroids.cli.assets import precompile as assets_precompile
 from flaskteroids.cli.attachments import install as attachments_install
 from flaskteroids.cli.db import commands as db_commands
 from flaskteroids.cli.generators import commands as generate_commands
@@ -39,6 +41,7 @@ def initialize_app(app):
     _setup_jobs(app)
     _setup_mailers(app)
     AttachmentsExtension(app)
+    init_assets(app)
     app._flaskteroids_initialized = True
 
 
@@ -88,6 +91,7 @@ def _register_cli_commands(app):
     app.cli.add_command(testing_commands.test)
     app.cli.add_command(testing_commands.test_system)
     app.cli.add_command(attachments_install)
+    app.cli.add_command(assets_precompile)
 
 
 def _prepare_shell_context(app):
