@@ -1,0 +1,15 @@
+default: &default
+  adapter: sqlite3
+  pool: 5
+
+development:
+  <<: *default
+  database: storage/development.sqlite3
+
+test:
+  <<: *default
+  database: storage/test.sqlite3
+
+production:
+  <<: *default
+  database: storage/production.sqlite3

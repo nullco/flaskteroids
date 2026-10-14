@@ -1,0 +1,13 @@
+.git/
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.pyc
+tmp/
+storage/*
+!storage/.keep
+config/master.key
+config/credentials/*.key
+.env
+.env.*

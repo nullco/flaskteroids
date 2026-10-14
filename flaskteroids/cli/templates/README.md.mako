@@ -1,0 +1,36 @@
+# ${project_title}
+
+## Getting started
+
+Default generation installs dependencies, writes uv.lock, and prepares development SQLite.
+From a fresh checkout, or after changing dependencies, run `bin/setup`.
+If you generated with `--skip-install`, run setup before running commands or building Docker.
+
+```sh
+bin/setup
+bin/flask run
+bin/flask test
+bin/flask test:system
+bin/flask generate scaffold Post title:string content:text
+bin/flask db:prepare
+```
+
+Bash/POSIX, Git and uv are setup prerequisites. No shell activation is needed.
+Commit `uv.lock`: setup uses `uv sync` without unconditional upgrades; CI and Docker
+use `uv sync --locked` and fail on missing/stale locks. This app is not a Python package.
+The framework constraint tracks the generator's minor line; prerelease/development
+generators are pinned and require an explicitly configured source if unpublished.
+
+Setup prepares the selected database; explicit `FLASK_ENV` and `DATABASE_URL` are honored.
+External databases must already exist, with their Python drivers added and locked.
+Preparation retains records and credentials; it neither repairs migrations nor runs seeds.
+Start servers/tests in a fresh process after migrating.
+
+A health integration test is included. Framework test commands report empty selections as
+successful with a no-tests message; direct pytest retains its strict exit status.
+Install browsers explicitly when adding system tests:
+`.venv/bin/playwright install chromium`.
+
+Never commit `config/master.key` or plaintext secrets. Production requires the matching
+`FLASKTEROIDS_MASTER_KEY`; `SECRET_KEY_BASE` is not a substitute.
+See [deploy/README.md](deploy/README.md) for Docker, persistent storage and release steps.

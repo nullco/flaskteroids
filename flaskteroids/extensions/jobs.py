@@ -1,12 +1,19 @@
+from __future__ import annotations
+
 import logging
+from typing import TYPE_CHECKING, Any
 
 from celery import signals
 
 from flaskteroids.attachments.jobs import PurgeJob
 from flaskteroids.discovery import discover_classes
 from flaskteroids.exceptions import ProgrammerError
+from flaskteroids.jobs.adapters import QueueAdapter
 from flaskteroids.jobs.job import Job
 from flaskteroids.mailer import MessageDeliveryJob
+
+if TYPE_CHECKING:
+    from flaskteroids.configuration import Options
 
 _logger = logging.getLogger(__name__)
 
@@ -19,9 +26,9 @@ def _setup_logging(*args, **kwargs):
 
 class JobsExtension:
     def __init__(self, app=None):
-        self._jobs = {}
-        self._names = {}
-        self.queue_adapter = None
+        self._jobs: dict[str, type[Job]] = {}
+        self._names: dict[type[Job], str] = {}
+        self.queue_adapter: QueueAdapter | None = None
         if app:
             self.init_app(app)
 
@@ -32,7 +39,7 @@ class JobsExtension:
             )
         if "flaskteroids.jobs" in app.extensions:
             return
-        config = app.config.active_job
+        config: Options = app.config.active_job
         jobs_module = app.config.paths.jobs
         self.queue_adapter = config.queue_adapter(app, config)
         for job_name, job_class in discover_classes(jobs_module, Job).items():
@@ -42,7 +49,7 @@ class JobsExtension:
         self._app = app
         app.extensions["flaskteroids.jobs"] = self
 
-    def register_job(self, job_name, job_class):
+    def register_job(self, job_name: str, job_class: type[Job]) -> None:
         if job_name in self._jobs:
             if self._jobs[job_name] is job_class:
                 return
@@ -58,7 +65,9 @@ class JobsExtension:
         self._names[job_class] = job_name
         _logger.debug("registered task for job %s", job_class)
 
-    def enqueue(self, job_cls, args, kwargs):
+    def enqueue(
+        self, job_cls: type[Job], args: tuple[Any, ...], kwargs: dict[str, Any]
+    ) -> object:
         if job_cls not in self._names:
             raise ProgrammerError(
                 f"Job {job_cls.__name__} is not registered in this application."

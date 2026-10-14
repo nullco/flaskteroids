@@ -1,4 +1,6 @@
 include CHANGELOG.md
 include RELEASING.md
 include scripts/release.py
+include scripts/accept_generated_app.py
+include scripts/accept_docker_app.py
 recursive-include flaskteroids/.agents *.md

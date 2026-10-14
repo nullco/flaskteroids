@@ -1,10 +1,10 @@
 import textwrap
-from flaskteroids.controller import ActionController
+
 from flaskteroids import __version__ as version
+from flaskteroids.controller import ActionController
 
 
 class WelcomeController(ActionController):
-
     def show(self):
         return textwrap.dedent(f"""
             <!doctype html>

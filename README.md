@@ -46,17 +46,22 @@ pip install flaskteroids
 
 ## Getting started
 
-Create an application. Git must be installed.
+Create an application. Git, Bash/POSIX, and uv must be installed.
 
 ```sh
 flaskteroids new my_app
 cd my_app
 ```
 
-The command creates the application files and initializes a Git repository in `my_app`. Start the development server:
+Generation installs dependencies, creates the app lock, prepares SQLite and
+initializes Git. Use `bin/setup` for fresh checkouts or changed dependencies;
+`--skip-install` defers installation/preparation. Commit `uv.lock`.
+Start the server without activating an environment:
 
 ```sh
-flask run
+bin/flask run
+bin/flask test
+bin/flask test:system
 ```
 
 Open `http://127.0.0.1:5000` to see the welcome page.
@@ -66,9 +71,9 @@ Open `http://127.0.0.1:5000` to see the welcome page.
 Stop the server and run these commands inside `my_app`:
 
 ```sh
-flask generate scaffold Post title:string content:text
-flask db:migrate
-flask run
+bin/flask generate scaffold Post title:string content:text
+bin/flask db:prepare
+bin/flask run
 ```
 
 The scaffold generates a model, migration, controller, views, and routes. Visit
@@ -94,6 +99,25 @@ flaskteroids agent-skills path
 The command prints the absolute skills directory path. Read
 `using-flaskteroids/SKILL.md` inside that directory for version-matched guidance.
 No application configuration or initialization is required.
+
+## Development
+
+Use the committed lock and the same check-only commands as CI:
+
+```sh
+uv sync --locked --dev
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy
+uv run playwright install chromium
+uv run pytest -q
+```
+
+Ruff uses the Python 3.12 / 88-column policy in `pyproject.toml`. Mypy checks
+only declaration records, queue adapters, and a static contract probe, not the
+whole ORM or generated applications. Raw Mako templates are excluded; generated
+samples are validated separately and are not promised Ruff-clean.
+See [AGENTS.md](AGENTS.md) for scope and contributor-only fixing commands.
 
 ## Releasing
 

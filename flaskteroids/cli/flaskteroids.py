@@ -1,12 +1,19 @@
+import json
 import os
+import re
 import secrets
+from importlib.metadata import PackageNotFoundError, version
+from pathlib import Path
 
 import click
 import yaml
+from alembic.util import CommandError
+from packaging.version import InvalidVersion, Version
 
 from flaskteroids.cli.agent_skills import agent_skills
-from flaskteroids.cli.attachments import STORAGE_YAML
 from flaskteroids.cli.artifacts import ArtifactsBuilder, ArtifactsBuilderException
+from flaskteroids.cli.attachments import STORAGE_YAML
+from flaskteroids.cli.db.config import initialize_migrations
 from flaskteroids.cli.generators.templates import template
 from flaskteroids.credentials import encrypt, generate_key
 
@@ -15,7 +22,7 @@ from flaskteroids.credentials import encrypt, generate_key
 def cli():
     """Create applications and locate agent skills.
 
-    For application commands, run flask --help from the application root.
+    For application commands, run bin/flask --help from the application root.
     Use COMMAND --help for usage and examples.
     """
 
@@ -25,39 +32,71 @@ cli.add_command(agent_skills)
 
 @cli.command("new")
 @click.argument("app_name")
-def new(app_name):
-    """Create a configured application.
+@click.option(
+    "--skip-install",
+    is_flag=True,
+    help="Skip dependency installation and database preparation; run bin/setup later.",
+)
+def new(app_name, skip_install):
+    """Create a ready-to-run application.
 
-    Creates the APP_NAME directory with tests, encrypted credentials,
-    deployment examples, and a loader for version-matched agent guidance.
-    Requires Git; does not install dependencies. Use a new directory:
-    existing files may be overwritten.
+    Creates the APP_NAME directory with tests, encrypted credentials, Docker
+    support, and version-matched agent guidance. Installs dependencies with uv
+    and prepares the selected database (development by default). Requires Git
+    and Bash/POSIX scripts; uv is required unless --skip-install is used.
+    Use a new directory: existing files may be overwritten.
 
     \b
     Example:
       flaskteroids new my_app
     """
     base_path = os.path.abspath(app_name)
+    project_name = Path(base_path).name
+    if not re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?", project_name):
+        raise click.BadParameter(
+            "destination basename must be a valid Python project name",
+            param_hint="APP_NAME",
+        )
+    try:
+        installed = Version(version("flaskteroids"))
+    except (PackageNotFoundError, InvalidVersion) as error:
+        raise click.ClickException(
+            f"Cannot determine installed Flaskteroids version: {error}"
+        ) from error
+    # The app owns its resolution/lock. Unpublished generators need an explicit source.
+    epoch = f"{installed.epoch}!" if installed.epoch else ""
+    constraint = (
+        f"=={installed}"
+        if installed.is_prerelease or installed.is_devrelease or installed.local
+        else f">={installed},<{epoch}{installed.major}.{installed.minor + 1}.0"
+    )
+    params = {
+        "project_title": project_name.replace("_", " ").title(),
+        "project_name_toml": json.dumps(project_name),
+        "framework_dependency_toml": json.dumps(f"flaskteroids{constraint}"),
+    }
     ab = ArtifactsBuilder(base_path, click.echo)
     try:
         ab.dir()
-        ab.file("README.md", _readme(app_name))
+        ab.file("README.md", _template(path="README.md.mako", params=params))
         ab.file(
             ".agents/skills/using-flaskteroids/SKILL.md",
             _template(path="agent_skill.md.mako"),
         )
-        ab.file("Dockerfile", _dockerfile())
-        ab.file(".dockerignore", _dockerignore())
-        ab.file(".gitignore", _gitignore())
-        ab.file("pyproject.toml", _pyproject_toml(app_name))
-        ab.file("config/application.py", _application_config())
-        ab.file("config/boot.py", _boot())
-        ab.file("config/environment.py", _environment())
-        ab.file("config/environments/development.py", _development_environment())
-        ab.file("config/environments/test.py", _test_environment())
-        ab.file("config/environments/production.py", _production_environment())
+        ab.file("Dockerfile", _template(path="Dockerfile.mako"))
+        ab.file(".dockerignore", _template(path="dockerignore.mako"))
+        ab.file(".gitignore", _template(path="gitignore.mako"))
+        ab.file("pyproject.toml", _template(path="pyproject.toml.mako", params=params))
+        ab.file("config/application.py", _template(path="config/application.py.mako"))
+        ab.file("config/boot.py", _template(path="config/boot.py.mako"))
+        ab.file("config/environment.py", _template(path="config/environment.py.mako"))
+        for environment in ("development", "test", "production"):
+            ab.file(
+                f"config/environments/{environment}.py",
+                _template(path=f"config/environments/{environment}.py.mako"),
+            )
         ab.file("config/initializers/.keep")
-        ab.file("config/database.yml", _database_yml())
+        ab.file("config/database.yml", _template(path="config/database.yml.mako"))
         ab.file("config/storage.yml", STORAGE_YAML)
         credentials_key = generate_key()
         credentials = yaml.safe_dump(
@@ -65,533 +104,93 @@ def new(app_name):
         )
         ab.file("config/master.key", f"{credentials_key}\n")
         ab.file("config/credentials.yml.enc", encrypt(credentials, credentials_key))
-        ab.file("wsgi.py", _wsgi())
-        ab.file("jobs.py", _jobs())
-        # Kamal deploy scaffold (example files) — adjust image/commands for your setup
-        ab.file("kamal.yml", _kamal_yml())
-        ab.file(".github/workflows/deploy.yml", _deploy_workflow())
-        ab.file("deploy/release.sh", _deploy_release())
-        # Rails-like default helpers
-        ab.file("bin/release", _bin_release())
-        ab.file("bin/setup", _bin_setup())
-        ab.file("Procfile", _procfile())
-        ab.file("deploy/README.md", _deploy_readme())
+        ab.file("wsgi.py", _template(path="wsgi.py.mako"))
+        ab.file("jobs.py", _template(path="jobs.py.mako"))
+        ab.file("bin/flask", _template(path="bin/flask.mako"))
+        ab.file("bin/setup", _template(path="bin/setup.mako"))
+        ab.file("bin/release", _template(path="bin/release.mako"))
+        ab.file("bin/docker-entrypoint", _template(path="bin/docker-entrypoint.mako"))
+        ab.file("Procfile", _template(path="Procfile.mako"))
+        ab.file("deploy/README.md", _template(path="deploy/README.md.mako"))
         ab.file("storage/.keep")
         ab.dir("db/")
         ab.dir("app/")
         ab.file("app/assets/stylesheets/application.css")
         ab.file("app/assets/images/.keep")
-        ab.file("app/helpers/application_helper.py", _application_helper())
-        ab.file("app/models/application_model.py", _application_model())
+        ab.file(
+            "app/helpers/application_helper.py",
+            _template(path="app/helpers/application_helper.py.mako"),
+        )
+        ab.file(
+            "app/models/application_model.py",
+            _template(path="app/models/application_model.py.mako"),
+        )
         ab.file("app/jobs/application_job.py")
-        ab.file("app/mailers/application_mailer.py", _application_mailer())
+        ab.file(
+            "app/mailers/application_mailer.py",
+            _template(path="app/mailers/application_mailer.py.mako"),
+        )
         ab.file(
             "app/views/layouts/application.html",
             _template(path="app/views/layouts/application.html.mako"),
         )
         ab.file("app/views/layouts/mailer.html")
         ab.file("app/views/layouts/mailer.txt")
-        ab.file("app/controllers/application_controller.py", _application_controller())
-        ab.file("config/routes.py", _routes())
+        ab.file(
+            "app/controllers/application_controller.py",
+            _template(path="app/controllers/application_controller.py.mako"),
+        )
+        ab.file(
+            "config/routes.py",
+            'def register(route):\n    route.get("/up/", to="flaskteroids/health#show")\n',
+        )
         ab.file("test/__init__.py")
-        ab.file("test/conftest.py", _test_conftest())
-        ab.file("test/test_helper.py", _test_helper())
-        ab.file("test/fixtures/.keep")
-        ab.file("test/models/.keep")
-        ab.file("test/controllers/.keep")
-        ab.file("test/mailers/.keep")
-        ab.file("test/jobs/.keep")
-        ab.file("test/system/.keep")
-        ab.file(".github/workflows/test.yml", _test_workflow())
-        ab.python_run("flask db:init")
+        ab.file("test/conftest.py", _template(path="test/conftest.py.mako"))
+        ab.file("test/test_helper.py", _template(path="test/test_helper.py.mako"))
+        ab.file(
+            "test/controllers/health_controller_test.py",
+            _template(path="test/controllers/health_controller_test.py.mako"),
+        )
+        for directory in (
+            "fixtures",
+            "models",
+            "controllers",
+            "mailers",
+            "jobs",
+            "system",
+        ):
+            ab.file(f"test/{directory}/.keep")
+        ab.file(
+            ".github/workflows/test.yml",
+            _template(path=".github/workflows/test.yml.mako"),
+        )
+        # Copy canonical Alembic assets before app dependencies or database are available.
+        initialize_migrations(Path(base_path) / "db/migrate")
         ab.file("db/migrate/versions/.keep")
-        ab.run("git init")
-        ab.run("git branch -m main")
-    except ArtifactsBuilderException as e:
-        click.echo(f"Error creating new flaskteroids app: {e}")
-
-
-def _gitignore():
-    return """
-__pycache__/
-.venv/
-tmp/
-storage/*
-!storage/.keep
-config/master.key
-config/credentials/*.key
-    """
-
-
-def _dockerignore():
-    return """
-.git/
-.venv/
-__pycache__/
-config/master.key
-config/credentials/*.key
-    """
-
-
-def _readme(app_name):
-    return f"""
-# {app_name.replace("_", " ").title()}
-
-Add your project description here
-    """
-
-
-def _pyproject_toml(app_name):
-    return f"""
-[project]
-name = "{app_name}"
-version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
-requires-python = ">=3.12"
-dependencies = [
-    "flaskteroids",
-    "gunicorn",
-]
-
-[tool.pytest.ini_options]
-testpaths = ["test"]
-python_files = ["*_test.py"]
-python_classes = ["*Test"]
-python_functions = ["test_*"]
-    """
-
-
-def _test_conftest():
-    return """
-import os
-
-os.environ.setdefault("FLASK_ENV", "test")
-
-pytest_plugins = ["flaskteroids.testing.pytest_plugin"]
-    """
-
-
-def _test_helper():
-    return """
-from flaskteroids.testing import (
-    IntegrationTest,
-    JobTest,
-    MailerTest,
-    ModelTest,
-    SystemTest,
-    delete,
-    fixture_file_upload,
-    get,
-    patch,
-    post,
-    put,
-)
-
-__all__ = [
-    "IntegrationTest",
-    "JobTest",
-    "MailerTest",
-    "ModelTest",
-    "SystemTest",
-    "delete",
-    "fixture_file_upload",
-    "get",
-    "patch",
-    "post",
-    "put",
-]
-    """
-
-
-def _test_workflow():
-    return """
-name: Test
-
-on:
-  push:
-  pull_request:
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - run: uv sync
-      - run: uv run playwright install --with-deps chromium
-      - run: uv run flask test
-      - run: uv run flask test:system
-    """
-
-
-def _application_helper():
-    return """
-class ApplicationHelper:
-    pass
-    """
-
-
-def _application_model():
-    return """
-from flaskteroids.model import Model
-
-
-class ApplicationModel(Model):
-    pass
-    """
-
-
-def _application_controller():
-    return """
-from flaskteroids.controller import ActionController
-
-
-class ApplicationController(ActionController):
-    pass
-    """
-
-
-def _application_mailer():
-    return """
-from flaskteroids.mailer import ActionMailer
-
-
-class ApplicationMailer(ActionMailer):
-    pass
-    """
-
-
-def _routes():
-    return """
-def register(route):
-    route.get('/up/', to="flaskteroids/health#show")
-    """
-
-
-def _application_config():
-    return """
-from flaskteroids.application import Application as FlaskteroidsApplication
-from config.boot import ROOT
-
-
-class Application(FlaskteroidsApplication):
-    root = ROOT
-
-    def configure(self, config):
-        config.load_defaults('0.1')
-    """
-
-
-def _boot():
-    return """
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parent.parent
-    """
-
-
-def _environment():
-    return """
-from config.application import Application
-
-application = Application.initialize()
-    """
-
-
-def _development_environment():
-    return """
-def configure(config):
-    config.enable_reloading = True
-    config.consider_all_requests_local = True
-    config.action_controller.perform_caching = False
-    config.action_mailer.perform_deliveries = False
-    config.attachments.service = 'local'
-    """
-
-
-def _test_environment():
-    return """
-from flaskteroids.testing import TestDeliveryMethod, TestQueueAdapter
-
-
-def configure(config):
-    config.enable_reloading = False
-    config.eager_load = False
-    config.action_controller.perform_caching = False
-    config.action_controller.allow_forgery_protection = False
-    config.active_job.queue_adapter = TestQueueAdapter
-    config.attachments.service = 'test'
-    config.action_mailer.delivery_method = TestDeliveryMethod
-    config.action_mailer.perform_deliveries = True
-    """
-
-
-def _production_environment():
-    return """
-import os
-
-
-def configure(config):
-    config.eager_load = True
-    config.consider_all_requests_local = False
-    config.require_master_key = True
-    config.action_mailer.perform_deliveries = True
-    config.attachments.service = os.environ.get('ATTACHMENTS_SERVICE', 'local')
-    config.active_job.broker_url = os.environ.get(
-        'CELERY_BROKER_URL', config.active_job.broker_url
-    )
-    """
-
-
-def _database_yml():
-    return """
-default: &default
-  adapter: sqlite3
-  pool: 5
-
-development:
-  <<: *default
-  database: storage/development.sqlite3
-
-test:
-  <<: *default
-  database: storage/test.sqlite3
-
-production:
-  <<: *default
-  database: storage/production.sqlite3
-    """
-
-
-def _wsgi():
-    return """
-from config.environment import application as app
-
-if __name__ == '__main__':
-    app.run(debug=app.env.development)
-    """
-
-
-def _jobs():
-    return """
-from config.environment import application
-
-app = application.extensions['flaskteroids.jobs']
-    """
+        try:
+            ab.run("git init")
+            ab.run("git branch -m main")
+        except FileNotFoundError as error:
+            raise click.ClickException(
+                "Git is required to create an application; install Git and retry."
+            ) from error
+        if not skip_install:
+            # Relative argv uses the builder's app cwd, including destinations with spaces.
+            ab.run("bin/setup")
+    except (ArtifactsBuilderException, CommandError) as error:
+        raise click.ClickException(
+            f"Error creating new Flaskteroids app: {error}"
+        ) from error
+    if skip_install:
+        click.echo(
+            "Application generated; installation and database preparation skipped. Run bin/setup."
+        )
+    else:
+        click.echo(
+            "Application ready. Run bin/flask run, bin/flask test, and bin/flask test:system."
+        )
+    click.echo(f"Next: cd {app_name!r}")
 
 
 def _template(*, path, params=None):
     return template("flaskteroids.cli", path=path, params=params)
-
-
-def _dockerfile():
-    # Use a raw string to avoid accidental escape-sequence warnings (eg. file:\/\/) in Dockerfile contents
-    return r"""
-# Simplified multi-stage Dockerfile using uv's official image to produce a
-# pinned requirements.txt, then installing dependencies in a minimal Python image.
-
-# Use a standard Python image for build stage (provides /bin/sh),
-# but copy uv binaries from the official uv image so we use the same uv
-FROM python:3.12-slim AS deps
-WORKDIR /app
-
-# Copy uv binaries from the official uv image into this build stage
-# The official uv image exposes `uv` and `uvx` at the image root
-COPY --from=ghcr.io/astral-sh/uv:0.10.7 /uv /usr/local/bin/uv
-COPY --from=ghcr.io/astral-sh/uv:0.10.7 /uvx /usr/local/bin/uvx
-RUN chmod +x /usr/local/bin/uv /usr/local/bin/uvx
-ENV PATH="/usr/local/bin:${PATH}"
-
-# Copy project files and sync dependencies with uv.
-# uv will create a .venv; we then freeze its installed packages to requirements.txt
-    COPY . .
-    # Install only application runtime dependencies.
-    RUN uv sync --no-dev \
-    && .venv/bin/pip freeze | sed '/^-e /d; /file:\/\//d' > /requirements.txt
-
-FROM python:3.12-slim
-ENV PIP_NO_CACHE_DIR=1 PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
-WORKDIR /app
-
-# Minimal runtime deps (add others as needed, e.g. libpq5 for PostgreSQL drivers)
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends libpq5 \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy the pinned requirements generated by the deps stage and install them
-COPY --from=deps /requirements.txt /requirements.txt
-# Ensure pip installs runtime dependency 'flaskteroids' in case it was
-# omitted from the pinned requirements (ensures scaffolded apps run)
-RUN pip install --no-cache-dir -r /requirements.txt flaskteroids
-
-# Copy application source
-COPY . .
-
-# Run as unprivileged user
-RUN addgroup --system app && adduser --system --ingroup app app \
-    && chown -R app:app /app
-USER app
-
-EXPOSE 8000
-CMD ["gunicorn", "wsgi:app", "-b", "0.0.0.0:8000", "--workers", "4"]
-    """
-
-
-def _kamal_yml():
-    return """
-# Example kamal configuration for a Flaskteroids app.
-# Update image names, environment and secrets as needed.
-services:
-  web:
-    # Use the IMAGE env var set by your CI; fallback shows a placeholder
-    image: ${IMAGE:-REPLACE_WITH_IMAGE}
-    command: gunicorn wsgi:app -b 0.0.0.0:8000 --workers 4
-    ports:
-      - 80:8000
-    env:
-      FLASK_ENV: production
-      DATABASE_URL: ${{ DATABASE_URL }}
-      FLASKTEROIDS_MASTER_KEY: ${{ FLASKTEROIDS_MASTER_KEY }}
-    mounts:
-      - type: tmpfs
-        target: /tmp
-
-  worker:
-    image: ${IMAGE:-REPLACE_WITH_IMAGE}
-    command: celery -A jobs worker --loglevel=info
-    env:
-      FLASK_ENV: production
-      DATABASE_URL: ${{ DATABASE_URL }}
-      CELERY_BROKER_URL: ${{ CELERY_BROKER_URL }}
-      FLASKTEROIDS_MASTER_KEY: ${{ FLASKTEROIDS_MASTER_KEY }}
-
-  hooks:
-  release:
-    - name: migrate
-      # Call the Rails/Heroku-style release script if present
-      command: bash /srv/myapp/bin/release migrate
-      only_on: leader
-"""
-
-
-def _deploy_workflow():
-    return """
-name: Build and deploy
-
-on:
-  push:
-    branches: [ main ]
-
-jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
-    env:
-      IMAGE: ghcr.io/${{ github.repository }}:${{ github.sha }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v2
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push image
-        uses: docker/build-push-action@v4
-        with:
-          push: true
-          tags: ${{ env.IMAGE }}
-
-      - name: Deploy with Kamal over SSH
-        env:
-          IMAGE: ${{ env.IMAGE }}
-        run: |
-          mkdir -p ~/.ssh
-          echo "$DEPLOY_SSH_KEY" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
-            "cd /srv/myapp && kamal deploy --image $IMAGE"
-        shell: bash
-        # Requires repository secrets: DEPLOY_SSH_KEY, DEPLOY_HOST, DEPLOY_USER,
-        # FLASKTEROIDS_MASTER_KEY, and application service secrets.
-"""
-
-
-def _deploy_release():
-    return """
-#!/usr/bin/env bash
-set -euo pipefail
-
-cmd=${1:-}
-case "$cmd" in
-  migrate)
-    echo "Running migrations..."
-    # Activate venv if you use one, or run via python -m
-    python -m flask db:migrate
-    ;;
-  *)
-    echo "Unknown release command: $cmd"
-    exit 1
-    ;;
-esac
-"""
-
-
-def _deploy_readme():
-    return """
-Kamal deployment files
-
-Place your built Docker image reference in `kamal.yml` under each service's `image`.
-The release hook calls `deploy/release.sh migrate` on the leader host to run DB migrations.
-
-Adjust the `command` fields and environment variables to match your app and hosting setup.
-"""
-
-
-def _bin_release():
-    return """
-#!/usr/bin/env bash
-# Default release helper similar to Rails/Heroku
-set -euo pipefail
-echo "Running release tasks..."
-case "${1:-}" in
-  migrate)
-    python -m flask db:migrate
-    ;;
-  assets:precompile)
-    # If you precompile assets during build, skip. Placeholder for app teams.
-    echo "Assets precompile not configured"
-    ;;
-  *)
-    echo "Usage: $0 {migrate|assets:precompile}"
-    exit 1
-    ;;
-esac
-"""
-
-
-def _bin_setup():
-    return """
-#!/usr/bin/env bash
-# Setup script to initialize local dev environment. Runs once per new app.
-set -euo pipefail
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt || true
-python -m flask db:init || true
-echo "Setup complete"
-"""
-
-
-def _procfile():
-    return """
-web: gunicorn wsgi:app -b 0.0.0.0:$PORT --workers 4
-worker: celery -A jobs worker --loglevel=info
-"""

@@ -1,6 +1,10 @@
+from pathlib import Path
+
 import click
-from flask.cli import with_appcontext
 from alembic import command
+from alembic.util import CommandError
+from flask.cli import with_appcontext
+
 from flaskteroids.cli.db.config import get_config
 
 
@@ -35,9 +39,36 @@ def migrate():
       flask db:migrate
       FLASK_ENV=test flask db:migrate
     """
+    upgrade_database(get_config())
+
+
+@click.command("db:prepare")
+@with_appcontext
+def prepare():
+    """Prepare the selected database with migrations.
+
+    Requires an existing valid db/migrate tree; does not repair migration files,
+    reset data, create external databases, or seed records. Uses the current
+    environment and honors DATABASE_URL. Start servers in a fresh process.
+
+    \b
+    Examples:
+      bin/flask db:prepare
+      FLASK_ENV=test bin/flask db:prepare
+    """
     config = get_config()
-    revision = "head"
-    command.upgrade(config, revision=revision)
+    directory = Path(config.get_main_option("script_location"))
+    for name in ("alembic.ini", "env.py", "script.py.mako"):
+        if not (directory / name).is_file():
+            raise CommandError(f"Missing migration resource: {directory / name}")
+    if not (directory / "versions").is_dir():
+        raise CommandError(f"Missing migration versions directory: {directory}")
+    upgrade_database(config)
+
+
+def upgrade_database(config):
+    """Apply migrations using the application's existing Alembic configuration."""
+    command.upgrade(config, revision="head")
 
 
 @click.command("db:rollback")

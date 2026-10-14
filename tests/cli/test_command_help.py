@@ -7,12 +7,13 @@ from flaskteroids.cli.flaskteroids import cli
 from flaskteroids.cli.generators.commands import generate
 from flaskteroids.cli.generators.fields import fields
 
-
 STANDALONE_HELP = {
     (): ["flask --help", "application root"],
     ("new",): [
         "APP_NAME",
-        "does not install",
+        "--skip-install",
+        "bin/setup",
+        "Installs dependencies",
         "overwritten",
         "flaskteroids new my_app",
     ],
@@ -75,6 +76,7 @@ APPLICATION_HELP = {
     ],
     ("db:init",): ["db/migrate", "does not apply migrations", "absent or empty"],
     ("db:migrate",): ["all pending", "current environment", "delete data"],
+    ("db:prepare",): ["selected database", "DATABASE_URL", "fresh process"],
     ("db:rollback",): ["one database migration", "manual reversal code", "delete data"],
     ("credentials:show",): ["YAML", "--environment NAME", "plaintext secrets"],
     ("credentials:edit",): [

@@ -1,56 +1,45 @@
 import click
-import flaskteroids.cli.generators.migrations.generator as migrations
-from flaskteroids.inflector import inflector
+
 from flaskteroids.cli.artifacts import ArtifactsBuilder
 from flaskteroids.cli.generators.fields import attachment_pattern
+from flaskteroids.cli.generators.migrations import generator as migrations
+from flaskteroids.cli.generators.templates import template
+from flaskteroids.inflector import inflector
 
 
 def generate(model, args):
-    attachments = [attachment_pattern.fullmatch(arg) for arg in args]
-    attachments = [match for match in attachments if match]
-    migrations.generate(f'Create{inflector.pluralize(model)}', [
-        arg for arg in args if not attachment_pattern.fullmatch(arg)
-    ])
-    ab = ArtifactsBuilder('.', click.echo)
+    attachments = []
+    fields = []
+    for arg in args:
+        match = attachment_pattern.fullmatch(arg)
+        if match:
+            attachments.append(
+                {
+                    "name": match.group(1),
+                    "cardinality": "many" if match.group(2) == "attachments" else "one",
+                }
+            )
+        else:
+            fields.append(arg)
+    migrations.generate(f"Create{inflector.pluralize(model)}", fields)
+    ab = ArtifactsBuilder(".", click.echo)
     snake = inflector.underscore(model)
-    ab.file(f'app/models/{snake}.py', _model(name=model, attachments=attachments))
-    ab.file(f'test/models/{snake}_test.py', _model_test(name=model))
+    params = {"name": model, "attachments": attachments}
+    ab.file(
+        f"app/models/{snake}.py",
+        template(
+            "flaskteroids.cli.generators.model", path="model.py.mako", params=params
+        ),
+    )
+    ab.file(
+        f"test/models/{snake}_test.py",
+        template(
+            "flaskteroids.cli.generators.model",
+            path="model_test.py.mako",
+            params=params,
+        ),
+    )
     if attachments:
-        click.echo('Attachments require flask attachments:install, then flask db:migrate.')
-
-
-def _model_test(*, name):
-    return f"""
-from test.test_helper import ModelTest
-
-
-class {name}Test(ModelTest):
-    pass
-    """
-
-
-def _model(*, name, attachments=()):
-    if attachments:
-        rules = ',\n'.join(
-            f"    has_{'many' if match.group(2) == 'attachments' else 'one'}_attached('{match.group(1)}')"
-            for match in attachments
+        click.echo(
+            "Attachments require flask attachments:install, then flask db:migrate."
         )
-        return f"""
-from app.models.application_model import ApplicationModel
-from flaskteroids.model import has_one_attached, has_many_attached
-from flaskteroids.rules import rules
-
-
-@rules(
-{rules}
-)
-class {name}(ApplicationModel):
-    pass
-    """
-    return f"""
-from app.models.application_model import ApplicationModel
-
-
-class {name}(ApplicationModel):
-    pass
-    """

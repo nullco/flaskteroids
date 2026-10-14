@@ -79,7 +79,7 @@ class Upload:
         filename = sanitize_filename(filename)
         if len(filename) > 255:
             raise StorageError("Filename is too long")
-        spool = tempfile.SpooledTemporaryFile(max_size=1024 * 1024, mode="w+b")  # noqa: SIM115
+        spool = tempfile.SpooledTemporaryFile(max_size=1024 * 1024, mode="w+b")
         checksum = hashlib.md5(usedforsecurity=False)
         size = 0
         sample = b""

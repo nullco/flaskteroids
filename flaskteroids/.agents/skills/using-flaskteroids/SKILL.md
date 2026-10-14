@@ -6,7 +6,7 @@ description: Use when building or modifying a Flaskteroids application.
 # Using Flaskteroids
 
 - Work in the application's environment and respect its local instructions.
-- Start with `flaskteroids --help` and, from the application root, `flask --help`.
+- Start with `flaskteroids --help` and, from the application root, `bin/flask --help`.
   Follow the command groups and read `--help` for each command relevant to the
   task. Installed command help is the source of truth for syntax and behavior.
 - Prefer existing commands over building from scratch. Use generators for
@@ -24,15 +24,35 @@ description: Use when building or modifying a Flaskteroids application.
 - Add or update tests with behavior changes and run the relevant test commands.
   Never commit encryption keys or expose plaintext credentials.
 
+## Generation, setup, and tests
+
+- `flaskteroids new` installs app dependencies, creates its lock, and prepares
+  development SQLite by default. `--skip-install` explicitly defers this to
+  `bin/setup`; it still writes Docker and migration resources. Requires Git,
+  Bash/POSIX and (unless skipped) uv. Never claim skipped installation is runnable.
+- Use `bin/flask` for app commands without activation; existing Flask/uv syntax
+  remains supported. Use `bin/setup` for a fresh checkout or changed dependencies.
+  Commit the app-owned `uv.lock`; CI and Docker use `uv sync --locked`.
+- Setup honors explicit FLASK_ENV/DATABASE_URL and prepares that selected database.
+  `bin/flask db:prepare` applies existing migrations without resets, repairs,
+  external DB creation, or seeds. `db:init` stays strict. Restart after migrations.
+- `bin/flask test` and `bin/flask test:system` report empty selections as success;
+  direct pytest is strict. Real failures stay nonzero. Install Chromium explicitly
+  when system tests exist; an empty system suite needs no browser. Test adapters
+  need no broker, SMTP or external storage.
+- Default Docker web startup prepares before workers. Coordinate a single release
+  step for fleets; runtime keys and persistent storage are explicit prerequisites.
+  Kamal integration is deferred, not replaced by unsafe remote-deployment examples.
+
 ## Application context
 
 - Use models and enqueue jobs inside an application context. Requests and jobs
   already have one. Keep records, queries, and files in the app that created them.
 - Custom rules set class attributes. Put database queries and work that needs an
   application in actions, callbacks, or initializers.
-- In `flask shell`, use `session.commit()` to save pending changes or
+- In `bin/flask shell`, use `session.commit()` to save pending changes or
   `session.rollback()` to discard them. Normal context exit also commits.
-- Run `flask db:migrate` to create missing model tables, then restart the app.
+- Run `bin/flask db:prepare` to create missing model tables, then restart the app.
   The app can start before migration, but models need their tables before use.
 - Fix broken imports in model, controller, mailer, and job packages; don't suppress them.
 

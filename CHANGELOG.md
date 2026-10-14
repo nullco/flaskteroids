@@ -4,6 +4,41 @@
 
 ### Changed
 
+- Default `flaskteroids new` installs app dependencies with uv, creates the app's
+  lock, bootstraps migrations without app boot, and prepares its selected database.
+  `--skip-install` defers installation/preparation to repeatable `bin/setup`.
+- Metadata uses the validated destination basename and a generator-compatible
+  minor-line framework constraint. Prerelease/development generators pin exactly;
+  unpublished candidates require an explicitly configured source before installation.
+- Generated `bin/flask` selects the app interpreter without activation or runtime uv.
+  Setup uses `uv sync` and public `db:prepare`, honoring environment/DB overrides and
+  preserving records/credentials. CI and Docker require a current committed app lock.
+- Framework test commands explicitly succeed for no tests, including empty filters.
+  Direct pytest stays strict and all other failures remain nonzero. New apps include
+  a health integration test and locked, pristine-app green CI.
+- Default Docker copies a locked environment across compatible Python stages, runs
+  unprivileged, and prepares before default web startup. Other commands bypass
+  preparation. Fleets must coordinate one release step. Runtime keys, external
+  services/drivers and persistent writable storage remain explicit requirements.
+- Removed malformed Kamal output, unsafe automatic SSH deployment, duplicate release
+  script and falsely successful assets placeholder. Kamal integration is deferred
+  pending verified version/configuration/secret/release wiring, not rejected.
+- Substantial generated file bodies now use packaged templates, including hidden CI
+  and scripts. Generation and required-script chmod failures return nonzero status.
+
+Older apps are not silently changed. Deliberately review/copy the new helpers,
+Docker and CI files, add a compatible constraint and `[tool.uv] package = false`,
+run setup and commit the app lock. Retain credentials/migrations and manually
+review/remove old deployment examples. Regeneration can overwrite files.
+
+- Renamed the misspelled `flaskteroids.model.LenghtConfig` validation configuration
+  type to `LengthConfig`; the old spelling has been removed.
+
+- Model internals now have focused validation, authentication, association, and
+  query modules; model APIs remain available from `flaskteroids.model`.
+- Legacy discovery imports from `flaskteroids.extensions.utils` now use the
+  canonical discovery functions. Missing optional packages remain optional, but
+  broken package dependencies propagate instead of being silently ignored.
 - Unknown model attributes now raise `AttributeError` instead of being ignored.
   Use class defaults, properties with setters, or private attributes for temporary values.
 - Belongs-to assignments accept the target model or `None`; wrong types raise

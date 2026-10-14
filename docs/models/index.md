@@ -213,16 +213,16 @@ user = User.new(password="secret", password_confirmation="secret")
 
 ## Password hashing
 
-Use `has_secure_password()` to hash passwords and add authentication methods. The database table needs a `password_digest` column.
+Use `has_secure_password()` to hash passwords and `PasswordAuthenticator` for authentication methods. The database table needs a `password_digest` column.
 
 ```python
-from flaskteroids.model import Model, has_secure_password
+from flaskteroids.model import Model, PasswordAuthenticator, has_secure_password
 from flaskteroids.rules import rules
 
 @rules(
     has_secure_password()
 )
-class User(Model):
+class User(Model, PasswordAuthenticator):
     pass
 
 # Usage
@@ -233,7 +233,7 @@ user.authenticate("secret")  # Returns True
 User.authenticate_by(email="user@example.com", password="secret")  # Returns user or None
 ```
 
-The decorator adds:
+The rule and authenticator provide:
 
 - Automatic password hashing to `password_digest`
 - Virtual fields: `password`, `password_confirmation`, `password_reset_token`

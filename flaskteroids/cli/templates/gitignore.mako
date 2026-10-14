@@ -1,0 +1,11 @@
+__pycache__/
+.venv/
+.pytest_cache/
+.ruff_cache/
+tmp/
+storage/*
+!storage/.keep
+config/master.key
+config/credentials/*.key
+.env
+.env.*

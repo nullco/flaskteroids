@@ -76,7 +76,7 @@ class ResponsesTest(IntegrationTest):
 
 def test_generated_scaffold_json_and_html_responses(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    cli.main(args=["new", "weblog"], standalone_mode=False)
+    cli.main(args=["new", "weblog", "--skip-install"], standalone_mode=False)
     root = tmp_path / "weblog"
     environment = os.environ | {
         "PYTHONPATH": str(Path(__file__).parents[4]),
@@ -108,4 +108,4 @@ def test_generated_scaffold_json_and_html_responses(tmp_path, monkeypatch):
 
     result = run("test", "-q", "test/controllers")
 
-    assert "18 passed" in result.stdout
+    assert "19 passed" in result.stdout

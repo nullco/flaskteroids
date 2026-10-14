@@ -1,6 +1,46 @@
 # Command-line interface
 
-Flaskteroids extends the `flask` CLI with generators, database tasks, credentials commands, and test runners. Run application commands from the application root. Use `flask --help` to list commands and `flask <command> --help` for usage.
+Flaskteroids extends the Flask CLI with generators, database tasks, credentials
+commands, and test runners. Generated apps lead with `bin/flask --help` and
+`bin/flask <command> --help`: this launcher selects the app environment without
+activation or runtime uv. Existing `flask ...` and `uv run flask ...` remain supported;
+the examples below also work with `bin/flask`.
+
+## Generation and setup
+
+```sh
+flaskteroids new my_app
+cd my_app
+bin/flask run
+bin/flask test
+bin/flask test:system
+```
+
+Generation requires Git, Bash/POSIX, and uv; installs app dependencies, creates its
+lock, and prepares development SQLite by default. `--skip-install` skips sync,
+lock resolution and database preparation, not Docker/migration resources. Run
+`bin/setup` afterward. Names come from the destination basename, not its parents.
+Generation may overwrite files and does not upgrade existing apps automatically.
+
+`bin/setup` runs `uv sync` without unconditional upgrades and `bin/flask db:prepare`.
+It defaults to development only when FLASK_ENV is unset and honors DATABASE_URL.
+Commit `uv.lock`; CI and Docker use `uv sync --locked`. Prerelease/development
+generators pin their exact version; unpublished versions need an explicit source.
+
+## Database preparation
+
+```sh
+bin/flask db:prepare
+FLASK_ENV=test bin/flask db:prepare
+bin/release migrate
+```
+
+Preparation verifies existing migration resources and applies pending migrations
+using the selected database. It retains records/credentials and never repairs
+files, seeds, or provisions remote databases. External DBs and their locked Python
+drivers must already exist. `db:init` strictly initializes an absent/empty migration
+directory and does not apply migrations. `db:migrate` remains supported. Restart
+servers after schema changes; preparation does not rebuild shared model mappings.
 
 ## Shell
 

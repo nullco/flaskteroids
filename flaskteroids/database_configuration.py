@@ -1,9 +1,9 @@
 import os
 import re
 from pathlib import Path
-from sqlalchemy.engine import URL
-import yaml
 
+import yaml
+from sqlalchemy.engine import URL
 
 _ENV_PATTERN = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)(?::-([^}]*))?\}")
 

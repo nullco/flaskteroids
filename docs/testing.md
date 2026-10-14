@@ -1,24 +1,32 @@
 # Testing
 
-Tests use pytest, with pytest-xdist for parallel runs and Playwright for browser tests. Generated applications include a `test/` directory, test configuration, and a GitHub Actions workflow.
+Tests use pytest, pytest-xdist, and Playwright. Generated applications include a
+health-endpoint integration test, test configuration, and a green pristine-app
+GitHub Actions workflow. CI installs with `uv sync --locked`, runs `bin/flask test`,
+provisions Chromium explicitly, and runs `bin/flask test:system`.
+
+Both framework commands treat pytest no-tests-collected as success with an explicit
+message, including filters selecting nothing. All other pytest statuses and arguments
+are preserved. Invoke pytest directly for strict empty-selection status. An empty
+system suite does not launch a browser.
 
 Run model, controller, job, and mailer tests with:
 
 ```sh
-flask test
+bin/flask test
 ```
 
 Run browser tests separately:
 
 ```sh
-flask test:system
+bin/flask test:system
 ```
 
 Both commands pass arguments to pytest:
 
 ```sh
-flask test -n auto
-flask test test/controllers/posts_controller_test.py
+bin/flask test -n auto
+bin/flask test test/controllers/posts_controller_test.py
 ```
 
 The commands use the `test` environment and apply pending migrations. Tests that inherit from Flaskteroids test classes roll back database changes after each test.
@@ -128,5 +136,5 @@ class PostsTest(SystemTest):
 Flaskteroids includes the Playwright Python package, but not its browser binaries. Install Chromium before your first system test run:
 
 ```sh
-playwright install chromium
+.venv/bin/playwright install chromium
 ```

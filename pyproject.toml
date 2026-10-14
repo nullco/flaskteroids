@@ -3,7 +3,7 @@ requires = ["setuptools>=84.0.0", "wheel>=0.48.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.package-data]
-"*" = ["templates/**/*"]
+"*" = ["templates/**/*", "templates/.github/workflows/*.mako"]
 "flaskteroids" = [".agents/skills/*/SKILL.md"]
 
 [project]
@@ -33,6 +33,7 @@ dependencies = [
     "celery>=5.6.3",
     "cryptography>=50.0.2",
     "PyYAML>=6.0.3",
+    "packaging>=24.2",
     "playwright>=1.63.0",
     "pytest>=9.1.1",
     "pytest-xdist>=3.8.0",
@@ -49,11 +50,55 @@ test = "flaskteroids.cli.testing:test"
 "test:system" = "flaskteroids.cli.testing:test_system"
 
 
-[tool.flake8]
-max-line-length = 120
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+fix = false
+preview = false
+include = ["*.py", "*.pyi", "pyproject.toml"]
+extend-exclude = ["build", "dist", "htmlcov", "*.egg-info", "*.mako"]
+force-exclude = true
+
+[tool.ruff.lint]
+select = [
+    "E4", "E7", "E9", "F", "W", "I", "B", "UP",
+    "BLE001", "S110", "S112", "PLW1510", "RUF012", "RUF022", "RUF100",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["flaskteroids"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+preview = false
+docstring-code-format = false
+
+[tool.mypy]
+python_version = "3.12"
+files = [
+    "flaskteroids/declarations.py",
+    "flaskteroids/jobs/adapters.py",
+    "tests/typing/queue_adapter_contract.py",
+]
+explicit_package_bases = true
+namespace_packages = true
+follow_imports = "silent"
+check_untyped_defs = true
+disallow_untyped_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+
+# Celery has no inline types/stubs. Keep this exception at the external boundary;
+# project imports still retain their types through follow_imports = "silent".
+[[tool.mypy.overrides]]
+module = ["celery", "celery.*"]
+ignore_missing_imports = true
 
 [dependency-groups]
 dev = [
+    "mypy>=2.4.0",
     "pytest-cov>=7.1.0",
     "pytest-mock>=3.16.0",
     "ruff>=0.17.0",

@@ -1,66 +1,48 @@
 # Getting started
 
-## Installation
+## Install and create
 
-Requires Python 3.12 or newer. Install Flaskteroids in your Python environment:
+Requires Python 3.12+, Git, Bash, and [uv](https://docs.astral.sh/uv/getting-started/installation/).
 
 ```sh
 pip install flaskteroids
-```
-
-## Create an application
-
-Git must be installed. Run:
-
-```sh
 flaskteroids new my_app
 cd my_app
+source .venv/bin/activate
 ```
 
-The command creates the application files and initializes a Git repository in `my_app`. It does not install dependencies. See [Project structure](project_structure.md) for the generated directory layout.
+Generation installs dependencies and prepares your development database.
 
-## Run the server
+## Run and test
 
 ```sh
 flask run
 ```
 
-Open `http://127.0.0.1:5000` to see the welcome page.
-
-Flaskteroids uses the `development` environment by default. Set `FLASK_ENV` to select another environment:
+Open <http://127.0.0.1:5000>.
 
 ```sh
-FLASK_ENV=test flask run
+flask test
+flask test:system
 ```
 
-The generated application stores its secrets in encrypted credentials. Edit or inspect them with:
+The app includes a health test. An empty system suite succeeds without a browser.
 
-```sh
-flask credentials:edit
-flask credentials:show
-```
+## Add posts
 
-See [Configuration](configuration.md) for environments, credentials, and the boot process.
-
-## Add a posts resource
-
-Stop the server and generate a `Post` scaffold inside `my_app`:
+Stop the server, then generate a scaffold:
 
 ```sh
 flask generate scaffold Post title:string content:text
-```
-
-This creates a model, database migration, controller, views, and routes for posts with `title` and `content` fields.
-
-Apply the migration, then restart the server so it picks up the new table:
-
-```sh
-flask db:migrate
+flask db:prepare
 flask run
 ```
 
-Visit `http://127.0.0.1:5000/posts/` to create, view, edit, and delete posts.
+Visit <http://127.0.0.1:5000/posts/> to create, view, edit, and delete posts.
 
 ## Next steps
 
-Read the [models](models/index.md), [views](views/index.md), and [controllers](controllers/index.md) guides to change the generated code. See [Testing](testing.md) to run the application's tests.
+- Run `bin/setup` for a fresh checkout or after changing dependencies. Commit `uv.lock`.
+- To defer installation, use `flaskteroids new my_app --skip-install`, then run `bin/setup` later.
+- See [Testing](testing.md) for browser setup and [Configuration](configuration.md) for environments and secrets.
+- Your generated `deploy/README.md` explains Docker and deployment.

@@ -1,0 +1,2 @@
+class ${name}Helper:
+    pass

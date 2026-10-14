@@ -1,8 +1,8 @@
 import ast
-import sys
 import os
-import textwrap
 import subprocess
+import sys
+import textwrap
 from pathlib import Path
 
 
@@ -30,40 +30,33 @@ class ArtifactsBuilder:
         file_path.touch(exist_ok=True)
         if contents:
             file_path.write_text(self._clean(contents))
-        # Make files in bin/ and deploy/ executable by default (convention similar to Rails)
-        try:
-            if str(name).startswith("bin/") or str(name).startswith("deploy/"):
-                mode = file_path.stat().st_mode
-                file_path.chmod(mode | 0o111)
-        except Exception:
-            # non-fatal if filesystem doesn't support chmod
-            pass
+        if str(name).startswith("bin/") or str(name).endswith(".sh"):
+            try:
+                file_path.chmod(file_path.stat().st_mode | 0o111)
+            except OSError as error:
+                raise ArtifactsBuilderException(
+                    f"Cannot make script {name} executable: {error}"
+                ) from error
         self._notify(f"    create  {name}")
 
     def modify_py_file(self, name, contents):
-        with open(self._join(name), "r") as source:
+        with open(self._join(name)) as source:
             tree = ast.parse(source.read())
         tree = contents().visit(tree)
         with open(self._join(name), "w") as target:
             target.write(ast.unparse(tree))
         self._notify(f"    modify  {name}")
 
-    def run(self, cmd: str):
-        res = subprocess.run(
-            cmd.split(), cwd=self._base_path, capture_output=True, text=True
-        )
-        if res.returncode != 0:
-            raise ArtifactsBuilderException(
-                f"command {cmd} returned {res.returncode}:\n{res.stderr}"
-            )
-        self._notify(f"    run  {cmd}")
+    def run(self, cmd: str) -> None:
+        self._execute(cmd.split(), cmd)
 
-    def python_run(self, cmd: str):
+    def python_run(self, cmd: str) -> None:
+        self._execute([sys.executable, "-m", *cmd.split()], cmd)
+
+    def _execute(self, argv: list[str], cmd: str) -> None:
+        # Failed commands use the framework's status/stderr diagnostics below.
         res = subprocess.run(
-            [sys.executable, "-m", *cmd.split()],
-            cwd=self._base_path,
-            capture_output=True,
-            text=True,
+            argv, cwd=self._base_path, capture_output=True, text=True, check=False
         )
         if res.returncode != 0:
             raise ArtifactsBuilderException(

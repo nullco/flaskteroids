@@ -1,8 +1,10 @@
 from pathlib import Path
+
 import click
 import yaml
 from flask import current_app
 from flask.cli import with_appcontext
+
 from flaskteroids.credentials import Credentials, encrypt, generate_key
 
 

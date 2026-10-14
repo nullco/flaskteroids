@@ -138,12 +138,15 @@ amazon:
 ```
 
 Relative disk paths start at the application root. Keep the storage directory
-persistent when deploying containers.
+persistent when deploying containers. Generated Docker applications use writable
+`/app/storage` for SQLite and local uploads; mount persistent storage there.
+Host bind mounts must be writable by the image user. `bin/setup` and default web
+startup create only conventional storage, not arbitrary configured directories.
 
 For S3, install the optional dependency:
 
 ```sh
-pip install "flaskteroids[s3]"
+uv add "flaskteroids[s3]"
 ```
 
 S3 uses your AWS credentials or IAM role. It also accepts `endpoint` and

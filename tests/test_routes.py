@@ -3,7 +3,7 @@ import pytest
 
 @pytest.fixture
 def app(app, mocker):
-    mocker.patch.object(app, 'add_url_rule')
+    mocker.patch.object(app, "add_url_rule")
     return app
 
 
@@ -13,26 +13,33 @@ def router(app):
 
 
 class TestRoutes:
-
     def test_root_registers_route(self, router, app, mocker):
         router.root(to="welcome#index")
-        app.add_url_rule.assert_called_with('/', view_func=mocker.ANY, methods=['GET'])
+        app.add_url_rule.assert_called_with("/", view_func=mocker.ANY, methods=["GET"])
 
     def test_get_registers_route(self, router, app, mocker):
         router.get("/test", to="test#index")
-        app.add_url_rule.assert_called_with('/test', view_func=mocker.ANY, methods=['GET'])
+        app.add_url_rule.assert_called_with(
+            "/test", view_func=mocker.ANY, methods=["GET"]
+        )
 
     def test_post_registers_route(self, router, app, mocker):
         router.post("/test", to="test#create")
-        app.add_url_rule.assert_called_with('/test', view_func=mocker.ANY, methods=['POST'])
+        app.add_url_rule.assert_called_with(
+            "/test", view_func=mocker.ANY, methods=["POST"]
+        )
 
     def test_put_registers_route(self, router, app, mocker):
         router.put("/test", to="test#update")
-        app.add_url_rule.assert_called_with('/test', view_func=mocker.ANY, methods=['PUT'])
+        app.add_url_rule.assert_called_with(
+            "/test", view_func=mocker.ANY, methods=["PUT"]
+        )
 
     def test_delete_registers_route(self, router, app, mocker):
         router.delete("/test", to="test#destroy")
-        app.add_url_rule.assert_called_with('/test', view_func=mocker.ANY, methods=['DELETE'])
+        app.add_url_rule.assert_called_with(
+            "/test", view_func=mocker.ANY, methods=["DELETE"]
+        )
 
     def test_resources_registers_multiple_routes(self, router, app):
         router.resources("posts")

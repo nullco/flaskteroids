@@ -12,7 +12,7 @@ from flaskteroids.cli.flaskteroids import cli
 @pytest.fixture
 def generated_app(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    cli.main(args=["new", "uploads"], standalone_mode=False)
+    cli.main(args=["new", "uploads", "--skip-install"], standalone_mode=False)
     root = tmp_path / "uploads"
     environment = os.environ | {
         "PYTHONPATH": str(Path(__file__).parents[2]),
@@ -70,7 +70,7 @@ def test_generated_attachment_scaffold_tests_pass(generated_app):
     model = (root / "app/models/member.py").read_text()
     assert "has_one_attached('avatar')" in model
     assert "has_many_attached('files')" in model
-    assert "7 passed" in run("test", "-q", "test/controllers").stdout
+    assert "8 passed" in run("test", "-q", "test/controllers").stdout
 
 
 def test_authenticated_application_uploads_and_downloads_attachments(generated_app):

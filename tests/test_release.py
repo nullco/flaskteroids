@@ -1,11 +1,10 @@
-from datetime import date
-from pathlib import Path
 import subprocess
 import sys
 import tomllib
+from datetime import date
+from pathlib import Path
 
 import pytest
-
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "release.py"
 
@@ -34,6 +33,7 @@ def run_release(release_project):
             [sys.executable, str(SCRIPT), "--root", str(release_project), *args],
             capture_output=True,
             text=True,
+            check=False,
         )
 
     return run

@@ -11,21 +11,23 @@ from flaskteroids.cli.flaskteroids import cli
 def test_generated_application_declares_runtime_dependencies(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     cli.main(
-        args=["new", "weblog"],
+        args=["new", "weblog", "--skip-install"],
         prog_name="flaskteroids",
         standalone_mode=False,
     )
 
     generated = tomllib.loads((tmp_path / "weblog" / "pyproject.toml").read_text())
 
-    assert generated["project"]["dependencies"] == ["flaskteroids", "gunicorn"]
+    assert generated["project"]["dependencies"] == [
+        "flaskteroids>=0.4.0,<0.5.0",
+        "gunicorn",
+    ]
     assert "dependency-groups" not in generated
 
     dockerfile = (tmp_path / "weblog" / "Dockerfile").read_text()
-    assert (
-        "RUN pip install --no-cache-dir -r /requirements.txt flaskteroids\n"
-        in dockerfile
-    )
+    assert "uv sync --locked --no-dev --no-install-project" in dockerfile
+    assert "COPY --from=deps /app/.venv /app/.venv" in dockerfile
+    assert "pip" not in dockerfile
     assert 'CMD ["gunicorn", "wsgi:app"' in dockerfile
 
 
@@ -34,7 +36,7 @@ def test_generated_application_boots_in_development_and_production(
 ):
     monkeypatch.chdir(tmp_path)
     result = cli.main(
-        args=["new", "weblog"],
+        args=["new", "weblog", "--skip-install"],
         prog_name="flaskteroids",
         standalone_mode=False,
     )
@@ -86,7 +88,11 @@ def test_generated_application_boots_in_development_and_production(
 
 def test_generated_model_can_boot_migrate_and_use_fresh_mappings(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    cli.main(args=["new", "weblog"], prog_name="flaskteroids", standalone_mode=False)
+    cli.main(
+        args=["new", "weblog", "--skip-install"],
+        prog_name="flaskteroids",
+        standalone_mode=False,
+    )
     root = tmp_path / "weblog"
     environment = os.environ | {
         "PYTHONPATH": str(Path(__file__).parents[2]),
@@ -149,7 +155,7 @@ with app.app_context():
 def test_generated_scaffold_controller_tests_pass(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     cli.main(
-        args=["new", "weblog"],
+        args=["new", "weblog", "--skip-install"],
         prog_name="flaskteroids",
         standalone_mode=False,
     )
@@ -204,7 +210,8 @@ def test_generated_scaffold_controller_tests_pass(tmp_path, monkeypatch):
         check=False,
     )
     assert tests.returncode == 0, tests.stdout + tests.stderr
-    assert "8 passed" in tests.stdout
+    assert "health_controller_test.py" in tests.stdout or "9 passed" in tests.stdout
+    assert "9 passed" in tests.stdout
 
     system_tests = subprocess.run(
         [sys.executable, "-m", "flask", "test:system", "-q"],
