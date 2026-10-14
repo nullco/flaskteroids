@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.5.0 - 2026-10-14
+
 ### Changed
 
 - Default `flaskteroids new` installs app dependencies with uv, creates the app's
