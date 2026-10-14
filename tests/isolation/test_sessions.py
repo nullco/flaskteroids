@@ -1,8 +1,12 @@
+from io import BytesIO
+
 import pytest
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
+from flaskteroids.attachments import Blob
 from flaskteroids.db import session
+from flaskteroids.exceptions import RecordNotFoundException
 from tests.isolation.models.records import Author
 
 
@@ -47,6 +51,58 @@ def test_nested_apps_commit_only_their_own_callbacks(make_app):
         assert a.config["EVENTS"] == []
         assert Author.first().name == "a"
     assert a.config["EVENTS"] == [("commit", "a")]
+
+
+@pytest.mark.parametrize("order", [("a", "b"), ("b", "a")])
+@pytest.mark.parametrize("savepoint", ["commit", "rollback"])
+@pytest.mark.parametrize("transaction", ["commit", "rollback"])
+def test_nested_apps_finish_only_their_own_uploads(
+    make_app, order, savepoint, transaction
+):
+    apps = {name: make_app(name) for name in order}
+    a, b = apps["a"], apps["b"]
+    with a.app_context():
+        outer = Author.create(name="a", passcode="secret")
+        with session.begin_nested():
+            outer.avatar.attach(io=BytesIO(b"a"), filename="a.txt")
+        outer_blob = outer.avatar.blob
+        assert not outer_blob.service.exist(outer_blob.key)
+        with b.app_context():
+            inner = Author.create(name="b", passcode="secret")
+            nested = session.begin_nested()
+            inner.avatar.attach(io=BytesIO(b"b"), filename="b.txt")
+            inner_blob = inner.avatar.blob
+            assert not inner_blob.service.exist(inner_blob.key)
+            if savepoint == "commit":
+                nested.commit()
+            else:
+                nested.rollback()
+            assert not inner_blob.service.exist(inner_blob.key)
+            assert inner.name == "b"
+            assert a.config["EVENTS"] == []
+            if transaction == "rollback":
+                session.rollback()
+        assert a.config["EVENTS"] == []
+        assert not outer_blob.service.exist(outer_blob.key)
+        with b.app_context():
+            assert Author.count() == (transaction == "commit")
+            uploaded = transaction == "commit" and savepoint == "commit"
+            assert inner_blob.service.exist(inner_blob.key) is uploaded
+            if uploaded:
+                assert Blob.find(inner_blob.id).download() == b"b"
+                assert Author.first().avatar.download() == b"b"
+            else:
+                with pytest.raises(RecordNotFoundException):
+                    Blob.find(inner_blob.id)
+                if transaction == "commit":
+                    assert not Author.first().avatar.attached()
+        assert outer.avatar.blob.key == outer_blob.key
+    assert a.config["EVENTS"] == [("commit", "a")]
+    expected = [("rollback", "b")] if savepoint == "rollback" else []
+    assert b.config["EVENTS"] == [*expected, (transaction, "b")]
+    with a.app_context():
+        assert Author.first().avatar.download() == b"a"
+        assert Blob.find(outer_blob.id).download() == b"a"
 
 
 def test_exception_rolls_back_only_inner_app(make_app):

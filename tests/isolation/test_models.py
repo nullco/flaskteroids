@@ -3,6 +3,7 @@ from io import BytesIO
 import pytest
 from itsdangerous import BadSignature
 from sqlalchemy import text
+from sqlalchemy.exc import NoReferencedColumnError
 
 from flaskteroids.db import session
 from flaskteroids.exceptions import ProgrammerError
@@ -62,7 +63,7 @@ def test_building_app_b_inside_a_does_not_change_a(make_app):
         assert Author.find(author.id).name == "a"
 
 
-@pytest.mark.parametrize("tables", [(), ("authors",)])
+@pytest.mark.parametrize("tables", [(), ("authors",), ("stories",)])
 def test_incomplete_schema_never_uses_another_apps_mapping(make_app, tables):
     app_a = make_app("a")
     with app_a.app_context():
@@ -70,9 +71,16 @@ def test_incomplete_schema_never_uses_another_apps_mapping(make_app, tables):
         session.commit()
         app_b = make_app("b", tables=tables)
         with app_b.app_context():
-            with pytest.raises(ProgrammerError, match="Story.*migrations"):
-                Story.count()
-            if tables:
+            if "stories" in tables:
+                assert Story.count() == 0
+                with pytest.raises(ProgrammerError, match="Author.*migrations"):
+                    Story.includes("author").first()
+                with pytest.raises(ProgrammerError, match="Author.*migrations"):
+                    Story.new(title="b", author_id=1, editor_id=1).save()
+            else:
+                with pytest.raises(ProgrammerError, match="Story.*migrations"):
+                    Story.count()
+            if "authors" in tables:
                 author = Author.create(name="b", passcode="secret")
                 with pytest.raises(ProgrammerError, match="Story.*migrations"):
                     list(author.stories)
@@ -82,6 +90,14 @@ def test_incomplete_schema_never_uses_another_apps_mapping(make_app, tables):
                 with pytest.raises(ProgrammerError, match="Author.*migrations"):
                     Author.count()
         assert Author.count() == 1
+
+
+def test_model_access_requires_an_app_context(make_app):
+    for name in ("a", "b"):
+        with make_app(name).app_context():
+            assert Author.count() == 0
+    with pytest.raises(RuntimeError, match="Working outside of application context"):
+        Author.count()
 
 
 def test_unregistered_model_fails_clearly(make_app):
@@ -151,6 +167,58 @@ def test_attachment_column_conflict_is_checked_for_each_app(make_app):
         session.execute(text("ALTER TABLE authors ADD COLUMN avatar TEXT"))
     with pytest.raises(ProgrammerError, match="Attachment avatar.*column.*Author"):
         make_app("a")
+
+
+def test_existing_foreign_key_targets_outside_the_model_catalog_are_reflected(
+    make_app, mocker
+):
+    class Story(Model):
+        pass
+
+    mocker.patch(
+        "flaskteroids.extensions.db.discover_classes", return_value={"Story": Story}
+    )
+    app = make_app("a")
+    with app.app_context():
+        assert Story.create(title="standalone").id
+        assert Story.count() == 1
+
+
+def test_invalid_foreign_key_to_an_existing_table_is_not_ignored(make_app, mocker):
+    app = make_app("a")
+    with (
+        app.extensions["flaskteroids.db"].new_session() as db_session,
+        db_session.begin(),
+    ):
+        db_session.execute(text("DROP TABLE stories"))
+        db_session.execute(
+            text(
+                "CREATE TABLE stories ("
+                "id INTEGER PRIMARY KEY, author_id INTEGER REFERENCES authors(missing_id))"
+            )
+        )
+
+    class Story(Model):
+        pass
+
+    mocker.patch(
+        "flaskteroids.extensions.db.discover_classes", return_value={"Story": Story}
+    )
+    with pytest.raises(NoReferencedColumnError, match="authors.*missing_id"):
+        make_app("a")
+
+
+def test_migrations_require_a_fresh_app_to_bind_missing_models(make_app):
+    original = make_app("a", tables=("stories",))
+    migrated = make_app("a")
+    with migrated.app_context():
+        Author.create(name="migrated", passcode="secret")
+    with original.app_context():
+        assert Story.count() == 0
+        with pytest.raises(ProgrammerError, match="Author.*migrations"):
+            Author.count()
+    with migrated.app_context():
+        assert Author.first().name == "migrated"
 
 
 def test_missing_model_callback_is_reported_without_a_database_context():

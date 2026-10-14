@@ -18,7 +18,12 @@ from flaskteroids.testing import TestDeliveryMethod, TestQueueAdapter
 
 @pytest.fixture
 def make_app(tmp_path):
-    def create(name, tables=("authors", "stories"), adapter=TestQueueAdapter):
+    def create(
+        name,
+        tables=("authors", "stories"),
+        adapter=TestQueueAdapter,
+        application_class=Application,
+    ):
         root = tmp_path / name
         root.mkdir(exist_ok=True)
         url = f"sqlite:///{root / 'database.sqlite'}"
@@ -47,7 +52,7 @@ def make_app(tmp_path):
         attachment_metadata.create_all(engine)
         engine.dispose()
 
-        class IsolatedApplication(Application):
+        class IsolatedApplication(application_class):
             def configure(self, config):
                 config.paths.models = "tests.isolation.models"
                 config.paths.jobs = "tests.isolation.jobs"

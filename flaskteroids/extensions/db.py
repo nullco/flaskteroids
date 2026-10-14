@@ -2,8 +2,9 @@ import logging
 from dataclasses import dataclass, field
 
 from flask import g
-from sqlalchemy import MetaData, create_engine, event, inspect
+from sqlalchemy import MetaData, Table, create_engine, event, inspect
 from sqlalchemy.engine import make_url
+from sqlalchemy.exc import NoReferencedTableError
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import relationship, sessionmaker
 
@@ -115,9 +116,7 @@ class SQLAlchemyExtension:
         )
         for model in self._models.values():
             init(model)
-        available = set(inspect(self._engine).get_table_names())
-        expected = {self._get_table_name(name) for name in self._models}
-        self._metadata.reflect(self._engine, only=sorted(expected & available))
+        self._reflect_tables()
         base = automap_base(metadata=self._metadata)
         base.prepare(generate_relationship=self._skip_relationships)
         bindings = {
@@ -191,6 +190,39 @@ class SQLAlchemyExtension:
                     )
         base.registry.configure()
         self._bindings = bindings
+
+    def _reflect_tables(self):
+        inspector = inspect(self._engine)
+        available = set(inspector.get_table_names())
+        expected = {self._get_table_name(name) for name in self._models}
+        self._metadata.reflect(
+            self._engine, only=sorted(expected & available), resolve_fks=False
+        )
+        tables = list(self._metadata.tables.values())
+        for table in tables:
+            for constraint in list(table.foreign_key_constraints):
+                for foreign_key in constraint.elements:
+                    try:
+                        _ = foreign_key.column
+                    except NoReferencedTableError as error:
+                        schema, _, name = error.table_name.rpartition(".")
+                        if inspector.has_table(name, schema=schema or None):
+                            tables.append(
+                                Table(
+                                    name,
+                                    self._metadata,
+                                    schema=schema or None,
+                                    autoload_with=self._engine,
+                                    resolve_fks=False,
+                                )
+                            )
+                        else:
+                            # Automap inspects foreign keys even with automatic relationships disabled.
+                            table.constraints.remove(constraint)
+                            for element in constraint.elements:
+                                table.foreign_keys.discard(element)
+                                element.parent.foreign_keys.discard(element)
+                            break
 
     def _get_table_name(self, model_name):
         return inflector.tableize(model_name)

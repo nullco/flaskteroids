@@ -31,6 +31,14 @@ def test_enqueue_and_drain_use_the_owning_app(make_app, order):
     assert apps["b"].config["EVENTS"] == [("job", "b", "b")]
 
 
+def test_job_enqueue_requires_an_app_context(make_app):
+    for name in ("a", "b"):
+        with make_app(name).app_context():
+            RecordJob().perform_later(name)
+    with pytest.raises(RuntimeError, match="Working outside of application context"):
+        RecordJob().perform_later("standalone")
+
+
 def test_job_registration_is_idempotent_and_unambiguous(make_app):
     app = make_app("a")
     jobs = app.extensions["flaskteroids.jobs"]
@@ -70,6 +78,40 @@ def test_celery_eager_identical_task_names_use_owning_context(make_app, order):
     assert (
         len(apps["b"].extensions["flaskteroids.mail"].delivery_method.deliveries) == 1
     )
+
+
+@pytest.mark.parametrize("order", [("a", "b"), ("b", "a")])
+def test_celery_purge_jobs_keep_metadata_and_files_in_the_owning_app(make_app, order):
+    apps = {name: make_app(name, adapter=CeleryQueueAdapter) for name in order}
+    blobs = {}
+    for name, app in apps.items():
+        jobs = app.extensions["flaskteroids.jobs"].queue_adapter
+        jobs.finalize()
+        assert "flaskteroids.attachments.PurgeJob" in jobs.tasks
+        with app.app_context():
+            for slot in range(2):
+                author = Author.create(name=f"{name}-{slot}", passcode="secret")
+                author.avatar.attach(
+                    io=BytesIO(f"{name}-{slot}".encode()), filename="avatar.txt"
+                )
+                blobs[name, slot] = author.avatar.blob
+    purged = set()
+    for name, slot in [("a", 0), ("b", 0), ("a", 1)]:
+        other = "b" if name == "a" else "a"
+        with apps[other].app_context():
+            with apps[name].app_context():
+                Author.find_by(name=f"{name}-{slot}").avatar.purge_later()
+            for other_slot in range(2):
+                author = Author.find_by(name=f"{other}-{other_slot}")
+                if (other, other_slot) not in purged:
+                    assert author.avatar.download() == f"{other}-{other_slot}".encode()
+        purged.add((name, slot))
+        with apps[name].app_context():
+            blob = blobs[name, slot]
+            assert not blob.service.exist(blob.key)
+            assert not Author.find_by(name=f"{name}-{slot}").avatar.attached()
+            with pytest.raises(RecordNotFoundException):
+                Blob.find(blob.id)
 
 
 def test_delayed_mail_and_builtin_jobs_are_registered_in_each_app(make_app):
