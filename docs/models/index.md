@@ -511,6 +511,25 @@ post.update(title="New Title", content="New Content")
 If `update()` encounters an unknown attribute, it raises without saving. Earlier
 valid assignments from that call aren't undone.
 
+### Null attributes
+
+Column assignments preserve `None` for every supported field type. An explicit
+`record.update(name=None)` requests clearing that attribute; omitting `name` from
+an update leaves its existing value unchanged. Direct assignment and `new()` use
+the same casting rules. See [Fields](../other/fields.md#null-values) for JSON
+storage details.
+
+Null values still undergo validation and database constraints. For example,
+`Post.new(title=None)` fails `save()` when `title` has presence validation, just
+like an omitted title. A rejected update retains the pending null in memory but
+does not save it; use `reload()` to restore persisted values. Saving SQL `NULL`
+to a non-nullable column without applicable validation still raises a database
+integrity error.
+
+Applications upgrading from older casting behavior must assign `False`
+explicitly when they mean false, rather than using `None`. Previously saved
+`"None"` strings and false values are not automatically rewritten.
+
 ### Deleting records
 
 ```python

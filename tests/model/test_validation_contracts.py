@@ -81,6 +81,29 @@ def test_validation_order_messages_and_retry(entry_model):
     assert not entry.errors
 
 
+@pytest.mark.parametrize("attributes", [{}, {"name": None}])
+def test_presence_rejects_omitted_and_explicit_null_attributes(entry_model, attributes):
+    Entry = entry_model(validates("name", presence=True))
+    entry = Entry.new(**attributes)
+
+    assert entry.name is None
+    assert entry.save() is False
+    assert entry.errors.full_messages() == ["Field name is blank"]
+    assert Entry.count() == 0
+
+
+def test_presence_rejects_null_update_without_changing_persisted_value(entry_model):
+    Entry = entry_model(validates("name", presence=True))
+    entry = Entry.create(name="Existing")
+
+    assert entry.update(quantity=1) is True
+    assert entry.name == "Existing"
+    assert entry.update(name=None) is False
+    assert entry.name is None
+    assert entry.errors.full_messages() == ["Field name is blank"]
+    assert entry.reload().name == "Existing"
+
+
 def test_custom_presence_message(entry_model):
     entry = entry_model(validates("name", presence={"message": "required"})).new()
     assert entry.save() is False

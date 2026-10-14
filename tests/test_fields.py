@@ -19,6 +19,48 @@ from flaskteroids.fields import (
 )
 
 
+@pytest.mark.parametrize(
+    "field",
+    [
+        Text(),
+        String(),
+        Integer(),
+        Float(),
+        Boolean(),
+        DateTime(),
+        Date(),
+        Time(),
+        Json(),
+    ],
+)
+def test_null_casting_preserves_none(field):
+    assert field.as_primitive(None) is None
+
+
+@pytest.mark.parametrize(
+    "field, value, expected",
+    [
+        (Text(), 42, "42"),
+        (String(), 42, "42"),
+        (Integer(), "42", 42),
+        (Float(), "1.5", 1.5),
+        (Boolean(), "false", False),
+        (DateTime(), "2023-01-01T12:00:00", datetime(2023, 1, 1, 12)),
+        (Date(), "2023-01-01", date(2023, 1, 1)),
+        (Time(), "12:00:00", time(12)),
+        (Json(), {"key": "value"}, {"key": "value"}),
+    ],
+)
+def test_non_null_casting_is_unchanged(field, value, expected):
+    assert field.as_primitive(value) == expected
+
+
+@pytest.mark.parametrize("field", [Integer(), Float(), Json()])
+def test_invalid_non_null_input_still_raises_type_error(field):
+    with pytest.raises(TypeError):
+        field.as_primitive(object())
+
+
 class TestField:
     def test_init(self):
         field = Field(sa.String, str)
@@ -29,6 +71,10 @@ class TestField:
         field = Field(sa.String, str)
         column = field.new_column()
         assert isinstance(column, sa.String)
+
+    def test_as_primitive_none(self):
+        field = Field(sa.String, str)
+        assert field.as_primitive(None) is None
 
     def test_as_primitive_already_primitive(self):
         field = Field(sa.String, str)
@@ -115,7 +161,7 @@ class TestBoolean:
             ("f", False),
             ("0", False),
             ("", False),
-            (None, False),
+            (None, None),
             ("anything_else", True),
         ],
     )

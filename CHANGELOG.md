@@ -4,6 +4,9 @@
 
 ### Changed
 
+- Assigning `None` to a boolean column now preserves null instead of casting it
+  to `False`. Assign `False` explicitly for false values. Existing stored values
+  are not rewritten; other non-null boolean conversions are unchanged.
 - `params.expect` rejects null, blank, and empty required roots, including
   dictionaries with no permitted attributes after filtering. Required scalar
   `False` and numeric zero remain valid; Python schema syntax and return shapes
@@ -11,6 +14,11 @@
 
 ### Fixed
 
+- Model field casting preserves `None` for all supported column types. String
+  and text attributes no longer become `"None"`, so presence validation rejects
+  explicit nulls correctly. Nullable numeric and JSON attributes accept nulls
+  without conversion errors. JSON serialization retains its existing JSON-null
+  versus SQL-NULL distinction, and database constraints remain enforced.
 - Strong-parameter allowlists now permit omitted nested attributes, including
   fields in nested dictionaries and arrays of dictionaries. Partial updates can
   use a fixed allowlist without requiring unchanged fields. Omitted attributes

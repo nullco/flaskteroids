@@ -15,7 +15,7 @@ class Field(ABC):  # noqa: B024
         return self.column_type()
 
     def as_primitive(self, value):
-        if isinstance(value, self.primitive_type):
+        if value is None or isinstance(value, self.primitive_type):
             return value
         with suppress(ValueError):
             return self.primitive_type(value)
@@ -49,7 +49,9 @@ class Boolean(Field):
         super().__init__(sa.Boolean, bool)
 
     def as_primitive(self, value):
-        false_values = {"false", "f", 0, "0", None, ""}
+        if value is None:
+            return None
+        false_values = {"false", "f", 0, "0", ""}
         if value in false_values:
             return False
         return True
