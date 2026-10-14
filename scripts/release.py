@@ -1,11 +1,10 @@
 """Release bookkeeping used by the GitHub Actions release workflows."""
 
 import argparse
-from datetime import date
-from pathlib import Path
 import re
 import tomllib
-
+from datetime import date
+from pathlib import Path
 
 VERSION_PATTERN = re.compile(r"\d+\.\d+\.\d+")
 

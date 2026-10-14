@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 import pytest
 from flask import current_app
 
@@ -5,7 +7,7 @@ from flaskteroids.jobs.job import Job
 
 
 class ExampleJob(Job):
-    performed = []
+    performed: ClassVar[list[str]] = []
 
     def perform(self, value):
         self.performed.append(value)

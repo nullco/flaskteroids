@@ -29,8 +29,9 @@ class CeleryQueueAdapter:
         self._celery.conf["broker_url"] = config.broker_url
         self._celery.conf.update(config.additional_config.to_dict())
 
-        class AppContextTask(self._celery.Task):
-            def __call__(self, *args, **kwargs):
+        # Celery creates this app-specific base dynamically; keep its app binding.
+        class AppContextTask(self._celery.Task):  # type: ignore[name-defined]
+            def __call__(self, *args: Any, **kwargs: Any) -> Any:
                 with application.app_context():
                     return self.run(*args, **kwargs)
 
@@ -38,7 +39,7 @@ class CeleryQueueAdapter:
 
     def register(self, job_name: str, job_class: type[Job]) -> None:
         @self._celery.task(name=job_name, shared=False, lazy=False)
-        def task(*args, **kwargs):
+        def task(*args: Any, **kwargs: Any) -> Any:
             return job_class().perform(*args, **kwargs)
 
         self._tasks[job_class] = task
@@ -48,5 +49,5 @@ class CeleryQueueAdapter:
     ) -> AsyncResult:
         return self._tasks[job_class].delay(*args, **kwargs)
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         return getattr(self._celery, name)

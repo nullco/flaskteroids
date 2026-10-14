@@ -3,7 +3,9 @@ import os
 import secrets
 import sys
 from pathlib import Path
+
 from flask import Flask
+
 from flaskteroids.configuration import Configuration
 from flaskteroids.credentials import Credentials, CredentialsError
 from flaskteroids.database_configuration import load_database_configuration
@@ -42,9 +44,7 @@ class Application(Flask):
         )
         self.project_root = project_root
         self.env = Environment(
-            environment
-            or os.environ.get("FLASK_ENV")
-            or "development"
+            environment or os.environ.get("FLASK_ENV") or "development"
         )
         self.credentials = Credentials(project_root, self.env)
         self.database_url = "sqlite:///storage/database.db"

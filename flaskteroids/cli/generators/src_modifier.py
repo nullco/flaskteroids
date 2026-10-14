@@ -9,6 +9,7 @@ def add_routes(routes):
                     new_stmt = ast.parse(route).body[0]
                     node.body.append(new_stmt)
             return node
+
     return AddRoutes
 
 
@@ -26,6 +27,7 @@ def add_imports(imports):
                 node.body.insert(insert_at, import_node)
                 insert_at += 1
             return node
+
     return AddImports
 
 
@@ -34,14 +36,15 @@ def add_rules(rules):
         def visit_ClassDef(self, node):
             for decorator in node.decorator_list:
                 if (
-                    isinstance(decorator, ast.Call) and
-                    isinstance(decorator.func, ast.Name) and
-                    decorator.func.id == "rules"
+                    isinstance(decorator, ast.Call)
+                    and isinstance(decorator.func, ast.Name)
+                    and decorator.func.id == "rules"
                 ):
                     for rule in rules:
-                        rule_node = ast.parse(rule, mode='eval').body
+                        rule_node = ast.parse(rule, mode="eval").body
                         decorator.args.append(rule_node)
             return node
+
     return AddRules
 
 
@@ -55,4 +58,5 @@ def add_base_cls(base_cls):
             ):
                 node.bases.append(new_base)
             return node
+
     return AddBaseCls

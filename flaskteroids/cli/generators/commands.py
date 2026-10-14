@@ -1,14 +1,14 @@
 import click
 from flask.cli import with_appcontext
+
+import flaskteroids.cli.generators.authentication.generator as authentication
+import flaskteroids.cli.generators.controller.generator as controller
+import flaskteroids.cli.generators.mailer.generator as mailer
 import flaskteroids.cli.generators.migrations.generator as migrations
 import flaskteroids.cli.generators.model.generator as model
 import flaskteroids.cli.generators.resource.generator as resource
 import flaskteroids.cli.generators.scaffold.generator as scaffold
-import flaskteroids.cli.generators.controller.generator as controller
-import flaskteroids.cli.generators.mailer.generator as mailer
-import flaskteroids.cli.generators.authentication.generator as authentication
 from flaskteroids.cli.generators.fields import fields
-
 
 _FIELD_HELP = (
     "\b\nFields:\n"

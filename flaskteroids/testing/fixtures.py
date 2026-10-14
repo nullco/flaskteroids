@@ -97,7 +97,9 @@ def load_fixtures(application, requested):
                     values[foreign_key] = fixture_ids[related_set][related_label]
                     values.pop(key)
             converted = {
-                key: fields.from_column_type(model.__table__.columns[key].type).as_primitive(value)
+                key: fields.from_column_type(
+                    model.__table__.columns[key].type
+                ).as_primitive(value)
                 for key, value in values.items()
             }
             session.execute(model.__table__.insert().values(**converted))

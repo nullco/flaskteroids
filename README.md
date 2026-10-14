@@ -100,6 +100,25 @@ The command prints the absolute skills directory path. Read
 `using-flaskteroids/SKILL.md` inside that directory for version-matched guidance.
 No application configuration or initialization is required.
 
+## Development
+
+Use the committed lock and the same check-only commands as CI:
+
+```sh
+uv sync --locked --dev
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy
+uv run playwright install chromium
+uv run pytest -q
+```
+
+Ruff uses the Python 3.12 / 88-column policy in `pyproject.toml`. Mypy checks
+only declaration records, queue adapters, and a static contract probe, not the
+whole ORM or generated applications. Raw Mako templates are excluded; generated
+samples are validated separately and are not promised Ruff-clean.
+See [AGENTS.md](AGENTS.md) for scope and contributor-only fixing commands.
+
 ## Releasing
 
 See [the release guide](RELEASING.md) for release PRs and PyPI publishing.

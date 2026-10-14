@@ -20,11 +20,11 @@ __all__ = [
     "SystemTest",
     "TestDeliveryMethod",
     "TestQueueAdapter",
-    "fixture_file_upload",
-    "temporary_storage",
     "delete",
+    "fixture_file_upload",
     "get",
     "patch",
     "post",
     "put",
+    "temporary_storage",
 ]

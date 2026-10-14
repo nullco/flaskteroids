@@ -1,6 +1,8 @@
 import sys
 import types
+
 import pytest
+
 from flaskteroids.application import Application
 from flaskteroids.credentials import CredentialsError, encrypt, generate_key
 

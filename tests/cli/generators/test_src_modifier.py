@@ -1,5 +1,11 @@
 import ast
-from flaskteroids.cli.generators.src_modifier import add_routes, add_imports, add_rules, add_base_cls
+
+from flaskteroids.cli.generators.src_modifier import (
+    add_base_cls,
+    add_imports,
+    add_routes,
+    add_rules,
+)
 
 
 class TestAddRoutes:
@@ -73,10 +79,22 @@ def func():
 
         # Verify imports are inserted after existing imports
         assert len(new_tree.body) == 5
-        assert isinstance(new_tree.body[0], ast.Import) and new_tree.body[0].names[0].name == "os"
-        assert isinstance(new_tree.body[1], ast.ImportFrom) and new_tree.body[1].module == "flask"
-        assert isinstance(new_tree.body[2], ast.Import) and new_tree.body[2].names[0].name == "sys"
-        assert isinstance(new_tree.body[3], ast.ImportFrom) and new_tree.body[3].module == "collections"
+        assert (
+            isinstance(new_tree.body[0], ast.Import)
+            and new_tree.body[0].names[0].name == "os"
+        )
+        assert (
+            isinstance(new_tree.body[1], ast.ImportFrom)
+            and new_tree.body[1].module == "flask"
+        )
+        assert (
+            isinstance(new_tree.body[2], ast.Import)
+            and new_tree.body[2].names[0].name == "sys"
+        )
+        assert (
+            isinstance(new_tree.body[3], ast.ImportFrom)
+            and new_tree.body[3].module == "collections"
+        )
         assert isinstance(new_tree.body[4], ast.FunctionDef)
 
     def test_add_imports_no_existing_imports(self):
@@ -169,7 +187,9 @@ class Post(Model):
         # Verify only the @rules decorator is modified
         class_def = new_tree.body[0]
         assert len(class_def.decorator_list) == 2
-        rules_decorator = next(d for d in class_def.decorator_list if isinstance(d, ast.Call))
+        rules_decorator = next(
+            d for d in class_def.decorator_list if isinstance(d, ast.Call)
+        )
         assert len(rules_decorator.args) == 2  # original 1 + 1 new
 
     def test_add_rules_empty_list(self):

@@ -1,5 +1,5 @@
-from flaskteroids.cache.factory import get_cache
 from flaskteroids.cache.base import MISSING
+from flaskteroids.cache.factory import get_cache
 
 
 def value(key: str, ttl=None):
@@ -11,7 +11,9 @@ def value(key: str, ttl=None):
             value = fn(*args, **kwargs)
             store(key, value, ttl)
             return value
+
         return decorator
+
     return wrapper
 
 

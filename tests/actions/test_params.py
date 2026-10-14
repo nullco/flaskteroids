@@ -1,132 +1,118 @@
 import pytest
+
 from flaskteroids.actions import ActionParameters
 from flaskteroids.exceptions import InvalidParameter, MissingParameter
 
 
 class TestExpectParameters:
-
     def test_file_upload_is_a_permitted_scalar(self):
         from io import BytesIO
+
         from werkzeug.datastructures import FileStorage
 
-        upload = FileStorage(BytesIO(b'file'), filename='file.txt')
-        params = ActionParameters.new({'user': {'avatar': upload, 'files': [upload]}})
-        assert params.expect(user=['avatar', ('files', [])]) == {
-            'avatar': upload,
-            'files': [upload],
+        upload = FileStorage(BytesIO(b"file"), filename="file.txt")
+        params = ActionParameters.new({"user": {"avatar": upload, "files": [upload]}})
+        assert params.expect(user=["avatar", ("files", [])]) == {
+            "avatar": upload,
+            "files": [upload],
         }
 
     def test_arbitrary_objects_are_not_permitted_uploads(self):
-        params = ActionParameters.new({'user': {'avatar': object()}})
+        params = ActionParameters.new({"user": {"avatar": object()}})
         with pytest.raises(InvalidParameter):
-            params.expect(user=['avatar'])
+            params.expect(user=["avatar"])
 
-    @pytest.mark.parametrize('raw_input, expect_input, expect_output', [
-        (
-            {'user': 'admin', 'password': 'S3cr3t!'},
-            (['user', 'password'], {}),
-            {'user': 'admin', 'password': 'S3cr3t!'},
-        ),
-        (
-            {
-                'user': 'admin',
-                'profile': {
-                    'first_name': 'Juan',
-                    'last_name': 'Perez'
-                }
-            },
-            (['user'], {'profile': ['first_name', 'last_name']}),
-            [
-                {'user': 'admin'},
-                {'first_name': 'Juan', 'last_name': 'Perez'}
-            ]
-        ),
-        (
-            {
-                'owner': 'Juan',
-                'pets': [{'name': 'rufo', 'type': 'dog'}]
-            },
-            (['owner'], {'pets': [['name', 'type']]}),
-            [
-                {'owner': 'Juan'},
-                [{'name': 'rufo', 'type': 'dog'}]
-            ]
-        ),
-        (
-            {
-                'owner': 'Juan',
-                'pets': [{'name': 'rufo', 'type': 'dog', 'toy_ids': [1, 2, 3]}]
-            },
-            (['owner'], {'pets': [['name', 'type', ('toy_ids', [])]]}),
-            [
-                {'owner': 'Juan'},
-                [{'name': 'rufo', 'type': 'dog', 'toy_ids': [1, 2, 3]}]
-            ]
-        ),
-        (
-            {
-                'owner': 'Juan',
-                'pets': [
-                    {
-                        'name': 'rufo',
-                        'type': 'dog',
-                        'toys': [{'name': 'bone'}, {'name': 'ball'}]
-                    },
-                    {
-                        'name': 'garfield',
-                        'type': 'cat',
-                        'toys': [{'name': 'mouse'}]
-                    }
-                ]
-            },
+    @pytest.mark.parametrize(
+        "raw_input, expect_input, expect_output",
+        [
             (
-                ['owner'],
-                {
-                    'pets': [
-                        ['name', 'type', ('toys', [['name']])]
-                    ]
-                }
+                {"user": "admin", "password": "S3cr3t!"},
+                (["user", "password"], {}),
+                {"user": "admin", "password": "S3cr3t!"},
             ),
-            [
-                {'owner': 'Juan'},
+            (
+                {
+                    "user": "admin",
+                    "profile": {"first_name": "Juan", "last_name": "Perez"},
+                },
+                (["user"], {"profile": ["first_name", "last_name"]}),
+                [{"user": "admin"}, {"first_name": "Juan", "last_name": "Perez"}],
+            ),
+            (
+                {"owner": "Juan", "pets": [{"name": "rufo", "type": "dog"}]},
+                (["owner"], {"pets": [["name", "type"]]}),
+                [{"owner": "Juan"}, [{"name": "rufo", "type": "dog"}]],
+            ),
+            (
+                {
+                    "owner": "Juan",
+                    "pets": [{"name": "rufo", "type": "dog", "toy_ids": [1, 2, 3]}],
+                },
+                (["owner"], {"pets": [["name", "type", ("toy_ids", [])]]}),
                 [
-                    {
-                        'name': 'rufo',
-                        'type': 'dog',
-                        'toys': [{'name': 'bone'}, {'name': 'ball'}]
-                    },
-                    {
-                        'name': 'garfield',
-                        'type': 'cat',
-                        'toys': [{'name': 'mouse'}]
-                    }
-                ]
-            ]
-        )
-    ])
+                    {"owner": "Juan"},
+                    [{"name": "rufo", "type": "dog", "toy_ids": [1, 2, 3]}],
+                ],
+            ),
+            (
+                {
+                    "owner": "Juan",
+                    "pets": [
+                        {
+                            "name": "rufo",
+                            "type": "dog",
+                            "toys": [{"name": "bone"}, {"name": "ball"}],
+                        },
+                        {
+                            "name": "garfield",
+                            "type": "cat",
+                            "toys": [{"name": "mouse"}],
+                        },
+                    ],
+                },
+                (["owner"], {"pets": [["name", "type", ("toys", [["name"]])]]}),
+                [
+                    {"owner": "Juan"},
+                    [
+                        {
+                            "name": "rufo",
+                            "type": "dog",
+                            "toys": [{"name": "bone"}, {"name": "ball"}],
+                        },
+                        {
+                            "name": "garfield",
+                            "type": "cat",
+                            "toys": [{"name": "mouse"}],
+                        },
+                    ],
+                ],
+            ),
+        ],
+    )
     def test_ok_parameters(self, raw_input, expect_input, expect_output):
         params = ActionParameters.new(raw_input)
         args, kwargs = expect_input
         output = params.expect(*args, **kwargs)
         assert output == expect_output
 
-    @pytest.mark.parametrize('raw_input, expect_input', [
-        (
-            {'user': 'admin', 'password': 'S3cr3t!'},
-            ['user', 'password', 'birthdate']
-        )
-    ])
+    @pytest.mark.parametrize(
+        "raw_input, expect_input",
+        [({"user": "admin", "password": "S3cr3t!"}, ["user", "password", "birthdate"])],
+    )
     def test_missing_parameters(self, raw_input, expect_input):
         params = ActionParameters.new(raw_input)
         with pytest.raises(MissingParameter):
             params.expect(*expect_input)
 
-    @pytest.mark.parametrize('raw_input, expect_input', [
-        (
-            {'user': 'admin', 'addesses': 'wrong'},
-            ['user', ('addesses', [['street', 'house_number']])],
-        )
-    ])
+    @pytest.mark.parametrize(
+        "raw_input, expect_input",
+        [
+            (
+                {"user": "admin", "addesses": "wrong"},
+                ["user", ("addesses", [["street", "house_number"]])],
+            )
+        ],
+    )
     def test_invalid_parameters(self, raw_input, expect_input):
         params = ActionParameters.new(raw_input)
         with pytest.raises(InvalidParameter):

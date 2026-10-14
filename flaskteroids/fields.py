@@ -1,10 +1,12 @@
 from abc import ABC
 from contextlib import suppress
+from datetime import date, datetime, time
+
 import sqlalchemy as sa
-from datetime import datetime, date, time
 
 
-class Field(ABC):
+# Field is intentionally instantiable; preserve its public ABC ancestry.
+class Field(ABC):  # noqa: B024
     def __init__(self, column_type, primitive_type) -> None:
         self.column_type = column_type
         self.primitive_type = primitive_type
@@ -20,13 +22,11 @@ class Field(ABC):
 
 
 class Text(Field):
-
     def __init__(self) -> None:
         super().__init__(sa.Text, str)
 
 
 class String(Field):
-
     def __init__(self) -> None:
         super().__init__(sa.String, str)
 
@@ -35,31 +35,27 @@ class String(Field):
 
 
 class Integer(Field):
-
     def __init__(self) -> None:
         super().__init__(sa.Integer, int)
 
 
 class Float(Field):
-
     def __init__(self) -> None:
         super().__init__(sa.Float, float)
 
 
 class Boolean(Field):
-
     def __init__(self) -> None:
         super().__init__(sa.Boolean, bool)
 
     def as_primitive(self, value):
-        false_values = {'false', 'f', 0, '0', False, None, ''}
+        false_values = {"false", "f", 0, "0", None, ""}
         if value in false_values:
             return False
         return True
 
 
 class DateTime(Field):
-
     def __init__(self) -> None:
         super().__init__(sa.DateTime, datetime)
 
@@ -72,7 +68,6 @@ class DateTime(Field):
 
 
 class Date(Field):
-
     def __init__(self) -> None:
         super().__init__(sa.Date, date)
 
@@ -85,7 +80,6 @@ class Date(Field):
 
 
 class Time(Field):
-
     def __init__(self) -> None:
         super().__init__(sa.Time, time)
 
@@ -103,18 +97,18 @@ class Json(Field):
 
 
 fields = {
-    'text': Text(),
-    'string': String(),
-    'str': String(),
-    'integer': Integer(),
-    'float': Float(),
-    'int': Integer(),
-    'boolean': Boolean(),
-    'bool': Boolean(),
-    'datetime': DateTime(),
-    'date': Date(),
-    'time': Time(),
-    'json': Json(),
+    "text": Text(),
+    "string": String(),
+    "str": String(),
+    "integer": Integer(),
+    "float": Float(),
+    "int": Integer(),
+    "boolean": Boolean(),
+    "bool": Boolean(),
+    "datetime": DateTime(),
+    "date": Date(),
+    "time": Time(),
+    "json": Json(),
 }
 
 
@@ -122,4 +116,4 @@ def from_column_type(column_type):
     for f in fields.values():
         if isinstance(column_type, f.column_type):
             return f
-    raise ValueError(f'Columm type <{column_type}> is not supported yet')
+    raise ValueError(f"Columm type <{column_type}> is not supported yet")

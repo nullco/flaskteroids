@@ -1,10 +1,13 @@
 import pytest
+
 from flaskteroids.cli.generators.resource.generator import generate
 
 
 @pytest.fixture
 def artifacts_builder(mocker):
-    mock_builder = mocker.patch('flaskteroids.cli.generators.resource.generator.ArtifactsBuilder')
+    mock_builder = mocker.patch(
+        "flaskteroids.cli.generators.resource.generator.ArtifactsBuilder"
+    )
     mock_ab = mocker.Mock()
     mock_builder.return_value = mock_ab
     return mock_ab
@@ -12,26 +15,29 @@ def artifacts_builder(mocker):
 
 @pytest.fixture
 def model(mocker):
-    return mocker.patch('flaskteroids.cli.generators.resource.generator.model')
+    return mocker.patch("flaskteroids.cli.generators.resource.generator.model")
 
 
-@pytest.mark.usefixtures('app_ctx', 'artifacts_builder', 'model')
+@pytest.mark.usefixtures("app_ctx", "artifacts_builder", "model")
 class TestResourceGenerator:
-
     def test_generate_creates_controller_file(self, artifacts_builder, mocker):
-        generate('User', [])
-        artifacts_builder.file.assert_any_call('app/controllers/users_controller.py', mocker.ANY)
+        generate("User", [])
+        artifacts_builder.file.assert_any_call(
+            "app/controllers/users_controller.py", mocker.ANY
+        )
 
     def test_generate_creates_controller_test(self, artifacts_builder, mocker):
-        generate('User', [])
+        generate("User", [])
         artifacts_builder.file.assert_any_call(
-            'test/controllers/users_controller_test.py', mocker.ANY
+            "test/controllers/users_controller_test.py", mocker.ANY
         )
 
     def test_generate_modifies_routes(self, artifacts_builder, mocker):
-        generate('User', [])
-        artifacts_builder.modify_py_file.assert_called_once_with('config/routes.py', mocker.ANY)
+        generate("User", [])
+        artifacts_builder.modify_py_file.assert_called_once_with(
+            "config/routes.py", mocker.ANY
+        )
 
     def test_generate_calls_model_generate(self, model):
-        generate('User', ['field:str'])
-        model.generate.assert_called_once_with('User', ['field:str'])
+        generate("User", ["field:str"])
+        model.generate.assert_called_once_with("User", ["field:str"])

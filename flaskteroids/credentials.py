@@ -2,8 +2,9 @@ import base64
 import os
 import secrets
 from pathlib import Path
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
 import yaml
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 
 class CredentialsError(RuntimeError):
@@ -11,9 +12,7 @@ class CredentialsError(RuntimeError):
 
 
 class Credentials:
-    def __init__(
-        self, root, environment, *, environ=None, environment_specific=False
-    ):
+    def __init__(self, root, environment, *, environ=None, environment_specific=False):
         self.root = Path(root)
         self.environment = str(environment)
         self.environ = os.environ if environ is None else environ

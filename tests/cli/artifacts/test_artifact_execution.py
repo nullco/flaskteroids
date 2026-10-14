@@ -25,7 +25,9 @@ def test_prepared_argv_options_return_and_notification(
     argv = ["tool", "--title", "'two", "words'"]
     if method == "python_run":
         argv = [sys.executable, "-m", *argv]
-    run.assert_called_once_with(argv, cwd=str(tmp_path), capture_output=True, text=True)
+    run.assert_called_once_with(
+        argv, cwd=str(tmp_path), capture_output=True, text=True, check=False
+    )
     notify.assert_called_once_with(f"    run  {command}")
 
 

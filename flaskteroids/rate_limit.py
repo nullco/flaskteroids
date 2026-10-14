@@ -1,7 +1,9 @@
 from http import HTTPStatus
-from flask import request, abort
-from flaskteroids.actions import before_action
+
+from flask import abort, request
+
 from flaskteroids import cache
+from flaskteroids.actions import before_action
 
 
 def _keygen():
@@ -17,10 +19,12 @@ def rate_limit(*, to, within=None, only=None, by=None, with_=None):
         def _rate_limit(self):
             rate_limit_handler = with_ or _with
             keygen = by or _keygen
-            key = f'rate-limit:{keygen()}'
+            key = f"rate-limit:{keygen()}"
             count = cache.increment(key, within)
             if count > to:
                 return rate_limit_handler()
+
         cls._rate_limit = _rate_limit
-        before_action('_rate_limit', only=only)(cls)
+        before_action("_rate_limit", only=only)(cls)
+
     return bind

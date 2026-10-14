@@ -1,14 +1,25 @@
+from datetime import date, datetime, time
+
 import pytest
 import sqlalchemy as sa
-from datetime import datetime, date, time
+
 from flaskteroids.fields import (
-    Field, Text, String, Integer, Float, Boolean,
-    DateTime, Date, Time, Json, fields, from_column_type
+    Boolean,
+    Date,
+    DateTime,
+    Field,
+    Float,
+    Integer,
+    Json,
+    String,
+    Text,
+    Time,
+    fields,
+    from_column_type,
 )
 
 
 class TestField:
-
     def test_init(self):
         field = Field(sa.String, str)
         assert field.column_type == sa.String
@@ -33,7 +44,6 @@ class TestField:
 
 
 class TestText:
-
     def test_init(self):
         field = Text()
         assert field.column_type == sa.Text
@@ -46,7 +56,6 @@ class TestText:
 
 
 class TestString:
-
     def test_init(self):
         field = String()
         assert field.column_type == sa.String
@@ -60,7 +69,6 @@ class TestString:
 
 
 class TestInteger:
-
     def test_init(self):
         field = Integer()
         assert field.column_type == sa.Integer
@@ -73,7 +81,6 @@ class TestInteger:
 
 
 class TestFloat:
-
     def test_init(self):
         field = Float()
         assert field.column_type == sa.Float
@@ -86,7 +93,6 @@ class TestFloat:
 
 
 class TestBoolean:
-
     def test_init(self):
         field = Boolean()
         assert field.column_type == sa.Boolean
@@ -97,26 +103,28 @@ class TestBoolean:
         column = field.new_column()
         assert isinstance(column, sa.Boolean)
 
-    @pytest.mark.parametrize("value,expected", [
-        (True, True),
-        (False, False),
-        (1, True),
-        (0, False),
-        ("true", True),
-        ("false", False),
-        ("f", False),
-        ("0", False),
-        ("", False),
-        (None, False),
-        ("anything_else", True),
-    ])
+    @pytest.mark.parametrize(
+        "value,expected",
+        [
+            (True, True),
+            (False, False),
+            (1, True),
+            (0, False),
+            ("true", True),
+            ("false", False),
+            ("f", False),
+            ("0", False),
+            ("", False),
+            (None, False),
+            ("anything_else", True),
+        ],
+    )
     def test_as_primitive(self, value, expected):
         field = Boolean()
         assert field.as_primitive(value) == expected
 
 
 class TestDateTime:
-
     def test_init(self):
         field = DateTime()
         assert field.column_type == sa.DateTime
@@ -143,7 +151,6 @@ class TestDateTime:
 
 
 class TestDate:
-
     def test_init(self):
         field = Date()
         assert field.column_type == sa.Date
@@ -170,7 +177,6 @@ class TestDate:
 
 
 class TestTime:
-
     def test_init(self):
         field = Time()
         assert field.column_type == sa.Time
@@ -197,7 +203,6 @@ class TestTime:
 
 
 class TestJson:
-
     def test_init(self):
         field = Json()
         assert field.column_type == sa.JSON
@@ -210,11 +215,20 @@ class TestJson:
 
 
 class TestFieldsDict:
-
     def test_fields_dict_keys(self):
         expected_keys = {
-            'text', 'string', 'str', 'integer', 'float', 'int',
-            'boolean', 'bool', 'datetime', 'date', 'time', 'json'
+            "text",
+            "string",
+            "str",
+            "integer",
+            "float",
+            "int",
+            "boolean",
+            "bool",
+            "datetime",
+            "date",
+            "time",
+            "json",
         }
         assert set(fields.keys()) == expected_keys
 
@@ -223,16 +237,15 @@ class TestFieldsDict:
             assert isinstance(field, Field)
 
     def test_aliases(self):
-        assert isinstance(fields['str'], String)
-        assert isinstance(fields['string'], String)
-        assert isinstance(fields['int'], Integer)
-        assert isinstance(fields['integer'], Integer)
-        assert isinstance(fields['bool'], Boolean)
-        assert isinstance(fields['boolean'], Boolean)
+        assert isinstance(fields["str"], String)
+        assert isinstance(fields["string"], String)
+        assert isinstance(fields["int"], Integer)
+        assert isinstance(fields["integer"], Integer)
+        assert isinstance(fields["bool"], Boolean)
+        assert isinstance(fields["boolean"], Boolean)
 
 
 class TestFromColumnType:
-
     def test_from_column_type_text(self):
         column = sa.Text()
         field = from_column_type(column)

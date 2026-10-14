@@ -20,13 +20,17 @@ from flaskteroids._models.query import ModelQuery
 from flaskteroids._models.records import _base
 
 # Configuration types remain directly importable, including those outside __all__.
-from flaskteroids._models.validation import (  # noqa: F401
-    ComparisonConfig,
+from flaskteroids._models.validation import (
+    ComparisonConfig as ComparisonConfig,
+)
+from flaskteroids._models.validation import (
     Error,
     Errors,
     LengthConfig,
-    PresenceConfig,
     validates,
+)
+from flaskteroids._models.validation import (
+    PresenceConfig as PresenceConfig,
 )
 from flaskteroids.attachments import attached as attached_storage
 from flaskteroids.attachments import has_many_attached, has_one_attached

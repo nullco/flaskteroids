@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from typing import ClassVar
 from urllib.parse import urlsplit
 
 import pytest
@@ -9,7 +10,7 @@ from flaskteroids.testing.fixtures import load_fixtures
 
 
 class FlaskteroidsTest:
-    fixtures = []
+    fixtures: ClassVar[list[str]] = []
 
     @pytest.fixture(autouse=True)
     def _flaskteroids_test_lifecycle(self, application):
@@ -22,9 +23,7 @@ class FlaskteroidsTest:
             with application.app_context():
                 client = application.test_client()
                 with activate_test_context(client):
-                    self._fixture_collection = load_fixtures(
-                        application, self.fixtures
-                    )
+                    self._fixture_collection = load_fixtures(application, self.fixtures)
                     self._before_test(application)
                     try:
                         self.setup()

@@ -40,7 +40,7 @@ class ArtifactsBuilder:
         self._notify(f"    create  {name}")
 
     def modify_py_file(self, name, contents):
-        with open(self._join(name), "r") as source:
+        with open(self._join(name)) as source:
             tree = ast.parse(source.read())
         tree = contents().visit(tree)
         with open(self._join(name), "w") as target:
@@ -55,8 +55,8 @@ class ArtifactsBuilder:
 
     def _execute(self, argv: list[str], cmd: str) -> None:
         # Failed commands use the framework's status/stderr diagnostics below.
-        res = subprocess.run(  # noqa: PLW1510
-            argv, cwd=self._base_path, capture_output=True, text=True
+        res = subprocess.run(
+            argv, cwd=self._base_path, capture_output=True, text=True, check=False
         )
         if res.returncode != 0:
             raise ArtifactsBuilderException(
