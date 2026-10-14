@@ -7,6 +7,7 @@ from flaskteroids.cli.flaskteroids import cli
 
 @pytest.fixture
 def artifacts_builder(mocker):
+    mocker.patch("flaskteroids.cli.flaskteroids.initialize_migrations")
     mock_builder = mocker.patch("flaskteroids.cli.flaskteroids.ArtifactsBuilder")
     mock_ab = mocker.Mock()
     mock_builder.return_value = mock_ab
@@ -22,7 +23,8 @@ def test_new_command(cli_runner, artifacts_builder):
     assert result.exit_code == 0
     artifacts_builder.dir.assert_called()
     artifacts_builder.file.assert_called()
-    artifacts_builder.python_run.assert_called_with("flask db:init")
+    artifacts_builder.python_run.assert_not_called()
+    artifacts_builder.run.assert_any_call("bin/setup")
     artifacts_builder.run.assert_called()
     # ensure a pyproject.toml is created and it contains flaskteroids as a dependency
     assert any(
@@ -49,31 +51,31 @@ def test_new_command(cli_runner, artifacts_builder):
 
 
 def test_new_generates_agent_skill_loader(cli_runner, tmp_path, mocker):
-    mocker.patch.object(ArtifactsBuilder, 'python_run')
-    mocker.patch.object(ArtifactsBuilder, 'run')
-    app_path = tmp_path / 'test_app'
+    mocker.patch.object(ArtifactsBuilder, "python_run")
+    mocker.patch.object(ArtifactsBuilder, "run")
+    app_path = tmp_path / "test_app"
 
-    result = cli_runner.invoke(cli, ['new', str(app_path)])
+    result = cli_runner.invoke(cli, ["new", str(app_path), "--skip-install"])
 
     assert result.exit_code == 0
-    skill_path = app_path / '.agents' / 'skills' / 'using-flaskteroids' / 'SKILL.md'
+    skill_path = app_path / ".agents" / "skills" / "using-flaskteroids" / "SKILL.md"
     text = skill_path.read_text()
-    _, frontmatter, body = text.split('---', 2)
+    _, frontmatter, body = text.split("---", 2)
     metadata = yaml.safe_load(frontmatter)
-    assert metadata['name'] == 'using-flaskteroids'
-    assert metadata['description']
-    assert 'flaskteroids agent-skills path' in body
-    assert 'uv run flaskteroids agent-skills path' in body
-    assert 'using-flaskteroids/SKILL.md' in body
-    assert 'Read that file completely' in body
-    assert 'not this application-local loader' in body
+    assert metadata["name"] == "using-flaskteroids"
+    assert metadata["description"]
+    assert "flaskteroids agent-skills path" in body
+    assert "uv run flaskteroids agent-skills path" in body
+    assert "using-flaskteroids/SKILL.md" in body
+    assert "Read that file completely" in body
+    assert "not this application-local loader" in body
 
 
 def test_new_command_error(cli_runner, artifacts_builder):
     artifacts_builder.dir.side_effect = ArtifactsBuilderException("Test error")
     result = cli_runner.invoke(cli, ["new", "test_app"])
-    assert result.exit_code == 0
-    assert "Error creating new flaskteroids app: Test error" in result.output
+    assert result.exit_code == 1
+    assert "Error creating new Flaskteroids app: Test error" in result.output
 
 
 def test_cli_help(cli_runner):

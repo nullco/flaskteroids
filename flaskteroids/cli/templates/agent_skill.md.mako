@@ -27,6 +27,10 @@ Before working on this application's Flaskteroids code:
    instructions before implementing changes, including its framework-first API
    requirements.
 
+For application commands use `bin/flask` (for example `bin/flask generate`),
+which selects this app's environment without activation. Run `bin/setup` first
+if dependencies have not been installed.
+
 If the command is unavailable, check the application's dependency installation
 and environment first. Report any remaining blocker rather than silently using
 another version's instructions. Resolve and reread the package skill after changing

@@ -81,6 +81,7 @@ def _register_cli_commands(app):
     app.cli.add_command(generate_commands.generate, name="g")
     app.cli.add_command(db_commands.init)
     app.cli.add_command(db_commands.migrate)
+    app.cli.add_command(db_commands.prepare)
     app.cli.add_command(db_commands.rollback)
     app.cli.add_command(credentials_commands.show)
     app.cli.add_command(credentials_commands.edit)

@@ -47,16 +47,18 @@ def test_flask_commands_run_pytest_without_loading_application(
     assert os.environ["FLASK_ENV"] == "production"
 
 
-@pytest.mark.parametrize("exit_code", [0, 1, 5])
+@pytest.mark.parametrize("command", ["test", "test:system"])
+@pytest.mark.parametrize("exit_code", [0, 1, 2, 3, 4, 5])
 def test_test_command_preserves_exit_code_and_restores_unset_environment(
-    cli_runner, mocker, monkeypatch, exit_code
+    cli_runner, mocker, monkeypatch, exit_code, command
 ):
     mocker.patch("pytest.main", return_value=exit_code)
     monkeypatch.delenv("FLASK_ENV", raising=False)
 
-    result = cli_runner.invoke(args=["test", "-q"])
+    result = cli_runner.invoke(args=[command, "-q"])
 
-    assert result.exit_code == exit_code
+    assert result.exit_code == (0 if exit_code == 5 else exit_code)
+    assert ("No tests collected" in result.output) is (exit_code == 5)
     assert "FLASK_ENV" not in os.environ
 
 

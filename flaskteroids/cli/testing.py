@@ -10,7 +10,8 @@ def test(pytest_args):
 
     Run from the application root. Testing dependencies are included with
     Flaskteroids. Uses the test environment and prepares its database. Pass
-    test paths and pytest options as PYTEST_ARGS. Returns pytest's exit code.
+    test paths and pytest options as PYTEST_ARGS. Returns pytest's exit code
+    except that no tests is success.
 
     \b
     Examples:
@@ -30,7 +31,8 @@ def test_system(pytest_args):
     Run from the application root. Testing dependencies are included with
     Flaskteroids. Uses the test environment and prepares its database. Install
     the browser first with playwright install chromium. Pass test paths and
-    pytest options as PYTEST_ARGS. Returns pytest's exit code.
+    pytest options as PYTEST_ARGS. Returns pytest's exit code except that no
+    tests is success.
 
     \b
     Examples:
@@ -53,4 +55,7 @@ def _run_tests(pytest_args):
             os.environ.pop("FLASK_ENV", None)
         else:
             os.environ["FLASK_ENV"] = previous_environment
+    if exit_code == pytest.ExitCode.NO_TESTS_COLLECTED:
+        click.echo("No tests collected; nothing to run.")
+        exit_code = 0
     raise SystemExit(exit_code)

@@ -129,6 +129,23 @@ production:
 - An explicit `url` entry in `database.yml` takes precedence over `DATABASE_URL`.
 - Without either URL, Flaskteroids constructs the connection URL from the selected settings.
 
+## Setup and production preparation
+
+`bin/setup` defaults FLASK_ENV only when unset, honors DATABASE_URL and uses
+`uv sync` followed by `bin/flask db:prepare`. It creates conventional `storage/`,
+not arbitrary configured directories. Preparation applies existing migrations,
+retains records and credentials, and propagates bad revisions, scripts, inaccessible
+DBs and connection failures. It does not repair migration files, reset, seed, or
+create external databases. Add/lock external database drivers explicitly.
+
+The default Docker web entrypoint prepares once before Gunicorn workers start.
+Fleet deployments must coordinate one release step and override the entrypoint;
+this is not concurrent migration coordination. Production SQLite/local attachments
+require persistent writable `/app/storage`. Production must receive the matching
+FLASKTEROIDS_MASTER_KEY at runtime, never during build. SECRET_KEY_BASE remains
+an optional override, not a substitute for decryptable production credentials.
+Workers need a reachable CELERY_BROKER_URL. SMTP/external storage still need settings.
+
 ## Encrypted credentials
 
 Shared credentials live in `config/credentials.yml.enc`. Flaskteroids stores the local encryption key in `config/master.key`. Generated Git and container ignore files exclude the key.

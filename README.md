@@ -46,17 +46,22 @@ pip install flaskteroids
 
 ## Getting started
 
-Create an application. Git must be installed.
+Create an application. Git, Bash/POSIX, and uv must be installed.
 
 ```sh
 flaskteroids new my_app
 cd my_app
 ```
 
-The command creates the application files and initializes a Git repository in `my_app`. Start the development server:
+Generation installs dependencies, creates the app lock, prepares SQLite and
+initializes Git. Use `bin/setup` for fresh checkouts or changed dependencies;
+`--skip-install` defers installation/preparation. Commit `uv.lock`.
+Start the server without activating an environment:
 
 ```sh
-flask run
+bin/flask run
+bin/flask test
+bin/flask test:system
 ```
 
 Open `http://127.0.0.1:5000` to see the welcome page.
@@ -66,9 +71,9 @@ Open `http://127.0.0.1:5000` to see the welcome page.
 Stop the server and run these commands inside `my_app`:
 
 ```sh
-flask generate scaffold Post title:string content:text
-flask db:migrate
-flask run
+bin/flask generate scaffold Post title:string content:text
+bin/flask db:prepare
+bin/flask run
 ```
 
 The scaffold generates a model, migration, controller, views, and routes. Visit

@@ -1,10 +1,13 @@
 import pytest
+
 from flaskteroids.cli.generators.model.generator import generate
 
 
 @pytest.fixture
 def artifacts_builder(mocker):
-    mock_builder = mocker.patch('flaskteroids.cli.generators.model.generator.ArtifactsBuilder')
+    mock_builder = mocker.patch(
+        "flaskteroids.cli.generators.model.generator.ArtifactsBuilder"
+    )
     mock_ab = mocker.Mock()
     mock_builder.return_value = mock_ab
     return mock_ab
@@ -12,57 +15,54 @@ def artifacts_builder(mocker):
 
 @pytest.fixture
 def migrations_generate(mocker):
-    return mocker.patch('flaskteroids.cli.generators.model.generator.migrations.generate')
+    return mocker.patch(
+        "flaskteroids.cli.generators.model.generator.migrations.generate"
+    )
 
 
 class TestModelGenerator:
-
-    @pytest.mark.usefixtures('artifacts_builder')
+    @pytest.mark.usefixtures("artifacts_builder")
     def test_generate_calls_migrations_generate(self, migrations_generate):
-        generate('User', [])
-        migrations_generate.assert_called_once_with('CreateUsers', [])
+        generate("User", [])
+        migrations_generate.assert_called_once_with("CreateUsers", [])
 
-    @pytest.mark.usefixtures('migrations_generate')
+    @pytest.mark.usefixtures("migrations_generate")
     def test_generate_creates_model_file(self, artifacts_builder):
-        generate('User', [])
-        expected_content = """
+        generate("User", [])
+        expected_content = """\
 from app.models.application_model import ApplicationModel
 
 
 class User(ApplicationModel):
     pass
-    """
-        artifacts_builder.file.assert_any_call(
-            'app/models/user.py',
-            expected_content
-        )
-        expected_test_content = """
+"""
+        artifacts_builder.file.assert_any_call("app/models/user.py", expected_content)
+        expected_test_content = """\
 from test.test_helper import ModelTest
 
 
 class UserTest(ModelTest):
     pass
-    """
+"""
         artifacts_builder.file.assert_any_call(
-            'test/models/user_test.py',
+            "test/models/user_test.py",
             expected_test_content,
         )
 
-    def test_generate_with_different_model_name(self, artifacts_builder, migrations_generate):
-        generate('Post', [])
-        migrations_generate.assert_called_once_with('CreatePosts', [])
-        expected_content = """
+    def test_generate_with_different_model_name(
+        self, artifacts_builder, migrations_generate
+    ):
+        generate("Post", [])
+        migrations_generate.assert_called_once_with("CreatePosts", [])
+        expected_content = """\
 from app.models.application_model import ApplicationModel
 
 
 class Post(ApplicationModel):
     pass
-    """
-        artifacts_builder.file.assert_any_call(
-            'app/models/post.py',
-            expected_content
-        )
+"""
+        artifacts_builder.file.assert_any_call("app/models/post.py", expected_content)
         assert any(
-            call.args[0] == 'test/models/post_test.py'
+            call.args[0] == "test/models/post_test.py"
             for call in artifacts_builder.file.call_args_list
         )

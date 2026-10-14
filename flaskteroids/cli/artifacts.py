@@ -30,14 +30,13 @@ class ArtifactsBuilder:
         file_path.touch(exist_ok=True)
         if contents:
             file_path.write_text(self._clean(contents))
-        # Make files in bin/ and deploy/ executable by default (convention similar to Rails)
-        try:
-            if str(name).startswith("bin/") or str(name).startswith("deploy/"):
-                mode = file_path.stat().st_mode
-                file_path.chmod(mode | 0o111)
-        except Exception:
-            # non-fatal if filesystem doesn't support chmod
-            pass
+        if str(name).startswith("bin/") or str(name).endswith(".sh"):
+            try:
+                file_path.chmod(file_path.stat().st_mode | 0o111)
+            except OSError as error:
+                raise ArtifactsBuilderException(
+                    f"Cannot make script {name} executable: {error}"
+                ) from error
         self._notify(f"    create  {name}")
 
     def modify_py_file(self, name, contents):
