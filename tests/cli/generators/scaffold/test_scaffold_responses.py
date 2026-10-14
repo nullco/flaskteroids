@@ -53,6 +53,25 @@ class ResponsesTest(IntegrationTest):
         data = current_response().get_json()
         assert (data["id"], data["title"]) == (record.id, "Second")
 
+    @pytest.mark.parametrize("suffix", ["", ".json"])
+    def test_partial_update_preserves_omitted_attributes(self, suffix):
+        headers = {"Accept": "application/json"} if not suffix else {}
+        record = Post.create(title="Existing", completed=False)
+        patch(
+            f"/posts/{record.id}{suffix}/",
+            params={"post": {"completed": True, "id": record.id + 1000}},
+            headers=headers,
+        )
+
+        self.assert_response(200)
+        data = current_response().get_json()
+        assert (data["id"], data["title"], data["completed"]) == (
+            record.id, "Existing", True
+        )
+        record.reload()
+        assert record.title == "Existing"
+        assert record.completed is True
+
     def test_json_destroy(self):
         record = Post.create(title="Existing")
         delete(f"/posts/{record.id}.json/")
@@ -95,7 +114,7 @@ def test_generated_scaffold_json_and_html_responses(tmp_path, monkeypatch):
         assert result.returncode == 0, result.stdout + result.stderr
         return result
 
-    run("generate", "scaffold", "Post", "title:string")
+    run("generate", "scaffold", "Post", "title:string", "completed:boolean")
     (root / "app/models/post.py").write_text(
         "from app.models.application_model import ApplicationModel\n"
         "from flaskteroids.model import validates\n"
@@ -108,4 +127,4 @@ def test_generated_scaffold_json_and_html_responses(tmp_path, monkeypatch):
 
     result = run("test", "-q", "test/controllers")
 
-    assert "19 passed" in result.stdout
+    assert "21 passed" in result.stdout

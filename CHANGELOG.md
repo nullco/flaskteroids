@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### Changed
+
+- `params.expect` rejects null, blank, and empty required roots, including
+  dictionaries with no permitted attributes after filtering. Required scalar
+  `False` and numeric zero remain valid; Python schema syntax and return shapes
+  are unchanged.
+
+### Fixed
+
+- Strong-parameter allowlists now permit omitted nested attributes, including
+  fields in nested dictionaries and arrays of dictionaries. Partial updates can
+  use a fixed allowlist without requiring unchanged fields. Omitted attributes
+  are not filled with defaults; supplied values still undergo type checks.
+- Generated scaffold controllers use fixed upload allowlists rather than
+  selecting permitted attachment fields dynamically from submitted parameters.
+
 ## 0.5.0 - 2026-10-14
 
 ### Changed

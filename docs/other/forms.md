@@ -86,7 +86,28 @@ class PostsController(ActionController):
         return params.expect(post=['title', 'content'])
 ```
 
-`params.expect(post=['title', 'content'])` requires a top-level `post` dictionary and returns only its permitted attributes. It discards other attributes. If `post` is missing or has the wrong structure, it raises an exception.
+`params.expect(post=['title', 'content'])` requires a top-level `post` dictionary,
+but its nested fields are permitted, not required. It returns only submitted,
+permitted attributes and discards other attributes. The same allowlist works for
+both creation and partial updates:
+
+```python
+# Submitted: post[content]=Updated
+attributes = params.expect(post=['title', 'content'])
+# attributes == {'content': 'Updated'}
+post.update(**attributes)  # The existing title is unchanged.
+```
+
+This also applies recursively to nested dictionaries and arrays of dictionaries.
+Omitted fields are not filled with defaults; an explicitly submitted `None` scalar
+is retained. Use model validations to require attributes, rather than treating the
+allowlist as validation.
+
+Missing, null, or empty roots raise `MissingParameter`, including dictionaries
+with no permitted attributes after filtering. Required scalar roots, such as
+`params.expect('password')`, reject blank strings but accept `False` and numeric
+zero. Incorrect supplied types raise `InvalidParameter`; making fields optional
+does not relax the expected structure.
 
 ## CSRF protection
 

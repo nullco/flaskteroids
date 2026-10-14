@@ -172,11 +172,11 @@ class ActionParameters(UserDict):
         root = {}
         for arg in args:
             schema = self._schema("params", [arg])
-            root.update(self._expect("params", self.data, schema))
+            root.update(self._require("params", self.data, schema))
         expected = [root] if root else []
         for k, v in kwargs.items():
             schema = self._schema(f"params.{k}", [(k, v)])
-            res = self._expect(f"params.{k}", self.data, schema)
+            res = self._require("params", self.data, schema)
             expected.append(res[k])
         if not expected:
             return {}
@@ -208,13 +208,25 @@ class ActionParameters(UserDict):
                 )
         return schema
 
+    def _require(self, key, value, schema):
+        expected = self._expect(key, value, schema)
+        for name in schema:
+            result = expected.get(name)
+            if (
+                result is None
+                or (isinstance(result, str) and not result.strip())
+                or (isinstance(result, (dict, list)) and not result)
+            ):
+                raise MissingParameter(key, name, "Parameter is missing or empty")
+        return expected
+
     def _expect(self, key, value, schema):
         if not isinstance(value, dict):
             raise InvalidParameter(key, "Invalid parameter type. Not a dict")
         expected = {}
         for k, v in schema.items():
             if k not in value:
-                raise MissingParameter(key, k, "Parameter is missing")
+                continue
             elif value[k] is None:
                 expected[k] = None
             elif v is Any:

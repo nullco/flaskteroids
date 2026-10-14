@@ -69,7 +69,6 @@ class ${controller}Controller(ApplicationController):
     def _${model_ref}_params(self):
         permitted = [${', '.join("'" + field['name'] + "'" for field in fields)}]
 % for attachment in attachments:
-        if '${attachment['name']}' in params.get('${model_ref}', {}):
-            permitted.append(${"('" + attachment['name'] + "', [])" if attachment['type'] == 'attachments' else "'" + attachment['name'] + "'"})
+        permitted.append(${"('" + attachment['name'] + "', [])" if attachment['type'] == 'attachments' else "'" + attachment['name'] + "'"})
 % endfor
         return params.expect(${model_ref}=permitted)

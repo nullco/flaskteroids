@@ -26,6 +26,18 @@ class TestScaffoldGenerator:
             "app/controllers/users_controller.py", mocker.ANY
         )
 
+    def test_generate_uses_fixed_upload_allowlist(self, artifacts_builder):
+        generate("User", ["name:str", "avatar:attachment", "documents:attachments"])
+        controller = next(
+            call.args[1]
+            for call in artifacts_builder.file.call_args_list
+            if call.args[0] == "app/controllers/users_controller.py"
+        )
+
+        assert "permitted.append('avatar')" in controller
+        assert "permitted.append(('documents', []))" in controller
+        assert "in params.get(" not in controller
+
     def test_generate_creates_view_files(self, artifacts_builder, mocker):
         generate("User", ["name:str"])
         expected_files = [

@@ -91,8 +91,10 @@ attributes = params.expect(user=["avatar", ("documents", [])])
 user.update(**attributes)
 ```
 
-`expect` requires the named keys. For optional uploads, only include keys that
-are present in the submitted parameters.
+`expect` requires the outer `user` dictionary, not every permitted upload field.
+Keep a fixed allowlist: omitted fields are excluded from `attributes`, so a partial
+update leaves their attachments unchanged. To clear a collection, submit an empty
+list explicitly rather than omitting the field.
 
 ## Validation and limits
 

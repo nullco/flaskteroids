@@ -100,6 +100,10 @@ dependency internals or introduce a parallel implementation of a supported featu
   status=...)` supports ordinary JSON values, models, queries, and model errors.
   Errors serialize as full-message lists; use status 422 for validation failures.
   Only `None` returned by an action triggers implicit template rendering.
+- `params.expect(post=[...])` requires the outer parameter but permits optional
+  nested attributes. Keep fixed allowlists for partial updates, including uploads;
+  omitted attributes remain unchanged. Use model validations for required fields.
+  Missing/null/empty roots and blank required scalars are rejected.
 - Declare controller callbacks through `before_action`, `around_action`, and
   `after_action`. Around callbacks are generators that yield once and unwind in
   reverse order, including on failures. Cleanup resumes them normally rather than
