@@ -1,14 +1,18 @@
 import textwrap
-from flask import render_template, url_for, current_app
-from markupsafe import Markup
-from flaskteroids.inflector import inflector
-from flaskteroids.form import Form
+
+from flask import current_app, render_template, url_for
+from markupsafe import Markup, escape
+
+from flaskteroids._html import attributes, validate_url
 from flaskteroids.csrf import CSRFToken
+from flaskteroids.form import Form
+from flaskteroids.inflector import inflector
 
 
 def link_to(name, path, **kwargs):
-    attrs = " ".join(f'{k}="{v}"' for k, v in kwargs.items())
-    return Markup(f'<a href="{path}" {attrs}>{name}</a>')
+    path = validate_url(path, link=True)
+    attrs = attributes(kwargs)
+    return Markup(f'<a href="{escape(path)}" {attrs}>{escape(name)}</a>')
 
 
 def button_to(message, instance, method):
@@ -17,11 +21,12 @@ def button_to(message, instance, method):
     url = '#'
     if method == 'DELETE':
         url = url_for(f"destroy_{name}", id=instance.id)
+    url = validate_url(url)
     return Markup(textwrap.dedent(f"""
-        <form method="{method}" action="{url}">
+        <form method="{escape(str(method))}" action="{escape(url)}">
             <input type="hidden" name="_method" value="delete" autocomplete="off">
-            <input type="hidden" name="csrf_token" value="{csrf_token()}">
-            <button type="submit">{message}</button>
+            <input type="hidden" name="csrf_token" value="{escape(str(csrf_token()))}">
+            <button type="submit">{escape(message)}</button>
         </form>
         """))
 
@@ -35,15 +40,16 @@ def form_with(model=None, caller=None, url='', method='POST', multipart=False):
         if model.id:
             url = url_for(f'update_{prefix}', id=model.id)
             method = 'PUT'
-        data = model.__json__()
+        data = model._form_data()
+    url = validate_url(url)
     methods = ['GET', 'POST']
     form = Form(prefix, data)
     body = caller(form) if caller else ''
     encoding = ' enctype="multipart/form-data"' if multipart or form.multipart else ''
     return textwrap.dedent(f"""
-        <form action="{url}" method="{'POST' if method not in methods else method}"{encoding}>
-           <input type="hidden" name="csrf_token" value="{csrf_token()}">
-           <input type="hidden" name="_method" value="{method if method not in methods else ''}">
+        <form action="{escape(url)}" method="{escape(str('POST' if method not in methods else method))}"{encoding}>
+           <input type="hidden" name="csrf_token" value="{escape(str(csrf_token()))}">
+           <input type="hidden" name="_method" value="{escape(str(method if method not in methods else ''))}">
            {body}
         </form>
     """)

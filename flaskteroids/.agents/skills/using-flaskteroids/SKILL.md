@@ -24,6 +24,18 @@ description: Use when building or modifying a Flaskteroids application.
 - Add or update tests with behavior changes and run the relevant test commands.
   Never commit encryption keys or expose plaintext credentials.
 
+## Application context
+
+- Use models and enqueue jobs inside an application context. Requests and jobs
+  already have one. Keep records, queries, and files in the app that created them.
+- Custom rules set class attributes. Put database queries and work that needs an
+  application in actions, callbacks, or initializers.
+- In `flask shell`, use `session.commit()` to save pending changes or
+  `session.rollback()` to discard them. Normal context exit also commits.
+- Run `flask db:migrate` to create missing model tables, then restart the app.
+  The app can start before migration, but models need their tables before use.
+- Fix broken imports in model, controller, mailer, and job packages; don't suppress them.
+
 ## Preserve application behavior during UI changes
 
 Treat existing layouts as application infrastructure, not disposable starter
@@ -56,9 +68,23 @@ dependency internals or introduce a parallel implementation of a supported featu
 - Use the application's base models and Flaskteroids querying, associations,
   validations, callbacks, and secure-password APIs instead of direct SQLAlchemy
   session management, mapped model classes, or relationship plumbing.
+- Unknown public model attributes raise `AttributeError`. For temporary values,
+  declare class defaults or properties with setters, or use private attributes.
+  A type annotation alone isn't enough. Don't overwrite framework methods or state.
+- Assign belongs-to associations their target model or `None`; save new targets
+  first. Use iteration and `create()` for has-many collections, not replacement.
+  A rejected `update()` doesn't save or undo earlier assignments in that call.
 - Use application controllers, `config/routes.py`, resourceful routing, strong
   parameters (`params.expect`), and framework response helpers instead of standalone
-  Flask routes or manually rebuilding the request pipeline.
+  Flask routes or manually rebuilding the request pipeline. `render(json=value,
+  status=...)` supports ordinary JSON values, models, queries, and model errors.
+  Errors serialize as full-message lists; use status 422 for validation failures.
+  Only `None` returned by an action triggers implicit template rendering.
+- Declare controller callbacks through `before_action`, `around_action`, and
+  `after_action`. Around callbacks are generators that yield once and unwind in
+  reverse order, including on failures. Cleanup resumes them normally rather than
+  throwing the action exception into them. After callbacks require successful
+  action execution and cleanup. Do not use after callbacks for failure cleanup.
 - Use attachment declarations, `config/storage.yml`, and `attachments:install`
   for file uploads rather than independent storage plumbing.
   Model attachments upload after commit. Use `blob_path` or `blob_url` for
@@ -67,7 +93,15 @@ dependency internals or introduce a parallel implementation of a supported featu
   an authorization callback with proxy routing, or custom authorized controllers.
   Direct service URLs bypass the callback until they expire.
 - Use `form_with`, field helpers, and framework CSRF protection instead of hand-built
-  equivalents where helpers support the required behavior.
+  equivalents where helpers support the required behavior. Helpers escape ordinary
+  text and attributes. Use `Markup` only for trusted HTML, never for user input.
+  Links allow relative, HTTP(S), mailto, and tel URLs; form actions allow relative
+  and HTTP(S) URLs. Validate user-supplied destination hosts separately.
+- Model JSON responses include database columns and pending column changes, but
+  omit authentication secrets and virtual fields. Customize the existing `__json__()`
+  protocol to select response attributes, preferably starting with `super().__json__()`.
+  Do not add passwords, digests, confirmations, or reset tokens to ordinary responses.
+  Model-backed forms obtain values independently of response serialization.
 - Use Flaskteroids jobs and mailers (`perform_later`, `deliver_later`) rather than
   registering raw Celery tasks or managing Celery dispatch directly.
 - Use framework configuration, credentials, migrations, and testing abstractions

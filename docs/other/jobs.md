@@ -18,3 +18,8 @@ To enqueue a job, call `perform_later`:
 MyJob().perform_later(user_id=1)
 ```
 
+Jobs in `app/jobs` are registered automatically. Call `perform_later` inside an
+application context. Requests already have one; see
+[using models and jobs in scripts](../configuration.md#using-models-and-jobs-in-scripts)
+for standalone code.
+

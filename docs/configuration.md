@@ -35,13 +35,33 @@ class Application(FlaskteroidsApplication):
 
 `config.load_defaults()` selects the framework defaults for the given version. Updating Flaskteroids does not change that selection. Change the version passed to `load_defaults()` to adopt newer defaults.
 
+## Using models and jobs in scripts
+
+Requests and jobs run inside an application context. In scripts, open one before
+using models or enqueueing jobs:
+
+```python
+with application.app_context():
+    user = User.find(1)
+    MyJob().perform_later(user_id=user.id)
+```
+
+Each context has its own database session. Normal exit commits pending changes;
+an exception rolls them back. You can also call `session.commit()` or
+`session.rollback()` explicitly.
+
+If you use multiple applications, keep records, queries, and files in the app
+that created them. Restart the application after changing its database schema.
+
 ## Environments
 
 Flaskteroids selects the environment in this order:
 
-1. `FLASKTEROIDS_ENV`
-2. `FLASK_ENV`
-3. `development`
+1. The explicit `environment=` argument to `Application.initialize()`.
+2. `FLASK_ENV`.
+3. `development`.
+
+Flaskteroids reads `FLASK_ENV` to select configuration. Flask itself no longer uses this variable; use `flask run --debug` to enable its debugger.
 
 Flaskteroids applies the selected file under `config/environments/` after application-wide configuration:
 

@@ -1,0 +1,81 @@
+import pytest
+from jinja2 import DictLoader
+from sqlalchemy import (
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    MetaData,
+    String,
+    Table,
+    create_engine,
+)
+
+from flaskteroids.application import Application
+from flaskteroids.attachments.schema import metadata as attachment_metadata
+from flaskteroids.testing import TestDeliveryMethod, TestQueueAdapter
+
+
+@pytest.fixture
+def make_app(tmp_path):
+    def create(
+        name,
+        tables=("authors", "stories"),
+        adapter=TestQueueAdapter,
+        application_class=Application,
+    ):
+        root = tmp_path / name
+        root.mkdir(exist_ok=True)
+        url = f"sqlite:///{root / 'database.sqlite'}"
+        metadata = MetaData()
+        Table(
+            "authors",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String),
+            Column("passcode_digest", String),
+            Column("created_at", DateTime),
+            Column("updated_at", DateTime),
+        )
+        Table(
+            "stories",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("title", String),
+            Column("author_id", ForeignKey("authors.id")),
+            Column("editor_id", ForeignKey("authors.id")),
+            Column("created_at", DateTime),
+            Column("updated_at", DateTime),
+        )
+        engine = create_engine(url)
+        metadata.create_all(engine, tables=[metadata.tables[table] for table in tables])
+        attachment_metadata.create_all(engine)
+        engine.dispose()
+
+        class IsolatedApplication(application_class):
+            def configure(self, config):
+                config.paths.models = "tests.isolation.models"
+                config.paths.jobs = "tests.isolation.jobs"
+                config.paths.mailers = "tests.isolation.mailers"
+                config.paths.controllers = "tests.isolation.controllers"
+                config.paths.routes = "tests.isolation.routes"
+                config.active_job.queue_adapter = adapter
+                config.active_job.broker_url = "memory://"
+                config.active_job.result_backend = "cache+memory://"
+                config.active_job.additional_config.task_always_eager = True
+                config.action_mailer.delivery_method = TestDeliveryMethod
+                config.action_mailer.perform_deliveries = True
+                config.action_mailer.default_options = {"from_": f"{name}@example.org"}
+                config.action_controller.allow_forgery_protection = False
+                config.secret_key_base = f"{name}-secret"
+
+            def _configure_database(self):
+                self.database_url = url
+
+        app = IsolatedApplication.initialize(environment="test", root_path=root)
+        app.config["OWNER"] = name
+        app.config["EVENTS"] = []
+        app.jinja_loader = DictLoader({"notice_mailer/notice.txt": name})
+        return app
+
+    return create

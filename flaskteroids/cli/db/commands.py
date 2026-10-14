@@ -33,7 +33,7 @@ def migrate():
     \b
     Examples:
       flask db:migrate
-      FLASKTEROIDS_ENV=test flask db:migrate
+      FLASK_ENV=test flask db:migrate
     """
     config = get_config()
     revision = "head"

@@ -166,7 +166,7 @@ def _test_conftest():
     return """
 import os
 
-os.environ.setdefault("FLASKTEROIDS_ENV", "test")
+os.environ.setdefault("FLASK_ENV", "test")
 
 pytest_plugins = ["flaskteroids.testing.pytest_plugin"]
     """
@@ -450,7 +450,7 @@ services:
     ports:
       - 80:8000
     env:
-      FLASKTEROIDS_ENV: production
+      FLASK_ENV: production
       DATABASE_URL: ${{ DATABASE_URL }}
       FLASKTEROIDS_MASTER_KEY: ${{ FLASKTEROIDS_MASTER_KEY }}
     mounts:
@@ -461,7 +461,7 @@ services:
     image: ${IMAGE:-REPLACE_WITH_IMAGE}
     command: celery -A jobs worker --loglevel=info
     env:
-      FLASKTEROIDS_ENV: production
+      FLASK_ENV: production
       DATABASE_URL: ${{ DATABASE_URL }}
       CELERY_BROKER_URL: ${{ CELERY_BROKER_URL }}
       FLASKTEROIDS_MASTER_KEY: ${{ FLASKTEROIDS_MASTER_KEY }}

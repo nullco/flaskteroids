@@ -2,6 +2,62 @@
 
 ## Unreleased
 
+### Changed
+
+- Unknown model attributes now raise `AttributeError` instead of being ignored.
+  Use class defaults, properties with setters, or private attributes for temporary values.
+- Belongs-to assignments accept the target model or `None`; wrong types raise
+  `TypeError`. Has-many collections reject direct replacement; use `create()` to add records.
+- Removed `flaskteroids.registry.get`. Custom rules now use application-owned
+  class attributes and must prepare classes without capturing app resources.
+  Inherited rules visit each ancestor once, base-first in left-to-right order;
+  separately declared occurrences still run separately against each child.
+- Shell model methods no longer auto-commit. The shell exposes `session` for
+  explicit commit and rollback; normal app-context exit still commits.
+- Default in-memory caches and rate-limit counters are app-local. Calls outside
+  Flask use a separate process-local store. Model use and job enqueueing require
+  an active app context and registration in that app.
+- Only `None` triggers implicit controller template rendering. Explicit empty
+  responses are returned unchanged.
+- Around-action generators may halt before yielding by returning a response.
+  Generators that run the action must yield exactly once.
+- Model JSON now includes only database columns and pending column changes,
+  excluding password attributes, digests, confirmations, and reset tokens,
+  including custom secure-password field names. Virtual fields and associations
+  require an explicit `__json__()` override. Model-backed forms no longer use
+  response serialization to populate their fields.
+- HTML helpers escape ordinary text and attributes. Trusted `Markup` is supported
+  for link/button text and select labels, while field values remain escaped.
+  Unsupported URL schemes, control characters in URLs, and invalid HTML attribute
+  names now raise `ValueError`.
+
+### Fixed
+
+- Missing optional packages remain optional; broken imports now stop setup
+  instead of being silently skipped.
+- Setup errors identify affected models and associations without hiding the
+  underlying failure. Tables without a primary key now fail clearly during setup.
+- Shared classes retain independent model mappings, associations, job adapters,
+  mail delivery, and storage across applications. Repeated action preparation
+  and successful app setup no longer stack callbacks, wrappers, or routes.
+- Nested app contexts use independent database sessions and restore the outer
+  session. Teardown closes its session even when commit fails.
+- Apps with empty or partial schemas boot without borrowing another app's model
+  mappings. Missing tables fail with migration guidance when used.
+- Association creation saves supplied fields and keeps inverse collections free
+  of duplicate entries. Loaded secure-password models can update unrelated fields.
+- Preserve JSON response status codes and support ordinary JSON payloads,
+  including empty values and `null`. Model errors serialize as full-message
+  lists, so scaffold JSON validation failures return 422 rather than 500.
+- Unwind entered around-action generators on action and setup failures. Continue
+  cleanup after a cleanup error without replacing the original exception; log
+  secondary failures and attach them as exception notes. After callbacks run
+  only after the action and around cleanup succeed.
+- Stop JSON serialization and form rendering from generating password reset tokens.
+- Escape select options and prompts, labels, textarea field names, and submit
+  values. Compare unescaped select values so values containing HTML characters
+  remain selectable without double escaping.
+
 ## 0.4.0 - 2026-10-12
 
 ### Added

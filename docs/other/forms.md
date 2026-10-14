@@ -30,6 +30,27 @@ Use `file_field('avatar')` or `file_field('documents', multiple=True)` for uploa
 `form_with` detects these fields and adds multipart encoding. See
 [Attachments](attachments.md) for attachment forms and permitted parameters.
 
+## Form values and escaping
+
+Model-backed forms use database column values, pending column changes, and
+assigned writable virtual fields. They do not use the model's JSON response
+serialization or evaluate read-only virtual fields such as reset tokens.
+
+Field names, prefixes, attribute values, input values, and textarea values are
+escaped. Keep field names and attribute names application-defined. Invalid HTML
+attribute names raise `ValueError`. Do not construct field attributes from
+unfiltered request data.
+
+`collection_select()` escapes ordinary option labels and prompts. Explicit
+`markupsafe.Markup` is accepted for trusted labels and prompts, but option values
+and other field values are always escaped, even when supplied as `Markup`.
+
+Form actions accept relative URLs, including protocol-relative URLs, and
+HTTP(S) URLs. Other schemes and URLs containing control characters raise
+`ValueError`. This policy prevents executable schemes; it does not restrict
+which hosts a form may submit to. Check destinations separately if they come
+from user input.
+
 ## Strong parameters
 
 Use `params.expect` to select the attributes a controller may pass to a model. Do not pass unfiltered request data to `create` or `update`. Otherwise, users could change attributes you did not intend to expose, such as an admin flag.

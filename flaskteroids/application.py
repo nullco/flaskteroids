@@ -43,7 +43,6 @@ class Application(Flask):
         self.project_root = project_root
         self.env = Environment(
             environment
-            or os.environ.get("FLASKTEROIDS_ENV")
             or os.environ.get("FLASK_ENV")
             or "development"
         )

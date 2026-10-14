@@ -27,6 +27,54 @@ class Post(Model):
     pass
 ```
 
+## Custom rules and inheritance
+
+A custom rule receives a class. Use it to set class attributes. Put database
+queries and other work that needs an application in an action, callback, or
+initializer instead.
+
+```python
+def searchable(*names):
+    def prepare(cls):
+        cls.search_fields = names
+    return prepare
+
+
+@rules(searchable('title'))
+class Post(Model):
+    pass
+```
+
+Rules run once for each class. Inherited rules run before the child's rules, in
+base-class order. A shared ancestor contributes its rules once. Declaring the
+same rule twice runs it twice. If a rule uses a list or dictionary, create a new
+one for each class so children do not change their parents' values.
+
+## Temporary attributes
+
+Unknown attributes raise `AttributeError`, helping you catch typos. This applies
+to both direct assignment and values passed to `new()`, `create()`, or `update()`.
+
+For values you don't want to save, declare a class default or use a private name:
+
+```python
+class Post(Model):
+    delivery_hint = None
+
+
+post = Post.new(title="Draft", delivery_hint="preview")
+post._render_cache = {}
+# post.titel = "Typo" raises AttributeError
+```
+
+Inherited defaults and properties with setters work too. A type annotation alone
+isn't enough. Read-only attributes and framework methods cannot be overwritten.
+
+Temporary values aren't saved or included in automatic JSON or form data.
+They survive `reload()` on the same instance; separately loaded instances start
+with class defaults. Initialize lists and dictionaries per instance, not as
+shared class defaults.
+
 ## Associations
 
 Associations define relationships between models.
@@ -64,6 +112,10 @@ class Post(Model):
     pass
 ```
 
+Set `post.user` to a `User` instance, or `None` to clear it, then call
+`post.save()`. Save new users first. A wrong model type raises `TypeError`;
+clearing a required association makes `save()` return `False`.
+
 ### has_many
 
 Use `has_many` for a one-to-many relationship. For example, a post has many comments:
@@ -87,6 +139,9 @@ for comment in comments:
 # Create associated records
 new_comment = post.comments.create(content="Great post!", author="John")
 ```
+
+Collections support iteration and `create()`, not `append()` or `remove()`.
+Replacing a collection with `post.comments = []` raises `AttributeError`.
 
 Set `dependent='destroy'` to delete associated records when you destroy the parent:
 
@@ -185,6 +240,36 @@ The decorator adds:
 - Validation for password length and confirmation
 - Password reset tokens that expire after 15 minutes and become invalid after a
   successful password change
+
+## JSON serialization
+
+`render(json=record)` and `render(json=Model.all())` serialize database columns,
+including pending column changes. They omit `password`, `password_confirmation`,
+`password_digest`, and `password_reset_token`. The corresponding attributes for
+custom `has_secure_password()` field names are omitted too.
+
+Virtual fields and associations are not included automatically. Serialization
+does not generate reset tokens or evaluate read-only virtual fields. Read
+`user.password_reset_token` explicitly when issuing a password reset.
+
+To select fewer columns or add an application-specific value, override the existing
+`__json__()` protocol. Queries use the same override for each record:
+
+```python
+class User(Model):
+    def __json__(self):
+        data = super().__json__()
+        return {"id": data["id"], "name": data["name"]}
+```
+
+All other database columns are included by default. Filter application-specific
+secrets in your override, and do not add authentication fields back to the result.
+`form_with(model=record)` extracts form values independently of `__json__()`.
+Changing response serialization does not change model-backed form values.
+
+Applications upgrading from the previous behavior must explicitly select any
+virtual fields they intend to publish. Passwords, digests, and reset tokens must
+not be published through ordinary record responses.
 
 ## Callbacks
 
@@ -423,6 +508,9 @@ post.save()
 post.update(title="New Title", content="New Content")
 ```
 
+If `update()` encounters an unknown attribute, it raises without saving. Earlier
+valid assignments from that call aren't undone.
+
 ### Deleting records
 
 ```python
@@ -430,9 +518,18 @@ post = Post.find(1)
 post.destroy()
 ```
 
+## Missing tables
+
+If a model's table doesn't exist yet, the app can still start, but using that
+model raises `ProgrammerError`. Run `flask db:migrate`, then restart the app.
+
+Other setup errors, such as an invalid association or a table without a primary
+key, must be fixed before the app can start.
+
 ## Validation errors
 
-Models include an `errors` object for validation errors.
+Models include an `errors` object for validation errors. `render(json=record.errors,
+status=422)` returns a JSON list of full messages, or `[]` when there are no errors.
 
 ```python
 post = Post.new(title="")  # Invalid: title is required

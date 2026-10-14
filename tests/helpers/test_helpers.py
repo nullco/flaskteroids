@@ -13,7 +13,7 @@ def model_instance(mocker):
     model_instance = mocker.Mock()
     model_instance.__class__.__name__ = 'TestModel'
     model_instance.id = 1
-    model_instance.__json__ = mocker.Mock(return_value={'name': 'test'})
+    model_instance.configure_mock(**{'_form_data.return_value': {'name': 'test'}})
     return model_instance
 
 

@@ -1,6 +1,8 @@
 from jinja2 import Template
 from markupsafe import Markup, escape
 
+from flaskteroids._html import attributes
+
 
 class Form:
 
@@ -10,7 +12,7 @@ class Form:
         self.multipart = False
 
     def _build_attributes(self, attrs):
-        return " ".join(f'{escape(k)}="{escape(v)}"' for k, v in attrs.items())
+        return attributes(attrs)
 
     def _get_name(self, field):
         if not self._prefix:
@@ -25,11 +27,11 @@ class Form:
     def _get_value(self, field):
         if field not in self._data or self._data[field] is None:
             return ''
-        return escape(self._data.get(field))
+        return self._data[field]
 
     def label(self, field, **kwargs):
         attrs = self._build_attributes({'for': self._get_id(field), **kwargs})
-        return Markup(f'<label {attrs}>{field.title()}</label>')
+        return Markup(f'<label {attrs}>{escape(str(field.title()))}</label>')
 
     def _input_type(self, type_, field, **kwargs):
         value = kwargs.pop('value', None)
@@ -105,21 +107,22 @@ class Form:
         return self._input_type('color', field, **kwargs)
 
     def text_area(self, field, value=None):
-        val = escape(value) if value is not None else self._get_value(field)
-        return Markup(f'<textarea name="{self._get_name(field)}" id="{self._get_id(field)}">{val}</textarea>')
+        val = escape(str(value if value is not None else self._get_value(field)))
+        attrs = self._build_attributes({'name': self._get_name(field), 'id': self._get_id(field)})
+        return Markup(f'<textarea {attrs}>{val}</textarea>')
 
     def collection_select(self, field, collection, option_value, option_display, prompt='Select one', value=None):
-        value = value if value is not None else self._get_value(field)
+        value = str(value if value is not None else self._get_value(field))
         return Markup(Template("""
-            <select id="{{ id }}" name="{{ name }}">
+            <select id="{{ id|forceescape }}" name="{{ name|forceescape }}">
               <option value="">{{ prompt }}</option>
               {% for elem in collection %}
-              <option value="{{ elem[option_value] }}" {% if elem[option_value]|string == value %}selected{% endif %}>
+              <option value="{{ elem[option_value]|forceescape }}" {% if elem[option_value]|string == value %}selected{% endif %}>
                 {{ elem[option_display] }}
               </option>
               {% endfor %}
             </select>
-        """).render(
+        """, autoescape=True).render(
             id=self._get_id(field),
             name=self._get_name(field),
             collection=collection,
@@ -131,4 +134,4 @@ class Form:
 
     def submit(self, value='Submit', **kwargs):
         attrs = self._build_attributes(kwargs)
-        return Markup(f'<input type="submit" value="{value}" {attrs}>')
+        return Markup(f'<input type="submit" value="{escape(str(value))}" {attrs}>')

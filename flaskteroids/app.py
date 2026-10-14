@@ -1,30 +1,34 @@
 import logging
 from http import HTTPStatus
-from werkzeug.middleware.proxy_fix import ProxyFix
-from werkzeug.exceptions import default_exceptions
+
 from flask import has_request_context
-from flaskteroids.extensions.mail import MailExtension
-import flaskteroids.model as model
-from flaskteroids.db import session
-from flaskteroids.flash import flash
-from flaskteroids import helpers
-from flaskteroids.csrf import CSRFToken
-from flaskteroids.extensions.jobs import JobsExtension
-from flaskteroids.extensions.db import SQLAlchemyExtension
-from flaskteroids.extensions.routes import RoutesExtension
-from flaskteroids.cli.generators import commands as generate_commands
-from flaskteroids.cli.db import commands as db_commands
+from werkzeug.exceptions import default_exceptions
+from werkzeug.middleware.proxy_fix import ProxyFix
+
+from flaskteroids import helpers, model
+from flaskteroids.attachments import UploadTooLarge, blob_path, blob_url
+from flaskteroids.attachments.extension import AttachmentsExtension
+from flaskteroids.cache.inmemory import InMemoryCache
 from flaskteroids.cli import credentials as credentials_commands
 from flaskteroids.cli import testing as testing_commands
 from flaskteroids.cli.attachments import install as attachments_install
-from flaskteroids.attachments.extension import AttachmentsExtension
-from flaskteroids.attachments import UploadTooLarge, blob_path, blob_url
-
+from flaskteroids.cli.db import commands as db_commands
+from flaskteroids.cli.generators import commands as generate_commands
+from flaskteroids.csrf import CSRFToken
+from flaskteroids.db import session
+from flaskteroids.extensions.db import SQLAlchemyExtension
+from flaskteroids.extensions.jobs import JobsExtension
+from flaskteroids.extensions.mail import MailExtension
+from flaskteroids.extensions.routes import RoutesExtension
+from flaskteroids.flash import flash
 
 _logger = logging.getLogger(__name__)
 
 
 def initialize_app(app):
+    if vars(app).get("_flaskteroids_initialized", False):
+        return
+    app.extensions.setdefault("flaskteroids.cache", InMemoryCache())
     app.wsgi_app = ProxyFix(app.wsgi_app)
     _configure_orm(app)
     _prepare_shell_context(app)
@@ -35,10 +39,14 @@ def initialize_app(app):
     _setup_jobs(app)
     _setup_mailers(app)
     AttachmentsExtension(app)
+    app._flaskteroids_initialized = True
 
 
 def finalize_app(app):
+    if vars(app).get("_flaskteroids_finalized", False):
+        return
     _register_routes(app)
+    app._flaskteroids_finalized = True
 
 
 def _register_routes(app):
@@ -57,15 +65,20 @@ def _register_error_handlers(app):
             if HttpExceptionClass:
                 return HttpExceptionClass(description=str(e)).get_response()
             raise e
+
         return _
 
-    app.register_error_handler(model.RecordNotFoundException, handle_error(HTTPStatus.NOT_FOUND))
-    app.register_error_handler(UploadTooLarge, handle_error(HTTPStatus.REQUEST_ENTITY_TOO_LARGE))
+    app.register_error_handler(
+        model.RecordNotFoundException, handle_error(HTTPStatus.NOT_FOUND)
+    )
+    app.register_error_handler(
+        UploadTooLarge, handle_error(HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
+    )
 
 
 def _register_cli_commands(app):
-    app.cli.add_command(generate_commands.generate, name='generate')
-    app.cli.add_command(generate_commands.generate, name='g')
+    app.cli.add_command(generate_commands.generate, name="generate")
+    app.cli.add_command(generate_commands.generate, name="g")
     app.cli.add_command(db_commands.init)
     app.cli.add_command(db_commands.migrate)
     app.cli.add_command(db_commands.rollback)
@@ -80,52 +93,35 @@ def _prepare_shell_context(app):
 
     @app.shell_context_processor
     def _():
-        _logger.debug('Preparing shell context')
-        db = app.extensions['flaskteroids.db']
+        _logger.debug("Preparing shell context")
+        db = app.extensions["flaskteroids.db"]
 
-        def commit(fn):
-            """This commits immediately changes on models from the shell"""
-            def wrapper(*args, **kwargs):
-                res = fn(*args, **kwargs)
-                session.commit()
-                return res
-            return wrapper
-
-        for model_cls in db.models.values():
-            model_cls.create = commit(model_cls.create)
-            model_cls.update = commit(model_cls.update)
-            model_cls.save = commit(model_cls.save)
-            model_cls.destroy = commit(model_cls.destroy)
-
-        return {
-            **db.models,
-        }
+        return {**db.models, "session": session}
 
 
 def _prepare_template_contexts(app):
 
-    db = app.extensions['flaskteroids.db']
+    db = app.extensions["flaskteroids.db"]
 
-    app.jinja_env.globals['render'] = helpers.render
-    app.jinja_env.globals['button_to'] = helpers.button_to
-    app.jinja_env.globals['link_to'] = helpers.link_to
-    app.jinja_env.globals['form_with'] = helpers.form_with
-    app.jinja_env.globals['csrf_token'] = CSRFToken(app.config.get('SECRET_KEY')).generate
-    app.jinja_env.globals['blob_path'] = blob_path
-    app.jinja_env.globals['blob_url'] = blob_url
+    app.jinja_env.globals["render"] = helpers.render
+    app.jinja_env.globals["button_to"] = helpers.button_to
+    app.jinja_env.globals["link_to"] = helpers.link_to
+    app.jinja_env.globals["form_with"] = helpers.form_with
+    app.jinja_env.globals["csrf_token"] = CSRFToken(
+        app.config.get("SECRET_KEY")
+    ).generate
+    app.jinja_env.globals["blob_path"] = blob_path
+    app.jinja_env.globals["blob_url"] = blob_url
 
     @app.context_processor
     def _():
-        return {
-            'flash': flash.messages if has_request_context() else {},
-            **db.models
-        }
+        return {"flash": flash.messages if has_request_context() else {}, **db.models}
 
 
 def _setup_csrf(app):
     @app.before_request
     def _():
-        csrft = CSRFToken(app.config.get('SECRET_KEY'))
+        csrft = CSRFToken(app.config.get("SECRET_KEY"))
         csrft.validate()
 
 

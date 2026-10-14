@@ -1,131 +1,178 @@
 import logging
-from werkzeug.local import LocalProxy
-from werkzeug.datastructures import FileStorage
+from collections import UserDict
 from functools import wraps
 from typing import Any
-from collections import UserDict, defaultdict
-from flask import g
-from flaskteroids import registry
-from flaskteroids.exceptions import InvalidParameter, MissingParameter, ProgrammerError
-from flaskteroids.discovery import discover_methods
 
+from flask import g
+from werkzeug.datastructures import FileStorage
+from werkzeug.local import LocalProxy
+
+from flaskteroids.declarations import actions_for
+from flaskteroids.discovery import discover_methods
+from flaskteroids.exceptions import InvalidParameter, MissingParameter, ProgrammerError
 
 _logger = logging.getLogger(__name__)
 
 
 def register_actions(cls, base_cls):
-    ns = registry.get(cls)
-    ns['actions'] = discover_methods(
-        cls, ignore=set(discover_methods(base_cls))
-    )
+    definition = actions_for(cls)
+    definition.names = discover_methods(cls, ignore=set(discover_methods(base_cls)))
+    for name in definition.names:
+        action = getattr(cls, name)
+        if getattr(action, "_flaskteroids_wrapper", None) is action:
+            action = action._flaskteroids_original
+        definition.originals[name] = action
 
 
 def get_actions(cls):
-    ns = registry.get(cls)
-    return ns.get('actions') or []
+    return actions_for(cls).names
+
+
+def original_action(cls, name):
+    return actions_for(cls).originals[name]
+
+
+def mark_action_wrapper(wrapper, original):
+    wrapper._flaskteroids_original = original
+    wrapper._flaskteroids_wrapper = wrapper
+    return wrapper
 
 
 def decorate_action(cls, action_fn):
     @wraps(action_fn)
     def wrapper(*args, **kwargs):
-        ns = registry.get(cls)
-        before_action = [getattr(cls, ba) for ba in ns.get('before_action', {}).get(action_fn.__name__, [])]
+        definition = actions_for(cls)
+        before_action = [
+            getattr(cls, ba) for ba in definition.before.get(action_fn.__name__, [])
+        ]
         for ba in before_action:
             res = ba(*args, **kwargs)
             if res:
                 return res
-        around_action = [
-            getattr(cls, aa)(*args, **kwargs)
-            for aa in ns.get('around_action', {}).get(action_fn.__name__, [])
+        generators = []
+        original_error = None
+        try:
+            for name in definition.around.get(action_fn.__name__, []):
+                generator = getattr(cls, name)(*args, **kwargs)
+                try:
+                    next(generator)
+                except StopIteration as stopped:
+                    return stopped.value
+                generators.append((name, generator))
+            res = action_fn(*args, **kwargs)
+        except BaseException as exc:
+            original_error = exc
+            raise
+        finally:
+            _finalize_around(generators, original_error)
+        after_action = [
+            getattr(cls, aa) for aa in definition.after.get(action_fn.__name__, [])
         ]
-        for aa in around_action:
-            next(aa)
-        res = action_fn(*args, **kwargs)
-        for aa in reversed(around_action):
-            next(aa, None)
-        after_action = [getattr(cls, aa) for aa in ns.get('after_action', {}).get(action_fn.__name__, [])]
         for aa in after_action:
             aa(*args, **kwargs)
         return res
+
     return wrapper
+
+
+def _finalize_around(generators, original_error):
+    error = original_error
+    for name, generator in reversed(generators):
+        try:
+            try:
+                next(generator)
+            except StopIteration:
+                pass
+            else:
+                raise ProgrammerError(f"Around action <{name}> must yield exactly once")
+            finally:
+                generator.close()
+        except BaseException as exc:
+            if error is None:
+                error = exc
+            else:
+                error.add_note(f"Around-action cleanup <{name}> failed: {exc!r}")
+                _logger.exception("Around-action cleanup <%s> failed", name)
+    if original_error is None and error is not None:
+        raise error
 
 
 def before_action(method_name: str, *, only=None):
     def bind(cls):
-        if not method_name.startswith('_'):
-            raise ProgrammerError('Before action methods should follow conventions for private methods')
+        if not method_name.startswith("_"):
+            raise ProgrammerError(
+                "Before action methods should follow conventions for private methods"
+            )
         getattr(cls, method_name)
         actions = only if only else None
-        ns = registry.get(cls)
-
-        if 'before_action' not in ns:
-            ns['before_action'] = defaultdict(lambda: [])
+        definition = actions_for(cls)
         if not actions:
-            actions = ns['actions'] if 'actions' in ns else []
+            actions = definition.names
 
         for action_name in actions:
-            _logger.debug(f'before_action: setting {method_name} before {action_name} on {cls.__name__}')
-            ns['before_action'][action_name].append(method_name)
+            _logger.debug(
+                f"before_action: setting {method_name} before {action_name} on {cls.__name__}"
+            )
+            definition.before.setdefault(action_name, []).append(method_name)
+
     return bind
 
 
 def around_action(method_name: str, *, only=None):
     def bind(cls):
-        if not method_name.startswith('_'):
-            raise ProgrammerError('Around action methods should follow conventions for private methods')
+        if not method_name.startswith("_"):
+            raise ProgrammerError(
+                "Around action methods should follow conventions for private methods"
+            )
         getattr(cls, method_name)
         actions = only if only else None
-        ns = registry.get(cls)
-
-        if 'around_action' not in ns:
-            ns['around_action'] = defaultdict(lambda: [])
+        definition = actions_for(cls)
         if not actions:
-            actions = ns['actions'] if 'actions' in ns else []
+            actions = definition.names
 
         for action_name in actions:
-            _logger.debug(f'around_action: setting {method_name} around {action_name} on {cls.__name__}')
-            ns['around_action'][action_name].append(method_name)
+            _logger.debug(
+                f"around_action: setting {method_name} around {action_name} on {cls.__name__}"
+            )
+            definition.around.setdefault(action_name, []).append(method_name)
+
     return bind
 
 
 def after_action(method_name: str, *, only=None):
     def bind(cls):
-        if not method_name.startswith('_'):
-            raise ProgrammerError('After action methods should follow conventions for private methods')
+        if not method_name.startswith("_"):
+            raise ProgrammerError(
+                "After action methods should follow conventions for private methods"
+            )
         getattr(cls, method_name)
         actions = only if only else None
-        ns = registry.get(cls)
-
-        if 'after_action' not in ns:
-            ns['after_action'] = defaultdict(lambda: [])
+        definition = actions_for(cls)
         if not actions:
-            actions = ns['actions'] if 'actions' in ns else []
+            actions = definition.names
 
         for action_name in actions:
-            _logger.debug(f'after_action: setting {method_name} after {action_name} on {cls.__name__}')
-            ns['after_action'][action_name].append(method_name)
+            _logger.debug(
+                f"after_action: setting {method_name} after {action_name} on {cls.__name__}"
+            )
+            definition.after.setdefault(action_name, []).append(method_name)
+
     return bind
 
 
 def skip_before_action(method_name: str, *, only=None):
     def bind(cls):
-        ns = registry.get(cls)
-        actions = only if only else None
-        if not actions:
-            actions = ns['actions'] if 'actions' in ns else []
+        definition = actions_for(cls)
+        actions = only or definition.names
         for action_name in actions:
-            if 'before_action' not in ns:
-                continue
-            if action_name not in ns['before_action']:
-                continue
-            if method_name not in ns['before_action'][action_name]:
-                continue
-            ns['before_action'][action_name].remove(method_name)
+            chain = definition.before.get(action_name, [])
+            if method_name in chain:
+                chain.remove(method_name)
+
     return bind
 
 
 class ActionParameters(UserDict):
-
     @classmethod
     def new(cls, params):
         p = ActionParameters()
@@ -135,12 +182,12 @@ class ActionParameters(UserDict):
     def expect(self, *args, **kwargs):
         root = {}
         for arg in args:
-            schema = self._schema('params', [arg])
-            root.update(self._expect('params', self.data, schema))
+            schema = self._schema("params", [arg])
+            root.update(self._expect("params", self.data, schema))
         expected = [root] if root else []
         for k, v in kwargs.items():
-            schema = self._schema(f'params.{k}', [(k, v)])
-            res = self._expect(f'params.{k}', self.data, schema)
+            schema = self._schema(f"params.{k}", [(k, v)])
+            res = self._expect(f"params.{k}", self.data, schema)
             expected.append(res[k])
         if not expected:
             return {}
@@ -151,7 +198,9 @@ class ActionParameters(UserDict):
 
     def _schema(self, key, fields):
         if not isinstance(fields, list):
-            raise ProgrammerError(key, 'Incorrect fields specification. Fields should always be lists')
+            raise ProgrammerError(
+                key, "Incorrect fields specification. Fields should always be lists"
+            )
         schema = {}
         for f in fields:
             if isinstance(f, str):
@@ -165,41 +214,56 @@ class ActionParameters(UserDict):
                 else:
                     schema[fk] = self._schema(fk, fv)
             else:
-                raise ProgrammerError(key, 'Incorrect field specification. Field must be str / tuple')
+                raise ProgrammerError(
+                    key, "Incorrect field specification. Field must be str / tuple"
+                )
         return schema
 
     def _expect(self, key, value, schema):
         if not isinstance(value, dict):
-            raise InvalidParameter(key, 'Invalid parameter type. Not a dict')
+            raise InvalidParameter(key, "Invalid parameter type. Not a dict")
         expected = {}
         for k, v in schema.items():
             if k not in value:
-                raise MissingParameter(key, k, 'Parameter is missing')
+                raise MissingParameter(key, k, "Parameter is missing")
             elif value[k] is None:
                 expected[k] = None
             elif v is Any:
-                if type(value[k]) not in (int, float, str, bool) and not isinstance(value[k], FileStorage):
-                    raise InvalidParameter(key, k, 'Invalid parameter type. Not a scalar')
+                if type(value[k]) not in (int, float, str, bool) and not isinstance(
+                    value[k], FileStorage
+                ):
+                    raise InvalidParameter(
+                        key, k, "Invalid parameter type. Not a scalar"
+                    )
                 expected[k] = value[k]
             elif v is list:
                 if not isinstance(value[k], list):
-                    raise InvalidParameter(key, k, 'Invalid parameter type. Not a list')
-                if any(type(vi) not in (int, float, str, bool) and not isinstance(vi, FileStorage) for vi in value[k]):
-                    raise InvalidParameter(key, k, 'Invalid parameter type. Not a scalars list')
+                    raise InvalidParameter(key, k, "Invalid parameter type. Not a list")
+                if any(
+                    type(vi) not in (int, float, str, bool)
+                    and not isinstance(vi, FileStorage)
+                    for vi in value[k]
+                ):
+                    raise InvalidParameter(
+                        key, k, "Invalid parameter type. Not a scalars list"
+                    )
                 expected[k] = value[k]
             elif isinstance(v, list):
                 if not isinstance(value[k], list):
-                    raise InvalidParameter(key, k, 'Invalid parameter type. Not a list')
-                expected[k] = [self._expect(f'{key}.{k}[{i}]', vi, v[0]) for i, vi in enumerate(value[k])]
+                    raise InvalidParameter(key, k, "Invalid parameter type. Not a list")
+                expected[k] = [
+                    self._expect(f"{key}.{k}[{i}]", vi, v[0])
+                    for i, vi in enumerate(value[k])
+                ]
             elif isinstance(v, dict):
                 if not isinstance(value[k], dict):
-                    raise InvalidParameter(key, k, 'Invalid parameter type. Not a dict')
-                expected[k] = self._expect(f'{key}.{k}', value[k], v)
+                    raise InvalidParameter(key, k, "Invalid parameter type. Not a dict")
+                expected[k] = self._expect(f"{key}.{k}", value[k], v)
         return expected
 
 
 def _get_params() -> ActionParameters:
-    if 'params' not in g:
+    if "params" not in g:
         g.params = ActionParameters()
     return g.params
 

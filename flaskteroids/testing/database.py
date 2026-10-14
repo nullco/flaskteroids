@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 from contextvars import Context, ContextVar
 
-from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 
 @contextmanager
@@ -11,25 +11,35 @@ def transactional_test(application):
     transaction = connection.begin()
     original_factory = database._session_factory
     original_wsgi_app = application.wsgi_app
-    session_scope = ContextVar("flaskteroids_test_session_scope", default=None)
-    test_factory = scoped_session(
-        sessionmaker(
-            bind=connection,
-            autoflush=False,
-            join_transaction_mode="create_savepoint",
-        ),
-        scopefunc=session_scope.get,
+    sessions = []
+    request_sessions = ContextVar("flaskteroids_request_sessions", default=None)
+    factory = sessionmaker(
+        bind=connection,
+        autoflush=False,
+        join_transaction_mode="create_savepoint",
     )
+
+    def test_factory():
+        session = factory()
+        owned = request_sessions.get()
+        (sessions if owned is None else owned).append(session)
+        return session
+
+    def close_sessions(owned):
+        for session in owned:
+            session.close()
+        owned.clear()
 
     def isolated_request(environ, start_response):
         context = Context()
-        context.run(session_scope.set, object())
+        owned = []
+        context.run(request_sessions.set, owned)
         try:
             response = context.run(original_wsgi_app, environ, start_response)
         except BaseException:
-            context.run(test_factory.remove)
+            close_sessions(owned)
             raise
-        return _ContextResponse(response, context, test_factory.remove)
+        return _ContextResponse(response, context, lambda: close_sessions(owned))
 
     database._session_factory = test_factory
     application.wsgi_app = isolated_request
@@ -37,7 +47,7 @@ def transactional_test(application):
         yield
     finally:
         application.wsgi_app = original_wsgi_app
-        test_factory.remove()
+        close_sessions(sessions)
         database._session_factory = original_factory
         if transaction.is_active:
             transaction.rollback()

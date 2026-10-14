@@ -17,9 +17,9 @@ class CeleryQueueAdapter:
         self._celery.Task = AppContextTask
 
     def register(self, job_name, job_class):
-        @self._celery.task(name=job_name)
+        @self._celery.task(name=job_name, shared=False, lazy=False)
         def task(*args, **kwargs):
-            job_class().perform(*args, **kwargs)
+            return job_class().perform(*args, **kwargs)
 
         self._tasks[job_class] = task
 
