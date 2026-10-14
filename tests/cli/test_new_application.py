@@ -8,7 +8,10 @@ from pathlib import Path
 from flaskteroids.cli.flaskteroids import cli
 
 
-def test_generated_application_declares_runtime_dependencies(tmp_path, monkeypatch):
+def test_generated_application_declares_runtime_dependencies(
+    tmp_path, monkeypatch, mocker
+):
+    mocker.patch("flaskteroids.cli.flaskteroids.version", return_value="0.4.0")
     monkeypatch.chdir(tmp_path)
     cli.main(
         args=["new", "weblog", "--skip-install"],
