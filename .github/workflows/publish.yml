@@ -42,25 +42,32 @@ jobs:
           uv venv "$smoke"
           uv pip install --python "$smoke/bin/python" dist/*.whl
           export PATH="$smoke/bin:$PATH"
+          # The candidate is not on PyPI until this smoke test passes.
+          export UV_FIND_LINKS="$GITHUB_WORKSPACE/dist"
           unset PYTHONPATH
           cd "$RUNNER_TEMP"
           flaskteroids new release_app
           cd release_app
           test -f db/migrate/env.py
-          flask generate scaffold Post title:string content:text
-          flask db:migrate
-          python - <<'PY'
+          bin/flask generate scaffold Post title:string content:text
+          bin/flask db:migrate
+          .venv/bin/python - <<'PY'
           import os
-          from wsgi import app
-          from flaskteroids import __version__
+          from pathlib import Path
 
-          assert __version__ == os.environ["RELEASE_TAG"].removeprefix("v")
+          import flaskteroids
+          from wsgi import app
+
+          assert flaskteroids.__version__ == os.environ["RELEASE_TAG"].removeprefix("v")
+          assert Path(flaskteroids.__file__).resolve().is_relative_to(
+              (Path.cwd() / ".venv").resolve()
+          )
           response = app.test_client().get("/posts", follow_redirects=True)
           assert response.status_code == 200, response.get_data(as_text=True)
           PY
-          flask test -q -n 2
-          playwright install --with-deps chromium
-          flask test:system -q
+          bin/flask test -q -n 2
+          .venv/bin/playwright install --with-deps chromium
+          bin/flask test:system -q
       - uses: actions/upload-artifact@v4
         with:
           name: release-dist
