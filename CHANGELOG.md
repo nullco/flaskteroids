@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.6.0 - 2026-10-15
+
 ### Added
 
 - Rails-style asset helpers and `assets:precompile`, using Flask's native static
