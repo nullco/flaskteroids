@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="420" viewBox="-210 -200 420 420" role="img" aria-labelledby="title desc">
+  <title id="title">Flaskteroids</title>
+  <desc id="desc">The Flaskteroids logo: a silver-gray flask with luminous green potion, green bubbles, and green sparkles.</desc>
+  <defs xmlns="http://www.w3.org/2000/svg"><filter id="glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="12" /></filter><filter id="halo" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="42" /></filter><linearGradient id="liquid" x1="0" y1="0" x2="0.35" y2="1"><stop stop-color="#edff9d" /><stop offset=".35" stop-color="#b1ff53" /><stop offset="1" stop-color="#49cf87" /></linearGradient><linearGradient id="glass" x2=".8" y2="1"><stop stop-color="#969ba5" /><stop offset=".55" stop-color="#777d87" /><stop offset="1" stop-color="#4e555f" /></linearGradient></defs>
+  <g xmlns="http://www.w3.org/2000/svg" transform="translate(0 0) scale(1)">
+<path d="M-68 15Q-25-7 11 13T73 12L119 109Q128 130 101 130H-101Q-128 130-119 109Z" fill="#aaff55" opacity=".8" filter="url(#glow)" />
+<path d="M-41-135H41M-30-132V-61L-132 119Q-149 150-113 150H113Q149 150 132 119L30-61V-132" fill="#c4c7ce" fill-opacity=".045" stroke="url(#glass)" stroke-width="12" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M-68 15Q-25-7 11 13T73 12L119 109Q128 130 101 130H-101Q-128 130-119 109Z" fill="url(#liquid)" />
+<path d="M-68 15Q-25-7 11 13T73 12" fill="none" stroke="#efffc7" stroke-width="5" stroke-linecap="round" />
+<path d="M-47-27L-106 80" stroke="#f0f1f3" stroke-opacity=".7" stroke-width="6" stroke-linecap="round" />
+<path d="M-18-112V-76" stroke="#f0f1f3" stroke-opacity=".5" stroke-width="5" stroke-linecap="round" />
+<circle cx="-28" cy="56" r="10" fill="#f3ffd5" fill-opacity=".8" /><circle cx="30" cy="96" r="6" fill="#f3ffd5" fill-opacity=".6" />
+<circle cx="-1" cy="-15" r="12" fill="#c9ff80" /><circle cx="24" cy="-54" r="7" fill="#c9ff80" /><circle cx="-15" cy="-91" r="5" fill="#c9ff80" />
+<path d="M0-17Q2-2 17 0Q2 2 0 17Q-2 2-17 0Q-2-2 0-17Z" transform="translate(109 -91)" fill="#c9ff80" /><path d="M0-12Q2-2 12 0Q2 2 0 12Q-2 2-12 0Q-2-2 0-12Z" transform="translate(-121 -18)" fill="#c9ff80" />
+<circle cx="137" cy="-38" r="4" fill="#c9ff80" />
+</g>
+
+</svg>

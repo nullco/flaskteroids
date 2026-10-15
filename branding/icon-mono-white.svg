@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="420" viewBox="-210 -200 420 420" role="img" aria-labelledby="title desc">
+  <title id="title">Flaskteroids</title>
+  <desc id="desc">Single-color Flaskteroids flask, light ink.</desc>
+  <defs xmlns="http://www.w3.org/2000/svg"><filter id="glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="12" /></filter><filter id="halo" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="42" /></filter><linearGradient id="liquid" x1="0" y1="0" x2="0.35" y2="1"><stop stop-color="#edff9d" /><stop offset=".35" stop-color="#b1ff53" /><stop offset="1" stop-color="#49cf87" /></linearGradient><linearGradient id="glass" x2=".8" y2="1"><stop stop-color="#f0f1f3" /><stop offset=".55" stop-color="#b8bbc2" /><stop offset="1" stop-color="#737780" /></linearGradient></defs>
+  <path d="M-41-135H41M-30-132V-61L-132 119Q-149 150-113 150H113Q149 150 132 119L30-61V-132" fill="none" stroke="#ffffff" stroke-width="13" stroke-linejoin="round" stroke-linecap="round"/>
+          <path d="M-68 15Q-25-7 11 13T73 12L119 109Q128 130 101 130H-101Q-128 130-119 109Z" fill="#ffffff"/>
+          <circle cx="-1" cy="-15" r="12" fill="#ffffff"/>
+          <circle cx="24" cy="-54" r="7" fill="#ffffff"/>
+          <circle cx="-15" cy="-91" r="5" fill="#ffffff"/>
+          <path d="M109-108Q111-93 126-91Q111-89 109-74Q107-89 92-91Q107-93 109-108Z" fill="#ffffff"/>
+          <path d="M-121-30Q-119-20-109-18Q-119-16-121-6Q-123-16-133-18Q-123-20-121-30Z" fill="#ffffff"/>
+</svg>

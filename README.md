@@ -1,4 +1,9 @@
-<h1 align="center">Flaskteroids</h1>
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/nullco/flaskteroids/main/branding/logo-horizontal-dark.svg">
+    <img src="https://raw.githubusercontent.com/nullco/flaskteroids/main/branding/logo-horizontal-light.svg" alt="Flaskteroids" width="560">
+  </picture>
+</h1>
 
 <p align="center">
   A Rails-inspired Python MVC framework built on Flask, SQLAlchemy, and Celery.
@@ -128,6 +133,7 @@ only declaration records, queue adapters, and a static contract probe, not the
 whole ORM or generated applications. Raw Mako templates are excluded; generated
 samples are validated separately and are not promised Ruff-clean.
 See [AGENTS.md](AGENTS.md) for scope and contributor-only fixing commands.
+Repository logos and usage guidance are in [branding/](branding/README.md).
 
 ## Releasing
 

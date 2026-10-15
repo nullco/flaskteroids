@@ -1,4 +1,4 @@
-# Flaskteroids
+# ![Flaskteroids](assets/brand/logo-horizontal-light.svg#only-light) ![Flaskteroids](assets/brand/logo-horizontal-dark.svg#only-dark)
 
 Flaskteroids is a Python MVC framework built on Flask, SQLAlchemy, and Celery. It uses Rails 8 as the reference for its conventions and framework behavior.
 

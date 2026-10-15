@@ -1,0 +1,188 @@
+/* Flaskteroids: silver glass, green potion, charcoal. */
+:root {
+  --brand-charcoal: #100f1b;
+  --brand-potion: #b1ff53;
+  --brand-silver: #b8bbc2;
+}
+
+[data-md-color-scheme] {
+  --md-primary-fg-color: var(--brand-charcoal);
+  --md-primary-fg-color--light: #24232f;
+  --md-primary-fg-color--dark: #0b0a13;
+  --md-primary-bg-color: #f4f5f7;
+  --md-primary-bg-color--light: var(--brand-silver);
+  --md-accent-bg-color: var(--brand-charcoal);
+  --md-accent-bg-color--light: #24232f;
+  --md-footer-bg-color: var(--brand-charcoal);
+  --md-footer-bg-color--dark: #0b0a13;
+  --md-footer-fg-color: #f4f5f7;
+  --md-footer-fg-color--light: var(--brand-silver);
+  --md-footer-fg-color--lighter: #a0a5ae;
+}
+
+/* The neon belongs on dark surfaces; light mode uses a readable forest green. */
+[data-md-color-scheme="default"] {
+  color-scheme: light;
+  --md-default-bg-color: #fafbf8;
+  --md-default-bg-color--light: #fafbf8b3;
+  --md-default-bg-color--lighter: #fafbf84d;
+  --md-default-bg-color--lightest: #fafbf81f;
+  --md-default-fg-color: #24282d;
+  --md-default-fg-color--light: #535b63;
+  --md-default-fg-color--lighter: #69717b;
+  --md-default-fg-color--lightest: #24282d1f;
+  --md-accent-fg-color: #386d14;
+  --md-accent-fg-color--transparent: #386d141a;
+  --md-typeset-a-color: #386d14;
+  --md-typeset-mark-color: #b1ff5359;
+  --md-typeset-table-color: #24282d29;
+  --md-code-bg-color: #eef2eb;
+  --md-code-fg-color: #252c28;
+  --md-code-hl-color: #8ad23d40;
+  --md-code-hl-color--light: #8ad23d26;
+  --md-code-hl-keyword-color: #386d14;
+  --md-code-hl-string-color: #19704d;
+  --md-code-hl-function-color: #46577c;
+  --md-code-hl-number-color: #725126;
+  --md-code-hl-comment-color: #59656e;
+  --brand-border: #d7ddd3;
+  --brand-tint: #edf4e8;
+}
+
+[data-md-color-scheme="slate"] {
+  color-scheme: dark;
+  --md-default-bg-color: var(--brand-charcoal);
+  --md-default-bg-color--light: #100f1bb3;
+  --md-default-bg-color--lighter: #100f1b4d;
+  --md-default-bg-color--lightest: #100f1b1f;
+  --md-default-fg-color: #eeedf2;
+  --md-default-fg-color--light: var(--brand-silver);
+  --md-default-fg-color--lighter: #a0a5ae;
+  --md-default-fg-color--lightest: #b8bbc22e;
+  --md-accent-fg-color: #bcff71;
+  --md-accent-fg-color--transparent: #b1ff531a;
+  --md-typeset-a-color: #bcff71;
+  --md-typeset-mark-color: #b1ff5333;
+  --md-typeset-table-color: #b8bbc22e;
+  --md-code-bg-color: #1b1c24;
+  --md-code-fg-color: #e6e9e4;
+  --md-code-hl-color: #b1ff5340;
+  --md-code-hl-color--light: #b1ff531a;
+  --md-code-hl-keyword-color: #bcff71;
+  --md-code-hl-string-color: #70dca5;
+  --md-code-hl-function-color: #d4d8e4;
+  --md-code-hl-number-color: #bdeccf;
+  --md-code-hl-comment-color: #a4a9b2;
+  --brand-border: #343640;
+  --brand-tint: #b1ff530a;
+}
+
+::selection {
+  color: var(--brand-charcoal);
+  background: var(--brand-potion);
+}
+
+:focus-visible {
+  outline: 2px solid var(--md-accent-fg-color);
+  outline-offset: 3px;
+}
+
+/* Header and footer stay charcoal in both themes, like the logo presentation. */
+.md-header {
+  border-bottom: 2px solid var(--brand-potion);
+  box-shadow: 0 3px 16px #100f1b1a;
+}
+
+.md-header__title {
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.md-header__button.md-logo img {
+  width: 1.6rem;
+  height: 1.6rem;
+}
+
+.md-header :focus-visible,
+.md-footer :focus-visible {
+  outline-color: var(--brand-potion);
+}
+
+.md-search__form {
+  border-radius: 0.4rem;
+}
+
+.md-search-result mark {
+  color: var(--md-typeset-a-color);
+}
+
+.md-nav__link--active {
+  color: var(--md-typeset-a-color);
+  font-weight: 700;
+}
+
+.md-typeset {
+  line-height: 1.7;
+}
+
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3 {
+  color: var(--md-default-fg-color);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.md-typeset h1 {
+  letter-spacing: -0.04em;
+}
+
+.md-typeset a:not(.md-button) {
+  text-decoration: underline;
+  text-decoration-thickness: 0.06em;
+  text-underline-offset: 0.18em;
+}
+
+.md-typeset img[src*="logo-horizontal-"] {
+  width: 100%;
+  max-width: 30rem;
+  margin-bottom: 0.8rem;
+}
+
+.md-typeset code {
+  border-radius: 0.2rem;
+}
+
+.md-typeset .highlight {
+  border: 1px solid var(--brand-border);
+  border-radius: 0.5rem;
+  background: var(--md-code-bg-color);
+}
+
+.md-typeset .highlight pre {
+  margin: 0;
+}
+
+.md-typeset pre > code {
+  border-radius: 0.5rem;
+}
+
+.md-typeset blockquote {
+  padding: 0.6rem 0.8rem;
+  border-left: 3px solid var(--md-accent-fg-color);
+  background: var(--brand-tint);
+  color: var(--md-default-fg-color--light);
+}
+
+.md-typeset table:not([class]) {
+  border-color: var(--brand-border);
+  border-radius: 0.4rem;
+}
+
+.md-typeset table:not([class]) th {
+  background: var(--brand-tint);
+}
+
+.md-footer {
+  border-top: 1px solid #b1ff5333;
+}
