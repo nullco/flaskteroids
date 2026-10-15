@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <title>Welcome to Flaskteroids</title>
+    <link rel="icon" type="image/svg+xml" href="{{ images['favicon'] }}">
+    <style>
+      :root {
+        color-scheme: light;
+        --background: #fafbf8;
+        --foreground: #24282d;
+        --muted: #535b63;
+        --accent: #386d14;
+        --badge-background: #edf4e8;
+        --badge-border: #d7e1cf;
+        --glow: #b1ff530a;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          color-scheme: dark;
+          --background: #100f1b;
+          --foreground: #eeedf2;
+          --muted: #b8bbc2;
+          --accent: #bcff71;
+          --badge-background: #b1ff530d;
+          --badge-border: #b1ff532e;
+          --glow: #b1ff5308;
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        display: grid;
+        place-items: center;
+        min-height: 100vh;
+        min-height: 100svh;
+        margin: 0;
+        padding: 2rem 1.5rem;
+        background:
+          radial-gradient(ellipse at 50% 40%, var(--glow), transparent 60%),
+          var(--background);
+        color: var(--foreground);
+        font-family: Lato, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        text-align: center;
+      }
+
+      main {
+        width: min(100%, 24rem);
+        padding-bottom: 1.5rem;
+      }
+
+      h1 {
+        margin: 0 0 0.75rem;
+        font-size: 1rem;
+      }
+
+      .logo {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      .version {
+        display: inline-block;
+        margin: 0 0 1.75rem;
+        padding: 0.35rem 0.8rem;
+        border: 1px solid var(--badge-border);
+        border-radius: 999px;
+        background: var(--badge-background);
+        color: var(--accent);
+        font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+        font-size: 0.8rem;
+        line-height: 1.5;
+      }
+
+      .status {
+        margin: 0 0 1rem;
+        color: var(--muted);
+        font-size: 1rem;
+        line-height: 1.6;
+      }
+
+      a {
+        display: inline-block;
+        padding: 0.4rem;
+        border-radius: 0.2rem;
+        color: var(--accent);
+        font-size: 0.95rem;
+        font-weight: 700;
+        text-decoration: none;
+        text-underline-offset: 0.25em;
+      }
+
+      a:hover {
+        text-decoration: underline;
+      }
+
+      a:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 4px;
+      }
+
+      ::selection {
+        background: #b1ff53;
+        color: #100f1b;
+      }
+
+      .visually-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>
+        <picture>
+          <source media="(prefers-color-scheme: dark)"
+                  srcset="{{ images['logo-horizontal-dark'] }}">
+          <img class="logo" src="{{ images['logo-horizontal-light'] }}"
+               width="1120" height="340" alt="Flaskteroids">
+        </picture>
+      </h1>
+      <p class="version">
+        <span class="visually-hidden">Flaskteroids version </span>
+        {{ 'v' ~ version if version else 'development' }}
+      </p>
+      <p class="status">Your app is running.</p>
+      <a href="https://nullco.github.io/flaskteroids/">
+        Read the docs <span aria-hidden="true">→</span>
+      </a>
+    </main>
+  </body>
+</html>

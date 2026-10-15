@@ -16,6 +16,15 @@ cp branding/icon-small.svg branding/favicon.png \
   docs/assets/brand/
 ```
 
+The default welcome page ships its own small set of SVGs as framework package
+resources, so generated applications display the logo without static-file
+configuration or network access. Refresh those copies after a logo change:
+
+```sh
+cp branding/logo-horizontal-dark.svg branding/logo-horizontal-light.svg \
+  branding/favicon.svg flaskteroids/controllers/templates/brand/
+```
+
 ## Choose an asset
 
 | Use | SVG | PNG |
