@@ -8,6 +8,8 @@ from sqlalchemy import inspect
 from flaskteroids import fields
 from flaskteroids._models.associations import (
     Relation,
+    _clear_association_cache,
+    _destroy_associations,
     _get_association,
     belongs_to,
     has_many,
@@ -59,7 +61,7 @@ from flaskteroids.callbacks import (
 )
 from flaskteroids.db import session
 from flaskteroids.declarations import model_for
-from flaskteroids.exceptions import RecordNotFoundException
+from flaskteroids.exceptions import ProgrammerError, RecordNotFoundException
 from flaskteroids.rules import bind_rules
 
 __all__ = [
@@ -203,6 +205,9 @@ class Model(metaclass=ModelMeta):
             column = self._base_instance.__table__.columns[name]
             converted = fields.from_column_type(column.type).as_primitive(value)
             self._changes[name] = converted
+            for association in definition.associations.values():
+                if association.kind == "belongs_to" and association.foreign_key == name:
+                    self._changes.pop(association.name, None)
             return
         if name in definition.associations:
             if definition.associations[name].kind == "has_many":
@@ -334,6 +339,7 @@ class Model(metaclass=ModelMeta):
 
     def reload(self):
         session.refresh(self._base_instance)
+        _clear_association_cache(session)
         self._changes.clear()
         self._attachment_changes.clear()
         self._attachment_cache.clear()
@@ -378,14 +384,40 @@ class Model(metaclass=ModelMeta):
 
     def _apply_changes(self):
         associations = model_for(self.__class__).associations
+        foreign_keys = {}
+        pending = session.info.setdefault("flaskteroids.association_writes", set())
         for field, value in self._changes.items():
-            if field in associations and value is not None:
-                value = value._base_instance
+            if field not in associations:
+                continue
+            association = _get_association(self.__class__, name=field)
+            if value is not None and value.is_new_record():
+                if (
+                    value._base_instance is self._base_instance
+                    or value._base_instance in pending
+                ):
+                    raise ProgrammerError(
+                        "Cyclic unsaved association writes; persist a record before linking the cycle."
+                    )
+                pending.add(self._base_instance)
+                try:
+                    if not value.save(validate=False):
+                        return _HALTED
+                finally:
+                    pending.remove(self._base_instance)
+            foreign_keys[association.foreign_key] = (
+                value.id if value is not None else None
+            )
+        for field, value in self._changes.items():
+            if field not in associations:
+                setattr(self._base_instance, field, value)
+        for field, value in foreign_keys.items():
             setattr(self._base_instance, field, value)
         self._changes.clear()
+        _clear_association_cache(session)
 
     def _create_record(self):
-        self._apply_changes()
+        if self._apply_changes() is _HALTED:
+            return _HALTED
         now = datetime.now(UTC)
         self._base_instance.created_at = now
         self._base_instance.updated_at = now
@@ -393,7 +425,8 @@ class Model(metaclass=ModelMeta):
         session.flush()
 
     def _update_record(self):
-        self._apply_changes()
+        if self._apply_changes() is _HALTED:
+            return _HALTED
         self._base_instance.updated_at = datetime.now(UTC)
         session.flush()
 
@@ -404,15 +437,25 @@ class Model(metaclass=ModelMeta):
         return not self.is_persisted()
 
     def destroy(self):
-        if run_callbacks(self, "destroy", None, self._destroy_record) is _HALTED:
-            return False
-        queue_after_commit(self, "destroy", session)
-        return True
+        destroying = session.info.setdefault("flaskteroids.destroying", set())
+        if self._base_instance in destroying:
+            return True
+        destroying.add(self._base_instance)
+        try:
+            if run_callbacks(self, "destroy", None, self._destroy_record) is _HALTED:
+                return False
+            queue_after_commit(self, "destroy", session)
+            return True
+        finally:
+            destroying.remove(self._base_instance)
 
     def _destroy_record(self):
+        if not _destroy_associations(self):
+            return _HALTED
         attached_storage.destroy(self)
         session.delete(self._base_instance)
         session.flush()
+        _clear_association_cache(session)
 
     def __repr__(self) -> str:
         values = {c: getattr(self._base_instance, c) for c in self.column_names}

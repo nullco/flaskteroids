@@ -82,6 +82,7 @@ class Configuration(FlaskConfig):
                 "queue_adapter": CeleryQueueAdapter,
             }
         )
+        self.database_tasks = Options({"maintenance_database": "postgres"})
         self.attachments = Options(
             {
                 "service": None,

@@ -1,14 +1,22 @@
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass, field
+from threading import RLock
 
 from flask import g
-from sqlalchemy import MetaData, Table, create_engine, event, inspect
+from sqlalchemy import (
+    Column,
+    Computed,
+    DefaultClause,
+    Identity,
+    MetaData,
+    Table,
+    create_engine,
+    event,
+)
 from sqlalchemy.engine import make_url
-from sqlalchemy.exc import NoReferencedTableError
-from sqlalchemy.ext.automap import automap_base
-from sqlalchemy.orm import Session, relationship, sessionmaker
+from sqlalchemy.exc import NoSuchTableError
+from sqlalchemy.orm import Session, registry, sessionmaker
 
 from flaskteroids.declarations import model_for
 from flaskteroids.discovery import discover_classes
@@ -16,19 +24,21 @@ from flaskteroids.exceptions import ProgrammerError
 from flaskteroids.inflector import inflector
 from flaskteroids.model import Model, init
 
-_logger = logging.getLogger(__name__)
-
 
 @dataclass(frozen=True)
 class ResolvedAssociation:
     target: type[Model]
     name: str
     foreign_key: str
+    kind: str
+    dependent: str | None
+    inverse: str | None
 
 
 @dataclass
 class ModelBinding:
-    mapped_class: type | None
+    mapped_class: type
+    schema: Table
     associations: dict[str, ResolvedAssociation] = field(default_factory=dict)
 
 
@@ -43,6 +53,65 @@ def _enable_sqlite_foreign_keys(connection, connection_record):
             cursor.close()
     finally:
         connection.autocommit = autocommit
+
+
+def _row_table(schema):
+    """A persistence projection, not a replacement for the reflected schema.
+
+    SQLAlchemy's unit-of-work table sorter resolves even unused foreign keys.
+    Associations are application queries, so row mappers need only column/default
+    information. Keep the original constraints intact on ModelBinding.schema.
+    """
+    columns = []
+    for column in schema.columns:
+        generated = []
+        if column.computed is not None:
+            generated.append(
+                Computed(column.computed.sqltext, persisted=column.computed.persisted)
+            )
+        if column.identity is not None:
+            generated.append(
+                Identity(
+                    **{
+                        name: getattr(column.identity, name)
+                        for name in (
+                            "always",
+                            "on_null",
+                            "start",
+                            "increment",
+                            "minvalue",
+                            "maxvalue",
+                            "nominvalue",
+                            "nomaxvalue",
+                            "cycle",
+                            "cache",
+                            "order",
+                        )
+                    }
+                )
+            )
+        columns.append(
+            Column(
+                column.name,
+                column.type,
+                *generated,
+                key=column.key,
+                primary_key=column.primary_key,
+                nullable=column.nullable,
+                autoincrement=column.autoincrement,
+                server_default=(
+                    DefaultClause(column.server_default.arg)
+                    if not generated and column.server_default is not None
+                    else None
+                ),
+                server_onupdate=(
+                    DefaultClause(column.server_onupdate.arg, for_update=True)
+                    if not generated and column.server_onupdate is not None
+                    else None
+                ),
+            )
+        )
+    return Table(schema.name, MetaData(), *columns, schema=schema.schema)
 
 
 class SQLAlchemyExtension:
@@ -64,7 +133,9 @@ class SQLAlchemyExtension:
         if options:
             event.listen(self._engine, "connect", _enable_sqlite_foreign_keys)
         self._models_module = app.config.paths.models
-        self._metadata = MetaData()
+        self._lock = RLock()
+        self._tables = {}
+        self._bindings = {}
         self._session_factory = sessionmaker(bind=self._engine, autoflush=False)
         self.init_models()
 
@@ -97,173 +168,144 @@ class SQLAlchemyExtension:
     def models(self) -> dict[str, type[Model]]:
         return self._models
 
-    def binding(self, model_cls: type[Model]) -> ModelBinding:
-        if model_cls not in self._bindings:
-            raise ProgrammerError(
-                f"Model {model_cls.__name__} is not registered in this application."
-            )
-        binding = self._bindings[model_cls]
-        if binding.mapped_class is None:
-            raise ProgrammerError(
-                f"No backing table for model {model_cls.__name__} "
-                f"(expected table {self._get_table_name(model_cls.__name__)}). "
-                "Did you create/run database migrations? Construct a fresh application after migrating."
-            )
-        return binding
-
     def init_models(self):
-        if "_bindings" in vars(self):
-            return
-        self._models = discover_classes(
-            self._models_module, Model, {"ApplicationModel"}
-        )
-        for model in self._models.values():
-            init(model)
-        available_tables = self._reflect_tables()
-        base = automap_base(metadata=self._metadata)
-        base.prepare(generate_relationship=self._skip_relationships)
-        bindings: dict[type[Model], ModelBinding] = {}
-        for name, model in self._models.items():
-            table_name = self._get_table_name(name)
-            mapped = getattr(base.classes, table_name, None)
-            if mapped is None and table_name in available_tables:
-                table = self._metadata.tables[table_name]
-                reason = (
-                    "no primary key" if not table.primary_key else "no usable mapping"
-                )
+        """Register declarations once, without connecting or warming schemas."""
+        with self._lock:
+            if "_models" in vars(self):
+                return
+            models = discover_classes(self._models_module, Model, {"ApplicationModel"})
+            for model in models.values():
+                init(model)
+            self._registered = frozenset(models.values())
+            self._models = models
+
+    def binding(self, model_cls: type[Model]) -> ModelBinding:
+        with self._lock:
+            if model_cls not in self._registered:
                 raise ProgrammerError(
-                    f"Model {model.__name__} table {table_name} is malformed: {reason}."
+                    f"Model {model_cls.__name__} is not registered in this application."
                 )
-            bindings[model] = ModelBinding(mapped)
-        for model, binding in bindings.items():
-            for definition in model_for(model).associations.values():
-                target = self._models.get(definition.target)
-                if target is None:
-                    raise ProgrammerError(
-                        f"{definition.target} model not found for {model.__name__}.{definition.name}"
+            if model_cls in self._bindings:
+                return self._bindings[model_cls]
+            table_name = inflector.tableize(model_cls.__name__)
+            try:
+                schema, rows = self._tables.get(table_name, (None, None))
+                if schema is None:
+                    schema = Table(
+                        table_name,
+                        MetaData(),
+                        autoload_with=self._engine,
+                        resolve_fks=False,
                     )
-                binding.associations[definition.name] = ResolvedAssociation(
-                    target, definition.name, definition.foreign_key
-                )
-        configured_associations = []
-        for model, binding in bindings.items():
-            mapped = binding.mapped_class
-            if mapped is None:
-                continue
-            for definition in model_for(model).associations.values():
-                association = binding.associations[definition.name]
-                target = bindings[association.target].mapped_class
-                if target is None:
-                    continue
-                inverse = [
+                if not schema.primary_key:
+                    raise ProgrammerError(
+                        f"Model {model_cls.__name__} table {table_name} is malformed: "
+                        "no primary key."
+                    )
+                for name in model_for(model_cls).attachments:
+                    if name in schema.columns:
+                        raise ProgrammerError(
+                            f"Attachment {name} conflicts with a model column on "
+                            f"{model_cls.__name__}"
+                        )
+                if rows is None:
+                    rows = _row_table(schema)
+                owned_registry = registry()
+                mapped = type(model_cls.__name__, (), {"__table__": rows})
+                try:
+                    owned_registry.map_imperatively(mapped, rows)
+                    owned_registry.configure()
+                except Exception:
+                    owned_registry.dispose()
+                    raise
+                binding = ModelBinding(mapped, schema)
+            except NoSuchTableError as error:
+                raise ProgrammerError(
+                    f"No backing table for model {model_cls.__name__} "
+                    f"(expected table {table_name}). Did you create/run database migrations? "
+                    "Retry after migrating; use a fresh app for already loaded schemas."
+                ) from error
+            except Exception as error:
+                error.add_note(f"While loading {model_cls.__name__} ({table_name})")
+                raise
+            self._tables[table_name] = schema, rows
+            self._bindings[model_cls] = binding
+            return binding
+
+    def association(self, model_cls, name):
+        """Resolve one declaration; never mutate an already published mapper."""
+        with self._lock:
+            source = self.binding(model_cls)
+            if name in source.associations:
+                return source.associations[name]
+            try:
+                definition = model_for(model_cls).associations[name]
+                target_cls = self._models.get(definition.target)
+                if target_cls is None:
+                    raise ProgrammerError(
+                        f"{definition.target} model not found for "
+                        f"{model_cls.__name__}.{name}"
+                    )
+                if name in source.schema.columns:
+                    raise ProgrammerError(
+                        f"Invalid association {model_cls.__name__}.{name}: "
+                        "name conflicts with a model column."
+                    )
+                target = self.binding(target_cls)
+                inverses = [
                     other.name
-                    for other in model_for(association.target).associations.values()
-                    if bindings[association.target].associations[other.name].target
-                    is model
+                    for other in model_for(target_cls).associations.values()
+                    if self._models.get(other.target) is model_cls
                     and other.foreign_key == definition.foreign_key
                     and other.kind != definition.kind
                 ]
-                if len(inverse) > 1:
+                if len(inverses) > 1:
                     raise ProgrammerError(
-                        f"Ambiguous inverse for {model.__name__}.{definition.name}: "
-                        f"target {association.target.__name__}, column {definition.foreign_key}, "
-                        f"inverses {', '.join(inverse)}."
+                        f"Ambiguous inverse for {model_cls.__name__}.{name}: "
+                        f"target {target_cls.__name__}, column {definition.foreign_key}, "
+                        f"inverses {', '.join(inverses)}."
                     )
-                fk_owner = mapped if definition.kind == "belongs_to" else target
-                if definition.foreign_key not in fk_owner.__table__.columns:
+                fk_owner, identity_owner = (
+                    (source, target)
+                    if definition.kind == "belongs_to"
+                    else (target, source)
+                )
+                if definition.foreign_key not in fk_owner.schema.columns:
                     raise ProgrammerError(
-                        f"Invalid association {model.__name__}.{definition.name}: "
-                        f"target {association.target.__name__}, column {definition.foreign_key} "
-                        f"does not exist on {fk_owner.__table__.name}."
+                        f"Invalid association {model_cls.__name__}.{name}: "
+                        f"target {target_cls.__name__}, column {definition.foreign_key} "
+                        f"does not exist on {fk_owner.schema.name}."
                     )
-                identity_owner = target if definition.kind == "belongs_to" else mapped
-                if "id" not in identity_owner.__table__.columns:
+                if "id" not in identity_owner.schema.columns:
                     raise ProgrammerError(
-                        f"Invalid association {model.__name__}.{definition.name}: "
-                        f"target {association.target.__name__}, table {identity_owner.__table__.name} "
+                        f"Invalid association {model_cls.__name__}.{name}: "
+                        f"target {target_cls.__name__}, table {identity_owner.schema.name} "
                         "requires identity column id."
                     )
-                try:
-                    fk = getattr(fk_owner, definition.foreign_key)
-                    cascade = (
-                        "all, delete-orphan"
-                        if definition.dependent == "destroy"
-                        else "save-update, merge"
+                for foreign_key in fk_owner.schema.foreign_keys:
+                    if foreign_key.parent.name != definition.foreign_key:
+                        continue
+                    referred_table, _, column_name = (
+                        foreign_key.target_fullname.rpartition(".")
                     )
-                    setattr(
-                        mapped,
-                        definition.name,
-                        relationship(
-                            target,
-                            primaryjoin=identity_owner.id == fk,
-                            foreign_keys=[fk],
-                            cascade=cascade,
-                            back_populates=inverse[0] if inverse else None,
-                        ),
-                    )
-                except Exception as error:
-                    error.add_note(
-                        f"While configuring {model.__name__}.{definition.name}: "
-                        f"target {association.target.__name__} ({target.__table__.name}), "
-                        f"foreign key {fk_owner.__table__.name}.{definition.foreign_key}"
-                    )
-                    raise
-                configured_associations.append(f"{model.__name__}.{definition.name}")
-            for name in model_for(model).attachments:
-                if name in mapped.__table__.columns:
-                    raise ProgrammerError(
-                        f"Attachment {name} conflicts with a model column on {model.__name__}"
-                    )
-        try:
-            base.registry.configure()
-        except Exception as error:
-            # Configuration checks the entire registry, not just the last relationship.
-            models = ", ".join(model.__name__ for model in bindings)
-            associations = ", ".join(configured_associations)
-            error.add_note(
-                f"While configuring application mappings for {models}; "
-                f"associations: {associations}"
-            )
-            raise
-        self._bindings = bindings
-
-    def _reflect_tables(self):
-        inspector = inspect(self._engine)
-        available = set(inspector.get_table_names())
-        expected = {self._get_table_name(name) for name in self._models}
-        self._metadata.reflect(
-            self._engine, only=sorted(expected & available), resolve_fks=False
-        )
-        tables = list(self._metadata.tables.values())
-        for table in tables:
-            for constraint in list(table.foreign_key_constraints):
-                for foreign_key in constraint.elements:
-                    try:
-                        _ = foreign_key.column
-                    except NoReferencedTableError as error:
-                        schema, _, name = error.table_name.rpartition(".")
-                        if inspector.has_table(name, schema=schema or None):
-                            tables.append(
-                                Table(
-                                    name,
-                                    self._metadata,
-                                    schema=schema or None,
-                                    autoload_with=self._engine,
-                                    resolve_fks=False,
-                                )
-                            )
-                        else:
-                            # Automap inspects foreign keys even with automatic relationships disabled.
-                            table.constraints.remove(constraint)
-                            for element in constraint.elements:
-                                table.foreign_keys.discard(element)
-                                element.parent.foreign_keys.discard(element)
-                            break
-        return available
-
-    def _get_table_name(self, model_name):
-        return inflector.tableize(model_name)
-
-    @staticmethod
-    def _skip_relationships(*args, **kwargs):
-        pass
+                    if (
+                        referred_table == identity_owner.schema.fullname
+                        and column_name not in identity_owner.schema.columns
+                    ):
+                        raise ProgrammerError(
+                            f"Invalid association {model_cls.__name__}.{name}: "
+                            f"foreign key {foreign_key.target_fullname} references a missing column."
+                        )
+                association = ResolvedAssociation(
+                    target_cls,
+                    name,
+                    definition.foreign_key,
+                    definition.kind,
+                    definition.dependent,
+                    inverses[0] if inverses else None,
+                )
+            except Exception as error:
+                error.add_note(f"While using {model_cls.__name__}.{name}")
+                raise
+            source.associations[name] = association
+            return association

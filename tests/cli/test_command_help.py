@@ -83,6 +83,7 @@ APPLICATION_HELP = {
         "duplicate migrations",
     ],
     ("db:init",): ["db/migrate", "does not apply migrations", "absent or empty"],
+    ("db:create",): ["selected database", "connectable", "no migrations required"],
     ("db:migrate",): ["all pending", "current environment", "delete data"],
     ("db:prepare",): ["selected database", "DATABASE_URL", "fresh process"],
     ("db:rollback",): ["one database migration", "manual reversal code", "delete data"],

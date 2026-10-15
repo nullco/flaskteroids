@@ -4,10 +4,10 @@ from types import SimpleNamespace
 import pytest
 from flask import Flask
 from itsdangerous import BadSignature
-from sqlalchemy import text
-from sqlalchemy.exc import ArgumentError, NoReferencedColumnError, OperationalError
+from sqlalchemy import event, text
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import Mapper
 
-from flaskteroids.application import Application
 from flaskteroids.db import session
 from flaskteroids.exceptions import ProgrammerError
 from flaskteroids.extensions.db import SQLAlchemyExtension
@@ -191,8 +191,17 @@ def test_unknown_association_target_is_a_configuration_error(make_app, mocker, t
     mocker.patch(
         "flaskteroids.extensions.db.discover_classes", return_value={"Story": Story}
     )
-    with pytest.raises(ProgrammerError, match="Unknown model not found.*Story.unknown"):
-        make_app("broken", tables=tables)
+    app = make_app("broken", tables=tables)
+    with app.app_context():
+        if "stories" not in tables:
+            session.execute(text("CREATE TABLE stories (id INTEGER PRIMARY KEY)"))
+            session.commit()
+        assert Story.count() == 0
+        with pytest.raises(
+            ProgrammerError, match="Unknown model not found.*Story.unknown"
+        ):
+            Story.includes("unknown").first()
+        assert Story.count() == 0
 
 
 def test_invalid_association_on_existing_tables_is_not_ignored(make_app, mocker):
@@ -204,19 +213,25 @@ def test_invalid_association_on_existing_tables_is_not_ignored(make_app, mocker)
         "flaskteroids.extensions.db.discover_classes",
         return_value={"Story": Story, "Author": Author},
     )
-    with pytest.raises(ProgrammerError, match="Story.author.*missing_id"):
-        make_app("broken")
+    with make_app("broken").app_context():
+        story = Story.new(title="valid without the association")
+        assert Story.count() == 0
+        with pytest.raises(ProgrammerError, match="Story.author.*missing_id"):
+            _ = story.author
+        assert Story.count() == 0
 
 
 def test_attachment_column_conflict_is_checked_for_each_app(make_app):
     app = make_app("a")
     with app.app_context():
         session.execute(text("ALTER TABLE authors ADD COLUMN avatar TEXT"))
-    with pytest.raises(ProgrammerError, match="Attachment avatar.*column.*Author"):
-        make_app("a")
+    with make_app("a").app_context():
+        assert Story.count() == 0
+        with pytest.raises(ProgrammerError, match="Attachment avatar.*column.*Author"):
+            Author.first()
 
 
-def test_existing_foreign_key_targets_outside_the_model_catalog_are_reflected(
+def test_foreign_key_targets_outside_the_model_catalog_do_not_require_mapping(
     make_app, mocker
 ):
     class Story(Model):
@@ -245,25 +260,29 @@ def test_invalid_foreign_key_to_an_existing_table_is_not_ignored(make_app, mocke
             )
         )
 
+    @rules(belongs_to("author"))
     class Story(Model):
         pass
 
     mocker.patch(
-        "flaskteroids.extensions.db.discover_classes", return_value={"Story": Story}
+        "flaskteroids.extensions.db.discover_classes",
+        return_value={"Story": Story, "Author": Author},
     )
-    with pytest.raises(NoReferencedColumnError, match="authors.*missing_id"):
-        make_app("a")
+    with make_app("a").app_context():
+        assert Story.count() == 0
+        with pytest.raises(ProgrammerError, match="authors.missing_id.*missing column"):
+            Story.includes("author").first()
+        assert Story.count() == 0
 
 
-def test_migrations_require_a_fresh_app_to_bind_missing_models(make_app):
+def test_previously_unused_models_can_load_after_migrations(make_app):
     original = make_app("a", tables=("stories",))
     migrated = make_app("a")
     with migrated.app_context():
         Author.create(name="migrated", passcode="secret")
     with original.app_context():
         assert Story.count() == 0
-        with pytest.raises(ProgrammerError, match="Author.*migrations"):
-            Author.count()
+        assert Author.first().name == "migrated"
     with migrated.app_context():
         assert Author.first().name == "migrated"
 
@@ -280,8 +299,9 @@ def test_existing_table_without_primary_key_is_malformed(make_app, mocker):
     mocker.patch(
         "flaskteroids.extensions.db.discover_classes", return_value={"Story": Story}
     )
-    with pytest.raises(ProgrammerError, match="Story.*stories.*primary key"):
-        make_app("malformed")
+    with make_app("malformed").app_context():
+        with pytest.raises(ProgrammerError, match="Story.*stories.*primary key"):
+            Story.first()
 
 
 def test_association_requires_target_identity_column(make_app, mocker):
@@ -303,8 +323,11 @@ def test_association_requires_target_identity_column(make_app, mocker):
         "flaskteroids.extensions.db.discover_classes",
         return_value={"Story": Story, "Author": Author},
     )
-    with pytest.raises(ProgrammerError, match="Story.author.*Author.*authors.*id"):
-        make_app("identity")
+    with make_app("identity").app_context():
+        assert Story.count() == 0
+        with pytest.raises(ProgrammerError, match="Story.author.*Author.*authors.*id"):
+            Story.includes("author").first()
+        assert Author.count() == 0
 
 
 def test_ambiguous_inverse_names_both_models_and_foreign_key(make_app, mocker):
@@ -323,11 +346,16 @@ def test_ambiguous_inverse_names_both_models_and_foreign_key(make_app, mocker):
         "flaskteroids.extensions.db.discover_classes",
         return_value={"Story": Story, "Author": Author},
     )
-    with pytest.raises(ProgrammerError, match="Author.stories.*Story.*author_id"):
-        make_app("ambiguous")
+    with make_app("ambiguous").app_context():
+        assert Author.count() == 0
+        with pytest.raises(ProgrammerError, match="Author.stories.*Story.*author_id"):
+            Author.includes("stories").first()
+        assert Author.count() == 0
 
 
-def test_genuine_mapper_configuration_failure_has_collective_context(make_app, mocker):
+def test_self_associations_do_not_install_mutually_dependent_mapper_properties(
+    make_app, mocker
+):
     @rules(
         belongs_to("mentor", class_name="Author", foreign_key="id"),
         has_many("mentees", class_name="Author", foreign_key="id"),
@@ -338,30 +366,36 @@ def test_genuine_mapper_configuration_failure_has_collective_context(make_app, m
     mocker.patch(
         "flaskteroids.extensions.db.discover_classes", return_value={"Author": Author}
     )
-    with pytest.raises(ArgumentError) as raised:
-        make_app("mapper")
-    notes = " ".join(raised.value.__notes__)
-    assert "Author.mentor" in notes
-    assert "Author.mentees" in notes
+    with make_app("mapper").app_context():
+        author = Author.new(id=1, name="self")
+        assert author.save(validate=False)
+        assert author.mentor.id == author.id
+        assert [entry.id for entry in author.mentees] == [author.id]
+        assert Author.count() == 1
 
 
-def test_relationship_dependency_failure_is_preserved_and_not_published(
-    make_app, mocker
-):
-    error = RuntimeError("relationship dependency failed")
-    mocker.patch("flaskteroids.extensions.db.relationship", side_effect=error)
-    attempted = []
+def test_failed_model_mapping_does_not_replace_existing_instances(make_app):
+    error = RuntimeError("mapping failed")
 
-    class ObservedApplication(Application):
-        def __init__(self, **kwargs):
-            attempted.append(self)
-            super().__init__(**kwargs)
+    def fail_order_mapping(mapper, cls):
+        if cls.__name__ == "Story":
+            raise error
 
-    with pytest.raises(RuntimeError) as raised:
-        make_app("failure", application_class=ObservedApplication)
-    assert raised.value is error
-    assert "Author.stories" in " ".join(error.__notes__)
-    assert "flaskteroids.db" not in attempted[0].extensions
+    with make_app("failure").app_context():
+        author = Author.create(name="kept", passcode="secret")
+        original = Author.where(name="kept")
+        event.listen(Mapper, "mapper_configured", fail_order_mapping)
+        try:
+            with pytest.raises(RuntimeError) as raised:
+                Author.includes("stories").first()
+            assert raised.value is error
+            assert "Author.stories" in " ".join(error.__notes__)
+            assert original.first().id == author.id
+            assert author.update(name="still usable")
+        finally:
+            event.remove(Mapper, "mapper_configured", fail_order_mapping)
+        assert list(author.stories) == []
+        assert Author.find(author.id).name == "still usable"
 
 
 @pytest.mark.parametrize(
@@ -378,10 +412,11 @@ def test_database_failures_are_not_missing_migrations(make_app, mocker, boundary
     app.config.paths = SimpleNamespace(models="tests.isolation.models")
     error = OperationalError("database unavailable", {}, None)
     mocker.patch(boundary, side_effect=error)
-    with pytest.raises(OperationalError) as raised:
-        SQLAlchemyExtension(app)
+    db = SQLAlchemyExtension(app)
+    with app.app_context(), pytest.raises(OperationalError) as raised:
+        Author.first()
     assert raised.value is error
-    assert "flaskteroids.db" not in app.extensions
+    assert app.extensions["flaskteroids.db"] is db
 
 
 def test_successful_database_setup_is_a_no_op_when_repeated(make_app):

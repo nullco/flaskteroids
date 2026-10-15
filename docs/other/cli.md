@@ -1,10 +1,8 @@
 # Command-line interface
 
-Flaskteroids extends the Flask CLI with generators, database tasks, credentials
-commands, and test runners. Generated apps lead with `bin/flask --help` and
-`bin/flask <command> --help`: this launcher selects the app environment without
-activation or runtime uv. Existing `flask ...` and `uv run flask ...` remain supported;
-the examples below also work with `bin/flask`.
+Run commands from your project directory with `bin/flask`—no environment
+activation needed. Use `bin/flask --help` to explore, or add `--help` to any command.
+You can also use `flask` in an activated environment, or `uv run flask`.
 
 ## Generation and setup
 
@@ -16,16 +14,12 @@ bin/flask test
 bin/flask test:system
 ```
 
-Generation requires Git, Bash/POSIX, and uv; installs app dependencies, creates its
-lock, and prepares development SQLite by default. `--skip-install` skips sync,
-lock resolution and database preparation, not Docker/migration resources. Run
-`bin/setup` afterward. Names come from the destination basename, not its parents.
-Generation may overwrite files and does not upgrade existing apps automatically.
+Your new app comes with its dependencies installed and development database ready.
+For a fresh checkout, run `bin/setup` before starting work.
 
-`bin/setup` runs `uv sync` without unconditional upgrades and `bin/flask db:prepare`.
-It defaults to development only when FLASK_ENV is unset and honors DATABASE_URL.
-Commit `uv.lock`; CI and Docker use `uv sync --locked`. Prerelease/development
-generators pin their exact version; unpublished versions need an explicit source.
+Want to create the files first and install later? Use `--skip-install`, then run
+`bin/setup` when you're ready. Commit `uv.lock` so your team shares the same
+dependency versions.
 
 ## Asset precompilation
 
@@ -34,23 +28,42 @@ bin/flask assets:precompile
 flaskteroids assets:precompile --root /path/to/app
 ```
 
-Compile without application boot. See [Assets](assets.md) for build options
-and production serving.
+Build assets for production. See [Assets](assets.md) for the full workflow.
 
 ## Database preparation
 
+As your models grow, migrations describe how their tables should change. Run
+`db:prepare` to create the database if needed and apply those migrations:
+
 ```sh
 bin/flask db:prepare
-FLASK_ENV=test bin/flask db:prepare
-bin/release migrate
 ```
 
-Preparation verifies existing migration resources and applies pending migrations
-using the selected database. It retains records/credentials and never repairs
-files, seeds, or provisions remote databases. External DBs and their locked Python
-drivers must already exist. `db:init` strictly initializes an absent/empty migration
-directory and does not apply migrations. `db:migrate` remains supported. Restart
-servers after schema changes; preparation does not rebuild shared model mappings.
+To prepare another environment, choose it with `FLASK_ENV`:
+
+```sh
+FLASK_ENV=test bin/flask db:prepare
+FLASK_ENV=production bin/flask db:prepare
+```
+
+Preparation doesn't reset the database or seed records. Review your migrations
+before deploying: their changes—and rollbacks—can still delete data.
+
+| Command | When to use it |
+| --- | --- |
+| `db:prepare` | Get a database ready, or bring it up to date. |
+| `db:create` | Create the database without applying migrations. |
+| `db:migrate` | Apply pending migrations to an existing database. |
+| `db:rollback` | Undo the most recent migration. |
+| `db:init` | Add migration files to an app that doesn't have them yet. |
+
+New apps already include migration files. If preparation fails, fix the reported
+problem and try again; the database is left in place for you to inspect.
+
+For PostgreSQL or MySQL, start the server and
+[configure its connection](../configuration.md#database-configuration) first.
+For SQLite, use a database file rather than `:memory:` and make sure its parent
+directory exists.
 
 ## Shell
 

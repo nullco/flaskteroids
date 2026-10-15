@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import yaml
+from sqlalchemy import func, select, text
 
 from flaskteroids import fields
 from flaskteroids.db import session
@@ -70,7 +71,9 @@ def load_fixtures(application, requested):
             for index, (label, values) in enumerate(entries.items(), start=1)
         }
 
-    fixture_order = _fixture_order(fixture_models)
+    fixture_order = _fixture_order(
+        fixture_models, application.extensions["flaskteroids.db"]
+    )
     for fixture_name in reversed(fixture_order):
         session.execute(fixture_models[fixture_name].__table__.delete())
     session.flush()
@@ -104,17 +107,42 @@ def load_fixtures(application, requested):
             }
             session.execute(model.__table__.insert().values(**converted))
             loaded[fixture_name][label] = model.find(converted["id"])
+        _advance_fixture_sequence(model)
 
     return FixtureCollection(loaded)
 
 
-def _fixture_order(fixture_models):
+def _advance_fixture_sequence(model):
+    """Keep generated IDs above fixtures without rewinding nontransactional sequences."""
+    if session.get_bind().dialect.name != "postgresql":
+        return
+    table = model.__table__
+    sequence = session.scalar(
+        text(
+            "SELECT pg_get_serial_sequence("
+            "format('%I.%I', COALESCE(CAST(:schema AS text), current_schema()), "
+            "CAST(:table AS text)), 'id')"
+        ),
+        {"schema": table.schema, "table": table.name},
+    )
+    maximum = session.scalar(select(func.max(table.c.id)))
+    if sequence is not None and maximum is not None:
+        session.execute(
+            text(
+                "SELECT setval(CAST(:sequence AS regclass), "
+                "GREATEST(:maximum, nextval(CAST(:sequence AS regclass))), true)"
+            ),
+            {"sequence": sequence, "maximum": maximum},
+        )
+
+
+def _fixture_order(fixture_models, database):
     dependencies = {}
     for name, model in fixture_models.items():
         dependencies[name] = {
-            foreign_key.column.table.name
-            for foreign_key in model.__table__.foreign_keys
-            if foreign_key.column.table.name in fixture_models
+            foreign_key.target_fullname.rsplit(".", 1)[0]
+            for foreign_key in database.binding(model).schema.foreign_keys
+            if foreign_key.target_fullname.rsplit(".", 1)[0] in fixture_models
         }
 
     ordered = []

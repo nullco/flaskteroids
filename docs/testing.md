@@ -1,41 +1,34 @@
 # Testing
 
-Tests use pytest, pytest-xdist, and Playwright. Generated applications include a
-health-endpoint integration test, test configuration, and a green pristine-app
-GitHub Actions workflow. CI installs with `uv sync --locked`, runs `bin/flask test`,
-provisions Chromium explicitly, and runs `bin/flask test:system`.
+Tests grow alongside your application. Generators give you starting tests for
+new features, and your new app includes a health check to get you going.
 
-Both framework commands treat pytest no-tests-collected as success with an explicit
-message, including filters selecting nothing. All other pytest statuses and arguments
-are preserved. Invoke pytest directly for strict empty-selection status. An empty
-system suite does not launch a browser.
-
-Run model, controller, job, and mailer tests with:
+Run model, controller, job, and mailer tests as you work:
 
 ```sh
 bin/flask test
 ```
 
-Run browser tests separately:
+Use browser tests to check the journey a person takes through your app:
 
 ```sh
 bin/flask test:system
 ```
 
-Both commands pass arguments to pytest:
+Both commands use pytest, so you can focus on one file or run tests in parallel:
 
 ```sh
 bin/flask test -n auto
 bin/flask test test/controllers/posts_controller_test.py
 ```
 
-The commands use the `test` environment and apply pending migrations. Tests that inherit from Flaskteroids test classes roll back database changes after each test.
+The commands use your `test` environment and apply pending migrations. Tests that
+inherit from Flaskteroids test classes roll back their database changes, keeping
+each test independent.
 
-File uploads use `fixture_file_upload('avatar.png')` with files in
-`test/fixtures/files`. The pytest plugin uses temporary disk storage for each
-test, including applications configured to use S3. Browser tests can use
-`self.attach_file('Avatar', 'test/fixtures/files/avatar.png')`. See
-[Attachments](other/attachments.md#tests).
+For upload tests, put example files in `test/fixtures/files` and use
+`fixture_file_upload('avatar.png')`. Uploads use temporary storage, leaving your
+real files untouched. See [Attachments](other/attachments.md#tests) for examples.
 
 ## Test types
 
@@ -76,7 +69,8 @@ class PostTest(ModelTest):
         self.post = self.posts("one")
 ```
 
-Flaskteroids loads fixtures inside the test transaction.
+Each test gets its declared fixtures, and its changes are rolled back afterward.
+Use fixture labels rather than hard-coded IDs; generated IDs may have gaps.
 
 ## Integration tests
 

@@ -31,6 +31,47 @@ jobs:
     - name: Check type contracts
       run: uv run mypy
 
+  integration:
+    name: Application integration (${{ matrix.database }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - database: postgresql
+            image: postgres:16-alpine
+            port: "5432:5432"
+            healthcheck: pg_isready -h 127.0.0.1 -U postgres
+            url: postgresql+psycopg://postgres:database-tests@127.0.0.1:5432/flaskteroids_integration
+          - database: mysql
+            image: mysql:8.4
+            port: "3306:3306"
+            healthcheck: mysql --protocol=tcp -h127.0.0.1 -uroot -pdatabase-tests -e 'SELECT 1'
+            url: mysql+pymysql://root:database-tests@127.0.0.1:3306/flaskteroids_integration
+    services:
+      database:
+        image: ${{ matrix.image }}
+        env:
+          POSTGRES_PASSWORD: database-tests
+          MYSQL_ROOT_PASSWORD: database-tests
+        ports:
+          - ${{ matrix.port }}
+        options: >-
+          --health-cmd="${{ matrix.healthcheck }}"
+          --health-interval=5s --health-timeout=5s --health-retries=30
+    env:
+      DATABASE_URL: ${{ matrix.url }}
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+    - uses: astral-sh/setup-uv@v6
+    - name: Install locked integration drivers
+      run: uv sync --locked --dev --group integration
+    - name: Test generated application
+      run: uv run --group integration pytest tests/integration -v
+
   build:
 
     runs-on: ubuntu-latest

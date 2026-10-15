@@ -4,9 +4,8 @@ from collections.abc import Iterator
 from typing import TYPE_CHECKING, Any, Self
 
 from sqlalchemy import func, inspect, select
-from sqlalchemy.orm import selectinload
 
-from flaskteroids._models.associations import _get_association
+from flaskteroids._models.associations import _get_association, _preload
 from flaskteroids._models.records import _base, _build
 from flaskteroids.db import session
 from flaskteroids.exceptions import RecordNotFoundException
@@ -22,6 +21,7 @@ class ModelQuery[QueryModel: "Model"]:
         self._query = select(self._model_base)
         self._limit = None
         self._offset = None
+        self._includes = []
 
     def find(self, id) -> QueryModel:
         found = self.where(id=id).first()
@@ -40,10 +40,13 @@ class ModelQuery[QueryModel: "Model"]:
 
     def includes(self, *args: str) -> Self:
         for rel in args:
-            _get_association(self._model_cls, name=rel)
-            self._query = self._query.options(
-                selectinload(getattr(self._model_base, rel))
-            )
+            association = _get_association(self._model_cls, name=rel)
+            if association is None or association.name != rel:
+                raise AttributeError(
+                    f"Unknown association {self._model_cls.__name__}.{rel}"
+                )
+            if rel not in self._includes:
+                self._includes.append(rel)
         return self
 
     def all(self) -> Iterator[QueryModel]:
@@ -53,17 +56,22 @@ class ModelQuery[QueryModel: "Model"]:
         res = session.execute(self._query).scalars().first()
         if not res:
             return None
+        _preload(self._model_cls, [res], self._includes)
         return _build(self._model_cls, res)
 
     def last(self) -> QueryModel | None:
         if self._limit is not None or self._offset is not None:
             records = session.execute(self._query).scalars().all()
-            return _build(self._model_cls, records[-1]) if records else None
+            if not records:
+                return None
+            _preload(self._model_cls, [records[-1]], self._includes)
+            return _build(self._model_cls, records[-1])
         primary_key = inspect(self._model_base).primary_key[0]
         query = self._query.order_by(primary_key.desc())
         res = session.execute(query).scalars().first()
         if not res:
             return None
+        _preload(self._model_cls, [res], self._includes)
         return _build(self._model_cls, res)
 
     def count(self) -> int:
@@ -89,6 +97,9 @@ class ModelQuery[QueryModel: "Model"]:
 
     def __iter__(self) -> Iterator[QueryModel]:
         res = session.execute(self._query).scalars()
+        if self._includes:
+            res = list(res)
+            _preload(self._model_cls, res, self._includes)
         for r in res:
             yield _build(self._model_cls, r)
 
@@ -99,5 +110,4 @@ class ModelQuery[QueryModel: "Model"]:
         return str(self._query.compile(compile_kwargs={"literal_binds": True}))
 
     def __json__(self) -> list[Any]:
-        res = session.execute(self._query).scalars()
-        return [_build(self._model_cls, r).__json__() for r in res]
+        return [record.__json__() for record in self]

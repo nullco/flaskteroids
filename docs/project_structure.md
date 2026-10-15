@@ -58,21 +58,18 @@ my_project/
 | `config/routes.py` | Application routes. |
 | `db/migrate` | Database migrations. |
 | `storage` | Local database files and uploads; keep persistent in containers. |
-| `bin/flask` | App-interpreter command launcher. |
-| `bin/setup` | Repeatable uv sync and selected-database preparation. |
-| `bin/release migrate` | Explicit preparation for a coordinated release step. |
-| `bin/docker-entrypoint` | Prepare before default Gunicorn web startup only. |
-| `uv.lock` | App-owned exact resolution; setup creates/updates, CI/builds require freshness. |
-| `deploy/README.md` | Docker/runtime secrets/storage instructions; no automatic SSH deployment. |
-| `Procfile` | Platform example requiring PORT and a reachable worker broker. |
+| `bin/flask` | Run Flask commands using your app's environment. |
+| `bin/setup` | Install dependencies and prepare the database. |
+| `bin/release migrate` | Apply database changes during deployment. |
+| `bin/docker-entrypoint` | Start the Docker application. |
+| `uv.lock` | Exact dependency versions; commit this file. |
+| `deploy/README.md` | Your app's Docker and deployment guide. |
+| `Procfile` | Example web and worker process commands. |
 | `test` | Tests and YAML fixtures. |
 
-Default generation installs and prepares; `--skip-install` defers that work to
-`bin/setup`. Bash/POSIX, Git, and uv are setup prerequisites. `db:init` initializes
-only migration files and stays strict; `db:prepare` applies existing migrations
-without resetting data, seeding, repairing files, or creating external databases.
-The generated app is a non-package uv project, not a distributable library.
+A new app is ready to run. When you check out an existing project—or create one
+with `--skip-install`—run `bin/setup` to install its dependencies and prepare the
+database.
 
-See [Assets](other/assets.md) for helpers and build configuration.
-
-See [Configuration](configuration.md) for the boot process, environments, credentials, and database setting precedence.
+Next, explore [Configuration](configuration.md) to choose settings for each
+environment, or [Assets](other/assets.md) to add styles and images.

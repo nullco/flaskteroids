@@ -1,8 +1,8 @@
 # Models
 
-Models inherit from `flaskteroids.model.Model` and wrap SQLAlchemy table objects with an Active Record-style API. Database columns defined in migrations become attributes on model instances.
-
-Use models to query records, define associations and validations, and handle passwords.
+Models represent your application's records and the behavior around them. Define
+columns in a migration, then use them as attributes to find, create, and update
+records. Associations connect your models; validations help keep their data sound.
 
 ## Define a model
 
@@ -29,9 +29,8 @@ class Post(Model):
 
 ## Custom rules and inheritance
 
-A custom rule receives a class. Use it to set class attributes. Put database
-queries and other work that needs an application in an action, callback, or
-initializer instead.
+Use a custom rule to share model settings. Keep database queries in methods that
+run when your application needs the data, rather than while declaring the model.
 
 ```python
 def searchable(*names):
@@ -45,10 +44,8 @@ class Post(Model):
     pass
 ```
 
-Rules run once for each class. Inherited rules run before the child's rules, in
-base-class order. A shared ancestor contributes its rules once. Declaring the
-same rule twice runs it twice. If a rule uses a list or dictionary, create a new
-one for each class so children do not change their parents' values.
+Rules are inherited and run once for each class. Create mutable settings, such as
+lists and dictionaries, inside the rule so each class gets its own copy.
 
 ## Temporary attributes
 
@@ -143,7 +140,9 @@ new_comment = post.comments.create(content="Great post!", author="John")
 Collections support iteration and `create()`, not `append()` or `remove()`.
 Replacing a collection with `post.comments = []` raises `AttributeError`.
 
-Set `dependent='destroy'` to delete associated records when you destroy the parent:
+Set `dependent='destroy'` to delete associated records, running their destroy
+callbacks, when you destroy the parent. Otherwise, the records remain and their
+foreign keys are cleared, if the database allows it:
 
 ```python
 from flaskteroids.model import Model, has_many
@@ -546,13 +545,23 @@ post = Post.find(1)
 post.destroy()
 ```
 
-## Missing tables
+## Preparing a new model
 
-If a model's table doesn't exist yet, the app can still start, but using that
-model raises `ProgrammerError`. Run `flask db:migrate`, then restart the app.
+You can declare a model before its table exists. Flaskteroids learns about each
+table when you first use its model, and follows associations when you ask for them.
 
-Other setup errors, such as an invalid association or a table without a primary
-key, must be fixed before the app can start.
+After adding a model or changing its columns, prepare the database:
+
+```sh
+bin/flask db:prepare
+```
+
+If a table isn't ready, you'll see an error when you use the model. Run the missing
+migration and try again. Restart running applications after changing existing tables.
+
+Keep queries inside actions, jobs, or functions rather than at the top of a module
+or in an initializer. That lets your app start—and run setup—before the database
+is ready.
 
 ## Validation errors
 
