@@ -2,8 +2,9 @@ import pytest
 from sqlalchemy import Column, DateTime, Integer, String
 from sqlalchemy.orm import declarative_base
 
-from flaskteroids.model import Error, Errors, Model, validates
+from flaskteroids.model import Error, Errors, validates
 from flaskteroids.rules import rules
+from tests.model.schema_support import model_base
 
 Base = declarative_base()
 
@@ -22,7 +23,7 @@ class EntryTable(Base):
 def entry_model(init_models):
     def prepare(*declarations):
         @rules(*declarations)
-        class Entry(Model):
+        class Entry(model_base(Base)):
             threshold = 10
 
         init_models(Base, [(EntryTable, Entry)])

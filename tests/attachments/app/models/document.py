@@ -1,7 +1,6 @@
 from typing import ClassVar
 
 from flaskteroids.model import (
-    Model,
     after_commit,
     after_save,
     has_many_attached,
@@ -9,6 +8,7 @@ from flaskteroids.model import (
     validates,
 )
 from flaskteroids.rules import rules
+from tests.attachments.app.models.application_model import ApplicationModel
 
 
 @rules(
@@ -20,7 +20,7 @@ from flaskteroids.rules import rules
     after_commit("_remember_avatar"),
     after_save("_remember_saved_blob"),
 )
-class Document(Model):
+class Document(ApplicationModel):
     committed_filenames: ClassVar[list[str]] = []
     committed_contents: ClassVar[list[bytes]] = []
     saved_blob_ids: ClassVar[list[int]] = []

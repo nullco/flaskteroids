@@ -3,8 +3,9 @@ from sqlalchemy import Column, DateTime, Integer, String
 from sqlalchemy.orm import declarative_base
 from werkzeug.security import check_password_hash
 
-from flaskteroids.model import Model, PasswordAuthenticator, has_secure_password
+from flaskteroids.model import PasswordAuthenticator, has_secure_password
 from flaskteroids.rules import rules
+from tests.model.schema_support import model_base
 
 Base = declarative_base()
 
@@ -23,7 +24,7 @@ class AccountTable(Base):
 @pytest.fixture(params=["password", "passcode"])
 def account_model(request, init_models):
     @rules(has_secure_password(request.param))
-    class Account(Model, PasswordAuthenticator):
+    class Account(model_base(Base), PasswordAuthenticator):
         pass
 
     init_models(Base, [(AccountTable, Account)])

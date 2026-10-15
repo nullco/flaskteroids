@@ -4,12 +4,12 @@ from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import declarative_base
 
 from flaskteroids.model import (
-    Model,
     PasswordAuthenticator,
     RecordNotFoundException,
     has_secure_password,
 )
 from flaskteroids.rules import rules
+from tests.model.schema_support import model_base
 
 
 @pytest.fixture(autouse=True)
@@ -29,7 +29,7 @@ class UserBase(Base):
 
 
 @rules(has_secure_password())
-class User(Model, PasswordAuthenticator):
+class User(model_base(Base), PasswordAuthenticator):
     pass
 
 
@@ -274,7 +274,7 @@ def test_password_reset_token_for_deleted_user(existing_user):
 
 def test_password_reset_token_is_scoped_to_model(existing_user, init_models):
     @rules(has_secure_password())
-    class User(Model, PasswordAuthenticator):
+    class User(model_base(Base), PasswordAuthenticator):
         pass
 
     OtherUser = User
@@ -296,7 +296,7 @@ def test_password_reset_token_with_custom_password_field(init_models):
         passcode_digest = Column(String(), nullable=False)
 
     @rules(has_secure_password("passcode"))
-    class PasscodeUser(Model, PasswordAuthenticator):
+    class PasscodeUser(model_base(Base), PasswordAuthenticator):
         pass
 
     init_models(Base, [(PasscodeUserBase, PasscodeUser)])

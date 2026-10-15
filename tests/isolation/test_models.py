@@ -4,20 +4,17 @@ from types import SimpleNamespace
 import pytest
 from flask import Flask
 from itsdangerous import BadSignature
-from sqlalchemy import event, text
-from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import Mapper
+from sqlalchemy import inspect, text
+from sqlalchemy.exc import IntegrityError, OperationalError
 
 from flaskteroids.db import session
 from flaskteroids.exceptions import ProgrammerError
 from flaskteroids.extensions.db import SQLAlchemyExtension
-from flaskteroids.model import Model, before_save, belongs_to, has_many, init
-from flaskteroids.rules import rules
 from tests.isolation.models.records import Author, Story
 
 
 @pytest.mark.parametrize("order", [("a", "b"), ("b", "a")])
-def test_shared_models_bind_to_independent_databases(make_app, order):
+def test_shared_models_use_independent_databases_and_identity_maps(make_app, order):
     apps = {name: make_app(name) for name in order}
     for name in ("a", "b", "a"):
         with apps[name].app_context():
@@ -26,29 +23,25 @@ def test_shared_models_bind_to_independent_databases(make_app, order):
                 author = Author.create(name=name, passcode="secret")
                 editor = Author.create(name=f"{name}-editor", passcode="secret")
                 story = Story.create(title=name, author=author, editor=editor)
-                assert story.author.name == name
-                assert story.editor.name == f"{name}-editor"
-                assert len(author.stories) == 1
-                assert len(editor.edited_stories) == 1
-                author.stories.create(title="second", editor=editor)
+                assert story.author is author
+                assert story.editor is editor
+                assert author.stories == [story]
+                assert editor.edited_stories == [story]
+                Story.create(title="second", author=author, editor=editor)
             assert Author.where(Author.name == name).count() == 1
             assert Story.count() == 2
             loaded = Author.includes("stories").where(name=name).first()
-            assert loaded.stories.create(
-                title="extra", editor=Author.find_by(name=f"{name}-editor")
-            ).id
+            assert loaded is author
+            extra = Story.create(title="extra", author=loaded)
+            assert extra.id
             assert Story.find_by(title="second").editor.name == f"{name}-editor"
             assert author.update(name=name)
             assert author.__json__()["name"] == name
             assert "passcode_digest" not in author.__json__()
-            assert Author.authenticate_by(name=name, passcode="secret").id == author.id
-            assert Story.new(author_id=999, editor_id=999).save() is False
-            invalid = Story.new(author_id=999, editor_id=999)
-            assert invalid.save() is False
-            assert len(invalid.errors) == 2
-            assert Story.where(title="extra").first().destroy()
+            assert Author.authenticate_by(name=name, passcode="secret") is author
+            assert extra.destroy()
     with apps["a"].app_context():
-        Author.find_by(name="a").destroy()
+        assert Author.find_by(name="a").destroy()
         assert Story.count() == 0
     with apps["b"].app_context():
         assert Story.count() == 2
@@ -60,102 +53,73 @@ def test_building_app_b_inside_a_does_not_change_a(make_app):
         author = Author.create(name="a", passcode="secret")
         session.commit()
         app_b = make_app("b")
-        assert Author.find(author.id).name == "a"
+        assert Author.find(author.id) is author
         with app_b.app_context():
             assert Author.count() == 0
             Author.create(name="b", passcode="secret")
-        assert Author.find(author.id).name == "a"
+        assert Author.find(author.id) is author
 
 
 @pytest.mark.parametrize("tables", [(), ("authors",), ("stories",)])
-def test_incomplete_schema_never_uses_another_apps_mapping(make_app, tables):
+def test_incomplete_database_does_not_use_another_apps_engine(make_app, tables):
     app_a = make_app("a")
+    app_b = make_app("b", tables=tables)
     with app_a.app_context():
-        Author.create(name="a", passcode="secret")
+        author = Author.create(name="a", passcode="secret")
         session.commit()
-        app_b = make_app("b", tables=tables)
         with app_b.app_context():
-            if "stories" in tables:
-                assert Story.count() == 0
-                with pytest.raises(ProgrammerError, match="Author.*migrations"):
-                    Story.includes("author").first()
-                with pytest.raises(ProgrammerError, match="Author.*migrations"):
-                    Story.new(title="b", author_id=1, editor_id=1).save()
-            else:
-                with pytest.raises(ProgrammerError, match="Story.*migrations"):
-                    Story.count()
+            missing = Story if "stories" not in tables else Author
+            with pytest.raises(OperationalError):
+                missing.first()
+            session.rollback()
             if "authors" in tables:
-                author = Author.create(name="b", passcode="secret")
-                with pytest.raises(ProgrammerError, match="Story.*migrations"):
-                    list(author.stories)
-                with pytest.raises(ProgrammerError, match="Story.*migrations"):
-                    Author.includes("stories").first()
-            else:
-                with pytest.raises(ProgrammerError, match="Author.*migrations"):
-                    Author.count()
-        assert Author.count() == 1
+                assert Author.count() == 0
+        assert Author.find(author.id) is author
+        assert author.name == "a"
 
 
-@pytest.mark.parametrize(
-    "operation", ["construct", "query", "expression", "eager_load", "relation_create"]
-)
-def test_unbacked_model_use_identifies_expected_table_and_recovery(make_app, operation):
-    with make_app("missing", tables=("authors",)).app_context():
-        author = Author.create(name="available", passcode="secret")
-        with pytest.raises(ProgrammerError, match="Story.*stories.*migrations.*fresh"):
-            if operation == "construct":
-                Story.new(title="draft")
-            elif operation == "query":
-                Story.count()
-            elif operation == "expression":
-                _ = Story.title == "draft"
-            elif operation == "eager_load":
-                Author.includes("stories").first()
-            else:
-                author.stories.create(title="draft")
+def test_model_construction_and_expressions_need_neither_database_nor_context():
+    story = Story(title="draft")
+    story.title = "edited"
+    assert story.title == "edited"
+    assert story.changes == {"title": "edited"}
+    assert inspect(story).transient
+    assert str(Story.title == "edited") == "stories.title = :title_1"
 
 
-def test_partial_schema_does_not_block_unrelated_assignment(make_app, mocker):
-    @rules(belongs_to("author"))
-    class Story(Model):
-        delivery_hint = None
-
-    mocker.patch(
-        "flaskteroids.extensions.db.discover_classes",
-        return_value={"Story": Story, "Author": Author},
-    )
-    with make_app("partial", tables=("stories",)).app_context():
-        story = Story.new(title="draft", delivery_hint="preview")
-        story.title = "edited"
-        story.delivery_hint = "mail"
-        assert story.title == "edited"
-        assert story.delivery_hint == "mail"
-        with pytest.raises(AttributeError, match="Story.titel"):
-            story.titel = "typo"
-        with pytest.raises(
-            ProgrammerError, match="Author.*authors.*migrations"
-        ) as raised:
-            _ = story.author
-        assert "Story.author" in " ".join(raised.value.__notes__)
-
-
-def test_model_access_requires_an_app_context(make_app):
-    for name in ("a", "b"):
-        with make_app(name).app_context():
-            assert Author.count() == 0
+def test_model_queries_require_app_context(make_app):
+    with make_app("a").app_context():
+        assert Author.count() == 0
     with pytest.raises(RuntimeError, match="Working outside of application context"):
         Author.count()
 
 
-def test_unregistered_model_fails_clearly(make_app):
-    class Stranger(Model):
-        pass
+def test_unregistered_model_fails_clearly(make_app, discovery_package):
+    import importlib
 
-    with (
-        make_app("a").app_context(),
-        pytest.raises(ProgrammerError, match="Stranger.*not registered"),
-    ):
-        Stranger.count()
+    package = discovery_package(
+        {
+            "__init__.py": "",
+            "schema.py": (
+                "import sqlalchemy as sa\n"
+                "from flaskteroids.schema import Snapshot\n"
+                "snapshot = Snapshot()\n"
+                "metadata = snapshot.metadata\n"
+                "snapshot.create_table('strangers', sa.Column('id', sa.Integer(), primary_key=True))\n"
+            ),
+            "models/__init__.py": (
+                "from flaskteroids.model import Model\n"
+                "class ApplicationModel(Model):\n    __abstract__ = True\n"
+                "class Stranger(ApplicationModel): pass\n"
+            ),
+        }
+    )
+    stranger = importlib.import_module(f"{package}.models").Stranger
+    with make_app("a").app_context():
+        with pytest.raises(ProgrammerError, match="Stranger.*not registered"):
+            stranger.count()
+        with pytest.raises(ProgrammerError, match="Stranger.*not registered"):
+            stranger().save()
 
 
 def test_attachment_and_password_tokens_are_app_owned(make_app):
@@ -181,237 +145,43 @@ def test_attachment_and_password_tokens_are_app_owned(make_app):
             assert Blob.find_signed(other[1]) is None
 
 
-@pytest.mark.parametrize("tables", [(), ("authors", "stories")])
-def test_unknown_association_target_is_a_configuration_error(make_app, mocker, tables):
-    @rules(belongs_to("unknown"))
-    class Story(Model):
-        pass
+def test_database_constraints_remain_authoritative(make_app):
+    with make_app("constraints").app_context():
+        story = Story(title="invalid", author_id=999)
+        with pytest.raises(IntegrityError):
+            story.save()
+        session.rollback()
+        assert Story.count() == 0
 
-    init(Story)
-    mocker.patch(
-        "flaskteroids.extensions.db.discover_classes", return_value={"Story": Story}
-    )
-    app = make_app("broken", tables=tables)
+
+def test_unrelated_live_columns_do_not_change_explicit_model_schema(make_app):
+    app = make_app("extra_column")
     with app.app_context():
-        if "stories" not in tables:
-            session.execute(text("CREATE TABLE stories (id INTEGER PRIMARY KEY)"))
-            session.commit()
-        assert Story.count() == 0
-        with pytest.raises(
-            ProgrammerError, match="Unknown model not found.*Story.unknown"
-        ):
-            Story.includes("unknown").first()
-        assert Story.count() == 0
+        session.execute(text("ALTER TABLE authors ADD COLUMN extra_column TEXT"))
+        author = Author.create(name="kept", passcode="secret")
+        assert "extra_column" not in author.column_names
+        assert Author.find(author.id) is author
 
 
-def test_invalid_association_on_existing_tables_is_not_ignored(make_app, mocker):
-    @rules(belongs_to("author", foreign_key="missing_id"))
-    class Story(Model):
-        pass
-
-    mocker.patch(
-        "flaskteroids.extensions.db.discover_classes",
-        return_value={"Story": Story, "Author": Author},
-    )
-    with make_app("broken").app_context():
-        story = Story.new(title="valid without the association")
-        assert Story.count() == 0
-        with pytest.raises(ProgrammerError, match="Story.author.*missing_id"):
-            _ = story.author
-        assert Story.count() == 0
-
-
-def test_attachment_column_conflict_is_checked_for_each_app(make_app):
-    app = make_app("a")
-    with app.app_context():
-        session.execute(text("ALTER TABLE authors ADD COLUMN avatar TEXT"))
-    with make_app("a").app_context():
-        assert Story.count() == 0
-        with pytest.raises(ProgrammerError, match="Attachment avatar.*column.*Author"):
-            Author.first()
-
-
-def test_foreign_key_targets_outside_the_model_catalog_do_not_require_mapping(
-    make_app, mocker
-):
-    class Story(Model):
-        pass
-
-    mocker.patch(
-        "flaskteroids.extensions.db.discover_classes", return_value={"Story": Story}
-    )
-    app = make_app("a")
-    with app.app_context():
-        assert Story.create(title="standalone").id
-        assert Story.count() == 1
-
-
-def test_invalid_foreign_key_to_an_existing_table_is_not_ignored(make_app, mocker):
-    app = make_app("a")
-    with (
-        app.extensions["flaskteroids.db"].new_session() as db_session,
-        db_session.begin(),
-    ):
-        db_session.execute(text("DROP TABLE stories"))
-        db_session.execute(
-            text(
-                "CREATE TABLE stories ("
-                "id INTEGER PRIMARY KEY, author_id INTEGER REFERENCES authors(missing_id))"
-            )
-        )
-
-    @rules(belongs_to("author"))
-    class Story(Model):
-        pass
-
-    mocker.patch(
-        "flaskteroids.extensions.db.discover_classes",
-        return_value={"Story": Story, "Author": Author},
-    )
-    with make_app("a").app_context():
-        assert Story.count() == 0
-        with pytest.raises(ProgrammerError, match="authors.missing_id.*missing column"):
-            Story.includes("author").first()
-        assert Story.count() == 0
-
-
-def test_previously_unused_models_can_load_after_migrations(make_app):
-    original = make_app("a", tables=("stories",))
-    migrated = make_app("a")
+def test_same_mappings_work_after_migrations_without_runtime_reflection(make_app):
+    original = make_app("migrated", tables=("stories",))
+    before = inspect(Author)
+    migrated = make_app("migrated")
     with migrated.app_context():
         Author.create(name="migrated", passcode="secret")
     with original.app_context():
-        assert Story.count() == 0
         assert Author.first().name == "migrated"
-    with migrated.app_context():
-        assert Author.first().name == "migrated"
-
-
-def test_existing_table_without_primary_key_is_malformed(make_app, mocker):
-    app = make_app("malformed")
-    with app.app_context():
-        session.execute(text("DROP TABLE stories"))
-        session.execute(text("CREATE TABLE stories (title TEXT)"))
-
-    class Story(Model):
-        pass
-
-    mocker.patch(
-        "flaskteroids.extensions.db.discover_classes", return_value={"Story": Story}
-    )
-    with make_app("malformed").app_context():
-        with pytest.raises(ProgrammerError, match="Story.*stories.*primary key"):
-            Story.first()
-
-
-def test_association_requires_target_identity_column(make_app, mocker):
-    app = make_app("identity", tables=())
-    with app.app_context():
-        session.execute(text("CREATE TABLE authors (key INTEGER PRIMARY KEY)"))
-        session.execute(
-            text("CREATE TABLE stories (id INTEGER PRIMARY KEY, author_id INTEGER)")
-        )
-
-    @rules(belongs_to("author"))
-    class Story(Model):
-        pass
-
-    class Author(Model):
-        pass
-
-    mocker.patch(
-        "flaskteroids.extensions.db.discover_classes",
-        return_value={"Story": Story, "Author": Author},
-    )
-    with make_app("identity").app_context():
         assert Story.count() == 0
-        with pytest.raises(ProgrammerError, match="Story.author.*Author.*authors.*id"):
-            Story.includes("author").first()
-        assert Author.count() == 0
+        assert inspect(Author) is before
 
 
-def test_ambiguous_inverse_names_both_models_and_foreign_key(make_app, mocker):
-    @rules(
-        belongs_to("author"),
-        belongs_to("editor", class_name="Author", foreign_key="author_id"),
-    )
-    class Story(Model):
-        pass
-
-    @rules(has_many("stories"))
-    class Author(Model):
-        pass
-
-    mocker.patch(
-        "flaskteroids.extensions.db.discover_classes",
-        return_value={"Story": Story, "Author": Author},
-    )
-    with make_app("ambiguous").app_context():
-        assert Author.count() == 0
-        with pytest.raises(ProgrammerError, match="Author.stories.*Story.*author_id"):
-            Author.includes("stories").first()
-        assert Author.count() == 0
-
-
-def test_self_associations_do_not_install_mutually_dependent_mapper_properties(
-    make_app, mocker
-):
-    @rules(
-        belongs_to("mentor", class_name="Author", foreign_key="id"),
-        has_many("mentees", class_name="Author", foreign_key="id"),
-    )
-    class Author(Model):
-        pass
-
-    mocker.patch(
-        "flaskteroids.extensions.db.discover_classes", return_value={"Author": Author}
-    )
-    with make_app("mapper").app_context():
-        author = Author.new(id=1, name="self")
-        assert author.save(validate=False)
-        assert author.mentor.id == author.id
-        assert [entry.id for entry in author.mentees] == [author.id]
-        assert Author.count() == 1
-
-
-def test_failed_model_mapping_does_not_replace_existing_instances(make_app):
-    error = RuntimeError("mapping failed")
-
-    def fail_order_mapping(mapper, cls):
-        if cls.__name__ == "Story":
-            raise error
-
-    with make_app("failure").app_context():
-        author = Author.create(name="kept", passcode="secret")
-        original = Author.where(name="kept")
-        event.listen(Mapper, "mapper_configured", fail_order_mapping)
-        try:
-            with pytest.raises(RuntimeError) as raised:
-                Author.includes("stories").first()
-            assert raised.value is error
-            assert "Author.stories" in " ".join(error.__notes__)
-            assert original.first().id == author.id
-            assert author.update(name="still usable")
-        finally:
-            event.remove(Mapper, "mapper_configured", fail_order_mapping)
-        assert list(author.stories) == []
-        assert Author.find(author.id).name == "still usable"
-
-
-@pytest.mark.parametrize(
-    "boundary",
-    [
-        "sqlalchemy.engine.Engine.connect",
-        "sqlalchemy.engine.reflection.Inspector.reflect_table",
-    ],
-)
-def test_database_failures_are_not_missing_migrations(make_app, mocker, boundary):
+def test_database_failures_propagate_without_becoming_mapping_errors(make_app, mocker):
     original = make_app("database")
     app = Flask(__name__)
     app.database_url = original.database_url
     app.config.paths = SimpleNamespace(models="tests.isolation.models")
     error = OperationalError("database unavailable", {}, None)
-    mocker.patch(boundary, side_effect=error)
+    mocker.patch("sqlalchemy.engine.Engine.connect", side_effect=error)
     db = SQLAlchemyExtension(app)
     with app.app_context(), pytest.raises(OperationalError) as raised:
         Author.first()
@@ -419,21 +189,14 @@ def test_database_failures_are_not_missing_migrations(make_app, mocker, boundary
     assert app.extensions["flaskteroids.db"] is db
 
 
-def test_successful_database_setup_is_a_no_op_when_repeated(make_app):
+def test_repeated_database_setup_does_not_change_models_or_identity(make_app):
     app = make_app("repeat")
     extension = app.extensions["flaskteroids.db"]
     with app.app_context():
         author = Author.create(name="kept", passcode="secret")
         extension.init_app(app)
         extension.init_models()
-        assert Author.find(author.id).name == "kept"
+        assert Author.find(author.id) is author
+        assert extension.models["Author"] is Author
+        assert extension.metadata is Author.metadata
         assert Author.count() == 1
-
-
-def test_missing_model_callback_is_reported_without_a_database_context():
-    @rules(before_save("_missing"))
-    class Record(Model):
-        pass
-
-    with pytest.raises(ProgrammerError, match="Callback method.*_missing.*Record"):
-        init(Record)

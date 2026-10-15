@@ -5,7 +5,7 @@ from app.models.application_model import ApplicationModel
 
 @rules(
     has_secure_password(),
-    has_many('sessions')
+    has_many('sessions', dependent='destroy')
 )
 class User(ApplicationModel, PasswordAuthenticator):
     pass

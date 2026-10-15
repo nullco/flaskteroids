@@ -1,470 +1,254 @@
-# Explore Rails-like models with automatic schema inheritance
+# ORM replacement: generated snapshots and lazy native mappings
 
-Status: proposed exploration, not an approved migration.
+Status: full replacement authorized on the experimental branch. This document
+records the project owner's final decisions and supersedes the earlier
+exploration, hand-written-schema, and eager schema-inheritance proposals.
+Backward compatibility and a supported dual-ORM mode are not requirements.
 
-## Purpose
+## Confirmed architecture
 
-Evaluate a hybrid model layer: SQLAlchemy declarations in `app/schema.py`,
-automatically composed into same-named Flaskteroids models, with Rails-like
-querying, validation, and persistence APIs.
+1. **Migrations are authoritative.** Generate `app/schema.py` from the database
+   after successful migration/preparation/rollback. Commit the generated snapshot;
+   do not maintain column declarations independently or edit the snapshot by hand.
+2. **Keep ordinary application boot.** `flask db:migrate`, `db:prepare`, and
+   `db:schema:dump` use normal Flask application initialization. There is no
+   migration-only application, skipped initializer mode, or alternate bootstrap.
+   An initializer that actually uses an unavailable model still fails normally.
+3. **Declare now, map when needed.** Importing a model collects its behavior and
+   rules without requiring a snapshot or a table. Construction, facade queries,
+   and mapped attribute expressions prepare the required relationship graph.
+   Native callers can explicitly use `Model.prepare()` before APIs such as
+   `sqlalchemy.inspect(Model)` or `session.get(Model, id)`.
+4. **Keep decorator signatures.** Associations remain declarations inside
+   `@rules(belongs_to(...), has_many(...), ...)`, not a replacement class-attribute
+   DSL. Translate these declarations into native SQLAlchemy relationships before
+   publishing mappers. Native `relationship()` is also available when needed.
+5. **Use actual mapped application objects.** No `_base_instance`, hidden mapped
+   row class, wrapper conversion, second identity map, or relationship cache.
+   SQLAlchemy owns published attribute history, identity, relationship loading,
+   and the unit of work.
+6. **Retain bounded scalar staging.** The owner explicitly approved `_changes` on
+   the mapped application object. Assignment retains typed pending values and
+   original input. A successful save publishes them to that same object's
+   instrumented attributes. Failed scalar validation leaves published state
+   untouched, so later queries, other saves, and teardown cannot leak those edits.
+7. **Keep teardown auto-commit.** Commit if no exception reaches app-context
+   teardown, otherwise roll back, and always close the session. A handled
+   validation failure or HTTP error response does not itself force rollback.
+   `save()` validates and flushes; it does not commit the surrounding transaction.
 
-The primary experiment is convention-based schema inheritance. Application model
-classes should only need to inherit `ApplicationModel`: Flaskteroids finds the
-same-named declaration in `app.schema` and incorporates it during class creation.
-Fields stay out of behavioral model classes without requiring explicit schema
-imports or inheritance in each model.
+There is no longer a requirement for `schema.Post` to exist, or for application
+classes to inherit schema mixins. Bind `Post` to the snapshot's `posts` Table via
+SQLAlchemy's public imperative mapping API, lazily and on the actual class.
+This preserves the desired field-free model experience without mutable bases.
 
-The goal is not to replace the Rails-like application API with session calls.
-Preserve the convenient experience of `Author.where(...)`, `Author.find(...)`,
-`Author.create(...)`, and `author.save()` while removing database-first reflection
-and the separate framework-wrapper/mapped-row architecture.
-
-The hypothesis is that SQLAlchemy can own mapping, identity, attribute state,
-relationships, and the unit of work, while Flaskteroids supplies an ergonomic API,
-validation, callbacks, conventions, and integrated tooling. Native SQLAlchemy APIs
-should remain usable on the same objects and in the same session.
-
-Do not rewrite the existing ORM as part of this exploration. Build a small,
-isolated prototype, compare it with the current implementation, and record a
-proceed, revise, or stop decision. This document does not supersede the existing
-`plan-1.md`, `plan-2.md`, or `plan-3.md` work.
-
-## Why investigate
-
-The current model layer owns more than convenience methods:
-
-- `flaskteroids/model.py` wraps a separate mapped `_base_instance` and maintains
-  pending changes, attribute dispatch, and persistence operations.
-- `flaskteroids/_models/records.py` constructs framework wrappers around mapped
-  query results.
-- `flaskteroids/_models/query.py` provides a query interface and result conversion.
-- `flaskteroids/_models/associations.py` provides framework-managed associations.
-- `flaskteroids/extensions/db.py` reflects tables, constructs persistence mappings,
-  and resolves model bindings and association declarations.
-
-This creates overlapping object/state systems and makes Flaskteroids responsible
-for reconciling them. Reflection, lazy mapping, relationship configuration,
-identity, dirty tracking, and failure isolation all contribute to that cost.
-
-`tests/isolation/incremental_mapping_spike.md` documents concrete difficulties
-with incremental relationship installation and unresolved reflected foreign keys.
-Those probes motivate this exploration; they are not proof that reflection is
-universally wrong or that native mappings solve every isolation requirement.
-
-## Separate the decisions
-
-Evaluate these independently rather than treating them as one package:
-
-1. **Schema mapping:** database-first reflection versus explicit mapped columns.
-2. **Declaration placement/composition:** inline fields versus a separate schema
-   module with explicit or automatic same-name inheritance.
-3. **Object model:** framework wrapper versus the actual SQLAlchemy-mapped object.
-4. **Query API:** custom chaining versus SQLAlchemy expressions and statements.
-5. **Persistence API:** Active Record-style `save()` versus session/unit-of-work
-   operations.
-6. **Framework integration:** conventions, validation, forms, authentication,
-   attachments, generators, migrations, and testing.
-
-The primary candidate combines explicit SQLAlchemy declarations in `app.schema`,
-automatic same-name composition, actual mapped application objects, and Rails-like
-query/persistence methods. Explicit schema inheritance and native-only application
-code are comparison baselines, not the intended default developer experience.
-
-SQLAlchemy field declarations (`Mapped`, `mapped_column`, `ForeignKey`, and native
-types) replace reflected column discovery. Start with native `relationship()`
-declarations too; whether association declaration helpers remain is a separate
-question. Rails-like methods are first-class APIs to investigate, not merely
-legacy compatibility shims. Their implementation must delegate to SQLAlchemy
-rather than maintain a second object/state system.
-
-## Candidate experience
-
-Illustrative only; the base-class import and declaration conventions are not yet
-public API decisions:
+## Developer experience
 
 ```python
-# app/schema.py — unmapped declarations, not a second set of mapped models
-from __future__ import annotations
+# app/models/application_model.py
+from flaskteroids.model import Model
 
-from sqlalchemy import ForeignKey
-from sqlalchemy.orm import Mapped, declared_attr, mapped_column, relationship
-
-
-class Author:
-    __tablename__ = "authors"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str]
-
-    @declared_attr
-    def posts(cls) -> Mapped[list["Post"]]:
-        return relationship("Post", back_populates="author")
-
-
-class Post:
-    __tablename__ = "posts"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    title: Mapped[str]
-    author_id: Mapped[int] = mapped_column(ForeignKey("authors.id"))
-
-    @declared_attr
-    def author(cls) -> Mapped["Author"]:
-        return relationship("Author", back_populates="posts")
+class ApplicationModel(Model):
+    __abstract__ = True
 ```
 
 ```python
 # app/models/author.py
 from app.models.application_model import ApplicationModel
+from flaskteroids.model import has_many, validates
+from flaskteroids.rules import rules
 
-
+@rules(has_many("posts", dependent="destroy"), validates("name", presence=True))
 class Author(ApplicationModel):
-    def greeting(self):
-        return f"Hello, {self.name}"
+    pass
 ```
 
 ```python
 # app/models/post.py
 from app.models.application_model import ApplicationModel
+from flaskteroids.model import belongs_to, validates
+from flaskteroids.rules import rules
 
-
+@rules(belongs_to("author"), validates("title", presence=True))
 class Post(ApplicationModel):
     pass
 ```
 
-Conceptually, class creation produces `Author(schema.Author, ApplicationModel)`
-and `Post(schema.Post, ApplicationModel)` before declarative mapping takes place.
-Application model files do not need to write those bases themselves. Relationship
-strings must resolve to the resulting mapped application classes, not schema
-mixins; the prototype must prove this.
-
-```python
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload
-
-from app.models.author import Author
-from app.models.post import Post
-from flaskteroids.db import session
-
-
-# Rails-like API for routine application code.
-author = Author(name="Ada")
-if author.save():
-    post = Post.create(title="First post", author=author)
-else:
-    errors = author.errors
-
-authors = Author.where(name="Ada").includes("posts").all()
-matching = Author.where(Author.name.ilike("a%"))
-found = Author.find(author.id)  # Raises the framework's not-found exception.
-
-# Native SQLAlchemy remains available on those same mapped classes/instances.
-statement = (
-    select(Author)
-    .where(Author.name == "Ada")
-    .options(selectinload(Author.posts))
-)
-native_authors = session.scalars(statement).all()
+```sh
+flask generate model Author name:string
+flask generate model Post title:string author:references
+flask db:prepare
+# app/schema.py is now generated from the migrated database.
 ```
 
-The application object should be the mapped object: no hidden row instance,
-wrapper conversion, duplicate identity map, or parallel pending-change store.
+```python
+author = Author.create(name="Ada")
+post = Post.create(title="First", author=author)
+authors = Author.where(Author.name.ilike("a%")).includes("posts").all()
 
-`ApplicationModel` would be an abstract SQLAlchemy declarative base with
-Flaskteroids API methods. A compatible class-creation mechanism looks up the schema
-declaration and includes it before SQLAlchemy maps each concrete model. The exact
-mechanism is an experimental outcome, not a mandate to use a particular metaclass.
-Do not modify bases or install schema fields after a mapper has been published.
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
+from flaskteroids.db import session
 
-Schema classes remain unmapped declaration mixins. Only application models are
-mapped: inheriting an already-mapped schema class would invoke SQLAlchemy mapped
-inheritance rather than simply supplying fields. Framework methods operate on
-`self` and the app's session; query results are those same mapped instances.
+# Native and facade queries share mapped instances and published database state.
+native = session.scalars(select(Author).options(selectinload(Author.posts))).all()
+assert native[0] is authors[0]
+```
 
-A shared base may eventually supply table names, IDs, or timestamps. Start with
-explicit schema declarations so the mapping behavior is visible. Keep framework
-validation/callback declarations and business behavior in application model files.
-SQLAlchemy field types do not replace form coercion or user-facing validation.
+## Snapshot ownership and workflow
 
-The example is a target shape, not a promise that the current API can be copied
-unchanged. In particular, define `save()`/`create()` validation, flush, failure, and
-transaction semantics before implementing them.
+The snapshot contains SQLAlchemy metadata for all reflectable tables in the
+selected database, including tables without application models and framework
+attachment tables. Exclude Alembic's bookkeeping table. Foreign-key targets can
+therefore resolve without requiring a behavioral model for every table.
 
-### Accepted convention and tooling trade-off
+- Reflection belongs only to schema-dump tooling, never model import/mapping.
+- Use public SQLAlchemy reflection and Alembic rendering APIs. Snapshot import
+  constructs metadata only; it must never connect or execute migrations.
+- Publish the snapshot atomically after successful rendering/compilation. A dump
+  failure preserves the previous file. Preserve ordinary read permissions.
+- A migration may already be applied when snapshot publication fails. Report
+  that distinction; fix the cause and rerun `db:schema:dump`. Do not pretend that
+  a failed file write rolled the database back.
+- Restart running application/worker processes after schema changes. Do not
+  reload snapshots or mutate already-published mappings in place.
+- Standalone migration generation does not edit snapshots. Renames, data
+  migrations, triggers, and unsupported changes remain explicit migration work.
+- Runtime model metadata is not desired-schema input for Alembic autogeneration.
+  Alembic remains the migration runner and supplies public snapshot rendering.
+- A snapshot is not a data backup or universal database export. Unsupported
+  reflected types fail explicitly. Review dialect-specific output and backend
+  differences before committing a snapshot generated from another environment.
 
-Prefer the Rails-like model experience for this experiment. Dynamic schema
-inheritance may prevent ordinary static analyzers and editors from seeing model
-fields, even though the declarations in `schema.py` are typed. This is an accepted
-trade-off to evaluate, not by itself a stop condition or a requirement to switch
-back to explicit inheritance.
+## Mapping and application isolation
 
-Rails makes a comparable trade-off for schema-backed attributes; richer tooling
-often relies on schema awareness or generated definitions. Record actual Python
-completion/type-checking behavior. Generated stubs or schema-aware tooling are
-possible follow-ups, not prerequisites for proving the architecture. Keep the
-repository's existing scoped typing checks intact; do not expand their scope to
-require static inference of these experimental fields.
+An abstract base under `<application>.models` infers `<application>.schema`.
+An explicit `__schema_module__` is available for custom/test model sets.
+`__table_name__` overrides the default tableized class name when necessary.
 
-The intended magic is bounded class-creation-time composition, not per-access
-proxying, duplicate state, or synchronization between two model objects.
+Each application model base owns its catalog, registry, metadata, and mapping
+lock. Model discovery imports modules deterministically but does not map them.
+At first use, clone snapshot tables into the owned metadata, bind rules, validate
+all required relationship targets/columns, then map/configure the required graph.
+Missing snapshots/tables are first-use errors with migration guidance, not import
+errors. Preflight failures must not publish a partial graph.
 
-### Ownership boundary
+- Abstract behavior bases share their root registry and do not require tables.
+- Reject duplicate class names within a model set, combining different roots,
+  concrete model inheritance, inline column declarations, and schema/API name
+  collisions. Ordinary repeated imports preserve class identity.
+- Decorators run before mapping. Association installation is not incremental
+  mutation of already-published mappers.
+- SQLAlchemy handles cyclic string targets, inverse synchronization, loader
+  strategies, foreign keys, and native unit-of-work failures.
+- Different model sets have different registries. Do not use global mapper
+  resets or process-global bare-name model caches.
+- One mapped class set may serve multiple engines/sessions with matching schemas.
+  Incompatible schemas fail at actual database use; a snapshot is not runtime
+  schema validation or a per-engine reflection cache.
 
-| Concern | Owner in the hybrid candidate |
+Dynamic fields remain a deliberate editor/static-inference limitation. Keep the
+repository's scoped mypy checks intact; generated stubs are optional follow-up
+work, not a reason to reintroduce row wrappers or explicit column inheritance.
+
+## Staging, validation, defaults, and native boundaries
+
+Ordinary scalar reads expose staged values. SQLAlchemy inspection/history and
+SQL expressions see published state. This is intentional, not fully transparent
+native attribute-state interoperability.
+
+- `save()` returns a success boolean. Invalid `create()` returns the unsaved
+  object with values/errors; invalid `update()` preserves entered values.
+- Queries do not publish edits. A valid-but-unsaved edit is not implicitly saved
+  at commit, including edits made after an earlier successful save.
+- Use `apply_changes()` to publish staged scalars explicitly without framework
+  validation/callbacks before native `add()`/`flush()`. Reject unpublished staged
+  new objects enrolled directly into a native unit of work rather than silently
+  inserting null/default values.
+- Native collection/relationship mutations and configured mutable-value types
+  have native unit-of-work semantics; they are not scalar staging. Correct or
+  remove invalid transient children in collections when abandoning their save.
+- Saving a graph validates newly associated framework objects before publishing
+  them. SQLAlchemy may flush other already-published native work. Constraints
+  remain authoritative, including races validation cannot prevent.
+- Database and unexpected callback exceptions propagate. If caught inside an
+  application context, recover/roll back explicitly before further writes.
+- `reload()` discards staged input and errors. Native refresh/expiration changes
+  published state but does not itself discard the pending input dictionary.
+- Cast at the model layer and retain before-type-cast values for validation and
+  form redisplay. Numericality checks raw input, not a permissive numeric cast.
+- JSON/form output must exclude authentication secrets and reset tokens by
+  default. Never log raw input as part of framework representations.
+
+### Defaults
+
+Python `Column.default` functions cannot be reconstructed from a database and
+are no longer a separate constructor-default mechanism. Put persistent defaults
+in migrations. Decode simple SQL literal server defaults for new model values;
+leave SQL functions, computed values, identities, and complex expressions to the
+server. No evaluation SQL is issued during construction.
+
+Explicit null input must not accidentally request a server default. Non-primary
+key mapped types evaluate explicit `None`; JSON retains its native JSON-null
+semantics. Absent server-generated values remain absent until flush. Mutable
+literal defaults are decoded independently for each new instance. Application
+Python defaults belong in explicit behavior/callbacks, not the generated file.
+
+The Rails 8.0.2 references used for casting/failure behavior are:
+
+- [Validation/save](https://github.com/rails/rails/blob/v8.0.2/activerecord/lib/active_record/validations.rb)
+- [Persistence](https://github.com/rails/rails/blob/v8.0.2/activerecord/lib/active_record/persistence.rb)
+- [Before type cast](https://github.com/rails/rails/blob/v8.0.2/activerecord/lib/active_record/attribute_methods/before_type_cast.rb)
+- [Integer casting](https://github.com/rails/rails/blob/v8.0.2/activemodel/lib/active_model/type/integer.rb)
+- [Boolean casting](https://github.com/rails/rails/blob/v8.0.2/activemodel/lib/active_model/type/boolean.rb)
+- [Numericality](https://github.com/rails/rails/blob/v8.0.2/activemodel/lib/active_model/validations/numericality.rb)
+
+## Compatibility/contract matrix
+
+| Concern | Replacement contract / deliberate change |
 | --- | --- |
-| Columns, types, foreign keys, metadata | Unmapped SQLAlchemy declarations in `app.schema` |
-| Same-name schema lookup and pre-mapping composition | Flaskteroids class-creation convention |
-| Mapped instances, identity, dirty tracking, unit of work | SQLAlchemy |
-| Relationship loading and persistence | SQLAlchemy relationships |
-| `where`, `find`, `includes`, ordering, pagination | Flaskteroids facade over SQLAlchemy statements/loaders |
-| `save`, `create`, `update`, `destroy` | Flaskteroids operations on mapped instances/session |
-| Validation, errors, form integration | Flaskteroids, with explicit interaction with flush |
-| Callbacks and post-commit work | Flaskteroids contracts integrated with SQLAlchemy lifecycle |
-| Generators, migration workflow, common conventions | Flaskteroids |
+| Model declarations | Field-free application models; generated table snapshot, not reflected row wrappers or schema inheritance. |
+| Queries | Immutable/lazy facade, SQLAlchemy expressions/options, mapped results; `all()` returns a list. |
+| Ordering/pagination/count | Deterministic default primary-key order; count respects the selected scope/page; `last()` materializes that scope. |
+| Eager loading | Native loaders; dotted `includes("posts.author")` paths; unknown paths fail clearly. |
+| Associations | Keep `@rules` helper signatures; native collections replace custom `Relation`; create via `Post.create(author=author)`. |
+| Dependent destruction | `dependent="destroy"` invokes child framework `destroy()`; native ORM/DB cascades do not imply child framework callbacks. |
+| Callbacks | Explicit framework operations; load callbacks run on actual hydration, not every identity-map lookup; native/bulk operations bypass framework lifecycle guarantees. |
+| Commit hooks | Deferred to the outer transaction; no after-commit dispatch for rolled-back operations. |
+| Authentication | Password/reset checks use published digests; failed staged password edits do not invalidate persisted credentials. |
+| Attachments | Existing deferred upload/commit/rollback integration on mapped objects; retain pending attachment input separately from scalar changes. |
+| Jobs | Keep existing queue contracts; pass persisted identities rather than assuming arbitrary mapped instances are JSON job arguments. |
+| Missing tables | No startup reflection; missing snapshot tables fail when needed; live database drift remains a native database error. |
+| Test helpers | Load selected fixture models only; do not map unrelated unmigrated declarations merely to match table names. |
 
-No custom metaclass attribute forwarding, row-wrapper conversion, parallel dirty
-tracking, or independent relationship cache should be required. SQLAlchemy's
-public inspection/history APIs should supply persistence state where needed.
+## Obsolete machinery removed or replaced
 
-## Phase 1: inventory the contracts
+- Hidden mapped-row wrappers and result conversion in `_models/records.py`.
+- Reflected model bindings, row-table projections, association caches, and custom
+  `Relation` loading/persistence. Retain only decorator-to-relationship helpers.
+- Generator-driven `schema_source()` and manually maintained schema mixins.
+- Eager startup mapping and declarative-only `__allow_unmapped__` configuration.
+- Duplicate `Field.as_primitive()` / `from_column_type()` casting. Generator field
+  names now map to SQLAlchemy type factories; model casting has one owner.
+- Hand-written-schema and eager-inheritance tests/documentation. Preserve their
+  valuable public guarantees as snapshot/lazy-mapping tests instead.
 
-Before prototyping, distinguish valuable application behavior from implementation
-details. Review public APIs and existing tests, including generated applications.
+## Verification
 
-Produce a short matrix: current behavior, proposed hybrid behavior, compatibility
-impact, and whether the behavior is essential or negotiable. Treat Rails-like
-querying, validation/errors, and persistence methods as core prototype goals;
-record any semantic changes needed to make them cooperate with SQLAlchemy.
+Run focused model, snapshot, isolation, and generated-application tests during
+implementation, then the full suite and repository quality checks:
 
-Include:
+```sh
+uv run pytest
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy
+```
 
-- Querying, not-found handling, ordering, pagination, and eager loading.
-- Assignment/coercion, defaults, transient fields, and serialization exclusions.
-- Relationship assignment, inverse synchronization, and dependent deletion.
-- Validation errors and form redisplay after an unsuccessful submission.
-- Persistence callbacks, timestamps, and after-commit side effects.
-- Authentication, attachments, and job serialization of model references.
-- Transaction ownership, rollback, test isolation, and multiple applications.
-- Model/scaffold generators, migrations, schema setup, and CLI discovery.
-
-Do not assume every existing behavior must survive unchanged. Record deliberate
-changes rather than silently dropping contracts.
-
-## Phase 2: prove schema composition, then build a vertical slice
-
-Use an experimental branch or isolated example/test application. Keep the current
-production path intact; do not add a supported dual-ORM mode merely to run a spike.
-Use public SQLAlchemy APIs and the project's locked environment.
-
-### First: class-creation spike
-
-Prove the automatic convention before porting controllers or integrations:
-
-- A bare `class Author(ApplicationModel)` receives fields from `app.schema.Author`
-  before declarative mapping. Importing schema and model modules performs no
-  database I/O and works before migrations have run.
-- Schema mixins have no mappers of their own. SQLAlchemy inspection of the final
-  application classes exposes the expected fields and relationships.
-- An Author/Post relationship pair resolves to application model classes, supports
-  inverse assignment and eager loading, and uses normal SQLAlchemy persistence.
-- Framework and native lookups of the same row return the same object within one
-  session. No hidden row classes, wrapper conversion, or parallel dirty tracking
-  are introduced.
-- Ordinary Python methods, properties, and framework declarations remain usable;
-  define and test collisions between schema fields and framework/model APIs.
-- Abstract `ApplicationModel` and other abstract bases skip schema lookup. Define
-  behavior for missing schemas, duplicate/ambiguous names, model inheritance,
-  explicit overrides, and repeated imports. Default failures should be clear;
-  never silently fall back to database reflection.
-- Schema lookup uses the intended application's module, not a process-global
-  bare-name cache. Test separate applications with same-named model classes, and
-  distinguish this from sharing one model set across multiple engines.
-
-Explicit inheritance can be a diagnostic control. Do not stop at that control:
-automatic same-name composition is the hypothesis to test. If it cannot be made
-reliable with supported SQLAlchemy behavior, record the blocker before proposing
-an alternative.
-
-### Then: application slice
-
-Build an Author/Post slice containing:
-
-1. SQLAlchemy schema declarations and native relationships, with field-free
-   application models automatically composed by name.
-2. A migration creating the schema and a subsequent migration changing a field.
-3. Create/update forms using Rails-like persistence methods, with validation
-   failures, `errors`, and preservation of entered values.
-4. A listing using `where`/`includes`, plus a native SQLAlchemy equivalent; verify
-   eager loading avoids per-row queries in both paths.
-5. A transaction combining Rails-like methods and native session operations,
-   including a failure that rolls back changes to both models.
-6. A deletion example using `destroy()` with explicit ORM/database cascade choices.
-7. A small generated-model/scaffold example updating `app/schema.py`, creating a
-   behavior-only model file, and generating Rails-like controller code.
-8. Identity/state tests showing that facade and native queries share the same
-   mapped instances and observe the same pending changes.
-
-Show the complete model, controller, form, migration, and test code. Compare the
-current implementation, hybrid candidate, and a small native-only baseline, not
-just a shorter model declaration.
-
-### Resolve these design questions explicitly
-
-**Rails-like query facade**
-
-- Can `where` accept both keyword filters and SQLAlchemy expressions without
-  attribute forwarding to another class?
-- Can `includes` translate to native loader options using mapped relationships?
-  Define supported nesting and error behavior rather than rebuilding a loader.
-- Define chaining, query reuse/mutability, execution, return types, and not-found
-  behavior. Test ordering, pagination, and count semantics.
-- Provide a clear way to use native statements/options for complex joins,
-  aggregates, and subqueries. Do not attempt to reproduce all of SQLAlchemy's API.
-- Do both paths return mapped objects directly? Record typing/completion limits
-  without treating dynamic-field inference as a prerequisite.
-
-**Sessions and transactions**
-
-- Who begins, commits, rolls back, and closes transactions in requests, jobs,
-  CLI commands, and tests?
-- Is the current app-context teardown commit policy retained or changed? How do
-  handled failures and error responses affect persistence?
-- What does autoflush mean for queries and validation? What happens after a flush
-  raises an integrity error?
-- Do timestamps and post-commit hooks work across multiple flushes and rollback?
-
-**Validation and callbacks**
-
-- Is validation an explicit application operation, a service, or a session hook?
-- Start by testing `save()` as validation plus add/flush, returning a success
-  boolean and not committing the surrounding transaction. Define `create()`,
-  `update()`, and `destroy()` consistently, including invalid `create()` results.
-  This is a candidate contract, not an assumption that it is safe or complete.
-- Does saving one object flush unrelated pending objects? What does validation
-  cover in that case, including objects reached through relationship cascades?
-- A failed validation on a persistent instance leaves SQLAlchemy tracking its
-  edits. How are those edits prevented from being flushed by a later query,
-  another object's `save()`, or the final commit? Demonstrate a policy without
-  introducing a parallel change store or silently losing form input.
-- What guarantees hold when users call `session.add()` or `flush()` directly?
-  Distinguish framework-operation callbacks from any session-wide guarantees;
-  native interoperability does not automatically mean identical lifecycle hooks.
-- Which callbacks map cleanly to SQLAlchemy events, and which should be redesigned
-  or removed? Do not promise that direct ORM/bulk operations run model callbacks
-  unless demonstrated.
-- Keep database constraints authoritative; validation does not prevent races.
-
-**Mapping and application isolation**
-
-- Can model modules be imported without connecting to a database, including before
-  initial migrations? Native declarations should not require runtime reflection.
-- When are all model modules imported and relationships configured? Test cyclic
-  imports and string relationship targets. Eager mapping configuration is an
-  option, not a regression to hide behind a new lazy-loading abstraction.
-- Can the same mapped classes safely serve two application engines and separate
-  sessions when their schemas match?
-- What happens with different model sets, incompatible schemas, and failed mapper
-  configuration? Distinguish session/engine isolation from registry isolation.
-- Document limits instead of using private mapper mutation or global mapper resets.
-
-**Schema workflow**
-
-- Initially maintain explicit declarations in `app/schema.py`; do not make
-  database reflection or automatic schema regeneration a prerequisite. If later
-  generating the module from the database is desirable, treat that as a separate
-  tooling experiment, not runtime model discovery.
-- Keep schema declarations independent of application model imports; use deferred
-  relationship targets to avoid circular imports. Demonstrate deterministic model
-  discovery/configuration and avoid registering unmapped schema classes as models.
-- Does changing the schema module require a process restart? Prefer a clear fresh
-  mapping lifecycle over mutating already-published mappings.
-- How do explicit declarations and Alembic migrations stay aligned? Demonstrate
-  generated metadata discovery and review of autogenerate output if used.
-- What remains manual for renames, data migrations, and unsupported schema changes?
-- Can startup and database CLI commands work against an empty/unmigrated database
-  without trying to query or reflect application tables?
-
-## Phase 3: check representative integrations
-
-Once the core slice works, exercise one authentication flow and one attachment
-flow. Inventory the remaining integration costs rather than porting everything.
-
-Pay particular attention to invalid form values: native mapped attributes and
-SQLAlchemy type handling do not automatically reproduce the current coercion and
-pending-change behavior. Decide where raw form input belongs.
-
-Demonstrate that sensitive fields remain excluded from serialization and that
-post-commit work is not dispatched for rolled-back writes.
-
-## Phase 4: compare and decide
-
-Record evidence for both the prototype and current approach:
-
-| Area | Evidence to collect |
-| --- | --- |
-| Application ergonomics | Rails-like CRUD/forms, SQLAlchemy field declarations, native interoperability |
-| Framework complexity | Machinery actually removable versus newly required machinery |
-| State and identity | Same row yields the same object within a session; coherent changes/rollback |
-| Relationships | Native loading, assignment, cascades, and query counts |
-| Tooling | Accepted dynamic-field typing/completion limits, tracebacks, optional stub opportunities |
-| Lifecycle | Empty-database commands, transactions, multiple apps, mapper failures |
-| Compatibility | Lost behaviors, generated-code changes, integration porting effort |
-| Schema maintenance | Duplication and drift risks between declarations and migrations |
-
-Do not use framework line count or a microbenchmark as the sole success measure.
-A small application-code increase can be worthwhile if it removes substantial
-framework machinery, but moving complexity into controllers is not a win.
-
-### Proceed if
-
-- Behavior-only application models receive SQLAlchemy schema declarations by name
-  during class creation and are ordinary mapped instances. Abstract bases and
-  lookup/configuration failures have clear, tested behavior.
-- Rails-like methods remain pleasant for routine work, and native queries/session
-  operations interoperate without wrappers, state synchronization, or conversion.
-- Reflection, wrapper, custom change-tracking, and association machinery can
-  materially shrink. The retained query/persistence facade is substantially
-  simpler than the machinery it replaces.
-- Validation/forms, transactions, and application isolation have understandable,
-  tested semantics.
-- Representative integrations remain practical and the compatibility costs are
-  explicit and acceptable.
-
-### Revise or stop if
-
-- Preserving the desired UX requires recreating the current parallel state system.
-- Session behavior makes routine application code surprising or fragile.
-- Required isolation cannot be achieved with a maintainable public-API design.
-- Generator/schema duplication and integration costs outweigh the simplification.
-
-## Only after a proceed decision
-
-Write a separate implementation plan based on the prototype's evidence:
-
-1. Specify the schema-module contract, automatic name-based composition rules,
-   Rails-like facade, native interoperability boundaries, accepted tooling limits,
-   and deliberate breaking changes.
-2. Choose a replacement/release strategy; do not assume indefinite dual support.
-3. Plan changes to database integration, generators, migrations, forms, callbacks,
-   authentication, attachments, and testing helpers.
-4. Port representative applications and public contract tests before removing old
-   machinery; document changed semantics instead of weakening tests silently.
-5. Update documentation and migration guidance, then remove obsolete internals.
-
-Run focused tests during the experiment. Before adopting a production migration,
-run the full relevant suite, generated-application checks, browser tests where
-applicable, and supported backend coverage. Keep the project's existing lint,
-format, scoped typing, and CI requirements intact.
-
-## Exploration deliverables
-
-- Runnable class-creation spike and isolated application prototype, with focused
-  tests and reproduction commands.
-- Same-name schema lookup/composition rules, failure cases, and evidence that only
-  the application classes are mapped.
-- Side-by-side current/hybrid application examples, with explicit-inheritance and
-  native-only baselines.
-- Recorded typing/completion trade-offs and optional tooling improvements.
-- Contract/compatibility matrix and answers to the lifecycle/isolation questions.
-- List of removable internals, replacement machinery, and remaining unknowns.
-- A written proceed, revise, or stop recommendation. No migration is assumed.
+Keep the Python 3.12–3.15 browser-enabled CI matrix and scoped typing targets.
+Generated application checks must exercise ordinary startup before first migration,
+a create migration and later field change, automatic snapshots and rollback,
+forms/errors/raw input, native/facade identity, eager-loading query counts,
+authentication, attachments, callbacks/transactions, and test isolation. Run the
+integration suite against each supported external backend when available; a
+local SQLite run alone is not PostgreSQL/MySQL verification.

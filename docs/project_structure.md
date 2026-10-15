@@ -9,6 +9,7 @@ my_project/
 │   ├── controllers/
 │   ├── helpers/
 │   ├── models/
+│   ├── schema.py        # generated database snapshot; commit, do not edit
 │   ├── mailers/
 │   ├── views/
 │   └── jobs/
@@ -46,7 +47,8 @@ my_project/
 | `public/assets` | Fingerprinted production assets and manifest, created by precompilation. |
 | `app/controllers` | Request-handling actions. |
 | `app/helpers` | Template helpers. |
-| `app/models` | Database-backed models and business logic. |
+| `app/models` | Behavioral models, association decorators, validations, and callbacks. |
+| `app/schema.py` | Generated SQLAlchemy metadata from the migrated database; no handwritten model fields. |
 | `app/views` | Jinja templates. |
 | `app/mailers` | Email actions. |
 | `app/jobs` | Background jobs. |

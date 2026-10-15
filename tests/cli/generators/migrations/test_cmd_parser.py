@@ -1,5 +1,3 @@
-from datetime import UTC, datetime
-
 import pytest
 import sqlalchemy as sa
 from alembic.operations import ops
@@ -7,149 +5,37 @@ from alembic.operations import ops
 from flaskteroids.cli.generators.migrations import cmd_parser
 
 
-@pytest.mark.parametrize(
-    "cmd, args, expected",
-    [
-        (
-            "CreateProducts",
-            ("name:str",),
-            {
-                "normalized_cmd": "create_products",
-                "parsed": {
-                    "cmd": "create_table",
-                    "ops": {
-                        "up": [
-                            ops.CreateTableOp(
-                                "products",
-                                [
-                                    sa.Column(
-                                        "id",
-                                        sa.Integer(),
-                                        primary_key=True,
-                                        autoincrement=True,
-                                    ),
-                                    sa.Column(
-                                        "created_at",
-                                        sa.DateTime(),
-                                        default=lambda: datetime.now(UTC),
-                                    ),
-                                    sa.Column(
-                                        "updated_at",
-                                        sa.DateTime(),
-                                        default=lambda: datetime.now(UTC),
-                                        onupdate=lambda: datetime.now(UTC),
-                                    ),
-                                    sa.Column("name", sa.String(255), nullable=True),
-                                ],
-                            )
-                        ]
-                    },
-                },
-            },
-        ),
-        (
-            "CreateProducts",
-            ("name:str", "user:references"),
-            {
-                "normalized_cmd": "create_products",
-                "parsed": {
-                    "cmd": "create_table",
-                    "ops": {
-                        "up": [
-                            ops.CreateTableOp(
-                                "products",
-                                [
-                                    sa.Column(
-                                        "id",
-                                        sa.Integer(),
-                                        primary_key=True,
-                                        autoincrement=True,
-                                    ),
-                                    sa.Column(
-                                        "created_at",
-                                        sa.DateTime(),
-                                        default=lambda: datetime.now(UTC),
-                                    ),
-                                    sa.Column(
-                                        "updated_at",
-                                        sa.DateTime(),
-                                        default=lambda: datetime.now(UTC),
-                                        onupdate=lambda: datetime.now(UTC),
-                                    ),
-                                    sa.Column("name", sa.String(255), nullable=True),
-                                    sa.Column(
-                                        "user_id",
-                                        sa.Integer(),
-                                        sa.ForeignKey("users.id"),
-                                        nullable=False,
-                                    ),
-                                ],
-                            )
-                        ]
-                    },
-                },
-            },
-        ),
-        (
-            "CreateProducts",
-            ("name:str", "user:belongs_to"),
-            {
-                "normalized_cmd": "create_products",
-                "parsed": {
-                    "cmd": "create_table",
-                    "ops": {
-                        "up": [
-                            ops.CreateTableOp(
-                                "products",
-                                [
-                                    sa.Column(
-                                        "id",
-                                        sa.Integer(),
-                                        primary_key=True,
-                                        autoincrement=True,
-                                    ),
-                                    sa.Column(
-                                        "created_at",
-                                        sa.DateTime(),
-                                        default=lambda: datetime.now(UTC),
-                                    ),
-                                    sa.Column(
-                                        "updated_at",
-                                        sa.DateTime(),
-                                        default=lambda: datetime.now(UTC),
-                                        onupdate=lambda: datetime.now(UTC),
-                                    ),
-                                    sa.Column("name", sa.String(255), nullable=True),
-                                    sa.Column(
-                                        "user_id",
-                                        sa.Integer(),
-                                        sa.ForeignKey("users.id"),
-                                        nullable=False,
-                                    ),
-                                ],
-                            )
-                        ]
-                    },
-                },
-            },
-        ),
-    ],
-)
-def test_create_table(cmd, args, expected):
-    res = cmd_parser.parse(cmd, args)
-    assert res["normalized_cmd"] == expected["normalized_cmd"]
-    assert res["parsed"]["cmd"] == expected["parsed"]["cmd"]
-    ops = res["parsed"]["ops"]["up"]
-    expected_ops = expected["parsed"]["ops"]["up"]
-    for op, expected_op in zip(ops, expected_ops, strict=False):
-        assert type(op) is type(expected_op)
-        assert op.table_name == expected_op.table_name
-        assert len(op.columns) == len(expected_op.columns)
-        for oc, eoc in zip(op.columns, expected_op.columns, strict=False):
-            assert oc.name == eoc.name
-            # TODO: need to check how to assert for column type
-            assert oc.nullable == eoc.nullable
-            assert len(oc.foreign_keys) == len(eoc.foreign_keys)
+@pytest.mark.parametrize("reference", [None, "references", "belongs_to"])
+def test_create_table(reference):
+    arguments = ["name:str"]
+    if reference:
+        arguments.append(f"user:{reference}")
+    result = cmd_parser.parse("CreateProducts", arguments)
+    assert result["normalized_cmd"] == "create_products"
+    assert result["parsed"]["cmd"] == "create_table"
+    operation = result["parsed"]["ops"]["up"][0]
+    assert isinstance(operation, ops.CreateTableOp)
+    assert operation.table_name == "products"
+    columns = {column.name: column for column in operation.columns}
+    expected_names = {"id", "created_at", "updated_at", "name"}
+    if reference:
+        expected_names.add("user_id")
+    assert set(columns) == expected_names
+    assert columns["id"].primary_key
+    assert columns["id"].autoincrement is True
+    assert isinstance(columns["id"].type, sa.Integer)
+    assert isinstance(columns["name"].type, sa.String)
+    assert columns["name"].type.length == 255
+    assert columns["name"].nullable
+    for name in ("created_at", "updated_at"):
+        assert isinstance(columns[name].type, sa.DateTime)
+        assert columns[name].default is None
+        assert columns[name].onupdate is None
+    if reference:
+        assert not columns["user_id"].nullable
+        assert {key.target_fullname for key in columns["user_id"].foreign_keys} == {
+            "users.id"
+        }
 
 
 @pytest.mark.parametrize(

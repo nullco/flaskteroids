@@ -5,6 +5,7 @@ import flaskteroids.cli.db.commands as db
 
 @pytest.fixture
 def command(mocker):
+    mocker.patch.object(db, "dump_schema")
     return mocker.patch.object(db, "command")
 
 

@@ -1,39 +1,31 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from inspect import getattr_static
 from typing import Self
 
-from sqlalchemy import inspect
+from flask import current_app
+from sqlalchemy import event, inspect
+from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import NO_VALUE
 
-from flaskteroids import fields
 from flaskteroids._models.associations import (
-    Relation,
-    _clear_association_cache,
-    _destroy_associations,
-    _get_association,
     belongs_to,
+    destroy_dependents,
     has_many,
+    has_one,
 )
+from flaskteroids._models.attributes import schema_default
 from flaskteroids._models.authentication import (
     PasswordAuthenticator,
     has_secure_password,
 )
+from flaskteroids._models.mapping import SchemaModel
 from flaskteroids._models.query import ModelQuery
-from flaskteroids._models.records import _base
-
-# Configuration types remain directly importable, including those outside __all__.
-from flaskteroids._models.validation import (
-    ComparisonConfig as ComparisonConfig,
-)
-from flaskteroids._models.validation import (
-    Error,
-    Errors,
-    LengthConfig,
-    validates,
-)
-from flaskteroids._models.validation import (
-    PresenceConfig as PresenceConfig,
-)
+from flaskteroids._models.staging import StagedAttributes
+from flaskteroids._models.validation import ComparisonConfig as ComparisonConfig
+from flaskteroids._models.validation import Error, Errors, LengthConfig, validates
+from flaskteroids._models.validation import PresenceConfig as PresenceConfig
 from flaskteroids.attachments import attached as attached_storage
 from flaskteroids.attachments import has_many_attached, has_one_attached
 from flaskteroids.callbacks import (
@@ -69,11 +61,9 @@ __all__ = [
     "Errors",
     "LengthConfig",
     "Model",
-    "ModelMeta",
     "ModelQuery",
     "PasswordAuthenticator",
     "RecordNotFoundException",
-    "Relation",
     "after_commit",
     "after_create",
     "after_destroy",
@@ -95,6 +85,7 @@ __all__ = [
     "belongs_to",
     "has_many",
     "has_many_attached",
+    "has_one",
     "has_one_attached",
     "has_secure_password",
     "init",
@@ -107,58 +98,89 @@ def init(cls):
     return cls
 
 
-def _declared_attribute(model_cls, name):
-    # Dynamic class lookup invokes ModelMeta and may require a database mapping.
-    for owner in model_cls.__mro__:
-        if name in vars(owner):
-            return owner, vars(owner)[name]
-    return None, None
-
-
-def _reserved_attribute(name):
-    return name.startswith("_flaskteroids_") or any(
-        name in vars(owner) for owner in (Model, PasswordAuthenticator, object)
-    )
-
-
-def _check_assignment_kwargs(model_cls, kwargs):
-    for name in kwargs:
-        if name in Model._fields or _reserved_attribute(name):
-            raise AttributeError(
-                f"{model_cls.__name__}.{name} is reserved framework state or API."
-            )
-
-
-class ModelMeta(type):
-    def __getattr__(cls, name):
-        base = _base(cls)
-        return getattr(base, name)
-
-
-class Model(metaclass=ModelMeta):
-    _fields = (
-        "_changes",
-        "_virtual_fields",
-        "_base_instance",
-        "_errors",
-        "_attachment_changes",
-        "_attachment_cache",
-    )
+class Model(StagedAttributes, SchemaModel):
+    __abstract__ = True
+    _serialization_exclude = frozenset()
 
     def _initialize(self):
+        self._changes = {}
+        self._raw_attributes = {}
+        self._virtual_fields = {}
+        self._errors = Errors()
         self._attachment_changes = {}
         self._attachment_cache = {}
-        self._virtual_fields = {}
-        self._changes = {}
-        self._base_instance = _base(self.__class__)()
-        self._errors = Errors()
 
     def __init__(self, **kwargs):
-        _check_assignment_kwargs(self.__class__, kwargs)
+        init(type(self))
         self._initialize()
-        for k, v in kwargs.items():
-            setattr(self, k, v)
+        for name in kwargs:
+            self._check_assignment(name)
+        for prop in inspect(type(self)).column_attrs:
+            if prop.key not in kwargs:
+                default = schema_default(prop.columns[0])
+                if default is not NO_VALUE:
+                    setattr(self, prop.key, default)
+        for name, value in kwargs.items():
+            setattr(self, name, value)
         run_callbacks(self, "initialize", None, lambda: None)
+
+    def _check_assignment(self, name):
+        field_name = f"{type(self).__name__}.{name}"
+        if name.startswith("_"):
+            raise AttributeError(f"{field_name} is reserved framework state or API.")
+        definition = model_for(type(self))
+        if name in definition.virtual_fields:
+            if definition.virtual_fields[name].get("read_only"):
+                raise AttributeError(f"{field_name} is read-only.")
+            return
+        if name in definition.attachments:
+            return
+        mapper = inspect(type(self))
+        if name in mapper.attrs:
+            return
+        if any(
+            name in vars(owner) for owner in (*Model.__mro__, PasswordAuthenticator)
+        ):
+            raise AttributeError(f"{field_name} is reserved framework state or API.")
+        missing = object()
+        declared = getattr_static(type(self), name, missing)
+        if declared is missing:
+            raise AttributeError(f"Unknown attribute {field_name}.")
+        if isinstance(declared, property) and declared.fset is None:
+            raise AttributeError(f"{field_name} is read-only.")
+        if callable(declared):
+            raise AttributeError(f"{field_name} is a read-only method.")
+
+    def __setattr__(self, name, value):
+        if name.startswith("_"):
+            if name.startswith("_flaskteroids_") or callable(
+                getattr_static(type(self), name, None)
+            ):
+                raise AttributeError(
+                    f"{type(self).__name__}.{name} is reserved framework API."
+                )
+            return super().__setattr__(name, value)
+        self._check_assignment(name)
+        if attached_storage.assign(self, name, value):
+            return
+        definition = model_for(type(self)).virtual_fields.get(name)
+        if definition is not None:
+            self._virtual_fields[name] = value
+            if setter := definition.get("set_fn"):
+                setter(self)
+            return
+        super().__setattr__(name, value)
+
+    def __getattr__(self, name):
+        definition = model_for(type(self)).virtual_fields.get(name)
+        if definition is None:
+            raise AttributeError(f"{type(self).__name__} has no attribute {name!r}")
+        if definition.get("read_only") and (
+            name not in self._virtual_fields or not definition.get("cache", True)
+        ):
+            if setter := definition.get("set_fn"):
+                setter(self)
+        return self._virtual_fields.get(name)
 
     @property
     def errors(self):
@@ -166,181 +188,100 @@ class Model(metaclass=ModelMeta):
 
     @property
     def column_names(self):
-        return list(self._base_instance.__table__.columns.keys())
+        return list(inspect(type(self)).column_attrs.keys())
 
-    def __getattr__(self, name):
-        vfd = model_for(self.__class__).virtual_fields
-        if (
-            name in vfd
-            and vfd[name].get("read_only", False)
-            and (name not in self._virtual_fields or not vfd[name].get("cache", True))
-        ):
-            set_fn = vfd[name].get("set_fn")
-            if set_fn:
-                set_fn(self)
-        if name in vfd:
-            return self._virtual_fields.get(name)
-        if name in self._changes:
-            return self._changes[name]
-        return getattr(self._base_instance, name)
-
-    def __setattr__(self, name, value):
-        if name in Model._fields:
-            object.__setattr__(self, name, value)
-            return
-        if attached_storage.assign(self, name, value):
-            return
-        definition = model_for(self.__class__)
-        field_name = f"{self.__class__.__name__}.{name}"
-        if name in definition.virtual_fields:
-            virtual_field = definition.virtual_fields[name]
-            if virtual_field.get("read_only", False):
-                raise AttributeError(f"{field_name} is a read-only virtual field.")
-            self._virtual_fields[name] = value
-            set_fn = virtual_field.get("set_fn")
-            if set_fn:
-                set_fn(self)
-            return
-        if name in self._base_instance.__table__.columns:
-            column = self._base_instance.__table__.columns[name]
-            converted = fields.from_column_type(column.type).as_primitive(value)
-            self._changes[name] = converted
-            for association in definition.associations.values():
-                if association.kind == "belongs_to" and association.foreign_key == name:
-                    self._changes.pop(association.name, None)
-            return
-        if name in definition.associations:
-            if definition.associations[name].kind == "has_many":
-                raise AttributeError(
-                    f"{field_name} cannot be replaced; use Relation iteration and create()."
-                )
-            association = _get_association(self.__class__, name=name)
-            if value is not None and not isinstance(value, association.target):
-                raise TypeError(
-                    f"{field_name} expects {association.target.__name__} or None."
-                )
-            foreign_key = value.id if value is not None else None
-            self._changes[association.foreign_key] = foreign_key
-            self._changes[name] = value
-            return
-        if _reserved_attribute(name):
-            raise AttributeError(f"{field_name} is reserved framework state or API.")
-        owner, declared = _declared_attribute(self.__class__, name)
-        if owner is not None:
-            if hasattr(type(declared), "__set__"):
-                if isinstance(declared, property) and declared.fset is None:
-                    raise AttributeError(f"{field_name} is a read-only property.")
-                object.__setattr__(self, name, value)
-                return
-            if callable(declared) or hasattr(type(declared), "__get__"):
-                raise AttributeError(
-                    f"{field_name} is a read-only method or descriptor."
-                )
-        if owner is not None or name.startswith("_"):
-            object.__setattr__(self, name, value)
-            return
-        raise AttributeError(
-            f"Unknown attribute {field_name}; declare a class default or writable property "
-            "for transient values, or use a private attribute."
-        )
-
-    def __json__(self):
-        password_field = model_for(self.__class__).password_field or "password"
-        sensitive = {
-            f"{field}{suffix}"
-            for field in {"password", password_field}
+    def _sensitive_attributes(self):
+        password = model_for(type(self)).password_field or "password"
+        return self._serialization_exclude | {
+            f"{name}{suffix}"
+            for name in {"password", password}
             for suffix in ("", "_confirmation", "_digest", "_reset_token")
         }
+
+    def __json__(self):
+        excluded = self._sensitive_attributes()
         return {
-            name: self._changes[name]
-            if name in self._changes
-            else getattr(self._base_instance, name)
+            name: getattr(self, name)
             for name in self.column_names
-            if name not in sensitive
+            if name not in excluded
         }
 
     def _form_data(self):
-        virtual_fields = model_for(self.__class__).virtual_fields
-        writable_values = {
+        excluded = self._sensitive_attributes()
+        return {
             name: value
-            for name, value in self._virtual_fields.items()
-            if not virtual_fields.get(name, {}).get("read_only", False)
+            for name, value in (
+                self.attributes_before_type_cast | self._virtual_fields
+            ).items()
+            if name not in excluded
         }
-        stored_values = {
-            name: getattr(self._base_instance, name) for name in self.column_names
-        }
-        column_changes = {
-            name: value
-            for name, value in self._changes.items()
-            if name in stored_values
-        }
-        return writable_values | stored_values | column_changes
 
     @classmethod
     def new(cls, **kwargs) -> Self:
-        instance = cls(**kwargs)
-        return instance
+        return cls(**kwargs)
 
     @classmethod
     def create(cls, **kwargs) -> Self:
-        instance = cls.new(**kwargs)
-        instance.save()
-        return instance
+        record = cls(**kwargs)
+        record.save()
+        return record
 
     @classmethod
     def all(cls) -> ModelQuery[Self]:
         return ModelQuery(cls)
 
     @classmethod
-    def count(cls) -> int:
-        return ModelQuery(cls).count()
+    def where(cls, *expressions, **filters) -> ModelQuery[Self]:
+        return cls.all().where(*expressions, **filters)
 
     @classmethod
-    def first(cls) -> Self | None:
-        return ModelQuery(cls).first()
+    def includes(cls, *paths: str) -> ModelQuery[Self]:
+        return cls.all().includes(*paths)
 
     @classmethod
-    def last(cls) -> Self | None:
-        return ModelQuery(cls).last()
-
-    @classmethod
-    def includes(cls, *args: str) -> ModelQuery[Self]:
-        return ModelQuery(cls).includes(*args)
-
-    @classmethod
-    def find(cls, id) -> Self:
-        return ModelQuery(cls).find(id)
-
-    @classmethod
-    def find_by(cls, **kwargs) -> Self | None:
-        return ModelQuery(cls).where(**kwargs).first()
-
-    @classmethod
-    def where(cls, *args, **kwargs) -> ModelQuery[Self]:
-        return ModelQuery(cls).where(*args, **kwargs)
-
-    @classmethod
-    def order(cls, **kwargs: str) -> ModelQuery[Self]:
-        return ModelQuery(cls).order(**kwargs)
+    def order(cls, *expressions, **directions) -> ModelQuery[Self]:
+        return cls.all().order(*expressions, **directions)
 
     @classmethod
     def limit(cls, value: int | None) -> ModelQuery[Self]:
-        return ModelQuery(cls).limit(value)
+        return cls.all().limit(value)
 
     @classmethod
     def offset(cls, value: int | None) -> ModelQuery[Self]:
-        return ModelQuery(cls).offset(value)
+        return cls.all().offset(value)
+
+    @classmethod
+    def count(cls) -> int:
+        return cls.all().count()
+
+    @classmethod
+    def first(cls) -> Self | None:
+        return cls.all().first()
+
+    @classmethod
+    def last(cls) -> Self | None:
+        return cls.all().last()
+
+    @classmethod
+    def find(cls, id) -> Self:
+        return cls.all().find(id)
+
+    @classmethod
+    def find_by(cls, **filters) -> Self | None:
+        return cls.where(**filters).first()
 
     def update(self, **kwargs):
-        _check_assignment_kwargs(self.__class__, kwargs)
-        for field, value in kwargs.items():
-            setattr(self, field, value)
+        for name in kwargs:
+            self._check_assignment(name)
+        for name, value in kwargs.items():
+            setattr(self, name, value)
         return self.save()
 
     def reload(self):
-        session.refresh(self._base_instance)
-        _clear_association_cache(session)
-        self._changes.clear()
+        current_app.extensions["flaskteroids.db"].require_model(type(self))
+        session.refresh(self)
+        self.discard_changes()
+        self._errors = Errors()
         self._attachment_changes.clear()
         self._attachment_cache.clear()
         return self
@@ -348,115 +289,131 @@ class Model(metaclass=ModelMeta):
     def _prepare_commit(self):
         attached_storage.cache_for_commit(self)
 
-    def save(self, validate=True):
+    def is_valid(self):
         operation = "create" if self.is_new_record() else "update"
+        return (
+            run_callbacks(self, "validation", operation, self._validate) is not _HALTED
+            and not self.errors
+        )
 
+    def _validate(self):
+        self._errors = Errors()
+        for validator in model_for(type(self)).validators:
+            self._errors.extend(validator(instance=self))
+        attached_storage.validate(self)
+
+    def _save_graph(self):
+        records, seen = [], set()
+
+        def visit(record):
+            if id(record) in seen:
+                return
+            seen.add(id(record))
+            records.append(record)
+            state = inspect(record)
+            for relationship in state.mapper.relationships:
+                if not relationship.cascade.save_update:
+                    continue
+                value = state.attrs[relationship.key].loaded_value
+                if value is NO_VALUE or value is None:
+                    continue
+                for related in value if relationship.uselist else [value]:
+                    if isinstance(related, Model) and related.is_new_record():
+                        visit(related)
+
+        visit(self)
+        return records
+
+    def save(self, validate=True):
+        current_app.extensions["flaskteroids.db"].require_model(type(self))
+        if inspect(self).was_deleted:
+            raise ProgrammerError("A destroyed record cannot be saved.")
+        operation = "create" if self.is_new_record() else "update"
+        graph = self._save_graph()
         if validate:
-            if run_callbacks(self, "validation", operation, self._validate) is _HALTED:
-                return False
-            if self._errors:
+            valid = [record.is_valid() for record in graph]
+            if not all(valid):
+                if valid[0]:
+                    self.errors.append(("associations", "Associated record is invalid"))
                 return False
 
-        if (
-            run_callbacks(self, "save", operation, self._create_or_update, operation)
-            is _HALTED
-        ):
+        def persist():
+            now = datetime.now(UTC)
+            for record in graph:
+                if (
+                    record.is_new_record()
+                    and "created_at" in record.column_names
+                    and record.created_at is None
+                ):
+                    record.created_at = now
+                if "updated_at" in record.column_names:
+                    record.updated_at = now
+                record.apply_changes()
+            session.add(self)
+            session.flush()
+            attached_storage.persist(self)
+
+        result = run_callbacks(
+            self,
+            "save",
+            operation,
+            lambda: run_callbacks(self, operation, None, persist),
+        )
+        if result is _HALTED:
             return False
-
         queue_after_commit(self, operation, session)
         return True
 
-    def _validate(self):
-        validate_rules = model_for(self.__class__).validators
-        self._errors = Errors()
-        for vr in validate_rules:
-            self._errors.extend(vr(instance=self))
-        attached_storage.validate(self)
-
-    def _create_or_update(self, operation):
-        if operation == "create":
-            result = run_callbacks(self, "create", None, self._create_record)
-        else:
-            result = run_callbacks(self, "update", None, self._update_record)
-        if result is not _HALTED:
-            attached_storage.persist(self)
-        return result
-
-    def _apply_changes(self):
-        associations = model_for(self.__class__).associations
-        foreign_keys = {}
-        pending = session.info.setdefault("flaskteroids.association_writes", set())
-        for field, value in self._changes.items():
-            if field not in associations:
-                continue
-            association = _get_association(self.__class__, name=field)
-            if value is not None and value.is_new_record():
-                if (
-                    value._base_instance is self._base_instance
-                    or value._base_instance in pending
-                ):
-                    raise ProgrammerError(
-                        "Cyclic unsaved association writes; persist a record before linking the cycle."
-                    )
-                pending.add(self._base_instance)
-                try:
-                    if not value.save(validate=False):
-                        return _HALTED
-                finally:
-                    pending.remove(self._base_instance)
-            foreign_keys[association.foreign_key] = (
-                value.id if value is not None else None
-            )
-        for field, value in self._changes.items():
-            if field not in associations:
-                setattr(self._base_instance, field, value)
-        for field, value in foreign_keys.items():
-            setattr(self._base_instance, field, value)
-        self._changes.clear()
-        _clear_association_cache(session)
-
-    def _create_record(self):
-        if self._apply_changes() is _HALTED:
-            return _HALTED
-        now = datetime.now(UTC)
-        self._base_instance.created_at = now
-        self._base_instance.updated_at = now
-        session.add(self._base_instance)
-        session.flush()
-
-    def _update_record(self):
-        if self._apply_changes() is _HALTED:
-            return _HALTED
-        self._base_instance.updated_at = datetime.now(UTC)
-        session.flush()
-
     def is_persisted(self):
-        return inspect(self._base_instance).persistent
+        state = inspect(self)
+        return (state.persistent or state.detached) and not state.was_deleted
 
     def is_new_record(self):
-        return not self.is_persisted()
+        state = inspect(self)
+        return state.transient or state.pending
 
     def destroy(self):
+        current_app.extensions["flaskteroids.db"].require_model(type(self))
+        if self.is_new_record():
+            return False
+
         destroying = session.info.setdefault("flaskteroids.destroying", set())
-        if self._base_instance in destroying:
+        if self in destroying:
             return True
-        destroying.add(self._base_instance)
+
+        def remove():
+            if not destroy_dependents(self):
+                return _HALTED
+            attached_storage.destroy(self)
+            session.delete(self)
+            session.flush()
+
+        destroying.add(self)
         try:
-            if run_callbacks(self, "destroy", None, self._destroy_record) is _HALTED:
+            if run_callbacks(self, "destroy", None, remove) is _HALTED:
                 return False
             queue_after_commit(self, "destroy", session)
             return True
         finally:
-            destroying.remove(self._base_instance)
+            destroying.remove(self)
 
-    def _destroy_record(self):
-        if not _destroy_associations(self):
-            return _HALTED
-        attached_storage.destroy(self)
-        session.delete(self._base_instance)
-        session.flush()
-        _clear_association_cache(session)
+    def __repr__(self):
+        return f"<{type(self).__name__} identity={inspect(self).identity!r}>"
 
-    def __repr__(self) -> str:
-        values = {c: getattr(self._base_instance, c) for c in self.column_names}
-        return f"<{self.__class__.__name__}:{hex(id(self))} {values}>"
+
+@event.listens_for(Model, "load", propagate=True)
+def _loaded(record, context):
+    init(type(record))
+    record._initialize()
+    run_callbacks(record, "find", None, lambda: None)
+    run_callbacks(record, "initialize", None, lambda: None)
+
+
+@event.listens_for(Session, "before_flush")
+def _guard_staged_inserts(db_session, context, objects):
+    for record in db_session.new:
+        if isinstance(record, Model) and record.changes:
+            raise ProgrammerError(
+                f"New {type(record).__name__} has staged attributes. "
+                "Call save() or apply_changes() before native flush."
+            )

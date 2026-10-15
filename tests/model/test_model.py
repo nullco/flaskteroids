@@ -4,8 +4,9 @@ import pytest
 from sqlalchemy import Column, DateTime, Integer, String
 from sqlalchemy.orm import declarative_base
 
-from flaskteroids.model import Model, validates
+from flaskteroids.model import validates
 from flaskteroids.rules import rules
+from tests.model.schema_support import model_base
 
 
 @pytest.fixture(autouse=True)
@@ -43,7 +44,7 @@ class ProductBase(Base):
 @rules(
     validates("username", presence=True),
 )
-class User(Model):
+class User(model_base(Base)):
     pass
 
 
@@ -221,7 +222,7 @@ class TestModelValidations:
         @rules(
             validates(field, comparison=comparison),
         )
-        class Product(Model):
+        class Product(model_base(Base)):
             pass
 
         init_models(

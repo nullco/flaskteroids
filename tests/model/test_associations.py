@@ -2,9 +2,9 @@ import pytest
 from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.orm import declarative_base
 
-from flaskteroids import model
-from flaskteroids.model import Model, belongs_to, has_many, validates
+from flaskteroids.model import validates
 from flaskteroids.rules import rules
+from tests.model.schema_support import model_base
 
 
 @pytest.fixture(autouse=True)
@@ -30,13 +30,27 @@ class GroupBase(Base):
     name = Column(String())
 
 
-@rules(validates("username"), belongs_to("group"))
-class User(Model):
+ApplicationModel = model_base(
+    Base,
+    relationships={
+        "User": {"group": {"argument": "Group", "back_populates": "users"}},
+        "Group": {
+            "users": {
+                "argument": "User",
+                "back_populates": "group",
+                "cascade": "all, delete-orphan",
+            }
+        },
+    },
+)
+
+
+@rules(validates("username"))
+class User(ApplicationModel):
     pass
 
 
-@rules(has_many("users", dependent="destroy"))
-class Group(model.Model):
+class Group(ApplicationModel):
     pass
 
 
@@ -85,9 +99,9 @@ def test_has_many():
 
 def test_create_many():
     group = Group.create(name="one")
-    group.users.create(username="one")
-    group.users.create(username="two")
-    group.users.create(username="three")
+    User.create(username="one", group=group)
+    User.create(username="two", group=group)
+    User.create(username="three", group=group)
     assert len(group.users) == 3
     assert len([u for u in User.all()]) == 3
 
@@ -122,7 +136,9 @@ def test_lazy_on_many(engine):
 
 
 @pytest.mark.usefixtures("user_groups")
-def test_lazy_on_one(engine):
+def test_lazy_on_one(engine, session):
+    session.expunge_all()
+
     def capture():
         [user.group for user in User.all()]
 

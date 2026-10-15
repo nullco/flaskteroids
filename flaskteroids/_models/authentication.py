@@ -64,7 +64,7 @@ class PasswordAuthenticator:
             raise BadSignature("Invalid password reset token.")
         entry = cls.find(payload["id"])
         fingerprint = _password_reset_fingerprint(
-            serializer, getattr(entry, f"{pwname}_digest")
+            serializer, entry.read_published_attribute(f"{pwname}_digest")
         )
         if not hmac.compare_digest(payload["fingerprint"], fingerprint):
             raise BadSignature("Password reset token has been invalidated.")
@@ -74,8 +74,8 @@ class PasswordAuthenticator:
         pwname = model_for(self.__class__).password_field
         if not pwname:
             return False
-        password_digest = getattr(self, f"{pwname}_digest")
-        return check_password_hash(password_digest, password)
+        password_digest = self.read_published_attribute(f"{pwname}_digest")
+        return bool(password_digest) and check_password_hash(password_digest, password)
 
 
 def has_secure_password(pwname: str = "password") -> Callable[[type[Model]], None]:
@@ -93,7 +93,7 @@ def has_secure_password(pwname: str = "password") -> Callable[[type[Model]], Non
         def _set_password_reset_token(self):
             serializer = _password_reset_serializer(self.__class__, pwname)
             fingerprint = _password_reset_fingerprint(
-                serializer, getattr(self, f"{pwname}_digest")
+                serializer, self.read_published_attribute(f"{pwname}_digest")
             )
             token = serializer.dumps({"id": self.id, "fingerprint": fingerprint})
             self._virtual_fields[f"{pwname}_reset_token"] = token

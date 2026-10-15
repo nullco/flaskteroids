@@ -11,6 +11,13 @@ from click.testing import CliRunner
 from flaskteroids.cli.flaskteroids import cli
 
 
+def write_post_declaration(root):
+    (root / "app/models/post.py").write_text(
+        "from app.models.application_model import ApplicationModel\n"
+        "class Post(ApplicationModel):\n    pass\n"
+    )
+
+
 @pytest.fixture
 def preparation_app(tmp_path):
     root = tmp_path / "weblog"
@@ -131,9 +138,8 @@ def test_db_init_remains_strict(preparation_app):
 
 def test_init_is_registration_only_and_does_not_connect(preparation_app):
     root, run = preparation_app
-    (root / "app/models/post.py").write_text(
-        "from flaskteroids.model import Model\nclass Post(Model):\n    pass\n"
-    )
+    write_post_declaration(root)
+    (root / "app/schema.py").unlink()
     shutil.rmtree(root / "db/migrate")
     result = run("db:init")
     assert result.returncode == 0, result.stderr
@@ -209,9 +215,7 @@ def test_prepare_preflights_before_provisioning_or_executing_env(
 def test_normal_flask_launchers_help_and_preparation(preparation_app, launcher):
     root, run = preparation_app
     (root / ".venv").symlink_to(Path(sys.prefix), target_is_directory=True)
-    (root / "app/models/post.py").write_text(
-        "from flaskteroids.model import Model\nclass Post(Model):\n    pass\n"
-    )
+    write_post_declaration(root)
     launchers = {
         "bin": [str(root / "bin/flask")],
         "flask": [str(Path(sys.prefix) / "bin/flask")],
@@ -274,20 +278,13 @@ def test_dotenv_selection_and_global_options_use_normal_flask_discovery(
 
 def test_startup_queries_are_not_skipped_for_database_commands(preparation_app):
     root, run = preparation_app
-    (root / "app/models/post.py").write_text(
-        "from flaskteroids.model import Model\nclass Post(Model):\n    pass\n"
-    )
+    write_post_declaration(root)
     (root / "config/initializers/query.py").write_text(
         "from app.models.post import Post\nPost.first()\n"
     )
     result = run("db:create")
     assert result.returncode != 0
-    assert "No backing table for model Post" in result.stderr
-    # The explicit startup query may open SQLite; the task never gets to run.
-    with sqlite3.connect(root / "storage/development.sqlite3") as database:
-        assert (
-            database.execute(
-                "SELECT name FROM sqlite_master WHERE type='table'"
-            ).fetchall()
-            == []
-        )
+    assert "ProgrammerError" in result.stderr
+    assert "posts" in result.stderr
+    assert "migrations" in result.stderr
+    assert not (root / "storage/development.sqlite3").exists()

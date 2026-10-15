@@ -121,17 +121,23 @@ def test_generated_model_can_boot_migrate_and_use_fresh_mappings(tmp_path, monke
     unbacked = run(
         "-c",
         """
-from wsgi import app
-from app.models.post import Post
-with app.app_context():
-    Post.new(title="not-in-error-message")
+from unittest.mock import patch
+with patch('sqlalchemy.engine.Engine.connect', side_effect=AssertionError('unexpected connection')):
+    from wsgi import app
+    from app.models.post import Post
+    assert '__mapper__' not in vars(Post)
 """,
     )
-    assert unbacked.returncode != 0
-    for fragment in ("ProgrammerError", "Post", "posts", "migrations", "fresh"):
-        assert fragment in unbacked.stderr
-    # Tracebacks show source lines, so inspect only the exception message for values.
-    assert "not-in-error-message" not in unbacked.stderr.split("ProgrammerError:")[-1]
+    assert unbacked.returncode == 0, unbacked.stderr
+    query = run(
+        "-c",
+        "from wsgi import app; from app.models.post import Post; "
+        "ctx = app.app_context(); ctx.push(); Post.first()",
+    )
+    assert query.returncode != 0
+    assert "ProgrammerError" in query.stderr
+    assert "posts" in query.stderr
+    assert "migrations" in query.stderr
 
     help_result = run("-m", "flask", "db:migrate", "--help")
     assert help_result.returncode == 0, help_result.stderr

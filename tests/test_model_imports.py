@@ -9,11 +9,9 @@ PUBLIC_NAMES = {
     "Error",
     "Errors",
     "Model",
-    "ModelMeta",
     "ModelQuery",
     "PasswordAuthenticator",
     "RecordNotFoundException",
-    "Relation",
     "after_commit",
     "after_create",
     "after_destroy",
@@ -34,6 +32,7 @@ PUBLIC_NAMES = {
     "before_validation",
     "belongs_to",
     "has_many",
+    "has_one",
     "has_many_attached",
     "has_one_attached",
     "has_secure_password",
@@ -50,7 +49,7 @@ def test_length_config():
     assert LengthConfig(minimum=1, maximum=72) == {"minimum": 1, "maximum": 72}
 
 
-def test_existing_public_model_imports():
+def test_public_model_imports():
     assert PUBLIC_NAMES <= set(model.__all__)
     for name in PUBLIC_NAMES | CONFIG_NAMES:
         assert getattr(model, name) is not None
@@ -64,8 +63,8 @@ def test_existing_public_model_imports():
         "flaskteroids.application",
         "flaskteroids._models.validation",
         "flaskteroids._models.authentication",
-        "flaskteroids._models.associations",
-        "flaskteroids._models.records",
+        "flaskteroids._models.mapping",
+        "flaskteroids._models.staging",
         "flaskteroids._models.query",
     ],
 )
@@ -80,13 +79,31 @@ with patch("sqlalchemy.create_engine") as database, patch("celery.Celery") as qu
     queue.assert_not_called()
 from flaskteroids.model import *
 from flaskteroids.model import PresenceConfig, LengthConfig, ComparisonConfig
+import sys
+from types import ModuleType
+import sqlalchemy as sa
+from sqlalchemy import inspect
+from flaskteroids.schema import Snapshot
+schema = ModuleType('import_test_schema')
+snapshot = Snapshot()
+snapshot.create_table('users', sa.Column('id', sa.Integer(), primary_key=True))
+schema.metadata = snapshot.metadata
 class ApplicationModel(Model):
-    pass
+    __abstract__ = True
+    __schema_module__ = schema.__name__
 class User(ApplicationModel, PasswordAuthenticator):
     pass
 assert not has_app_context()
-assert ModelQuery is not None and Relation is not None
+assert '__mapper__' not in vars(User)
+assert schema.__name__ not in sys.modules
+sys.modules[schema.__name__] = schema
+with patch('sqlalchemy.engine.Engine.connect', side_effect=AssertionError('unexpected connection')):
+    assert User.prepare() is User
+    assert inspect(User).class_ is User
+assert not hasattr(schema, 'User')
+assert ModelQuery is not None
 """
-    subprocess.run(
-        [sys.executable, "-c", script], check=True, capture_output=True, text=True
+    result = subprocess.run(
+        [sys.executable, "-c", script], check=False, capture_output=True, text=True
     )
+    assert result.returncode == 0, result.stderr

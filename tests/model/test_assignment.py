@@ -5,14 +5,13 @@ from sqlalchemy.orm import declarative_base
 
 from flaskteroids.helpers import form_with
 from flaskteroids.model import (
-    Model,
     PasswordAuthenticator,
     after_initialize,
-    belongs_to,
-    has_many,
     has_secure_password,
+    validates,
 )
 from flaskteroids.rules import rules
+from tests.model.schema_support import model_base
 
 Base = declarative_base()
 
@@ -34,6 +33,15 @@ class GroupTable(Base):
     name = Column(String)
     created_at = Column(DateTime)
     updated_at = Column(DateTime)
+
+
+ApplicationModel = model_base(
+    Base,
+    relationships={
+        "User": {"group": {"argument": "Group", "back_populates": "users"}},
+        "Group": {"users": {"argument": "User", "back_populates": "group"}},
+    },
+)
 
 
 class DisplayName:
@@ -59,8 +67,12 @@ class Customization:
         self.name = value.strip()
 
 
-@rules(belongs_to("group"), has_secure_password(), after_initialize("_prepare"))
-class User(Customization, Model, PasswordAuthenticator):
+@rules(
+    validates("group", presence=True),
+    has_secure_password(),
+    after_initialize("_prepare"),
+)
+class User(Customization, ApplicationModel, PasswordAuthenticator):
     category = "ordinary"
     annotation_only: str
 
@@ -84,8 +96,8 @@ class User(Customization, Model, PasswordAuthenticator):
         return "hello"
 
 
-@rules(has_many("users"))
-class Group(Model):
+@rules(validates("name", presence=True))
+class Group(ApplicationModel):
     pass
 
 
@@ -120,10 +132,13 @@ def test_unknown_assignment_fails_without_saving(entry):
         "save",
         "errors",
         "column_names",
+        "registry",
+        "metadata",
+        "create",
+        "find",
         "annotation_only",
         "password_reset_token",
         "_initialize",
-        "_fields",
         "_flaskteroids_model",
     ],
 )
@@ -149,7 +164,7 @@ def test_mass_assignment_cannot_replace_framework_state(entry, name):
     assert User.count() == 0
 
 
-def test_transients_descriptors_and_private_caches_are_instance_local(mocker):
+def test_transients_descriptors_and_private_caches_are_instance_local(mocker, session):
     group = Group.create(name="default")
     user = User.create(
         name="one", password="secret", delivery_hint="preview", group=group
@@ -164,6 +179,8 @@ def test_transients_descriptors_and_private_caches_are_instance_local(mocker):
     user.reload()
     assert user.delivery_hint == "preview"
     assert user._render_cache == {"key": "cached"}
+    assert User.find(user.id) is user
+    session.expunge(user)
     loaded = User.find(user.id)
     assert loaded.delivery_hint is None
     assert loaded.category == "initialized"
@@ -200,11 +217,12 @@ def test_column_conversion_and_virtual_setters():
     assert user.reload().age == 43
 
 
-def test_rejected_column_conversion_keeps_previous_value():
+def test_uncastable_input_is_retained_before_type_cast():
     user = User.new(age=42)
-    with pytest.raises(TypeError):
-        user.age = object()
-    assert user.age == 42
+    value = object()
+    user.age = value
+    assert user.age is None
+    assert user.read_attribute_before_type_cast("age") is value
     assert User.count() == 0
 
 
@@ -214,13 +232,14 @@ def test_belongs_to_read_after_write_reassignment_and_clear():
     user = User.create(name="one", password="secret", group=first)
     user.group = second
     assert user.group.name == "second"
-    assert user.group_id == second.id
-    assert User.find(user.id).group.id == first.id
+    assert user.group_id == first.id
+    assert User.find(user.id) is user
+    assert user.group is second
     assert user.save()
     assert user.reload().group.id == second.id
     user.group = None
     assert user.group is None
-    assert user.group_id is None
+    assert user.group_id == second.id
     assert user.save() is False
     assert user.errors
     assert user.save(validate=False)
@@ -248,10 +267,12 @@ def test_wrong_model_is_not_an_association_target():
     assert user.group_id is None
 
 
-def test_has_many_replacement_explains_supported_api():
+def test_native_collection_can_be_replaced():
     group = Group.new()
-    with pytest.raises(AttributeError, match="Group.users.*Relation.*create"):
-        group.users = []
+    user = User.new()
+    group.users = [user]
+    assert group.users == [user]
+    assert user.group is group
 
 
 def test_pending_association_reads_preserve_target_instance_state():

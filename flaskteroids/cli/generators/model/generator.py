@@ -1,7 +1,7 @@
 import click
 
 from flaskteroids.cli.artifacts import ArtifactsBuilder
-from flaskteroids.cli.generators.fields import attachment_pattern
+from flaskteroids.cli.generators.fields import association_pattern, attachment_pattern
 from flaskteroids.cli.generators.migrations import generator as migrations
 from flaskteroids.cli.generators.templates import template
 from flaskteroids.inflector import inflector
@@ -24,7 +24,15 @@ def generate(model, args):
     migrations.generate(f"Create{inflector.pluralize(model)}", fields)
     ab = ArtifactsBuilder(".", click.echo)
     snake = inflector.underscore(model)
-    params = {"name": model, "attachments": attachments}
+    params = {
+        "name": model,
+        "attachments": attachments,
+        "references": [
+            match[1]
+            for field in fields
+            if (match := association_pattern.fullmatch(field))
+        ],
+    }
     ab.file(
         f"app/models/{snake}.py",
         template(

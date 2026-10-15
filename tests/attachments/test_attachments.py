@@ -45,8 +45,9 @@ def test_attach_does_not_save_other_pending_changes(upload):
     document = Document.create(title="Original")
     document.title = "Changed"
     document.avatar.attach(upload())
-    assert Document.find(document.id).title == "Original"
-    assert not Document.find(document.id).avatar.attached()
+    assert Document.find(document.id) is document
+    assert document.read_published_attribute("title") == "Original"
+    assert document.avatar.attachment is None
     assert document.save()
     assert Document.find(document.id).avatar.attached()
     assert Document.find(document.id).title == "Changed"

@@ -7,12 +7,12 @@ from sqlalchemy.orm import declarative_base
 from flaskteroids.controller import render
 from flaskteroids.helpers import form_with
 from flaskteroids.model import (
-    Model,
     PasswordAuthenticator,
     has_secure_password,
     validates,
 )
 from flaskteroids.rules import rules
+from tests.model.schema_support import model_base
 
 Base = declarative_base()
 
@@ -35,12 +35,12 @@ class PasscodeAccountTable(Base):
 
 
 @rules(has_secure_password(), validates("name", confirmation=True))
-class Account(Model, PasswordAuthenticator):
+class Account(model_base(Base), PasswordAuthenticator):
     pass
 
 
 @rules(has_secure_password("passcode"), validates("name", confirmation=True))
-class PasscodeAccount(Model, PasswordAuthenticator):
+class PasscodeAccount(model_base(Base), PasswordAuthenticator):
     pass
 
 

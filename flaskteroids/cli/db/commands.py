@@ -13,6 +13,7 @@ from sqlalchemy.exc import DBAPIError
 
 from flaskteroids.cli.db.config import get_config
 from flaskteroids.cli.db.lifecycle import _error_code, ensure_database
+from flaskteroids.cli.db.snapshot import dump_schema
 
 
 @click.command("db:init")
@@ -117,6 +118,8 @@ def upgrade_database(config):
     """Apply migrations using the application's existing Alembic configuration."""
     with migration_errors("migration"):
         command.upgrade(config, revision="head")
+    with migration_errors("schema snapshot (migrations already applied)"):
+        dump_schema()
 
 
 @contextmanager
@@ -154,3 +157,5 @@ def rollback():
     revision = "-1"
     with migration_errors("rollback"):
         command.downgrade(config, revision=revision)
+    with migration_errors("schema snapshot (rollback already applied)"):
+        dump_schema()

@@ -46,8 +46,11 @@ FLASK_ENV=test bin/flask db:prepare
 FLASK_ENV=production bin/flask db:prepare
 ```
 
-Preparation doesn't reset the database or seed records. Review your migrations
-before deploying: their changes—and rollbacks—can still delete data.
+Preparation doesn't reset the database or seed records. After successful migration,
+Flaskteroids regenerates `app/schema.py` from the selected database. Commit this
+read-only snapshot; do not duplicate column changes there by hand. Review migrations
+and the resulting snapshot before deploying: changes and rollbacks can delete data.
+Restart servers/workers afterward; published mappings are not modified in place.
 
 | Command | When to use it |
 | --- | --- |
@@ -56,9 +59,17 @@ before deploying: their changes—and rollbacks—can still delete data.
 | `db:migrate` | Apply pending migrations to an existing database. |
 | `db:rollback` | Undo the most recent migration. |
 | `db:init` | Add migration files to an app that doesn't have them yet. |
+| `db:schema:dump` | Refresh `app/schema.py` from the selected database without changing data. |
 
 New apps already include migration files. If preparation fails, fix the reported
-problem and try again; the database is left in place for you to inspect.
+problem and try again; the database is left in place for you to inspect. If migrations
+succeed but snapshot publication fails, fix the file/access problem and run
+`bin/flask db:schema:dump`; a failed file write does not undo applied migrations.
+
+Commands use normal application initialization, including initializers. New model
+declarations can be imported before their snapshot tables exist. An initializer
+that actually constructs or queries an unavailable model still fails normally;
+there is no migration-only startup mode.
 
 For PostgreSQL or MySQL, start the server and
 [configure its connection](../configuration.md#database-configuration) first.
@@ -76,8 +87,10 @@ session.commit()
 session.rollback()
 ```
 
-Call `session.commit()` to save pending changes or `session.rollback()` to
-discard them. Exiting the shell normally also commits pending changes.
+Call `save()` to validate and publish staged model edits. `session.commit()` commits
+published work; it does not implicitly save further staged assignments. Normal shell
+exit also commits published work. `session.rollback()` rolls back the unit of work;
+use `record.discard_changes()` or `record.reload()` to discard staged input.
 
 ## Credentials
 
@@ -102,7 +115,9 @@ Use `flask generate` to create application components. Field arguments use `name
 
 ### Migration
 
-Generate a migration to create or drop a table, or add or remove columns. New tables include an auto-incrementing `id` and a `created_at` field by default.
+Generate a migration to create/drop a table or add/remove columns. New tables
+include an auto-incrementing `id`, `created_at`, and `updated_at`. Standalone
+migration generation does not edit the snapshot; applying the migration does.
 
 #### Create a table
 
@@ -147,7 +162,9 @@ flask db:migrate
 
 ### Model
 
-Generate a model and its database migration:
+Generate a behavioral model, its database migration, and tests. References add
+`belongs_to(...)` declarations inside `@rules`. Columns appear in the generated
+snapshot only after migration:
 
 ```sh
 flask generate model <ModelName> [field1:type ...]

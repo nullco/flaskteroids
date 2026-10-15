@@ -1,9 +1,10 @@
 from pathlib import Path
 
 import yaml
-from sqlalchemy import func, select, text
+from sqlalchemy import func, inspect, select, text
 
-from flaskteroids import fields
+from flaskteroids._models.attributes import cast_input
+from flaskteroids._models.mapping import table_name
 from flaskteroids.db import session
 from flaskteroids.inflector import inflector
 
@@ -59,7 +60,7 @@ def load_fixtures(application, requested):
             (
                 candidate
                 for candidate in models.values()
-                if inflector.tableize(candidate.__name__) == fixture_name
+                if table_name(candidate) == fixture_name
             ),
             None,
         )
@@ -71,9 +72,7 @@ def load_fixtures(application, requested):
             for index, (label, values) in enumerate(entries.items(), start=1)
         }
 
-    fixture_order = _fixture_order(
-        fixture_models, application.extensions["flaskteroids.db"]
-    )
+    fixture_order = _fixture_order(fixture_models)
     for fixture_name in reversed(fixture_order):
         session.execute(fixture_models[fixture_name].__table__.delete())
     session.flush()
@@ -82,7 +81,7 @@ def load_fixtures(application, requested):
     for fixture_name in fixture_order:
         entries = definitions[fixture_name]
         model = fixture_models[fixture_name]
-        columns = set(model.new().column_names)
+        columns = set(inspect(model).column_attrs.keys())
         loaded[fixture_name] = {}
         for label, original_values in entries.items():
             values = dict(original_values)
@@ -100,9 +99,7 @@ def load_fixtures(application, requested):
                     values[foreign_key] = fixture_ids[related_set][related_label]
                     values.pop(key)
             converted = {
-                key: fields.from_column_type(
-                    model.__table__.columns[key].type
-                ).as_primitive(value)
+                key: cast_input(model.__table__.columns[key].type, value)
                 for key, value in values.items()
             }
             session.execute(model.__table__.insert().values(**converted))
@@ -136,12 +133,12 @@ def _advance_fixture_sequence(model):
         )
 
 
-def _fixture_order(fixture_models, database):
+def _fixture_order(fixture_models):
     dependencies = {}
     for name, model in fixture_models.items():
         dependencies[name] = {
             foreign_key.target_fullname.rsplit(".", 1)[0]
-            for foreign_key in database.binding(model).schema.foreign_keys
+            for foreign_key in model.__table__.foreign_keys
             if foreign_key.target_fullname.rsplit(".", 1)[0] in fixture_models
         }
 

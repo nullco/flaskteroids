@@ -29,10 +29,12 @@ class ActionDefinition:
 @dataclass(frozen=True)
 class AssociationDefinition:
     name: str
-    kind: Literal["belongs_to", "has_many"]
+    kind: Literal["belongs_to", "has_many", "has_one"]
     target: str
     foreign_key: str
     dependent: str | None = None
+    inverse_of: str | None = None
+    optional: bool = False
 
 
 class VirtualFieldConfig(TypedDict, total=False):

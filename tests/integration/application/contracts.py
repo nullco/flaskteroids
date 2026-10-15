@@ -11,7 +11,7 @@ class AssociationTest(ModelTest):
     def test_related_creation_assignment_and_eager_loading(self):
         writer = Writer.create(name="first")
         other = Writer.create(name="second")
-        story = writer.stories.create(title="one")
+        story = Story.create(title="one", writer=writer)
         assert story.writer.id == writer.id
         loaded = Writer.includes("stories").find(writer.id)
         assert [entry.id for entry in loaded.stories] == [story.id]
@@ -25,13 +25,14 @@ class AssociationTest(ModelTest):
         invalid = Story.new(writer=writer)
         assert invalid.save() is False
         assert invalid.errors
+        writer.stories.remove(invalid)
         story = Story.create(title="child", writer=writer)
         assert writer.destroy()
         assert Story.find_by(id=story.id) is None
 
     def test_commit_remains_inside_the_test_transaction(self):
         writer = Writer.create(name="transaction-only")
-        writer.stories.create(title="transaction-only")
+        Story.create(title="transaction-only", writer=writer)
         session.commit()
         assert Story.find_by(title="transaction-only").writer.id == writer.id
 
@@ -44,4 +45,4 @@ class FixtureTest(ModelTest):
 
     def test_fixtures_load_in_foreign_key_order(self):
         assert self.stories("one").writer.id == self.writers("one").id
-        assert self.writers("one").stories.create(title="after fixtures").id
+        assert Story.create(title="after fixtures", writer=self.writers("one")).id

@@ -12,11 +12,8 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# add your model's MetaData object here
-# for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
-target_metadata = None
+# Migrations are authoritative. Runtime mappings and the generated snapshot
+# are not used as desired-schema input for Alembic autogeneration.
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -39,7 +36,6 @@ def run_migrations_offline() -> None:
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
-        target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
     )
@@ -64,7 +60,6 @@ def run_migrations_online() -> None:
     with connectable.connect() as connection:
         context.configure(
             connection=connection,
-            target_metadata=target_metadata,
             transaction_per_migration=True,
             render_as_batch=True,
         )

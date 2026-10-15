@@ -1,7 +1,6 @@
 from flask import current_app
 
 from flaskteroids.model import (
-    Model,
     PasswordAuthenticator,
     after_commit,
     after_rollback,
@@ -11,6 +10,7 @@ from flaskteroids.model import (
     has_secure_password,
 )
 from flaskteroids.rules import rules
+from tests.isolation.models.application_model import ApplicationModel
 
 
 @rules(
@@ -23,7 +23,7 @@ from flaskteroids.rules import rules
     after_commit("_committed"),
     after_rollback("_rolled_back"),
 )
-class Author(Model, PasswordAuthenticator):
+class Author(ApplicationModel, PasswordAuthenticator):
     def _committed(self):
         current_app.config["EVENTS"].append(("commit", self.name))
 
@@ -32,8 +32,8 @@ class Author(Model, PasswordAuthenticator):
 
 
 @rules(
-    belongs_to("author", class_name="Author", foreign_key="author_id"),
-    belongs_to("editor", class_name="Author", foreign_key="editor_id"),
+    belongs_to("author", optional=True),
+    belongs_to("editor", class_name="Author", foreign_key="editor_id", optional=True),
 )
-class Story(Model):
+class Story(ApplicationModel):
     pass

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from collections.abc import Callable, Iterable, Sequence
 from functools import partial
 from typing import TYPE_CHECKING, Any, NotRequired, TypedDict
@@ -64,6 +65,12 @@ class LengthConfig(TypedDict):
     maximum: NotRequired[int]
 
 
+class NumericalityConfig(TypedDict, total=False):
+    only_integer: bool
+    allow_nil: bool
+    message: str
+
+
 class ComparisonConfig(TypedDict):
     greater_than: NotRequired[Any]
     less_than: NotRequired[Any]
@@ -80,12 +87,14 @@ def validates(
     length: None | LengthConfig = None,
     confirmation: None | bool = None,
     comparison: None | ComparisonConfig = None,
+    numericality: None | NumericalityConfig | bool = None,
 ) -> Callable[[type[Model]], None]:
     options = {
         "presence": {"config": presence, "validator": _validate_presence},
         "length": {"config": length, "validator": _validate_length},
         "confirmation": {"config": confirmation, "validator": _validate_confirmation},
         "comparison": {"config": comparison, "validator": _validate_comparison},
+        "numericality": {"config": numericality, "validator": _validate_numericality},
     }
     options = {k: v for k, v in options.items() if v["config"] is not None}
 
@@ -152,6 +161,27 @@ def _validate_confirmation(
                     (f"{field}.confirmation", f"Field {field} values do not match")
                 )
     return errors
+
+
+def _validate_numericality(*, instance, field, config):
+    if not config:
+        return []
+    options = {} if config is True else config
+    value = instance.read_attribute_before_type_cast(field)
+    if value is None and options.get("allow_nil"):
+        return []
+    valid = not isinstance(value, bool) and value is not None
+    if options.get("only_integer"):
+        valid = valid and re.fullmatch(r"[+-]?\d+", str(value)) is not None
+    else:
+        try:
+            float(value)
+        except (ValueError, TypeError):
+            valid = False
+    if valid:
+        return []
+    message = options.get("message", f"Field {field} is not a number")
+    return [(f"{field}.numericality", message)]
 
 
 def _resolve_comparison_value(instance: Model, compare_value: Any) -> Any:

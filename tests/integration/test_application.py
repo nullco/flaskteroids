@@ -74,7 +74,7 @@ def generated_application(tmp_path_factory):
             run("db:rollback")
 
 
-def test_normal_boot_uses_database_configuration_and_keeps_unused_models_lazy(
+def test_normal_boot_declares_models_without_requiring_unmigrated_snapshots(
     generated_application,
 ):
     _, run = generated_application
@@ -91,6 +91,7 @@ assert app.env.test
 assert make_url(app.database_url) == make_url(os.environ['DATABASE_URL'])
 with app.app_context():
     assert app.make_shell_context()['DeferredRecord'] is DeferredRecord
+    assert '__mapper__' not in vars(DeferredRecord)
     with pytest.raises(ProgrammerError, match='DeferredRecord.*migrations'):
         DeferredRecord.first()
 assert app.test_client().get('/up/').status_code == 200
@@ -143,7 +144,10 @@ def test_generated_migrations_apply_and_rollback_in_fresh_applications(
     versions = root / "db/migrate/versions"
     before = set(versions.glob("*.py"))
     run("generate", "migration", "AddPublishedToPosts", "published:boolean")
+    schema_path = root / "app/schema.py"
+    original_schema = schema_path.read_bytes()
     run("db:migrate")
+    assert schema_path.read_bytes() != original_schema
     run(
         code="""
 from wsgi import app
@@ -153,6 +157,7 @@ with app.app_context():
 """
     )
     run("db:rollback")
+    assert schema_path.read_bytes() == original_schema
     run(
         code="""
 from wsgi import app

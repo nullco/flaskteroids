@@ -12,12 +12,10 @@ from tests.isolation.models.records import Author
 
 def test_nested_same_app_contexts_have_independent_sessions(make_app):
     app = make_app("a")
-    db = app.extensions["flaskteroids.db"]
     with app.app_context():
         Author.create(name="seed", passcode="secret")
-    mapped = db.binding(Author).mapped_class
     with app.app_context():
-        pending = mapped(name="outer")
+        pending = Author(name="outer").apply_changes()
         session.add(pending)
         with app.app_context():
             assert Author.count() == 1
@@ -32,12 +30,11 @@ def test_fresh_sessions_are_caller_managed(make_app):
     app = make_app("a")
     db = app.extensions["flaskteroids.db"]
     with db.create_session() as first, db.new_session() as second:
-        mapped = db.binding(Author).mapped_class
-        pending = mapped(name="pending")
+        pending = Author(name="pending").apply_changes()
         first.add(pending)
         assert pending in first
         assert pending not in second
-        assert second.execute(select(mapped)).scalars().all() == []
+        assert second.execute(select(Author)).scalars().all() == []
 
 
 def test_nested_apps_commit_only_their_own_callbacks(make_app):
@@ -127,14 +124,7 @@ def test_commit_failure_closes_inner_session_and_restores_outer(make_app):
     with app.app_context():
         assert Author.count() == 1
         with pytest.raises(IntegrityError), app.app_context():
-            session.add(db.binding(Author).mapped_class(id=1, name="duplicate"))
+            session.add(Author(id=1, name="duplicate").apply_changes())
         assert Author.first().name == "seed"
     with db.new_session() as independent:
-        assert (
-            len(
-                independent.execute(select(db.binding(Author).mapped_class))
-                .scalars()
-                .all()
-            )
-            == 1
-        )
+        assert len(independent.execute(select(Author)).scalars().all()) == 1
