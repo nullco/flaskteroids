@@ -2,6 +2,9 @@
 requires = ["setuptools>=84.0.0", "wheel>=0.48.0"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools.packages.find]
+include = ["flaskteroids", "flaskteroids.*"]
+
 [tool.setuptools.package-data]
 "*" = ["templates/**/*", "templates/.github/workflows/*.mako"]
 "flaskteroids" = [".agents/skills/*/SKILL.md"]
