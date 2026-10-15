@@ -3,6 +3,7 @@ from http import HTTPStatus
 
 import pytest
 
+from flaskteroids import __version__
 from flaskteroids.application import Application
 from flaskteroids.controller import render
 from flaskteroids.exceptions import (
@@ -37,7 +38,7 @@ def test_default_root(client):
     res = client.get("/")
     assert res.status_code == HTTPStatus.OK
     assert b"Flaskteroids" in res.data
-    assert b"Version" in res.data
+    assert f"v{__version__}" in res.get_data(as_text=True)
 
 
 def test_users_index(client):
