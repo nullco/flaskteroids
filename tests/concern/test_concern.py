@@ -43,17 +43,17 @@ class MyClass(ConcernA, ConcernB):
 bind_rules(MyClass)
 
 
-def test_concern_class_methods():
+def test_concerns_provide_inherited_class_methods():
     assert MyClass.a() == "A"
     assert MyClass.b() == "B"
 
 
-def test_concern_instance_methods():
+def test_concerns_provide_inherited_instance_methods():
     c = MyClass()
     c.do_a()
     c.do_b()
     assert c.done == ["a", "b"]
 
 
-def test_concern_rules():
+def test_concerns_bind_inherited_rules_in_order():
     assert registered_rules == ["a", "b", "c"]

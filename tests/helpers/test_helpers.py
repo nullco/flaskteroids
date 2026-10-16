@@ -1,6 +1,7 @@
 import pytest
 
 from flaskteroids.helpers import button_to, csrf_token, form_with, link_to, render
+from tests.assertions import HTML
 
 
 @pytest.fixture
@@ -34,28 +35,36 @@ def request_ctx(app):
 class TestHelpers:
     def test_link_to_generates_anchor_tag(self):
         result = link_to("Click me", "/test", class_="btn", id="link")
-        assert '<a href="/test" class_="btn" id="link">Click me</a>' in str(result)
+        html = HTML(result)
+        assert html.has("a", href="/test", class_="btn", id="link")
+        assert html.text == "Click me"
 
     def test_button_to_generates_delete_form(self, model_instance, url_for):
         url_for.return_value = "/delete/1"
         result = button_to("Delete", model_instance, "delete")
-        assert 'method="DELETE"' in str(result)
-        assert 'action="/delete/1"' in str(result)
-        assert '<button type="submit">Delete</button>' in str(result)
+        html = HTML(result)
+        assert html.has("form", method="DELETE", action="/delete/1")
+        assert html.has("button", type="submit")
+        assert "Delete" in html.text
 
-    def test_form_with_for_new_model(self, model_instance, url_for):
-        url_for.return_value = "/create"
+    @pytest.mark.parametrize(
+        "identity, action, override", [(None, "/create", ""), (1, "/update/1", "PUT")]
+    )
+    def test_form_with_selects_model_route_and_method_override(
+        self, model_instance, url_for, identity, action, override
+    ):
+        model_instance.id = identity
+        url_for.return_value = action
+
         result = form_with(model=model_instance, caller=lambda _: "<input>")
-        assert 'action="/create"' in str(result)
-        assert 'method="POST"' in str(result)
-        assert "_method" in str(result)
 
-    def test_form_with_for_existing_model(self, model_instance, url_for):
-        url_for.return_value = "/update/1"
-        result = form_with(model=model_instance)
-        assert 'action="/update/1"' in str(result)
-        assert 'method="POST"' in str(result)
-        assert 'value="PUT"' in str(result)
+        html = HTML(result)
+        assert html.has("form", action=action, method="POST")
+        assert html.has("input", name="_method", value=override)
+        if identity is None:
+            url_for.assert_called_with("create_test_model")
+        else:
+            url_for.assert_called_with("update_test_model", id=identity)
 
     def test_render_calls_render_template(self, render_template):
         result = render("test.html", name="value")
@@ -64,17 +73,22 @@ class TestHelpers:
 
     def test_form_with_detects_file_fields(self):
         result = form_with(url="/upload", caller=lambda form: form.file_field("avatar"))
-        assert 'enctype="multipart/form-data"' in result
-        assert 'type="file"' in result
-        assert "csrf_token" in result
+        html = HTML(result)
+        assert html.has("form", enctype="multipart/form-data")
+        assert html.has("input", type="file")
+        assert html.has("input", name="csrf_token")
 
-    def test_form_with_without_uploads_is_not_multipart(self):
+    def test_form_with_uses_default_encoding_for_text_fields(self):
         result = form_with(url="/upload", caller=lambda form: form.text_field("name"))
-        assert "enctype=" not in result
+        html = HTML(result)
+        form = next(attrs for tag, attrs in html.elements if tag == "form")
+        assert form.get("enctype", "application/x-www-form-urlencoded") == (
+            "application/x-www-form-urlencoded"
+        )
 
     def test_form_with_supports_explicit_multipart(self):
         result = form_with(url="/upload", multipart=True)
-        assert 'enctype="multipart/form-data"' in result
+        assert HTML(result).has("form", enctype="multipart/form-data")
 
     def test_csrf_token_generates_token(self):
         result = csrf_token()

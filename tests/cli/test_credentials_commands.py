@@ -1,14 +1,16 @@
 from flaskteroids.credentials import Credentials
 
 
-def test_credentials_show(cli_runner):
+def test_credentials_show_prints_yaml(cli_runner):
     result = cli_runner.invoke(args="credentials:show")
 
     assert result.exit_code == 0
     assert result.output == "{}\n"
 
 
-def test_credentials_edit_for_environment(app, cli_runner, mocker, tmp_path):
+def test_credentials_edit_encrypts_selected_environment(
+    app, cli_runner, mocker, tmp_path
+):
     app.project_root = tmp_path
     mocker.patch(
         "flaskteroids.cli.credentials.click.edit",

@@ -9,6 +9,6 @@ def command(mocker):
 
 
 @pytest.mark.usefixtures("app_ctx")
-def test_generator(command):
+def test_generate_creates_alembic_revision(command):
     generator.generate("CreateUsers", ["name:str"])
     command.revision.assert_called()

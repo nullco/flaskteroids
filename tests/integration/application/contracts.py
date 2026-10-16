@@ -8,7 +8,7 @@ from flaskteroids.db import session
 
 
 class AssociationTest(ModelTest):
-    def test_related_creation_assignment_and_eager_loading(self):
+    def test_associations_support_creation_reassignment_and_eager_loading(self):
         writer = Writer.create(name="first")
         other = Writer.create(name="second")
         story = Story.create(title="one", writer=writer)
@@ -20,7 +20,7 @@ class AssociationTest(ModelTest):
         assert len(writer.stories) == 0
         assert len(other.stories) == 1
 
-    def test_validation_and_never_read_dependent_destruction(self):
+    def test_associations_validate_children_and_destroy_unloaded_dependents(self):
         writer = Writer.create(name="parent")
         invalid = Story.new(writer=writer)
         assert invalid.save() is False
@@ -36,7 +36,7 @@ class AssociationTest(ModelTest):
         session.commit()
         assert Story.find_by(title="transaction-only").writer.id == writer.id
 
-    def test_other_tests_leave_no_records(self):
+    def test_model_tests_start_with_isolated_empty_database(self):
         assert Writer.count() == Story.count() == 0
 
 

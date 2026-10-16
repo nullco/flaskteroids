@@ -44,7 +44,7 @@ class TestControllerGenerator:
         ]
         artifacts_builder.file.assert_has_calls(expected_file_calls, any_order=True)
 
-    def test_generate_adds_routes_when_not_skipped(self, artifacts_builder, mocker):
+    def test_generate_adds_routes_by_default(self, artifacts_builder, mocker):
         generate("TestController", ["index"])
         artifacts_builder.modify_py_file.assert_called_once_with(
             "config/routes.py", mocker.ANY

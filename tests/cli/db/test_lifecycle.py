@@ -65,14 +65,14 @@ def test_ephemeral_creation_is_rejected_without_connection(url, mocker):
         "sqlite:///file:database?uri=true&mode=invalid",
     ],
 )
-def test_unsupported_uris_are_not_rewritten(url, mocker):
+def test_database_creation_rejects_unsupported_uris_before_connection(url, mocker):
     connect = mocker.patch.object(Engine, "connect")
     with pytest.raises(click.ClickException, match="SQLite"):
         ensure_database(url)
     connect.assert_not_called()
 
 
-def test_missing_parent_is_not_created_and_error_does_not_leak_driver_details(tmp_path):
+def test_database_creation_reports_missing_parent_with_safe_error(tmp_path):
     parent = tmp_path / "private-password"
     with pytest.raises(click.ClickException) as raised:
         ensure_database(f"sqlite:///{parent / 'database.sqlite'}")

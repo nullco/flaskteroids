@@ -17,28 +17,20 @@ class TestRoutes:
         router.root(to="welcome#index")
         app.add_url_rule.assert_called_with("/", view_func=mocker.ANY, methods=["GET"])
 
-    def test_get_registers_route(self, router, app, mocker):
-        router.get("/test", to="test#index")
-        app.add_url_rule.assert_called_with(
-            "/test", view_func=mocker.ANY, methods=["GET"]
-        )
+    @pytest.mark.parametrize(
+        "method, action",
+        [
+            ("get", "index"),
+            ("post", "create"),
+            ("put", "update"),
+            ("delete", "destroy"),
+        ],
+    )
+    def test_http_verb_registers_route(self, router, app, mocker, method, action):
+        getattr(router, method)("/test", to=f"test#{action}")
 
-    def test_post_registers_route(self, router, app, mocker):
-        router.post("/test", to="test#create")
         app.add_url_rule.assert_called_with(
-            "/test", view_func=mocker.ANY, methods=["POST"]
-        )
-
-    def test_put_registers_route(self, router, app, mocker):
-        router.put("/test", to="test#update")
-        app.add_url_rule.assert_called_with(
-            "/test", view_func=mocker.ANY, methods=["PUT"]
-        )
-
-    def test_delete_registers_route(self, router, app, mocker):
-        router.delete("/test", to="test#destroy")
-        app.add_url_rule.assert_called_with(
-            "/test", view_func=mocker.ANY, methods=["DELETE"]
+            "/test", view_func=mocker.ANY, methods=[method.upper()]
         )
 
     def test_resources_registers_multiple_routes(self, router, app):

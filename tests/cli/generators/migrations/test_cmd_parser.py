@@ -6,7 +6,7 @@ from flaskteroids.cli.generators.migrations import cmd_parser
 
 
 @pytest.mark.parametrize("reference", [None, "references", "belongs_to"])
-def test_create_table(reference):
+def test_parser_builds_create_table_command(reference):
     arguments = ["name:str"]
     if reference:
         arguments.append(f"user:{reference}")
@@ -53,7 +53,7 @@ def test_create_table(reference):
         ),
     ],
 )
-def test_drop_table(cmd, expected):
+def test_parser_builds_drop_table_command(cmd, expected):
     res = cmd_parser.parse(cmd, None)
     assert res["normalized_cmd"] == expected["normalized_cmd"]
     assert res["parsed"]["cmd"] == expected["parsed"]["cmd"]
@@ -119,7 +119,7 @@ def test_drop_table(cmd, expected):
         ),
     ],
 )
-def test_add_columns_to_table(cmd, args, expected):
+def test_parser_builds_add_column_commands(cmd, args, expected):
     res = cmd_parser.parse(cmd, args)
     assert res["normalized_cmd"] == expected["normalized_cmd"]
     assert res["parsed"]["cmd"] == expected["parsed"]["cmd"]
@@ -162,7 +162,7 @@ def test_add_columns_to_table(cmd, args, expected):
         ),
     ],
 )
-def test_remove_columns_from_table(cmd, args, expected):
+def test_parser_builds_remove_column_commands(cmd, args, expected):
     res = cmd_parser.parse(cmd, args)
     assert res["normalized_cmd"] == expected["normalized_cmd"]
     assert res["parsed"]["cmd"] == expected["parsed"]["cmd"]
@@ -181,6 +181,6 @@ def test_remove_columns_from_table(cmd, args, expected):
         ("AddCompletedAndPriorityToTodos", ["completed:boolean", "priority:wronnnngg"]),
     ],
 )
-def test_invalid_command(cmd, args):
+def test_parser_rejects_invalid_commands(cmd, args):
     with pytest.raises(ValueError):
         cmd_parser.parse(cmd, args)

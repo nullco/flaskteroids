@@ -20,7 +20,9 @@ def generated_app(tmp_path, mocker):
     return root
 
 
-def test_generated_source_configuration_and_credentials(generated_app):
+def test_generated_application_includes_source_configuration_and_credentials(
+    generated_app,
+):
     for path in generated_app.rglob("*.py"):
         ast.parse(path.read_text(), filename=str(path))
     metadata = tomllib.loads((generated_app / "pyproject.toml").read_text())

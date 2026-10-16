@@ -11,6 +11,7 @@ from flaskteroids.application import Application
 from flaskteroids.assets import AssetError
 from flaskteroids.cli.flaskteroids import cli
 from flaskteroids.helpers import asset_path, stylesheet_link_tag
+from tests.assertions import HTML
 
 
 @pytest.fixture
@@ -67,10 +68,9 @@ def test_sources_use_flasks_static_endpoint(asset_application, environment):
     with app.test_request_context():
         assert asset_path("application.css") == "/assets/stylesheets/application.css"
         assert asset_path("logo.png") == "/assets/images/logo.png"
-        assert str(stylesheet_link_tag("application")) == (
-            '<link rel="stylesheet" href="/assets/stylesheets/application.css">'
+        assert HTML(stylesheet_link_tag("application")).has(
+            "link", rel="stylesheet", href=asset_path("application.css")
         )
-    assert app.view_functions["static"] == app.send_static_file
     assert app.static_folder.endswith("/app/assets")
     assert app.static_url_path == "/assets"
     with app.test_request_context():
@@ -125,10 +125,12 @@ def test_helpers_escape_attributes_and_return_trusted_markup(
             **{"data-turbo-track": "reload"},
         )
         assert isinstance(tag, Markup)
-        assert 'media="screen&#34; onclick=&#34;evil"' in tag
-        assert 'data-turbo-track="reload"' in tag
-        assert "%22" in tag
-        assert "&amp;" in tag
+        assert HTML(tag).has(
+            "link",
+            href=asset_path('a"&.css'),
+            media='screen" onclick="evil',
+            **{"data-turbo-track": "reload"},
+        )
         with pytest.raises(ValueError):
             stylesheet_link_tag("application", **{'bad"name': "value"})
         with pytest.raises(ValueError):
@@ -164,7 +166,7 @@ def test_unsafe_helper_names_are_rejected(asset_application, name):
         "app/assets/images/logo.png",
     ],
 )
-def test_requests_cannot_access_missing_hidden_or_project_files(
+def test_static_requests_reject_missing_hidden_and_project_files(
     asset_application, name
 ):
     assert asset_application().test_client().get(f"/assets/{name}").status_code == 404
@@ -231,7 +233,7 @@ def test_production_static_endpoint_serves_the_output_directory(
         "wrong_fingerprint",
     ],
 )
-def test_production_manifest_errors_never_fall_back_to_sources(
+def test_production_manifest_errors_raise_asset_errors(
     asset_application, asset_root, problem
 ):
     manifest = compile_assets(asset_root)
@@ -269,7 +271,7 @@ def test_production_manifest_errors_never_fall_back_to_sources(
         "manifest",
     ],
 )
-def test_asset_symlinks_cannot_expose_files(
+def test_static_requests_reject_asset_symlinks(
     asset_application, asset_root, tmp_path, location
 ):
     outside = tmp_path.parent / f"{tmp_path.name}-outside"
@@ -576,7 +578,6 @@ def test_native_static_directory_and_url_are_customizable(
         asset_root / ("frontend" if environment == "development" else "static")
     )
     assert app.static_url_path == "/rails/assets"
-    assert app.view_functions["static"] == app.send_static_file
     with app.test_request_context(environ_overrides={"SCRIPT_NAME": "/mounted"}):
         assert asset_path("logo.png").startswith("/mounted/rails/assets/images/logo")
     with app.test_request_context():
@@ -606,7 +607,7 @@ def test_native_flask_cache_configuration_is_respected(
     assert bool(response.cache_control.no_cache) == (not max_age)
 
 
-def test_static_serving_does_not_depend_on_the_current_manifest(
+def test_static_serving_preserves_published_assets_across_manifest_changes(
     asset_root, asset_application
 ):
     compile_assets(asset_root)
@@ -623,7 +624,7 @@ def test_static_serving_does_not_depend_on_the_current_manifest(
 
 
 @pytest.mark.parametrize("environment", ["development", "production"])
-def test_static_root_cannot_be_replaced_with_a_symlink_after_boot(
+def test_static_serving_rejects_root_symlink_replacement_after_boot(
     asset_root, asset_application, tmp_path, environment
 ):
     compile_assets(asset_root)

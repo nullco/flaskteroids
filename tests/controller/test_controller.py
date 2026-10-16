@@ -47,7 +47,9 @@ def my_controller():
 
 
 @pytest.mark.usefixtures("app_ctx")
-def test_controller_flow(my_controller, render_template):
+def test_controller_runs_callbacks_in_order_and_renders_action(
+    my_controller, render_template
+):
     my_controller().action()
     calls = [
         "before_first",

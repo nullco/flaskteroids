@@ -118,7 +118,7 @@ def test_clearing_pending_collection_cancels_unshared_uploads(
     write.assert_not_called()
 
 
-def test_rolled_back_shared_attachment_does_not_keep_a_cancelled_upload(
+def test_rollback_of_shared_attachment_cancels_unreferenced_upload(
     app, storage, upload, mocker
 ):
     with app.app_context(), Document.transaction():
@@ -134,7 +134,7 @@ def test_rolled_back_shared_attachment_does_not_keep_a_cancelled_upload(
         assert not Document.first().avatar.attached()
 
 
-def test_requests_do_not_commit_an_explicit_ambient_transaction(
+def test_requests_preserve_explicit_ambient_transaction(
     app, client, storage, upload, mocker
 ):
     app.add_url_rule("/request-count", view_func=lambda: {"count": Document.count()})
@@ -176,7 +176,7 @@ def test_streamed_test_requests_keep_their_isolated_context(
         assert Document.count() == 2
 
 
-def test_request_helper_does_not_commit_ambient_uploads(
+def test_request_helper_preserves_ambient_upload_transaction(
     app, client, storage, upload, mocker
 ):
     def create_document():

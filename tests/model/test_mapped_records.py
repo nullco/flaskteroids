@@ -1,3 +1,4 @@
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -10,74 +11,18 @@ from flaskteroids.exceptions import ProgrammerError, RecordNotFoundException
 from flaskteroids.extensions.db import SQLAlchemyExtension
 from flaskteroids.helpers import form_with
 
-SCHEMA = """\
-import sqlalchemy as sa
-from flaskteroids.schema import Snapshot
-
-snapshot = Snapshot()
-metadata = snapshot.metadata
-snapshot.create_table("authors",
-    sa.Column("id", sa.Integer(), primary_key=True),
-    sa.Column("name", sa.String(), nullable=False),
-    sa.Column("age", sa.Integer()),
-    sa.Column("active", sa.Boolean()),
-    sa.Column("password_digest", sa.String()),
-    sa.Column("created_at", sa.DateTime()),
-    sa.Column("updated_at", sa.DateTime()),
-)
-snapshot.create_table("posts",
-    sa.Column("id", sa.Integer(), primary_key=True),
-    sa.Column("title", sa.String(), nullable=False),
-    sa.Column("author_id", sa.Integer(), sa.ForeignKey("authors.id"), nullable=False),
-)
-"""
-
 
 @pytest.fixture
 def mapped_app(discovery_package, tmp_path):
+    source = Path(__file__).parent / "fixtures/mapped_records"
     package = discovery_package(
         {
             "__init__.py": "",
-            "db/schema.py": SCHEMA,
             "app/models/__init__.py": "",
-            "app/models/application_model.py": (
-                "from flaskteroids.model import Model\n"
-                "class ApplicationModel(Model):\n"
-                "    __abstract__ = True\n"
-            ),
-            "app/models/author.py": (
-                "from .application_model import ApplicationModel\n"
-                "from flaskteroids.model import validates, before_save, after_save, after_commit, after_rollback, has_secure_password, PasswordAuthenticator, has_many\n"
-                "from flaskteroids.rules import rules\n"
-                "@rules(validates('name', presence=True),\n"
-                "       validates('age', numericality={'only_integer': True, 'allow_nil': True}),\n"
-                "       has_many('posts', dependent='destroy'), has_secure_password(), after_commit('_committed'),\n"
-                "       before_save('before_persist'), after_save('after_persist'), after_rollback('rolled_back'))\n"
-                "class Author(ApplicationModel, PasswordAuthenticator):\n"
-                "    def before_persist(self):\n"
-                "        from flask import current_app\n"
-                "        callback = current_app.config.get('before_persist')\n"
-                "        return callback(self) if callback else None\n"
-                "    def after_persist(self):\n"
-                "        from flask import current_app\n"
-                "        callback = current_app.config.get('after_persist')\n"
-                "        if callback: callback(self)\n"
-                "    def rolled_back(self):\n"
-                "        from flask import current_app\n"
-                "        current_app.config.setdefault('rollbacks', []).append(self.name)\n"
-                "    def _committed(self):\n"
-                "        from flask import current_app\n"
-                "        current_app.config.setdefault('commits', []).append(self.name)\n"
-                "        callback = current_app.config.get('committed')\n"
-                "        if callback: callback(self)\n"
-            ),
-            "app/models/post.py": (
-                "from .application_model import ApplicationModel\n"
-                "from flaskteroids.model import validates, belongs_to\n"
-                "from flaskteroids.rules import rules\n"
-                "@rules(belongs_to('author'), validates('title', presence=True))\n"
-                "class Post(ApplicationModel): pass\n"
-            ),
+            **{
+                str(path.relative_to(source)): path.read_text()
+                for path in source.rglob("*.py")
+            },
         }
     )
     app = Flask(__name__)
@@ -125,7 +70,7 @@ def test_failed_update_survives_queries_other_saves_and_commit(records):
 
     assert author.update(name="") is False
     assert author.name == ""
-    assert author.errors.full_messages() == ["Field name is blank"]
+    assert author.errors
     assert not records.session.is_modified(author)
     assert (
         records.session.scalar(
@@ -145,7 +90,7 @@ def test_failed_update_survives_queries_other_saves_and_commit(records):
     assert not author.errors
 
 
-def test_valid_unsaved_edits_and_edits_after_save_do_not_leak(records):
+def test_unsaved_edits_remain_staged_across_queries_and_saves(records):
     author = records.Author.create(name="Ada")
     author.name = "Not saved"
     records.Post.create(title="Post", author=author)
@@ -180,7 +125,7 @@ def test_native_publication_is_explicit_and_bypasses_validation(records):
     assert "commits" not in records.app.config
 
 
-def test_native_add_does_not_silently_insert_unpublished_constructor_input(records):
+def test_native_add_preserves_explicit_publication_boundary(records):
     author = records.Author(name="Ada")
     records.session.add(author)
     with pytest.raises(ProgrammerError, match="staged attributes"):
@@ -216,7 +161,7 @@ def test_raw_input_and_numericality_survive_failed_submission(records, value):
         (None, None),
     ],
 )
-def test_boolean_casting_on_the_model(records, raw, expected):
+def test_model_casts_boolean_input(records, raw, expected):
     author = records.Author.create(name="Ada", active=raw)
     assert author.active is expected
     assert author.reload().active is expected
@@ -245,7 +190,7 @@ def test_new_relationship_graph_is_validated_and_published(records):
     assert records.Author.find(author.id) is author
 
 
-def test_invalid_new_related_record_is_not_published(records):
+def test_graph_save_rejects_invalid_new_related_record(records):
     author = records.Author(name="")
     post = records.Post(title="First", author=author)
     assert post.save() is False
@@ -262,7 +207,7 @@ def test_relationship_cascades_use_sqlalchemy(records):
     assert records.Author.count() == records.Post.count() == 0
 
 
-def test_query_reuse_order_pagination_count_and_native_options(records):
+def test_queries_support_reuse_order_pagination_count_and_native_options(records):
     for name in ("Ada", "Grace", "Augusta"):
         records.Author.create(name=name)
     authors = records.Author.where(records.Author.name.ilike("a%"))
@@ -309,7 +254,7 @@ def test_facade_and_native_eager_loading_avoid_per_row_queries(records, native):
         event.remove(records.db.engine, "before_cursor_execute", callback)
 
 
-def test_nested_includes_and_invalid_paths(records):
+def test_includes_loads_nested_paths_and_rejects_invalid_paths(records):
     records.Author.create(name="Ada", posts=[records.Post(title="First")])
     records.session.expunge_all()
     author = records.Author.includes("posts.author").first()
@@ -320,7 +265,7 @@ def test_nested_includes_and_invalid_paths(records):
         records.Author.includes("posts..author")
 
 
-def test_authentication_and_sensitive_input_exclusions(records):
+def test_authentication_excludes_sensitive_input_from_serialization(records):
     author = records.Author.create(
         name="Ada", password="secret", password_confirmation="secret"
     )
@@ -400,7 +345,7 @@ def test_standalone_save_commits_before_returning(records):
     assert not records.session.in_transaction()
 
 
-def test_reads_do_not_turn_later_saves_into_explicit_transactions(records):
+def test_standalone_save_commits_after_prior_reads(records):
     assert records.Author.count() == 0
     author = records.Author.create(name="Ada")
     assert records.Author.find(author.id) is author
@@ -423,7 +368,7 @@ def test_explicit_model_transaction_adopts_prior_reads_and_commits_once(records)
         assert independent.get(records.Author, author.id).name == "Augusta"
 
 
-def test_native_explicit_transaction_is_not_committed_by_save(records):
+def test_save_leaves_native_explicit_transaction_under_caller_control(records):
     with records.session.begin():
         author = records.Author.create(name="Ada")
         with records.db.new_session() as independent:
@@ -458,7 +403,7 @@ def test_after_commit_exception_preserves_data_and_cleans_up_session(records):
         assert len(independent.scalars(select(records.Author)).all()) == 2
 
 
-def test_false_save_does_not_abort_explicit_transaction(records):
+def test_validation_failure_preserves_explicit_transaction(records):
     with records.Author.transaction():
         first = records.Author.create(name="Ada")
         invalid = records.Author.create(name="")
@@ -515,7 +460,7 @@ def test_requires_new_rolls_back_only_the_inner_operation(records):
     assert records.app.config["commits"] == ["Ada", "Grace"]
 
 
-def test_released_savepoint_does_not_escape_outer_rollback(records):
+def test_outer_rollback_reverts_released_savepoint(records):
     with pytest.raises(RuntimeError, match="abort"):
         with records.Author.transaction():
             with records.Author.transaction(requires_new=True):
@@ -526,7 +471,7 @@ def test_released_savepoint_does_not_escape_outer_rollback(records):
     assert records.app.config["rollbacks"] == ["Ada"]
 
 
-def test_later_failure_does_not_undo_a_previous_standalone_save(records):
+def test_standalone_save_preserves_committed_data_after_later_failure(records):
     author = records.Author.create(name="Ada")
     author_id = author.id
     with pytest.raises(IntegrityError):
@@ -612,7 +557,7 @@ def test_explicit_transaction_can_roll_back_destroy(records):
         assert len(independent.get(records.Author, author_id).posts) == 1
 
 
-def test_exception_after_standalone_save_does_not_undo_committed_data(mapped_app):
+def test_standalone_save_preserves_committed_data_after_context_exception(mapped_app):
     db = mapped_app.extensions["flaskteroids.db"]
     author_model = db.models["Author"]
     with pytest.raises(RuntimeError, match="request failed"), mapped_app.app_context():

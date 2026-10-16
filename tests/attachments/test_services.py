@@ -16,7 +16,7 @@ DATA = b"file contents"
 CHECKSUM = base64.b64encode(hashlib.md5(DATA, usedforsecurity=False).digest()).decode()
 
 
-def test_disk_service_upload_download_and_delete(tmp_path):
+def test_disk_service_supports_upload_download_and_delete(tmp_path):
     service = DiskService(tmp_path)
     assert not service.exist(KEY)
     service.upload(KEY, DATA, checksum=CHECKSUM, content_type="text/plain")
@@ -44,14 +44,14 @@ def test_disk_rejects_paths_that_escape_root_through_symlinks(tmp_path):
         DiskService(root).path_for(KEY)
 
 
-def test_bad_checksum_does_not_write_a_file(tmp_path):
+def test_disk_service_rejects_bad_checksum_before_writing(tmp_path):
     service = DiskService(tmp_path)
     with pytest.raises(IntegrityError):
         service.upload(KEY, DATA, checksum="incorrect", content_type="text/plain")
     assert not service.exist(KEY)
 
 
-def test_s3_upload_download_and_idempotent_delete(mocker):
+def test_s3_service_supports_upload_download_and_idempotent_delete(mocker):
     client = mocker.Mock()
     client.get_object.return_value = {"Body": io.BytesIO(DATA)}
     service = S3Service(bucket="uploads", client=client)
@@ -99,7 +99,7 @@ def test_s3_rails_configuration_maps_to_sdk_options(mocker):
     assert options["config"].s3["addressing_style"] == "path"
 
 
-def test_s3_existence_does_not_hide_permission_errors(mocker):
+def test_s3_existence_propagates_permission_errors(mocker):
     exceptions = pytest.importorskip("botocore.exceptions")
     client = mocker.Mock()
     service = S3Service(bucket="uploads", client=client)

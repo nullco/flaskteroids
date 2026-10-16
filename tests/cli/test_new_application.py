@@ -6,6 +6,7 @@ import tomllib
 from pathlib import Path
 
 from flaskteroids.cli.flaskteroids import cli
+from tests.assertions import assert_pytest_passed
 
 
 def test_generated_application_declares_runtime_dependencies(
@@ -100,7 +101,7 @@ def test_generated_model_can_boot_migrate_and_use_fresh_mappings(tmp_path, monke
     )
     root = tmp_path / "weblog"
     environment = os.environ | {
-        "PYTHONPATH": str(Path(__file__).parents[2]),
+        "PYTHONPATH": os.pathsep.join((str(root), str(Path(__file__).parents[2]))),
         "FLASK_ENV": "development",
     }
 
@@ -148,20 +149,7 @@ with patch('sqlalchemy.engine.Engine.connect', side_effect=AssertionError('unexp
     assert "posts" in (root / "db/schema.py").read_text()
     assert not (root / "app/schema.py").exists()
 
-    fresh = run(
-        "-c",
-        """
-from wsgi import app
-from app.models.post import Post
-with app.app_context():
-    post = Post.create(title="first")
-    assert post.id
-    assert Post.find(post.id).title == "first"
-    assert post.update(title="second")
-    assert post.reload().title == "second"
-    assert Post.where(title="second").count() == 1
-""",
-    )
+    fresh = run(str(Path(__file__).parent / "fixtures/application/fresh_records.py"))
     assert fresh.returncode == 0, fresh.stdout + fresh.stderr
 
 
@@ -206,6 +194,7 @@ def test_generated_scaffold_controller_tests_pass(tmp_path, monkeypatch):
     )
     assert mailer.returncode == 0, mailer.stderr
 
+    report = root / "generated-tests.xml"
     tests = subprocess.run(
         [
             sys.executable,
@@ -213,6 +202,8 @@ def test_generated_scaffold_controller_tests_pass(tmp_path, monkeypatch):
             "flask",
             "test",
             "-q",
+            "--junitxml",
+            str(report),
             "test/controllers",
             "test/mailers",
         ],
@@ -223,11 +214,19 @@ def test_generated_scaffold_controller_tests_pass(tmp_path, monkeypatch):
         check=False,
     )
     assert tests.returncode == 0, tests.stdout + tests.stderr
-    assert "health_controller_test.py" in tests.stdout or "9 passed" in tests.stdout
-    assert "9 passed" in tests.stdout
+    assert_pytest_passed(report)
 
+    system_report = root / "system-tests.xml"
     system_tests = subprocess.run(
-        [sys.executable, "-m", "flask", "test:system", "-q"],
+        [
+            sys.executable,
+            "-m",
+            "flask",
+            "test:system",
+            "-q",
+            "--junitxml",
+            str(system_report),
+        ],
         cwd=root,
         env=environment,
         capture_output=True,
@@ -235,4 +234,4 @@ def test_generated_scaffold_controller_tests_pass(tmp_path, monkeypatch):
         check=False,
     )
     assert system_tests.returncode == 0, system_tests.stdout + system_tests.stderr
-    assert "1 passed" in system_tests.stdout
+    assert_pytest_passed(system_report)

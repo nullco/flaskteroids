@@ -1,85 +1,68 @@
+import ast
+
 import pytest
 
-import flaskteroids.cli.artifacts as artifacts
-from flaskteroids.cli.artifacts import ArtifactsBuilder, ArtifactsBuilderException
-
-
-@pytest.fixture(autouse=True)
-def subprocess(mocker):
-    subprocess = mocker.patch.object(artifacts, "subprocess")
-    res = mocker.Mock()
-    res.returncode = 0
-    subprocess.run.return_value = res
-    return subprocess
-
-
-@pytest.fixture(autouse=True)
-def os(mocker):
-    os = mocker.patch.object(artifacts, "os")
-    return os
+from flaskteroids.cli.artifacts import ArtifactsBuilder
 
 
 @pytest.fixture
-def builder():
-    return ArtifactsBuilder(".")
+def builder(tmp_path, mocker):
+    notify = mocker.Mock()
+    return ArtifactsBuilder(str(tmp_path), notify), notify
 
 
-@pytest.fixture(autouse=True)
-def path(mocker):
-    Path = mocker.patch.object(artifacts, "Path")
-    return Path
+@pytest.mark.parametrize("name", ["test.txt", "nested/test.txt"])
+@pytest.mark.parametrize(
+    "contents, expected", [(None, ""), ("\n    hello world\n", "hello world\n")]
+)
+def test_file_creates_parent_directories_and_writes_clean_contents(
+    builder, tmp_path, name, contents, expected
+):
+    instance, notify = builder
+
+    instance.file(name, contents)
+
+    assert (tmp_path / name).read_text() == expected
+    notify.assert_called_once()
+    assert name in notify.call_args.args[0]
 
 
-def test_create_file(builder):
-    builder.file("test.txt")
+@pytest.mark.parametrize("name", ["bin/start", "scripts/setup.sh"])
+def test_file_makes_scripts_executable(builder, tmp_path, name):
+    instance, notify = builder
+
+    instance.file(name, "#!/bin/sh\n")
+
+    assert (tmp_path / name).stat().st_mode & 0o111 == 0o111
+    notify.assert_called_once()
+    assert name in notify.call_args.args[0]
 
 
-def test_create_dir(builder):
-    builder.file("test/")
+@pytest.mark.parametrize("name", [None, "nested/directory"])
+def test_dir_creates_directories_idempotently(builder, tmp_path, name):
+    instance, notify = builder
+    target = tmp_path / name if name else tmp_path
+
+    instance.dir(name)
+    instance.dir(name)
+
+    assert target.is_dir()
+    assert notify.call_count == 2
 
 
-def test_run(builder):
-    builder.run("ls -la")
+def test_modify_py_file_writes_transformed_source(builder, tmp_path):
+    instance, notify = builder
+    source = tmp_path / "test.py"
+    source.write_text('def hello():\n    return "original"\n')
 
+    class ReplaceGreeting(ast.NodeTransformer):
+        def visit_Constant(self, node):
+            return ast.copy_location(ast.Constant(value="modified"), node)
 
-def test_run_fails(builder, subprocess):
-    subprocess.run.return_value.returncode = -1
-    with pytest.raises(ArtifactsBuilderException):
-        builder.run("ls -la")
+    instance.modify_py_file("test.py", ReplaceGreeting)
 
-
-def test_create_file_with_contents(builder):
-    builder.file("test.txt", "hello world")
-
-
-def test_dir_without_name(builder):
-    builder.dir()
-
-
-def test_python_run(builder):
-    builder.python_run("pip install something")
-
-
-def test_python_run_fails(builder, subprocess):
-    subprocess.run.return_value.returncode = -1
-    with pytest.raises(ArtifactsBuilderException):
-        builder.python_run("pip install something")
-
-
-def test_modify_py_file(builder, mocker):
-    mocker.patch(
-        "builtins.open", mocker.mock_open(read_data="def hello():\n    pass\n")
+    assert ast.dump(ast.parse(source.read_text())) == ast.dump(
+        ast.parse('def hello():\n    return "modified"\n')
     )
-    mock_parse = mocker.patch("flaskteroids.cli.artifacts.ast.parse")
-    mock_tree = mocker.Mock()
-    mock_parse.return_value = mock_tree
-    mocker.patch(
-        "flaskteroids.cli.artifacts.ast.unparse",
-        return_value='def hello():\n    print("modified")\n',
-    )
-
-    def visitor():
-        visitor.visit = lambda tree: tree
-        return visitor
-
-    builder.modify_py_file("test.py", visitor)
+    notify.assert_called_once()
+    assert "test.py" in notify.call_args.args[0]

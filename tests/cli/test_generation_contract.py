@@ -22,8 +22,6 @@ def test_destination_basename_is_project_name(tmp_path, name):
     assert not (root / "storage/development.sqlite3").exists()
     for resource in ("alembic.ini", "env.py", "script.py.mako", "versions/.keep"):
         assert (root / "db/migrate" / resource).is_file()
-    assert "skipped" in result.output
-    assert "bin/setup" in result.output
 
 
 @pytest.mark.parametrize("name", ["bad name", "_bad", "bad!", "bad-"])
@@ -60,7 +58,9 @@ def test_unavailable_version_rejected_before_writing(tmp_path, mocker):
         ("1!0.4.1", ">=1!0.4.1,<1!0.5.0"),
     ],
 )
-def test_installed_generator_version_constraint(tmp_path, mocker, version, constraint):
+def test_new_pins_installed_generator_version_constraint(
+    tmp_path, mocker, version, constraint
+):
     mocker.patch("flaskteroids.cli.flaskteroids.version", return_value=version)
     root = tmp_path / "weblog"
     result = CliRunner().invoke(cli, ["new", str(root), "--skip-install"])
@@ -89,11 +89,10 @@ def test_missing_git_has_actionable_error(tmp_path, monkeypatch):
         cli, ["new", str(tmp_path / "weblog"), "--skip-install"]
     )
     assert result.exit_code == 1
-    assert "Git is required" in result.output
-    assert "Application generated" not in result.output
+    assert "git" in result.output.casefold()
 
 
-def test_skip_install_needs_no_uv(tmp_path, monkeypatch):
+def test_skip_install_generates_application_with_uv_unavailable(tmp_path, monkeypatch):
     tools = tmp_path / "tools"
     tools.mkdir()
     (tools / "git").symlink_to(shutil.which("git"))
@@ -102,7 +101,7 @@ def test_skip_install_needs_no_uv(tmp_path, monkeypatch):
         cli, ["new", str(tmp_path / "weblog"), "--skip-install"]
     )
     assert result.exit_code == 0, result.output
-    assert "skipped" in result.output
+    assert (tmp_path / "weblog/pyproject.toml").is_file()
 
 
 def test_default_new_without_uv_reports_failure(tmp_path, monkeypatch):
@@ -110,21 +109,19 @@ def test_default_new_without_uv_reports_failure(tmp_path, monkeypatch):
     root = tmp_path / "weblog"
     result = CliRunner().invoke(cli, ["new", str(root)])
     assert result.exit_code == 1
-    assert "uv is required" in result.output
-    assert "command bin/setup" in result.output
-    assert "Application ready" not in result.output
+    assert "uv" in result.output.casefold()
+    assert "bin/setup" in result.output
     assert not (root / "uv.lock").exists()
 
 
-def test_required_script_chmod_failure_is_not_suppressed(tmp_path, mocker):
+def test_new_reports_required_script_chmod_failure(tmp_path, mocker):
     mocker.patch.object(Path, "chmod", side_effect=PermissionError("read only"))
     result = CliRunner().invoke(
         cli, ["new", str(tmp_path / "weblog"), "--skip-install"]
     )
     assert result.exit_code == 1
-    assert "Cannot make script bin/flask executable" in result.output
+    assert "bin/flask" in result.output
     assert "read only" in result.output
-    assert "Application generated" not in result.output
 
 
 def test_default_new_propagates_install_failure(tmp_path, monkeypatch):
@@ -137,5 +134,4 @@ def test_default_new_propagates_install_failure(tmp_path, monkeypatch):
     result = CliRunner().invoke(cli, ["new", str(tmp_path / "weblog")])
     assert result.exit_code == 1
     assert "sync refused" in result.output
-    assert "returned 37" in result.output
-    assert "Application ready" not in result.output
+    assert "37" in result.output

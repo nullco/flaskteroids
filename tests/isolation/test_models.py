@@ -47,7 +47,7 @@ def test_shared_models_use_independent_databases_and_identity_maps(make_app, ord
         assert Story.count() == 2
 
 
-def test_building_app_b_inside_a_does_not_change_a(make_app):
+def test_nested_app_setup_preserves_outer_app_models_and_database(make_app):
     app_a = make_app("a")
     with app_a.app_context():
         author = Author.create(name="a", passcode="secret")
@@ -61,7 +61,7 @@ def test_building_app_b_inside_a_does_not_change_a(make_app):
 
 
 @pytest.mark.parametrize("tables", [(), ("authors",), ("stories",)])
-def test_incomplete_database_does_not_use_another_apps_engine(make_app, tables):
+def test_incomplete_database_reports_its_own_missing_tables(make_app, tables):
     app_a = make_app("a")
     app_b = make_app("b", tables=tables)
     with app_a.app_context():
@@ -78,13 +78,13 @@ def test_incomplete_database_does_not_use_another_apps_engine(make_app, tables):
         assert author.name == "a"
 
 
-def test_model_construction_and_expressions_need_neither_database_nor_context():
+def test_model_construction_and_expressions_work_in_standalone_code():
     story = Story(title="draft")
     story.title = "edited"
     assert story.title == "edited"
     assert story.changes == {"title": "edited"}
     assert inspect(story).transient
-    assert str(Story.title == "edited") == "stories.title = :title_1"
+    assert (Story.title == "edited").compare(Story.__table__.c.title == "edited")
 
 
 def test_model_queries_require_app_context(make_app):
@@ -154,7 +154,7 @@ def test_database_constraints_remain_authoritative(make_app):
         assert Story.count() == 0
 
 
-def test_unrelated_live_columns_do_not_change_explicit_model_schema(make_app):
+def test_explicit_model_schema_preserves_declared_columns(make_app):
     app = make_app("extra_column")
     with app.app_context():
         session.execute(text("ALTER TABLE authors ADD COLUMN extra_column TEXT"))
@@ -189,7 +189,7 @@ def test_database_failures_propagate_without_becoming_mapping_errors(make_app, m
     assert app.extensions["flaskteroids.db"] is db
 
 
-def test_repeated_database_setup_does_not_change_models_or_identity(make_app):
+def test_repeated_database_setup_preserves_models_and_identity(make_app):
     app = make_app("repeat")
     extension = app.extensions["flaskteroids.db"]
     with app.app_context():

@@ -76,12 +76,33 @@ protection; reusable release callers already wait for the entire test workflow.
 
 ### Tests implementation
 
-When implementing tests, consider the following
+When implementing or cleaning up tests:
 
-* Use pytest and pytest-mock conventions
-* Use pytest fixtures
-* Keep code simple and out of unnecessary comments
-* Only test things via their public APIs. (No _ methods, etc)
+* Use pytest and pytest-mock conventions and fixtures.
+* Avoid duplication: share setup with fixtures and parameterize cases that verify
+  the same behavior. Keep distinct contracts and testing layers explicit.
+* Write affirmative, behavior-focused names (`test_save_persists_valid_record`),
+  rather than vague labels or statements about what does not happen. Error and
+  security contracts belong here too (`test_save_rejects_invalid_record`); retain
+  meaningful rejection, failure, and boundary coverage.
+* Test the current supported public API, not backward compatibility with retired
+  APIs, import paths, or data formats.
+* Remove obsolete scenarios and assertions when their behavior is no longer part
+  of the supported contract. Keep regression tests for behavior that remains
+  relevant, naming them after that behavior rather than its history.
+* Keep executable test suites, subprocess scenarios, and substantial application
+  fixtures in normal source files, copied or executed by the test as needed. Do not
+  embed whole programs in strings; pass varying inputs as arguments or environment
+  values. Small snippets are appropriate when source text itself is the test input
+  (for example, parser cases, malformed modules, or import-failure probes).
+* Assert the behavior named by the test, not every observable detail. Prefer
+  parsed HTML/JSON, public state, exception types, and structured reports over
+  exact prose, whitespace, attribute order, or fixed test-count summaries. Keep
+  exact values when they define the contract (for example, status codes, escaping,
+  custom messages, or deliberately tested output formats), and keep failures
+  diagnostic. Avoid repeating low-level assertions in higher-level workflows.
+* Keep code simple and avoid unnecessary comments.
+* Only test through public APIs (no private methods, etc.).
 
 ## Rails-first developer experience
 

@@ -1,5 +1,6 @@
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -42,14 +43,13 @@ PUBLIC_NAMES = {
 CONFIG_NAMES = {"PresenceConfig", "LengthConfig", "ComparisonConfig"}
 
 
-def test_length_config():
+def test_length_config_exposes_minimum_and_maximum():
     from flaskteroids.model import LengthConfig
 
-    assert not hasattr(model, "LenghtConfig")
     assert LengthConfig(minimum=1, maximum=72) == {"minimum": 1, "maximum": 72}
 
 
-def test_public_model_imports():
+def test_model_exports_public_api_and_configuration_types():
     assert PUBLIC_NAMES <= set(model.__all__)
     for name in PUBLIC_NAMES | CONFIG_NAMES:
         assert getattr(model, name) is not None
@@ -68,42 +68,12 @@ def test_public_model_imports():
         "flaskteroids._models.query",
     ],
 )
-def test_model_imports_without_app_context_in_fresh_process(first_import):
-    script = f"""
-import importlib
-from unittest.mock import patch
-from flask import has_app_context
-with patch("sqlalchemy.create_engine") as database, patch("celery.Celery") as queue:
-    importlib.import_module({first_import!r})
-    database.assert_not_called()
-    queue.assert_not_called()
-from flaskteroids.model import *
-from flaskteroids.model import PresenceConfig, LengthConfig, ComparisonConfig
-import sys
-from types import ModuleType
-import sqlalchemy as sa
-from sqlalchemy import inspect
-from flaskteroids.schema import Snapshot
-schema = ModuleType('import_test_schema')
-snapshot = Snapshot()
-snapshot.create_table('users', sa.Column('id', sa.Integer(), primary_key=True))
-schema.metadata = snapshot.metadata
-class ApplicationModel(Model):
-    __abstract__ = True
-    __schema_module__ = schema.__name__
-class User(ApplicationModel, PasswordAuthenticator):
-    pass
-assert not has_app_context()
-assert '__mapper__' not in vars(User)
-assert schema.__name__ not in sys.modules
-sys.modules[schema.__name__] = schema
-with patch('sqlalchemy.engine.Engine.connect', side_effect=AssertionError('unexpected connection')):
-    assert User.prepare() is User
-    assert inspect(User).class_ is User
-assert not hasattr(schema, 'User')
-assert ModelQuery is not None
-"""
+def test_model_imports_and_preparation_work_in_standalone_processes(first_import):
+    script = Path(__file__).parent / "fixtures/model_imports.py"
     result = subprocess.run(
-        [sys.executable, "-c", script], check=False, capture_output=True, text=True
+        [sys.executable, str(script), first_import],
+        check=False,
+        capture_output=True,
+        text=True,
     )
     assert result.returncode == 0, result.stderr

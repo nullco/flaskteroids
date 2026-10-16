@@ -26,7 +26,7 @@ def test_unknown_services_raise_a_configuration_error(storage):
         storage.service("missing")
 
 
-def test_storage_credentials_and_environment_references(
+def test_storage_resolves_credentials_and_environment_references(
     storage, app, monkeypatch, mocker
 ):
     storage.configurations["amazon"] = {

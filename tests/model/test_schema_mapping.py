@@ -68,7 +68,7 @@ def load_models(package):
     return discover_models(f"{package}.app.models")
 
 
-def test_declarations_and_discovery_do_not_import_snapshot_or_connect(
+def test_discovery_defers_snapshot_loading_mapping_and_database_connections(
     model_package, mocker
 ):
     connect = mocker.patch(
@@ -104,9 +104,7 @@ def test_snapshot_location_is_independent_of_cwd_and_importable_db_packages(
 ):
     from types import ModuleType
 
-    package = model_package(
-        extra_files={"app/schema.py": 'raise AssertionError("legacy snapshot loaded")'}
-    )
+    package = model_package()
     monkeypatch.setitem(sys.modules, "db", ModuleType("db"))
     monkeypatch.setitem(sys.modules, "db.schema", ModuleType("db.schema"))
     monkeypatch.chdir(tmp_path)
@@ -114,13 +112,22 @@ def test_snapshot_location_is_independent_of_cwd_and_importable_db_packages(
     assert author(name="Ada").name == "Ada"
 
 
-def test_snapshot_dependency_file_errors_are_not_disguised(model_package):
-    models = load_models(
-        model_package(schema='open("missing_snapshot_dependency_123")')
-    )
-    with pytest.raises(FileNotFoundError) as error:
+@pytest.mark.parametrize(
+    "source, exception, attribute",
+    [
+        ('open("missing_snapshot_dependency_123")', FileNotFoundError, "filename"),
+        ("import missing_snapshot_dependency_123", ModuleNotFoundError, "name"),
+    ],
+)
+def test_snapshot_loading_propagates_dependency_errors(
+    model_package, source, exception, attribute
+):
+    models = load_models(model_package(schema=source))
+
+    with pytest.raises(exception) as error:
         models["Author"].prepare()
-    assert error.value.filename == "missing_snapshot_dependency_123"
+
+    assert getattr(error.value, attribute) == "missing_snapshot_dependency_123"
 
 
 def test_native_inspection_and_column_expressions_prepare_lazily(model_package):
@@ -130,7 +137,7 @@ def test_native_inspection_and_column_expressions_prepare_lazily(model_package):
     assert "authors" in str(select(models["Author"]))
 
 
-def test_native_identity_inverse_assignment_and_history(model_package):
+def test_native_session_preserves_identity_inverse_and_published_history(model_package):
     models = load_models(model_package())
     author, post = models["Author"], models["Post"]
     author.prepare()
@@ -157,7 +164,7 @@ def test_native_identity_inverse_assignment_and_history(model_package):
         engine.dispose()
 
 
-def test_native_relationship_escape_hatch_and_loading(model_package):
+def test_native_relationships_support_eager_loading_and_cascade_deletion(model_package):
     package = model_package(
         author="""
         from .application_model import ApplicationModel
@@ -224,7 +231,9 @@ def test_abstract_behavior_bases_skip_lookup(model_package):
 
 
 @pytest.mark.parametrize("schema", [None, "metadata = None"])
-def test_missing_or_invalid_snapshot_does_not_block_import(model_package, schema):
+def test_model_imports_defer_snapshot_validation_until_preparation(
+    model_package, schema
+):
     models = load_models(model_package(schema=schema))
     assert "__mapper__" not in vars(models["Author"])
     with pytest.raises(ProgrammerError, match="snapshot|metadata"):
@@ -241,15 +250,10 @@ def test_missing_related_table_fails_before_any_mapper_is_published(model_packag
     assert all("__mapper__" not in vars(model) for model in models.values())
 
 
-def test_snapshot_import_dependencies_are_not_disguised(model_package):
-    models = load_models(model_package(schema="import missing_snapshot_dependency_123"))
-    with pytest.raises(ModuleNotFoundError) as error:
-        models["Author"].prepare()
-    assert error.value.name == "missing_snapshot_dependency_123"
-
-
 @pytest.mark.parametrize("field", ["greeting", "save", "metadata"])
-def test_snapshot_columns_cannot_replace_model_api(model_package, field):
+def test_mapping_rejects_snapshot_columns_conflicting_with_model_api(
+    model_package, field
+):
     package = model_package(
         schema=SCHEMA.replace('sa.Column("name",', f'sa.Column("{field}",')
     )
@@ -258,7 +262,7 @@ def test_snapshot_columns_cannot_replace_model_api(model_package, field):
         models["Author"].prepare()
 
 
-def test_behavior_property_cannot_replace_snapshot_column(model_package):
+def test_mapping_rejects_properties_conflicting_with_snapshot_columns(model_package):
     models = load_models(
         model_package(
             author=AUTHOR.replace(
@@ -270,7 +274,7 @@ def test_behavior_property_cannot_replace_snapshot_column(model_package):
         models["Author"].prepare()
 
 
-def test_concrete_model_inheritance_is_not_supported_even_before_mapping(model_package):
+def test_concrete_models_reject_inheritance_before_mapping(model_package):
     author = load_models(model_package())["Author"]
     with pytest.raises(ProgrammerError, match="inherits concrete model"):
         type("SpecialAuthor", (author,), {})
@@ -411,7 +415,7 @@ def test_concurrent_first_use_publishes_one_mapping(model_package, mocker):
     connect.assert_not_called()
 
 
-def test_has_one_uses_native_inverse_without_discarding_staged_primary_key(
+def test_has_one_preserves_inverse_and_staged_primary_key(
     model_package,
 ):
     package = model_package(

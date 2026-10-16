@@ -84,7 +84,7 @@ def test_nested_replacement_rollback_preserves_outer_upload_and_callback_snapsho
 
 
 @pytest.mark.usefixtures("pending_transaction")
-def test_retaining_a_pending_blob_does_not_cancel_its_upload(upload, storage, mocker):
+def test_retaining_pending_blob_preserves_its_upload(upload, storage, mocker):
     write = mocker.spy(storage.service(), "upload")
     document = Document.create(title="Example", avatar=upload())
     blob = document.avatar.blob
@@ -157,7 +157,7 @@ def test_file_and_path_attachables_can_be_closed_before_commit(tmp_path):
     ]
 
 
-def test_no_default_upload_limit_and_large_uploads_use_streams(app, storage, mocker):
+def test_large_uploads_use_streams_and_default_to_unlimited_size(app, storage, mocker):
     assert app.config.attachments.max_upload_size is None
     write = mocker.spy(storage.service(), "upload")
     data = b"x" * (11 * 1024 * 1024)
@@ -231,7 +231,7 @@ def test_outer_rollback_discards_committed_savepoint_uploads_and_purge_jobs(
     assert not app.extensions["flaskteroids.jobs"].queue_adapter.enqueued_jobs
 
 
-def test_download_callback_receives_chunks_and_open_does_not_buffer_the_entire_file():
+def test_download_and_open_stream_file_contents_in_chunks():
     data = b"file data" * 20000
     blob = Blob.create_and_upload(io=io.BytesIO(data), filename="report.txt")
     chunks = []
@@ -279,7 +279,7 @@ def test_find_signed_returns_none_and_raising_lookup_rejects_invalid_tokens():
     assert Blob.find_signed(blob.signed_id(purpose="other")) is None
 
 
-def test_blank_and_attachment_delegation(upload):
+def test_attachments_report_blank_state_and_delegate_blob_attributes(upload):
     document = Document.new(title="Example")
     assert document.avatar.blank()
     assert not document.avatar

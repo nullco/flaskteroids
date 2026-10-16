@@ -12,6 +12,7 @@ from flaskteroids.model import (
     validates,
 )
 from flaskteroids.rules import rules
+from tests.assertions import HTML
 from tests.model.schema_support import model_base
 
 Base = declarative_base()
@@ -100,7 +101,7 @@ def test_model_json_excludes_authentication_fields(account_model, json_response,
 
 
 @pytest.mark.parametrize("state", ["new", "created", "loaded", "updated", "pending"])
-def test_model_repr_restores_class_address_and_published_columns(account_model, state):
+def test_model_repr_displays_class_address_and_published_columns(account_model, state):
     account, password_field = account_model
     values = {"name": "Alice", password_field: "secret-password"}
     user = account.new(**values) if state == "new" else account.create(**values)
@@ -122,7 +123,9 @@ def test_model_repr_restores_class_address_and_published_columns(account_model, 
     assert repr(user) == f"<{account.__name__}:{hex(id(user))} {expected}>"
 
 
-def test_model_repr_does_not_generate_reset_tokens(account_model, mocker):
+def test_model_repr_excludes_credentials_and_leaves_reset_tokens_lazy(
+    account_model, mocker
+):
     account, password_field = account_model
     user = account.create(name="Alice", **{password_field: "secret-password"})
     dumps = mocker.spy(URLSafeTimedSerializer, "dumps")
@@ -136,7 +139,9 @@ def test_model_repr_does_not_generate_reset_tokens(account_model, mocker):
     assert "passcode_digest" not in representation
 
 
-def test_model_repr_does_not_use_custom_json_serialization(account_model, mocker):
+def test_model_repr_uses_published_columns_independently_of_json_customization(
+    account_model, mocker
+):
     account, _ = account_model
     mocker.patch.object(account, "__json__", return_value={"response": "custom"})
     user = account.create(name="Alice")
@@ -168,7 +173,9 @@ def test_query_json_excludes_authentication_fields(account_model, json_response)
     assert json_response({"users": account.all()}) == {"users": expected}
 
 
-def test_json_does_not_generate_reset_tokens(account_model, json_response, mocker):
+def test_json_serialization_leaves_reset_tokens_lazy(
+    account_model, json_response, mocker
+):
     account, password_field = account_model
     user = account.create(name="Alice", **{password_field: "secret-password"})
     dumps = mocker.spy(URLSafeTimedSerializer, "dumps")
@@ -185,7 +192,9 @@ def test_json_does_not_generate_reset_tokens(account_model, json_response, mocke
     dumps.assert_called_once()
 
 
-def test_custom_json_serialization_still_works(account_model, json_response, mocker):
+def test_json_serialization_applies_custom_model_protocol(
+    account_model, json_response, mocker
+):
     account, password_field = account_model
 
     def serialize(self):
@@ -202,7 +211,7 @@ def test_custom_json_serialization_still_works(account_model, json_response, moc
 
 
 @pytest.mark.parametrize("persisted", [False, True])
-def test_forms_do_not_use_response_serialization(
+def test_forms_render_staged_values_independently_of_response_serialization(
     account_model, flask_app, mocker, persisted
 ):
     account, password_field = account_model
@@ -230,7 +239,8 @@ def test_forms_do_not_use_response_serialization(
             ),
         )
 
-    assert html.count('value="Bob"') == 2
+    fields = [attrs for tag, attrs in HTML(html).elements if tag == "input"]
+    assert sum(field.get("value") == "Bob" for field in fields) == 2
     assert "Not form data" not in html
     dumps.assert_called_once()
     assert dumps.call_args.kwargs == {"salt": "csrf-token"}

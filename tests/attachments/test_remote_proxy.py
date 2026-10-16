@@ -78,7 +78,7 @@ def test_remote_proxy_fetches_only_the_requested_range(
     assert bodies[0].closed
 
 
-def test_remote_proxy_head_and_not_modified_do_not_download(client, remote_blob):
+def test_remote_proxy_answers_head_and_not_modified_from_metadata(client, remote_blob):
     url, sdk, bodies, data = remote_blob
     response = client.head(url)
     assert response.status_code == 200
@@ -92,7 +92,7 @@ def test_remote_proxy_head_and_not_modified_do_not_download(client, remote_blob)
     assert not bodies
 
 
-def test_remote_proxy_invalid_range_does_not_download(client, remote_blob):
+def test_remote_proxy_rejects_invalid_range_before_download(client, remote_blob):
     url, sdk, bodies, data = remote_blob
     response = client.get(url, headers={"Range": f"bytes={len(data)}-"})
     assert response.status_code == 416

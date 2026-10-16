@@ -28,14 +28,14 @@ def test_generator_types_create_fresh_sqlalchemy_types(name, expected):
     assert first is not second
 
 
-def test_string_length_and_aliases():
+def test_field_aliases_share_factories_and_default_string_length():
     assert fields["string"]().length == 255
     assert fields["string"] is fields["str"]
     assert fields["integer"] is fields["int"]
     assert fields["boolean"] is fields["bool"]
 
 
-def test_supported_generator_types():
+def test_fields_expose_supported_generator_types():
     assert set(fields) == {
         "text",
         "string",

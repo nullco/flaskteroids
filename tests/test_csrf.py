@@ -61,7 +61,7 @@ def test_generate_reuses_session_nonce(client, token):
     )
 
 
-def test_generate_with_different_secret_keys(flask_app):
+def test_generate_scopes_tokens_to_secret_key(flask_app):
     with flask_app.test_request_context():
         token1 = CSRFToken(secret_key="key1").generate()
         token2 = CSRFToken(secret_key="key2").generate()
@@ -70,12 +70,12 @@ def test_generate_with_different_secret_keys(flask_app):
 
 
 @pytest.mark.parametrize("method", ["GET", "HEAD", "OPTIONS", "TRACE"])
-def test_validate_skips_methods(client, method):
+def test_validate_accepts_safe_methods(client, method):
     assert client.open("/protected", method=method).status_code == 204
 
 
 @pytest.mark.parametrize("method", ["POST", "PUT", "PATCH", "DELETE"])
-def test_validate_checks_methods(client, method):
+def test_validate_requires_tokens_for_unsafe_methods(client, method):
     response = client.open("/protected", method=method)
 
     assert response.status_code == 400
@@ -224,7 +224,7 @@ def test_validate_can_be_disabled(flask_app, client):
 
 
 @pytest.mark.parametrize("secret_key", ["", None])
-def test_generate_with_empty_secret_key(flask_app, secret_key):
+def test_generate_returns_token_with_empty_secret_key(flask_app, secret_key):
     with flask_app.test_request_context():
         token = CSRFToken(secret_key=secret_key).generate()
 

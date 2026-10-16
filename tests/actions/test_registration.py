@@ -16,7 +16,7 @@ def app_context():
 @pytest.mark.usefixtures("app_context")
 @pytest.mark.parametrize("hook", [before_action, around_action, after_action])
 @pytest.mark.parametrize("selection", [None, [], (), ["index"]])
-def test_hook_selection_order_and_deliberate_duplicates(hook, selection):
+def test_hooks_apply_selection_filters_and_preserve_registration_order(hook, selection):
     events = []
     method = "_around" if hook is around_action else "_callback"
 
@@ -61,7 +61,7 @@ def test_hook_selection_order_and_deliberate_duplicates(hook, selection):
 @pytest.mark.parametrize(
     "method,error", [("public", ProgrammerError), ("_missing", AttributeError)]
 )
-def test_invalid_hook_names_and_missing_methods(hook, method, error):
+def test_hooks_reject_invalid_names_and_missing_methods(hook, method, error):
     @rules(hook(method))
     class Example(ActionController):
         def index(self):

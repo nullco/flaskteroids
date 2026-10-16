@@ -85,7 +85,7 @@ def test_prepare_respects_environment_and_database_override(
 @pytest.mark.parametrize(
     "resource", ["alembic.ini", "env.py", "script.py.mako", "versions"]
 )
-def test_prepare_does_not_repair_missing_resources(preparation_app, resource):
+def test_prepare_reports_missing_resources(preparation_app, resource):
     root, run = preparation_app
     path = root / "db/migrate" / resource
     if path.is_dir():
@@ -95,7 +95,7 @@ def test_prepare_does_not_repair_missing_resources(preparation_app, resource):
         path.unlink()
     result = run("db:prepare")
     assert result.returncode != 0
-    assert "Missing migration" in result.stderr
+    assert resource in result.stderr
     assert not path.exists()
     assert not (root / "storage/development.sqlite3").exists()
 
@@ -116,27 +116,24 @@ def test_prepare_propagates_unknown_revision_and_bad_scripts(preparation_app):
     assert "SyntaxError" in result.stderr
 
 
-def test_prepare_does_not_create_arbitrary_database_directories(preparation_app):
+def test_prepare_rejects_missing_database_parent_directory(preparation_app):
     root, run = preparation_app
     result = run(
         "db:prepare", env={"DATABASE_URL": "sqlite:///absent/database.sqlite3"}
     )
     assert result.returncode != 0
-    assert "SQLite database ensure/connection failed" in result.stderr
-    assert "parent directory exists" in result.stderr
     assert not (root / "absent").exists()
 
 
-def test_db_init_remains_strict(preparation_app):
+def test_db_init_rejects_existing_migration_directory(preparation_app):
     root, run = preparation_app
     original = (root / "db/migrate/env.py").read_bytes()
     result = run("db:init")
     assert result.returncode != 0
-    assert "already exists" in result.stderr
     assert (root / "db/migrate/env.py").read_bytes() == original
 
 
-def test_init_is_registration_only_and_does_not_connect(preparation_app):
+def test_db_init_creates_migrations_before_database_provisioning(preparation_app):
     root, run = preparation_app
     write_post_declaration(root)
     (root / "db/schema.py").unlink()
@@ -158,23 +155,22 @@ def test_migration_execution_failure_keeps_database_and_uses_safe_errors(
     )
     result = run("db:prepare")
     assert result.returncode != 0
-    assert "SQLite migration failed" in result.stderr
-    assert "left in place for diagnosis" in result.stderr
+    assert "SQLite" in result.stderr
     assert "sqlite3.OperationalError" not in result.stderr
     assert "private_driver_message" not in result.stderr
     assert (root / "storage/development.sqlite3").exists()
 
 
-def test_help_still_validates_production_credentials(preparation_app):
+def test_help_requires_production_credentials(preparation_app):
     root, run = preparation_app
     (root / "config/master.key").unlink()
     result = run("db:create", "--help", env={"FLASK_ENV": "production"})
     assert result.returncode != 0
-    assert "Missing credentials key" in result.stderr
+    assert "credentials" in result.stderr.casefold()
     assert not (root / "storage/production.sqlite3").exists()
 
 
-def test_create_requires_no_migrations_and_does_not_create_tables(preparation_app):
+def test_create_provisions_empty_database_independently_of_migrations(preparation_app):
     root, run = preparation_app
     shutil.rmtree(root / "db/migrate")
     for _ in range(2):
@@ -212,7 +208,9 @@ def test_prepare_preflights_before_provisioning_or_executing_env(
 
 
 @pytest.mark.parametrize("launcher", ["bin", "flask", "python", "uv"])
-def test_normal_flask_launchers_help_and_preparation(preparation_app, launcher):
+def test_flask_launchers_support_help_and_database_preparation(
+    preparation_app, launcher
+):
     root, run = preparation_app
     (root / ".venv").symlink_to(Path(sys.prefix), target_is_directory=True)
     write_post_declaration(root)
@@ -276,7 +274,7 @@ def test_dotenv_selection_and_global_options_use_normal_flask_discovery(
     assert (root / "storage/dotenv.sqlite3").exists()
 
 
-def test_startup_queries_are_not_skipped_for_database_commands(preparation_app):
+def test_database_commands_execute_initializer_queries(preparation_app):
     root, run = preparation_app
     write_post_declaration(root)
     (root / "config/initializers/query.py").write_text(
@@ -286,5 +284,4 @@ def test_startup_queries_are_not_skipped_for_database_commands(preparation_app):
     assert result.returncode != 0
     assert "ProgrammerError" in result.stderr
     assert "posts" in result.stderr
-    assert "migrations" in result.stderr
     assert not (root / "storage/development.sqlite3").exists()

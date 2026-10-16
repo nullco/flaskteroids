@@ -31,7 +31,7 @@ def account_model(request, init_models):
     return Account, request.param
 
 
-def test_loaded_password_updates_and_confirmation(account_model):
+def test_loaded_accounts_validate_password_changes_and_confirmation(account_model):
     Account, field = account_model
     account = Account.create(name="one", **{field: "secret"})
     loaded = Account.find(account.id)
@@ -44,7 +44,7 @@ def test_loaded_password_updates_and_confirmation(account_model):
     assert Account.find(account.id).authenticate("changed")
 
 
-def test_missing_user_still_checks_hash(account_model, mocker):
+def test_authentication_checks_hash_for_missing_users(account_model, mocker):
     Account, field = account_model
     check = mocker.patch(
         "flaskteroids._models.authentication.check_password_hash",

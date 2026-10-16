@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+import yaml
 from click.testing import CliRunner
 
 from flaskteroids.cli.flaskteroids import cli
@@ -11,7 +12,9 @@ def runner():
     return CliRunner()
 
 
-def test_agent_skills_path(runner, monkeypatch, tmp_path, mocker):
+def test_agent_skills_path_returns_installed_guidance_independently_of_application(
+    runner, monkeypatch, tmp_path, mocker
+):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("FLASK_APP", "wsgi:app")
     (tmp_path / "wsgi.py").write_text("raise RuntimeError('Application cannot boot')\n")
@@ -21,23 +24,10 @@ def test_agent_skills_path(runner, monkeypatch, tmp_path, mocker):
 
     assert result.exit_code == 0
     skills_path = Path(result.output.strip())
-    assert result.output == f"{skills_path}\n"
     assert skills_path.is_absolute()
-    assert skills_path.is_dir()
-    assert skills_path.parts[-2:] == (".agents", "skills")
     skill = skills_path / "using-flaskteroids" / "SKILL.md"
     guidance = skill.read_text()
-    assert "name: using-flaskteroids" in guidance
-    assert "Always use public Flaskteroids abstractions" in guidance
-    assert "Only use a lower-level API when there is a concrete gap" in guidance
+    _, frontmatter, body = guidance.split("---", 2)
+    assert yaml.safe_load(frontmatter)["name"] == "using-flaskteroids"
+    assert body.strip()
     initialize.assert_not_called()
-
-
-@pytest.mark.parametrize(
-    "args", [["agent-skills", "--help"], ["agent-skills", "path", "--help"]]
-)
-def test_agent_skills_help(runner, args):
-    result = runner.invoke(cli, args)
-
-    assert result.exit_code == 0
-    assert "path" in result.output

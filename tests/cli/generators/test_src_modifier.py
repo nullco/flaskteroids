@@ -11,7 +11,7 @@ from flaskteroids.cli.generators.src_modifier import (
 class TestAddRoutes:
     """Tests for add_routes function."""
 
-    def test_add_routes_to_register_function(self):
+    def test_add_routes_appends_to_register_function(self):
         """Test adding routes to a register function."""
         source = """
 def register(router):
@@ -29,7 +29,7 @@ def register(router):
         assert isinstance(register_func.body[1], ast.Expr)
         assert isinstance(register_func.body[2], ast.Expr)
 
-    def test_add_routes_no_register_function(self):
+    def test_add_routes_preserves_modules_lacking_register_function(self):
         """Test adding routes when no register function exists."""
         source = """
 def other_func():
@@ -44,7 +44,7 @@ def other_func():
         assert len(new_tree.body) == 1
         assert new_tree.body[0].name == "other_func"
 
-    def test_add_routes_empty_list(self):
+    def test_add_routes_preserves_function_for_empty_input(self):
         """Test adding empty routes list."""
         source = """
 def register(router):
@@ -62,7 +62,7 @@ def register(router):
 class TestAddImports:
     """Tests for add_imports function."""
 
-    def test_add_imports_to_module(self):
+    def test_add_imports_inserts_after_existing_imports(self):
         """Test adding imports to a module."""
         source = """
 import os
@@ -97,7 +97,7 @@ def func():
         )
         assert isinstance(new_tree.body[4], ast.FunctionDef)
 
-    def test_add_imports_no_existing_imports(self):
+    def test_add_imports_inserts_at_start_of_module(self):
         """Test adding imports when no imports exist."""
         source = """
 def func():
@@ -115,7 +115,7 @@ def func():
         assert new_tree.body[0].names[0].name == "json"
         assert isinstance(new_tree.body[1], ast.FunctionDef)
 
-    def test_add_imports_empty_list(self):
+    def test_add_imports_preserves_module_for_empty_input(self):
         """Test adding empty imports list."""
         source = """
 import os
@@ -134,7 +134,7 @@ def func():
 class TestAddRules:
     """Tests for add_rules function."""
 
-    def test_add_rules_to_class_with_rules_decorator(self):
+    def test_add_rules_extends_existing_rules_decorator(self):
         """Test adding rules to a class decorated with @rules."""
         source = """
 @rules(
@@ -155,7 +155,7 @@ class Post(Model):
         rules_decorator = class_def.decorator_list[0]
         assert len(rules_decorator.args) == 4  # original 2 + 2 new
 
-    def test_add_rules_to_class_without_rules_decorator(self):
+    def test_add_rules_creates_rules_decorator(self):
         """Test adding rules when class has no @rules decorator."""
         source = """
 class Post(Model):
@@ -170,7 +170,7 @@ class Post(Model):
         class_def = new_tree.body[0]
         assert len(class_def.decorator_list) == 0
 
-    def test_add_rules_multiple_decorators(self):
+    def test_add_rules_preserves_other_decorators(self):
         """Test adding rules when class has multiple decorators."""
         source = """
 @other_decorator
@@ -192,7 +192,7 @@ class Post(Model):
         )
         assert len(rules_decorator.args) == 2  # original 1 + 1 new
 
-    def test_add_rules_empty_list(self):
+    def test_add_rules_preserves_class_for_empty_input(self):
         """Test adding empty rules list."""
         source = """
 @rules(belongs_to('user'))
@@ -212,7 +212,7 @@ class Post(Model):
 class TestAddBaseCls:
     """Tests for add_base_cls function."""
 
-    def test_add_base_cls_to_class_without_base(self):
+    def test_add_base_cls_adds_first_base(self):
         """Test adding base class to a class with no bases."""
         source = """
 class Post:
@@ -229,7 +229,7 @@ class Post:
         assert isinstance(class_def.bases[0], ast.Name)
         assert class_def.bases[0].id == "Model"
 
-    def test_add_base_cls_to_class_with_existing_bases(self):
+    def test_add_base_cls_appends_to_existing_bases(self):
         """Test adding base class to a class with existing bases."""
         source = """
 class Post(BaseModel):
@@ -247,7 +247,7 @@ class Post(BaseModel):
         assert "BaseModel" in base_ids
         assert "Model" in base_ids
 
-    def test_add_base_cls_already_exists(self):
+    def test_add_base_cls_preserves_existing_base(self):
         """Test adding base class when it already exists."""
         source = """
 class Post(Model):
@@ -262,7 +262,7 @@ class Post(Model):
         assert len(class_def.bases) == 1
         assert class_def.bases[0].id == "Model"
 
-    def test_add_base_cls_multiple_classes(self):
+    def test_add_base_cls_updates_each_class(self):
         """Test adding base class affects all classes in module."""
         source = """
 class Post:

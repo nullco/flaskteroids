@@ -178,7 +178,9 @@ def test_json_none_uses_json_null_without_changing_storage_semantics(engine, ses
         ("json_value", {"key": "value"}, {"key": "value"}, {"key": "value"}),
     ],
 )
-def test_model_casting_raw_input_and_database_serialization(field, raw, typed, stored):
+def test_model_casts_input_preserves_raw_values_and_serializes_for_database(
+    field, raw, typed, stored
+):
     entry = Entry.new(required_value="Required", **{field: raw})
     assert getattr(entry, field) == typed
     assert entry.read_attribute_before_type_cast(field) == raw

@@ -5,7 +5,7 @@ from sqlalchemy.engine import URL, Engine, make_url
 from flaskteroids.cli.db.config import get_config
 
 
-def test_root_relative_resources_and_literal_percent_urls_need_no_database_io(
+def test_database_configuration_resolves_root_paths_and_literal_percent_urls_lazily(
     app, tmp_path, monkeypatch, mocker
 ):
     root = tmp_path / "100% custom root"

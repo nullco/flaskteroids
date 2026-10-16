@@ -107,7 +107,7 @@ def models(init_models):
 
 
 @pytest.mark.parametrize("entry", ["direct", "constructor", "new", "create", "update"])
-def test_unknown_assignment_fails_without_saving(entry):
+def test_assignment_rejects_unknown_attributes_before_persistence(entry):
     group = Group.create(name="default")
     user = User.create(name="original", password="secret", group=group)
     with pytest.raises(AttributeError, match="User.*naem") as raised:
@@ -142,7 +142,7 @@ def test_unknown_assignment_fails_without_saving(entry):
         "_flaskteroids_model",
     ],
 )
-def test_read_only_and_protected_attributes(name):
+def test_assignment_rejects_read_only_and_protected_attributes(name):
     user = User.new()
     with pytest.raises(AttributeError, match=f"User.*{name}"):
         setattr(user, name, "secret-value")
@@ -152,7 +152,7 @@ def test_read_only_and_protected_attributes(name):
 @pytest.mark.parametrize(
     "name", ["_base_instance", "_changes", "_fields", "_flaskteroids_rules", "save"]
 )
-def test_mass_assignment_cannot_replace_framework_state(entry, name):
+def test_mass_assignment_rejects_framework_state_attributes(entry, name):
     user = User.new()
     with pytest.raises(AttributeError, match=f"User.*{name}"):
         if entry == "constructor":
@@ -195,14 +195,14 @@ def test_transients_descriptors_and_private_caches_are_instance_local(mocker, se
     assert "preview" not in html
 
 
-def test_setter_exception_is_unchanged():
+def test_assignment_propagates_setter_exception():
     user = User.new()
     with pytest.raises(ValueError, match="^application setter failed$"):
         user.rejected = "secret-value"
     assert User.count() == 0
 
 
-def test_column_conversion_and_virtual_setters():
+def test_assignment_casts_columns_and_invokes_virtual_setters():
     group = Group.create(name="default")
     user = User.create(
         name="one",
@@ -226,7 +226,7 @@ def test_uncastable_input_is_retained_before_type_cast():
     assert User.count() == 0
 
 
-def test_belongs_to_read_after_write_reassignment_and_clear():
+def test_belongs_to_reflects_assignment_reassignment_and_clearing():
     first = Group.create(name="first")
     second = Group.create(name="second")
     user = User.create(name="one", password="secret", group=first)
@@ -259,7 +259,7 @@ def test_invalid_belongs_to_assignment_keeps_both_values(value):
     assert user.reload().group.id == group.id
 
 
-def test_wrong_model_is_not_an_association_target():
+def test_belongs_to_rejects_incorrect_target_model():
     user = User.new()
     with pytest.raises(TypeError, match="User.group.*Group"):
         user.group = User.new()
@@ -285,7 +285,7 @@ def test_pending_association_reads_preserve_target_instance_state():
     assert User.count() == 0
 
 
-def test_existing_unsaved_target_cascade_with_validation_disabled():
+def test_save_cascades_unsaved_target_with_validation_disabled():
     group = Group.new()
     user = User.new(name="one", password="secret", group=group)
     assert user.save() is False

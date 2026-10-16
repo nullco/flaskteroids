@@ -10,6 +10,7 @@ import pytest
 from click.testing import CliRunner
 
 from flaskteroids.cli.flaskteroids import cli
+from tests.assertions import assert_pytest_passed
 
 
 @pytest.fixture(scope="module")
@@ -25,14 +26,14 @@ def generated_application(tmp_path_factory):
     }
     environment.update(
         FLASK_ENV="test",
-        PYTHONPATH=str(Path(__file__).parents[2]),
+        PYTHONPATH=os.pathsep.join((str(root), str(Path(__file__).parents[2]))),
         DATABASE_URL=os.environ.get("DATABASE_URL", "sqlite:///storage/test.sqlite3"),
     )
 
-    def run(*args, code=None):
+    def run(*args, script=None):
         command = (
-            [sys.executable, "-c", code]
-            if code is not None
+            [sys.executable, str(Path(__file__).parent / "scenarios" / script)]
+            if script is not None
             else [str(root / "bin/flask"), *args]
         )
         result = subprocess.run(
@@ -78,105 +79,40 @@ def test_normal_boot_declares_models_without_requiring_unmigrated_snapshots(
     generated_application,
 ):
     _, run = generated_application
+    run(script="boot.py")
+
+
+def test_generated_controller_model_and_mailer_suites_pass(generated_application):
+    root, run = generated_application
+    report = root / "generated-tests.xml"
     run(
-        code="""
-import os
-import pytest
-from sqlalchemy.engine import make_url
-from wsgi import app
-from app.models.deferred_record import DeferredRecord
-from flaskteroids.exceptions import ProgrammerError
-
-assert app.env.test
-assert make_url(app.database_url) == make_url(os.environ['DATABASE_URL'])
-with app.app_context():
-    assert app.make_shell_context()['DeferredRecord'] is DeferredRecord
-    assert '__mapper__' not in vars(DeferredRecord)
-    with pytest.raises(ProgrammerError, match='DeferredRecord.*migrations'):
-        DeferredRecord.first()
-assert app.test_client().get('/up/').status_code == 200
-"""
+        "test",
+        "-q",
+        "--junitxml",
+        str(report),
+        "test/controllers",
+        "test/models",
+        "test/mailers",
     )
-
-
-def test_generated_controller_model_and_mailer_suites(generated_application):
-    _, run = generated_application
-    result = run(
-        "test", "-q", "--tb=short", "test/controllers", "test/models", "test/mailers"
-    )
-    assert "passed" in result.stdout
-    assert "skipped" not in result.stdout
+    assert_pytest_passed(report)
 
 
 def test_repeated_preparation_preserves_records_and_credentials(generated_application):
     root, run = generated_application
     credentials = (root / "config/credentials.yml.enc").read_bytes()
-    run(
-        code="""
-from wsgi import app
-from app.models.post import Post
-with app.app_context():
-    post = Post.create(title='retained', content='original')
-    assert post.id
-"""
-    )
+    run(script="create_retained_record.py")
     run("db:create")
     run("db:prepare")
     run("db:prepare")
-    run(
-        code="""
-from wsgi import app
-from app.models.post import Post
-with app.app_context():
-    post = Post.find_by(title='retained')
-    assert post.content == 'original'
-    assert post.update(content='updated')
-    assert post.reload().content == 'updated'
-"""
-    )
+    run(script="update_retained_record.py")
     assert (root / "config/credentials.yml.enc").read_bytes() == credentials
 
 
-def test_standalone_commits_and_explicit_transaction_boundaries(generated_application):
+def test_standalone_saves_commit_and_explicit_transactions_control_rollback(
+    generated_application,
+):
     _, run = generated_application
-    run(
-        code="""
-from sqlalchemy import select
-from wsgi import app
-from app.models.post import Post
-
-with app.app_context():
-    database = app.extensions['flaskteroids.db']
-    Post.count()
-    post = Post.create(title='standalone-commit', content='durable')
-    with database.new_session() as independent:
-        assert independent.get(Post, post.id).content == 'durable'
-
-    try:
-        with Post.transaction():
-            Post.create(title='outer-rollback')
-            raise RuntimeError('abort')
-    except RuntimeError:
-        pass
-    assert Post.find_by(title='outer-rollback') is None
-
-    with Post.transaction():
-        first = Post.create(title='outer-kept')
-        try:
-            with Post.transaction(requires_new=True):
-                Post.create(title='savepoint-rollback')
-                raise RuntimeError('abort')
-        except RuntimeError:
-            pass
-        last = Post.create(title='outer-also-kept')
-    with database.new_session() as independent:
-        assert independent.get(Post, first.id) is not None
-        assert independent.get(Post, last.id) is not None
-        assert independent.scalar(select(Post).filter_by(title='savepoint-rollback')) is None
-    for record in (post, first, last):
-        assert record.destroy()
-"""
-    )
+    run(script="transactions.py")
 
 
 def test_generated_migrations_apply_and_rollback_in_fresh_applications(
@@ -190,23 +126,9 @@ def test_generated_migrations_apply_and_rollback_in_fresh_applications(
     original_schema = schema_path.read_bytes()
     run("db:migrate")
     assert schema_path.read_bytes() != original_schema
-    run(
-        code="""
-from wsgi import app
-from app.models.post import Post
-with app.app_context():
-    assert 'published' in Post.new().column_names
-"""
-    )
+    run(script="migrated_columns.py")
     run("db:rollback")
     assert schema_path.read_bytes() == original_schema
-    run(
-        code="""
-from wsgi import app
-from app.models.post import Post
-with app.app_context():
-    assert 'published' not in Post.new().column_names
-"""
-    )
+    run(script="rolled_back_columns.py")
     for migration in set(versions.glob("*.py")) - before:
         migration.unlink()

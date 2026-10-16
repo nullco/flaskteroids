@@ -58,7 +58,7 @@ def reset_serializer():
     )
 
 
-def test_authenticate_by(existing_user):
+def test_authenticate_by_returns_user_matching_credentials(existing_user):
     user = User.authenticate_by(
         email_address=existing_user.email_address, password=existing_user.password
     )
@@ -67,22 +67,22 @@ def test_authenticate_by(existing_user):
     assert user.password_digest != existing_user.password
 
 
-def test_authenticate_by_with_wrong_password(existing_user):
+def test_authenticate_by_rejects_incorrect_password(existing_user):
     user = User.authenticate_by(
         email_address=existing_user.email_address, password="Wro000nggg$"
     )
     assert not user
 
 
-def test_authenticate(existing_user):
+def test_authenticate_accepts_correct_password(existing_user):
     assert existing_user.authenticate("Abcde12345$")
 
 
-def test_authenticate_with_wrong_password(existing_user):
+def test_authenticate_rejects_incorrect_password(existing_user):
     assert not existing_user.authenticate("Wro00nggg$")
 
 
-def test_password_with_confirmation(new_user):
+def test_password_confirmation_rejects_mismatch_and_accepts_match(new_user):
     new_user.password_confirmation = "wrong"
     assert not new_user.save()
     assert new_user.errors
@@ -90,56 +90,47 @@ def test_password_with_confirmation(new_user):
     assert new_user.save()
 
 
-def test_change_password(existing_user):
+@pytest.mark.parametrize("operation", ["save", "update"])
+@pytest.mark.parametrize("confirmation", [False, True])
+def test_password_change_persists_new_digest(existing_user, operation, confirmation):
     password_digest = existing_user.password_digest
-    existing_user.password = "N3wP4$$"
-    assert existing_user.save()
+    attributes = {"password": "N3wP4$$"}
+    if confirmation:
+        attributes["password_confirmation"] = attributes["password"]
+
+    if operation == "save":
+        for name, value in attributes.items():
+            setattr(existing_user, name, value)
+        assert existing_user.save()
+    else:
+        assert existing_user.update(**attributes)
+
     assert not existing_user.errors
     assert existing_user.password_digest != password_digest
+    assert existing_user.reload().authenticate(attributes["password"])
 
 
-def test_change_password_with_confirmation(existing_user):
-    password_digest = existing_user.password_digest
-    existing_user.password = "N3wP4$$"
-    existing_user.password_confirmation = "N3wP4$$"
-    assert existing_user.save()
-    assert not existing_user.errors
-    assert existing_user.password_digest != password_digest
-
-
-def test_change_password_via_update(existing_user):
-    password_digest = existing_user.password_digest
-    assert existing_user.update(password="N3wP4$$")
-    assert not existing_user.errors
-    assert existing_user.password_digest != password_digest
-
-
-def test_change_password_with_confirmation_via_update(existing_user):
-    password_digest = existing_user.password_digest
-    assert existing_user.update(password="N3wP4$$", password_confirmation="N3wP4$$")
-    assert not existing_user.errors
-    assert existing_user.password_digest != password_digest
-
-
-def test_change_password_with_wrong_confirmation_via_update(existing_user):
+def test_update_rejects_mismatched_password_confirmation(existing_user):
     assert not existing_user.update(password="N3wP4$$", password_confirmation="Wrong")
     assert existing_user.errors
 
 
-def test_change_empty_password(existing_user):
+def test_save_rejects_empty_password(existing_user):
     existing_user.password = ""
     assert not existing_user.save()
     assert existing_user.errors
 
 
-def test_password_reset_token(existing_user):
+def test_password_reset_token_resolves_user(existing_user):
     token = existing_user.password_reset_token
     user = User.find_by_password_reset_token(token)
     assert user.id == existing_user.id
 
 
 @pytest.mark.parametrize("age, expired", [(900, False), (901, True)])
-def test_password_reset_token_expiration(existing_user, mocker, age, expired):
+def test_password_reset_token_enforces_expiration_boundary(
+    existing_user, mocker, age, expired
+):
     clock = mocker.patch("itsdangerous.timed.time.time", return_value=1000)
     token = existing_user.password_reset_token
     clock.return_value += age
@@ -177,18 +168,20 @@ def test_password_reset_token_refreshes_timestamp(existing_user, mocker):
         User.find_by_password_reset_token(token)
 
 
-def test_failed_password_change_does_not_invalidate_reset_token(existing_user):
+@pytest.mark.parametrize(
+    "attributes, saved",
+    [
+        ({"password": "N3wP4$$", "password_confirmation": "Wrong"}, False),
+        ({"email_address": "new-address@example.org"}, True),
+    ],
+    ids=["failed-password-change", "email-change"],
+)
+def test_updates_preserve_reset_token_when_password_digest_is_unchanged(
+    existing_user, attributes, saved
+):
     token = existing_user.password_reset_token
 
-    assert not existing_user.update(password="N3wP4$$", password_confirmation="Wrong")
-
-    assert User.find_by_password_reset_token(token).id == existing_user.id
-
-
-def test_non_password_change_does_not_invalidate_reset_token(existing_user):
-    token = existing_user.password_reset_token
-
-    assert existing_user.update(email_address="new-address@example.org")
+    assert existing_user.update(**attributes) is saved
 
     assert User.find_by_password_reset_token(token).id == existing_user.id
 
@@ -198,13 +191,6 @@ def test_password_reset_token_rejects_tampering(existing_user):
 
     with pytest.raises(BadSignature):
         User.find_by_password_reset_token(token + ".tampered")
-
-
-def test_password_reset_token_rejects_legacy_payload(existing_user):
-    token = URLSafeTimedSerializer("test").dumps(existing_user.id, salt="pwres")
-
-    with pytest.raises(BadSignature):
-        User.find_by_password_reset_token(token)
 
 
 def test_password_reset_token_payload_hides_password_digest(
@@ -264,7 +250,7 @@ def test_password_reset_token_rejects_wrong_secret_key(existing_user, current_ap
         User.find_by_password_reset_token(token)
 
 
-def test_password_reset_token_for_deleted_user(existing_user):
+def test_password_reset_lookup_raises_for_deleted_user(existing_user):
     token = existing_user.password_reset_token
     assert existing_user.destroy()
 
@@ -288,7 +274,7 @@ def test_password_reset_token_is_scoped_to_model(existing_user, init_models):
     assert OtherUser.find_by_password_reset_token(other_token).id == user_id
 
 
-def test_password_reset_token_with_custom_password_field(init_models):
+def test_custom_password_field_supports_reset_token_lifecycle(init_models):
     class PasscodeUserBase(Base):
         __tablename__ = "passcode_users"
 

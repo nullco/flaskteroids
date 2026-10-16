@@ -42,7 +42,7 @@ def lazy_app(tmp_path, monkeypatch):
     return create
 
 
-def test_startup_catalog_sessions_shell_and_templates_do_not_connect(
+def test_startup_catalog_sessions_shell_and_templates_defer_database_connections(
     lazy_app, tmp_path, mocker
 ):
     connection = mocker.patch.object(
@@ -65,9 +65,7 @@ def test_startup_catalog_sessions_shell_and_templates_do_not_connect(
     assert not filename.exists()
 
 
-def test_unavailable_database_is_deferred_but_startup_queries_are_not(
-    lazy_app, tmp_path
-):
+def test_startup_defers_database_access_until_a_query(lazy_app, tmp_path):
     url = f"sqlite:///{tmp_path / 'absent' / 'database.sqlite'}"
     app = lazy_app(url)
     with app.app_context(), pytest.raises(OperationalError):
@@ -113,7 +111,7 @@ def test_startup_only_discovers_models_without_preparing_mappings(
     assert not (tmp_path / "not_created.sqlite").exists()
 
 
-def test_database_schema_changes_do_not_mutate_published_mappings(make_app):
+def test_published_mappings_preserve_declared_schema_after_database_changes(make_app):
     with make_app("stable").app_context():
         mapper = inspect(Author.prepare())
         assert "extra" not in mapper.columns

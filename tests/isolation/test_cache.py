@@ -34,7 +34,7 @@ def test_cache_values_counters_and_expiry_are_app_local(make_app, mocker, order)
     assert cache.fetch(key) == "standalone"
 
 
-def test_rate_limits_do_not_leak_across_apps(make_app):
+def test_rate_limits_are_app_local(make_app):
     @rules(rate_limit(to=2, within=60))
     class LimitedController(ActionController):
         def index(self):

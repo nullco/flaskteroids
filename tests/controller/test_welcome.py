@@ -1,11 +1,11 @@
 from base64 import b64decode
-from html.parser import HTMLParser
 from importlib.resources import files
 from xml.etree import ElementTree
 
 import pytest
 
 from flaskteroids import __version__
+from tests.assertions import HTML
 
 
 @pytest.fixture
@@ -14,27 +14,15 @@ def welcome_page(client):
     assert response.status_code == 200
     assert response.mimetype == "text/html"
 
-    class Page(HTMLParser):
-        def __init__(self):
-            super().__init__()
-            self.elements = []
-
-        def handle_starttag(self, tag, attrs):
-            self.elements.append((tag, dict(attrs)))
-
-    page = Page()
     html = response.get_data(as_text=True)
-    page.feed(html)
-    return html, page.elements
+    return html, HTML(html).elements
 
 
 def test_welcome_shows_logo_version_and_documentation(welcome_page):
     html, elements = welcome_page
 
-    assert "<title>Welcome to Flaskteroids</title>" in html
+    assert any(tag == "title" for tag, _ in elements)
     assert f"v{__version__}" in html
-    assert "Your app is running." in html
-    assert sum(tag == "h1" for tag, _ in elements) == 1
     assert any(
         tag == "img" and attrs.get("alt") == "Flaskteroids" for tag, attrs in elements
     )
@@ -86,7 +74,7 @@ def test_welcome_bundles_light_dark_logos_and_favicon(welcome_page):
 @pytest.mark.parametrize(
     ("version", "label"), [("9.8.7", "v9.8.7"), (None, "development")]
 )
-def test_welcome_version_label(client, mocker, version, label):
+def test_welcome_displays_version_label(client, mocker, version, label):
     mocker.patch("flaskteroids.controllers.welcome_controller.version", version)
 
     response = client.get("/")

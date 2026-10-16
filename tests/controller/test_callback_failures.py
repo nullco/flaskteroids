@@ -81,7 +81,7 @@ def callback_request():
     return build
 
 
-def test_successful_callback_order(callback_request):
+def test_callbacks_wrap_successful_action_in_declared_order(callback_request):
     client, events = callback_request()
 
     assert client.get("/callbacks/").status_code == 202
@@ -104,7 +104,7 @@ def test_before_response_skips_action_and_other_callbacks(callback_request):
     assert events == ["before"]
 
 
-def test_before_failure_does_not_enter_around_callbacks(callback_request):
+def test_before_failure_stops_action_and_around_callbacks(callback_request):
     error = ValueError("before failed")
     client, events = callback_request(before_error=error)
 
@@ -162,7 +162,7 @@ def test_around_callback_can_halt_before_yield(callback_request, render_template
 
 
 @pytest.mark.parametrize("failure", ["inner", "outer", "both"])
-def test_cleanup_failures_do_not_skip_other_cleanup(callback_request, failure):
+def test_cleanup_failures_preserve_remaining_cleanup(callback_request, failure):
     inner_error = RuntimeError("inner cleanup failed") if failure != "outer" else None
     outer_error = RuntimeError("outer cleanup failed") if failure != "inner" else None
     client, events = callback_request(
@@ -187,9 +187,7 @@ def test_cleanup_failures_do_not_skip_other_cleanup(callback_request, failure):
 
 
 @pytest.mark.parametrize("failure", ["setup", "action"])
-def test_cleanup_errors_do_not_replace_original_exception(
-    callback_request, caplog, failure
-):
+def test_cleanup_errors_preserve_original_exception(callback_request, caplog, failure):
     error = ValueError(f"{failure} failed")
     client, events = callback_request(
         entry_error=error if failure == "setup" else None,

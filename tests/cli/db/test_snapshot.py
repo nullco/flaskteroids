@@ -114,7 +114,7 @@ def test_literal_defaults_are_available_on_new_models_but_functions_run_on_serve
         assert isinstance(first.generated_at, datetime)
 
 
-def test_explicit_null_does_not_reapply_a_server_default(snapshot_app):
+def test_explicit_null_overrides_server_default(snapshot_app):
     state = snapshot_app
     dump_schema(state.app)
     with state.app.app_context():

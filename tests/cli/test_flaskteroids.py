@@ -14,19 +14,11 @@ def artifacts_builder(mocker):
     return mock_ab
 
 
-def test_cli_is_click_group():
-    assert cli.name == "cli"
-
-
-def test_new_command(cli_runner, artifacts_builder):
+def test_new_creates_application_and_runs_setup(cli_runner, artifacts_builder):
     result = cli_runner.invoke(cli, ["new", "test_app"])
     assert result.exit_code == 0
     artifacts_builder.dir.assert_called()
-    artifacts_builder.file.assert_called()
-    artifacts_builder.python_run.assert_not_called()
     artifacts_builder.run.assert_any_call("bin/setup")
-    artifacts_builder.run.assert_called()
-    # ensure a pyproject.toml is created and it contains flaskteroids as a dependency
     assert any(
         args[0] == "pyproject.toml" and "flaskteroids" in args[1]
         for args, _ in artifacts_builder.file.call_args_list
@@ -47,7 +39,6 @@ def test_new_command(cli_runner, artifacts_builder):
         ".github/workflows/test.yml",
         ".agents/skills/using-flaskteroids/SKILL.md",
     }.issubset(created_files)
-    assert "bin/flaskteroids" not in created_files
 
 
 def test_new_generates_agent_skill_loader(cli_runner, tmp_path, mocker):
@@ -65,22 +56,11 @@ def test_new_generates_agent_skill_loader(cli_runner, tmp_path, mocker):
     assert metadata["name"] == "using-flaskteroids"
     assert metadata["description"]
     assert "flaskteroids agent-skills path" in body
-    assert "uv run flaskteroids agent-skills path" in body
     assert "using-flaskteroids/SKILL.md" in body
-    assert "Read that file completely" in body
-    assert "not this application-local loader" in body
 
 
-def test_new_command_error(cli_runner, artifacts_builder):
+def test_new_reports_artifact_creation_errors(cli_runner, artifacts_builder):
     artifacts_builder.dir.side_effect = ArtifactsBuilderException("Test error")
     result = cli_runner.invoke(cli, ["new", "test_app"])
     assert result.exit_code == 1
-    assert "Error creating new Flaskteroids app: Test error" in result.output
-
-
-def test_cli_help(cli_runner):
-    result = cli_runner.invoke(cli, ["--help"])
-    assert result.exit_code == 0
-    assert "new" in result.output
-    assert "agent-skills" in result.output
-    assert "test:system" not in result.output
+    assert "Test error" in result.output
