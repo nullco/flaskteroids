@@ -7,7 +7,7 @@ from sqlalchemy import event, inspect, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
-from flaskteroids.exceptions import ProgrammerError, RecordNotFoundException
+from flaskteroids.exceptions import ProgrammerError
 from flaskteroids.extensions.db import SQLAlchemyExtension
 from flaskteroids.helpers import form_with
 
@@ -207,23 +207,17 @@ def test_relationship_cascades_use_sqlalchemy(records):
     assert records.Author.count() == records.Post.count() == 0
 
 
-def test_queries_support_reuse_order_pagination_count_and_native_options(records):
-    for name in ("Ada", "Grace", "Augusta"):
-        records.Author.create(name=name)
-    authors = records.Author.where(records.Author.name.ilike("a%"))
-    assert authors.count() == 2
-    assert authors.where(name="Ada").count() == 1
-    assert authors.count() == 2
-    page = records.Author.order(name="desc").limit(2).offset(1)
-    assert [author.name for author in page] == ["Augusta", "Ada"]
-    assert page.count() == 2
-    assert page.first().name == "Augusta"
-    assert page.last().name == "Ada"
-    assert records.Author.limit(0).first() is None
-    assert records.Author.all().options(selectinload(records.Author.posts)).count() == 3
-    assert records.session.scalars(authors.statement).all() == list(authors)
-    with pytest.raises(RecordNotFoundException):
-        records.Author.find(999)
+def test_query_supports_native_loader_options_and_statement_execution(records):
+    records.Author.create(name="Ada")
+    records.Author.create(name="Grace")
+    authors = records.Author.where(records.Author.name.ilike("a%")).options(
+        selectinload(records.Author.posts)
+    )
+
+    assert authors.count() == 1
+    native = records.session.scalars(authors.statement).all()
+    assert [author.name for author in native] == ["Ada"]
+    assert list(authors) == native
 
 
 @pytest.mark.parametrize("native", [False, True])

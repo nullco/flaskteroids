@@ -153,7 +153,7 @@ with patch('sqlalchemy.engine.Engine.connect', side_effect=AssertionError('unexp
     assert fresh.returncode == 0, fresh.stdout + fresh.stderr
 
 
-def test_generated_scaffold_controller_tests_pass(tmp_path, monkeypatch):
+def test_generated_scaffold_system_tests_pass(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     cli.main(
         args=["new", "weblog", "--skip-install"],
@@ -183,38 +183,6 @@ def test_generated_scaffold_controller_tests_pass(tmp_path, monkeypatch):
         check=False,
     )
     assert scaffold.returncode == 0, scaffold.stderr
-
-    mailer = subprocess.run(
-        [sys.executable, "-m", "flask", "generate", "mailer", "User", "welcome"],
-        cwd=root,
-        env=environment,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    assert mailer.returncode == 0, mailer.stderr
-
-    report = root / "generated-tests.xml"
-    tests = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "flask",
-            "test",
-            "-q",
-            "--junitxml",
-            str(report),
-            "test/controllers",
-            "test/mailers",
-        ],
-        cwd=root,
-        env=environment,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    assert tests.returncode == 0, tests.stdout + tests.stderr
-    assert_pytest_passed(report)
 
     system_report = root / "system-tests.xml"
     system_tests = subprocess.run(

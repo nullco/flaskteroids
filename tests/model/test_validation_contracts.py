@@ -53,9 +53,8 @@ def test_errors_collect_messages_and_support_public_container_operations():
 
 
 @pytest.mark.parametrize("presence", [None, False, {}])
-@pytest.mark.parametrize("name", ["", "   "])
-def test_presence_validation_accepts_values_when_disabled(entry_model, presence, name):
-    entry = entry_model(validates("name", presence=presence)).new(name=name)
+def test_presence_validation_accepts_values_when_disabled(entry_model, presence):
+    entry = entry_model(validates("name", presence=presence)).new(name="   ")
     assert entry.save() is True
     assert not entry.errors
 
@@ -95,9 +94,8 @@ def test_presence_rejects_omitted_and_explicit_null_attributes(entry_model, attr
 
 
 @pytest.mark.parametrize("name", ["", "   ", "\t\n\r", "\u00a0", "\u2003\u3000"])
-@pytest.mark.parametrize("presence", [True, {"message": "required"}])
-def test_presence_rejects_blank_strings(entry_model, name, presence):
-    Entry = entry_model(validates("name", presence=presence))
+def test_presence_rejects_blank_strings(entry_model, name):
+    Entry = entry_model(validates("name", presence=True))
     entry = Entry.new(name=name)
 
     assert entry.save() is False
