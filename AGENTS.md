@@ -83,4 +83,38 @@ When implementing tests, consider the following
 * Keep code simple and out of unnecessary comments
 * Only test things via their public APIs. (No _ methods, etc)
 
+## Rails-first developer experience
+
+The primary design priority is a consistent Rails-like developer experience in
+Python. Flaskteroids is a Rails-like framework implemented using Flask,
+SQLAlchemy, and Celery, not merely a thin facade over their native APIs.
+
+* Favor Rails-like application workflows and observable behavior, not just
+  Rails-inspired method names. Keep Python syntax idiomatic where appropriate.
+* Implementation may differ substantially from Rails. Internal simplicity,
+  native backend interoperability, or fewer framework abstractions must not
+  take precedence over a coherent application-facing experience.
+* Ordinary framework tasks should not require understanding SQLAlchemy mapping,
+  session enrollment, flushing, or attribute history. Native APIs are optional
+  advanced escape hatches with explicit boundaries, not prerequisites for the
+  normal developer workflow.
+* Preserve consistent contracts across assignment, validation failures, form
+  redisplay, queries, association operations, callbacks, transactions, migrations,
+  and generators. Do not leak backend behavior into these contracts by accident.
+* Accept bounded implementation complexity and adapters when they materially
+  improve developer experience. Delegate machinery to dependencies where useful;
+  avoid unnecessarily duplicating identity maps, relationship caches, or
+  persistence engines. An application-facing association proxy is not inherently
+  undesirable merely because it is a framework abstraction.
+* Evaluate alternatives against public behavior contracts and representative
+  generated-application workflows, not only implementation size or native
+  SQLAlchemy compatibility. Check relevant Rails behavior before claiming parity.
+* When a Rails-like contract conflicts with backend behavior or an existing
+  architecture decision, surface the trade-off before changing the public API.
+  Do not silently weaken the developer experience to accommodate implementation
+  convenience. Record intentional deviations and their rationale, with tests.
+
+These priorities guide design decisions; they do not require literal Ruby syntax,
+complete Rails feature parity, or unrelated architectural rewrites.
+
 

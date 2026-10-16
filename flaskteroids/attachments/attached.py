@@ -12,7 +12,7 @@ from flaskteroids.attachments.operations import purge_blob_after_commit, upload_
 from flaskteroids.attachments.schema import attachments
 from flaskteroids.attachments.services import StorageError
 from flaskteroids.attachments.transactions import after_commit, defer_uploads
-from flaskteroids.db import session
+from flaskteroids.db import session, transactional
 from flaskteroids.declarations import model_for
 from flaskteroids.exceptions import ProgrammerError
 
@@ -304,17 +304,20 @@ class AttachedMany:
         self.record._attachment_changes.pop(self.definition.name, None)
         self.record._attachment_cache[self.definition.name] = []
 
+    @transactional
     def detach(self):
         for attachment in self.attachments:
             attachment.detach()
         self._clear_change()
 
+    @transactional
     def purge(self):
         attachments = self.attachments
         self._clear_change()
         for attachment in attachments:
             attachment.purge()
 
+    @transactional
     def purge_later(self):
         attachments = self.attachments
         self._clear_change()

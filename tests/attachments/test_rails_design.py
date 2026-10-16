@@ -13,6 +13,7 @@ pytestmark = pytest.mark.usefixtures("app_ctx")
 PNG = b"\x89PNG\r\n\x1a\n"
 
 
+@pytest.mark.usefixtures("pending_transaction")
 def test_upload_runs_once_after_commit_and_before_model_callbacks(
     upload, storage, mocker
 ):
@@ -46,6 +47,7 @@ def test_nested_commit_delays_upload_and_callbacks_until_outer_commit(
     assert len(Document.committed_contents) == before + 1
 
 
+@pytest.mark.usefixtures("pending_transaction")
 def test_nested_replacement_commits_only_the_latest_single_upload(
     upload, storage, mocker
 ):
@@ -63,6 +65,7 @@ def test_nested_replacement_commits_only_the_latest_single_upload(
     assert Document.committed_contents[-1] == PNG + b"second"
 
 
+@pytest.mark.usefixtures("pending_transaction")
 def test_nested_replacement_rollback_preserves_outer_upload_and_callback_snapshot(
     upload, storage, mocker
 ):
@@ -80,6 +83,7 @@ def test_nested_replacement_rollback_preserves_outer_upload_and_callback_snapsho
     assert Document.committed_contents[-1] == PNG + b"first"
 
 
+@pytest.mark.usefixtures("pending_transaction")
 def test_retaining_a_pending_blob_does_not_cancel_its_upload(upload, storage, mocker):
     write = mocker.spy(storage.service(), "upload")
     document = Document.create(title="Example", avatar=upload())
@@ -90,6 +94,7 @@ def test_retaining_a_pending_blob_does_not_cancel_its_upload(upload, storage, mo
     assert document.avatar.download() == PNG + b"image"
 
 
+@pytest.mark.usefixtures("pending_transaction")
 def test_clearing_pending_single_attachment_cancels_the_upload(upload, storage, mocker):
     write = mocker.spy(storage.service(), "upload")
     document = Document.create(title="Example", avatar=upload())
@@ -101,6 +106,7 @@ def test_clearing_pending_single_attachment_cancels_the_upload(upload, storage, 
     assert not storage.service().exist(blob.key)
 
 
+@pytest.mark.usefixtures("pending_transaction")
 def test_destroy_before_commit_cancels_all_pending_uploads(upload, storage, mocker):
     write = mocker.spy(storage.service(), "upload")
     document = Document.create(
@@ -112,6 +118,7 @@ def test_destroy_before_commit_cancels_all_pending_uploads(upload, storage, mock
     assert Document.count() == 0
 
 
+@pytest.mark.usefixtures("pending_transaction")
 def test_multiple_uploads_survive_append_operations_in_one_transaction(
     upload, storage, mocker
 ):
@@ -128,6 +135,7 @@ def test_purge_later_rollback_keeps_metadata_and_existing_file(upload, app, stor
     document = Document.create(title="Example", avatar=upload())
     blob = document.avatar.blob
     session.commit()
+    session.begin()
     document.avatar.purge_later()
     session.rollback()
     assert document.avatar.attached()
@@ -191,6 +199,7 @@ def test_open_yields_a_checksum_verified_temporary_file(tmp_path):
 
 
 @pytest.mark.parametrize("operation", ["detach", "purge", "purge_later"])
+@pytest.mark.usefixtures("pending_transaction")
 def test_explicit_removal_before_commit_cancels_pending_uploads(
     operation, upload, storage, mocker
 ):

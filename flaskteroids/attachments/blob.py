@@ -25,7 +25,7 @@ from flaskteroids.attachments.services import (
 )
 from flaskteroids.attachments.signatures import signed_token, verified_token
 from flaskteroids.attachments.transactions import after_commit
-from flaskteroids.db import session
+from flaskteroids.db import session, transactional
 from flaskteroids.exceptions import RecordNotFoundException
 
 
@@ -156,6 +156,7 @@ class Blob:
         return blob
 
     @classmethod
+    @transactional
     def create_and_upload(
         cls, *, io, filename, service_name=None, content_type=None, identify=True
     ):
@@ -245,9 +246,11 @@ class Blob:
             verify_checksum(stream, self.checksum)
             yield stream
 
+    @transactional
     def purge(self):
         return purge_blob(self.id, self.key, self.service_name)
 
+    @transactional
     def purge_later(self):
         after_commit(
             session,
@@ -272,14 +275,17 @@ class Attachment:
     def __getattr__(self, name):
         return getattr(self.blob, name)
 
+    @transactional
     def detach(self):
         session.execute(delete(attachments).where(attachments.c.id == self.id))
 
+    @transactional
     def purge(self):
         blob = self.blob
         self.detach()
         return blob.purge()
 
+    @transactional
     def purge_later(self):
         blob = self.blob
         self.detach()

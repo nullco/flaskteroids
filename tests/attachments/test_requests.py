@@ -280,6 +280,7 @@ def test_retained_blob_ids_are_merged_with_multiple_uploads(app, client, upload)
 def test_upload_failure_after_commit_does_not_roll_back_metadata(
     app, client, storage, mocker
 ):
+    app.config["PROPAGATE_EXCEPTIONS"] = True
     with app.app_context():
         service = storage.service()
     attempted = []
@@ -317,7 +318,7 @@ def test_missing_file_redirects_then_returns_not_found(app, client, download_url
 
 
 def test_standalone_upload_survives_database_rollback_like_rails(app, client):
-    with app.test_request_context():
+    with app.test_request_context(), Document.transaction():
         blob = Blob.create_and_upload(io=io.BytesIO(b"report"), filename="report.txt")
         service_url = blob.url()
         url = blob_path(blob)

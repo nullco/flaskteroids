@@ -54,10 +54,13 @@ description: Use when building or modifying a Flaskteroids application.
   already have one. Keep records, queries, and files in the app that created them.
 - Custom rules set class attributes. Put database queries and work that needs an
   application in actions, callbacks, or initializers.
-- In `bin/flask shell`, call model `save()` to validate/publish staged scalar input,
-  then `session.commit()` to commit published work. Normal context exit also commits
-  published work, not unsaved staged assignments. Roll back failed unit-of-work
-  operations explicitly; use `discard_changes()` or `reload()` to discard staged input.
+- Standalone model `save()`/`create()`/`update()`/`destroy()` commit before returning,
+  including in `bin/flask shell`. Use `with Model.transaction():` to group operations;
+  saves join that block without committing. False results do not abort an explicit
+  block; raise to reject the group. Nested blocks join unless `requires_new=True`
+  requests a savepoint. Context exit rolls back unfinished work, never commits it.
+  Native writes require explicit commit/transaction handling. Use `discard_changes()`
+  or `reload()` to discard staged input; rollback cannot undo prior standalone commits.
 - Run `bin/flask db:prepare` to apply migrations and regenerate `app/schema.py`,
   then restart. Commit the snapshot, never edit it by hand. `db:schema:dump` refreshes
   it independently. Model declarations import without it; construction, queries,

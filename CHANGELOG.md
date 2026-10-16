@@ -4,6 +4,11 @@
 
 ### Breaking changes
 
+- Standalone model saves, updates, creation, and destruction now commit before
+  returning, including associated writes. Use `Model.transaction()` to group
+  operations; nested blocks join by default and `requires_new=True` requests a
+  savepoint. Context teardown no longer commits unfinished native writes. Attachment
+  uploads and commit hooks follow the actual operation/outer transaction boundary.
 - Replace reflected row-wrapper models with lazy native mappings of application
   classes. Keep the existing `@rules` association syntax and staged scalar edits;
   native/facade queries now share session identity. Native collections replace

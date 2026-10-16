@@ -60,8 +60,11 @@ with open("avatar.png", "rb") as stream:
 ```
 
 Use `user.avatar.attached()` to check for a file and `user.avatar.filename` to
-read its name. Files become available after commit. In model callbacks, read
-new uploads in `after_commit`, not `after_save`.
+read its name. Files become available after commit: standalone saves and attaches
+to clean persisted records commit before returning; operations in an explicit
+`Model.transaction()` wait for that block to commit. In model callbacks, read new
+uploads in `after_commit`, not `after_save`. Standalone blob creation and explicit
+attachment removals also own a transaction unless joining an explicit block.
 
 ## Upload forms
 

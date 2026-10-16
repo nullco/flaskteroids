@@ -57,10 +57,8 @@ class SQLAlchemyExtension:
             if db_session is None:
                 return
             try:
-                if exception is not None:
+                if db_session.is_active:
                     db_session.rollback()
-                else:
-                    db_session.commit()
             finally:
                 try:
                     db_session.close()

@@ -125,15 +125,38 @@ assert post.update(title="Fixed")
 Scalar assignments are staged on the mapped object. Reads expose entered values,
 but SQLAlchemy's published state is unchanged until a successful save. Invalid
 updates retain their input/errors without being flushed by another object's save
-or the context's final commit. This also applies to valid edits never explicitly
+or a later commit. This also applies to valid edits never explicitly
 saved, and to edits made after an earlier save.
 
-`save()` validates and flushes; it does **not** commit. `save(validate=False)` is an
-explicit validation bypass. Database constraints remain authoritative: integrity
-errors propagate rather than becoming validation errors. If you catch a database
-or unexpected callback exception, roll back/recover the transaction before further
-writes. A handled validation failure returning `False` does not itself roll back
-other successful writes.
+A standalone `save()` validates, flushes, and **commits before returning**.
+`create()` and `update()` use that same boundary. Associated rows persisted by the
+save share its transaction. Failure or a halted callback rolls back a standalone
+operation; earlier successful standalone saves remain committed.
+
+Use an explicit transaction to group operations:
+
+```python
+with Author.transaction():
+    author = Author.create(name="Ada")
+    post = Post.create(title="First", author=author)
+    if post.errors:
+        raise ValueError("Post is invalid")
+# Both writes commit here; an escaping exception rolls both back.
+```
+
+Saves inside an explicit transaction join it without committing. A `False` return
+does not abort that outer transaction; raise an exception when the group must
+fail together. Nested `Model.transaction()` blocks also join by default. Use
+`Model.transaction(requires_new=True)` for a savepoint, catching failures outside
+that inner block if the outer operation should continue. After-commit callbacks
+wait for the outer commit, not savepoint release. Transactions are shared across
+models in the same application, not scoped to the class naming the block.
+
+`save(validate=False)` explicitly bypasses validation. Database constraints remain
+authoritative: integrity errors propagate rather than becoming validation errors.
+Standalone failures clean up their transaction. If a database exception is caught
+inside an explicit block, recover/roll back that transaction before further writes.
+A preceding query does not turn a standalone save into an explicit transaction.
 
 ```python
 @rules(
@@ -219,11 +242,13 @@ relationships, just as with native SQLAlchemy.
 
 ### Deletion
 
-`record.destroy()` runs framework destroy callbacks and flushes deletion without
-committing. `dependent="destroy"` calls related records' framework `destroy()`
-methods, including their callbacks and attachment cleanup. A halted destroy
-returns `False`; callers needing multi-record atomicity should explicitly own the
-transaction and roll it back on rejection.
+`record.destroy()` runs framework destroy callbacks and commits a standalone
+deletion before returning. Like `save()`, it joins an explicit transaction when
+one is open. `dependent="destroy"` calls related records' framework `destroy()`
+methods, including their callbacks and attachment cleanup, in the same boundary.
+A halted standalone destruction returns `False` and rolls back earlier dependent
+deletions. Inside an explicit transaction, raise on rejection when the whole group
+must roll back.
 
 Native `session.delete()` and ORM/database cascades do not automatically run
 framework child `destroy()` callbacks. Native `relationship()` options are an
@@ -263,10 +288,17 @@ framework validations and operation callbacks. In-place mutable values follow
 native SQLAlchemy tracking; use scalar reassignment when you want staged edits.
 
 Sessions are app-context-local, with autoflush disabled and committed attributes
-retained. Normal context teardown commits; an escaping exception rolls back;
-both paths close the session. A handled HTTP error response alone does not imply
-rollback. Use explicit transaction blocks for multi-record operations and native
-work that must succeed or fail together. Caller-created sessions are caller-owned.
+retained. There is **no automatic request-wide transaction**. An exception or HTTP
+error after a successful standalone save does not undo its commit. Context teardown
+rolls back unfinished work and closes the session; it never commits native writes.
+
+`from flaskteroids.db import transaction` exposes the same transaction context as
+`Model.transaction()`. Native `with session.begin():` blocks are also respected;
+use the framework context when a previous read has already implicitly opened a
+SQLAlchemy transaction. Native writes require an explicit transaction or an
+explicit `session.commit()`. A framework save flushes the session's published
+work, including native pending changes, so use explicit boundaries when mixing
+the two APIs. Caller-created sessions are caller-owned.
 
 ## Callbacks and authentication
 

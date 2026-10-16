@@ -81,16 +81,20 @@ directory exists.
 `flask shell` provides your models and `session`:
 
 ```python
-user = User.create(name='Alice')
-session.commit()
-# Or discard pending work:
-session.rollback()
+user = User.create(name="Alice")  # Commits before returning
+with User.transaction():
+    user.update(name="Alicia")
+    User.create(name="Bob")
+# Both changes commit at the end of the block.
 ```
 
-Call `save()` to validate and publish staged model edits. `session.commit()` commits
-published work; it does not implicitly save further staged assignments. Normal shell
-exit also commits published work. `session.rollback()` rolls back the unit of work;
-use `record.discard_changes()` or `record.reload()` to discard staged input.
+Standalone `save()`, `create()`, `update()`, and `destroy()` commit immediately.
+Use `Model.transaction()` to group changes; saves join that explicit transaction,
+and an exception escaping the block rolls the group back. A `False` save result
+does not itself abort an explicit block. Shell exit rolls back unfinished work;
+it does not undo earlier standalone commits. Native writes require explicit
+commit/transaction handling. Use `record.discard_changes()` or `record.reload()`
+to discard staged input.
 
 ## Credentials
 

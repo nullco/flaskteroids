@@ -51,7 +51,7 @@ from flaskteroids.callbacks import (
     queue_after_commit,
     run_callbacks,
 )
-from flaskteroids.db import session
+from flaskteroids.db import session, transaction, transactional
 from flaskteroids.declarations import model_for
 from flaskteroids.exceptions import ProgrammerError, RecordNotFoundException
 from flaskteroids.rules import bind_rules
@@ -324,7 +324,36 @@ class Model(StagedAttributes, SchemaModel):
         visit(self)
         return records
 
+    @classmethod
+    def transaction(cls, *, requires_new=False):
+        return transaction(requires_new=requires_new)
+
     def save(self, validate=True):
+        state = inspect(self)
+        relationships = [
+            (
+                relationship,
+                list(value) if relationship.uselist else value,
+            )
+            for relationship in state.mapper.relationships
+            if state.attrs[relationship.key].history.has_changes()
+            and (value := state.attrs[relationship.key].loaded_value) is not NO_VALUE
+        ]
+        result = self._save(validate=validate)
+        if not result:
+            # Rollback expires native relationship edits. Retain submitted input
+            # and its inverse links so a rejected save can be corrected/retried.
+            for relationship, value in relationships:
+                if relationship.back_populates:
+                    for related in value if relationship.uselist else [value]:
+                        if related is not None:
+                            getattr(related, relationship.back_populates)
+                setattr(self, relationship.key, [] if relationship.uselist else None)
+                setattr(self, relationship.key, value)
+        return result
+
+    @transactional(rollback_on_false=True)
+    def _save(self, validate=True):
         current_app.extensions["flaskteroids.db"].require_model(type(self))
         if inspect(self).was_deleted:
             raise ProgrammerError("A destroyed record cannot be saved.")
@@ -372,6 +401,7 @@ class Model(StagedAttributes, SchemaModel):
         state = inspect(self)
         return state.transient or state.pending
 
+    @transactional(rollback_on_false=True)
     def destroy(self):
         current_app.extensions["flaskteroids.db"].require_model(type(self))
         if self.is_new_record():

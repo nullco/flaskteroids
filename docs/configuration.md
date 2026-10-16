@@ -34,9 +34,12 @@ with application.app_context():
     MyJob().perform_later(user_id=user.id)
 ```
 
-Each context has its own database session. Normal exit commits pending changes;
-an exception rolls them back. You can also call `session.commit()` or
-`session.rollback()` explicitly.
+Each context has its own database session, but is not itself a transaction.
+Standalone model persistence commits before returning. Use `with Model.transaction():`
+to group operations; an escaping exception rolls that group back. Context exit
+rolls back unfinished work and closes the session, without undoing earlier
+standalone commits. Native writes require explicit commit/transaction handling.
+See [Models](models/index.md#assignment-validation-and-persistence).
 
 ## Environments
 

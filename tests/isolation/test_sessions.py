@@ -23,7 +23,7 @@ def test_nested_same_app_contexts_have_independent_sessions(make_app):
         assert pending in session
         assert Author.count() == 1
     with app.app_context():
-        assert Author.count() == 2
+        assert Author.count() == 1
 
 
 def test_fresh_sessions_are_caller_managed(make_app):
@@ -39,9 +39,9 @@ def test_fresh_sessions_are_caller_managed(make_app):
 
 def test_nested_apps_commit_only_their_own_callbacks(make_app):
     a, b = make_app("a"), make_app("b")
-    with a.app_context():
+    with a.app_context(), Author.transaction():
         Author.create(name="a", passcode="secret")
-        with b.app_context():
+        with b.app_context(), Author.transaction():
             Author.create(name="b", passcode="secret")
             assert a.config["EVENTS"] == []
         assert b.config["EVENTS"] == [("commit", "b")]
@@ -58,13 +58,14 @@ def test_nested_apps_finish_only_their_own_uploads(
 ):
     apps = {name: make_app(name) for name in order}
     a, b = apps["a"], apps["b"]
-    with a.app_context():
+    with a.app_context(), Author.transaction():
         outer = Author.create(name="a", passcode="secret")
         with session.begin_nested():
             outer.avatar.attach(io=BytesIO(b"a"), filename="a.txt")
         outer_blob = outer.avatar.blob
         assert not outer_blob.service.exist(outer_blob.key)
         with b.app_context():
+            session.begin()
             inner = Author.create(name="b", passcode="secret")
             nested = session.begin_nested()
             inner.avatar.attach(io=BytesIO(b"b"), filename="b.txt")
@@ -79,6 +80,8 @@ def test_nested_apps_finish_only_their_own_uploads(
             assert a.config["EVENTS"] == []
             if transaction == "rollback":
                 session.rollback()
+            else:
+                session.commit()
         assert a.config["EVENTS"] == []
         assert not outer_blob.service.exist(outer_blob.key)
         with b.app_context():
@@ -104,9 +107,9 @@ def test_nested_apps_finish_only_their_own_uploads(
 
 def test_exception_rolls_back_only_inner_app(make_app):
     a, b = make_app("a"), make_app("b")
-    with a.app_context():
+    with a.app_context(), Author.transaction():
         Author.create(name="a", passcode="secret")
-        with pytest.raises(ValueError), b.app_context():
+        with pytest.raises(ValueError), b.app_context(), Author.transaction():
             Author.create(name="b", passcode="secret")
             raise ValueError("failure")
         assert b.config["EVENTS"] == [("rollback", "b")]
@@ -123,7 +126,7 @@ def test_commit_failure_closes_inner_session_and_restores_outer(make_app):
         Author.create(name="seed", passcode="secret")
     with app.app_context():
         assert Author.count() == 1
-        with pytest.raises(IntegrityError), app.app_context():
+        with pytest.raises(IntegrityError), app.app_context(), Author.transaction():
             session.add(Author(id=1, name="duplicate").apply_changes())
         assert Author.first().name == "seed"
     with db.new_session() as independent:

@@ -150,6 +150,7 @@ def test_inline_test_jobs_preserve_the_ambient_transaction(make_app):
     jobs.register_job("create_author", CreateAuthorJob)
     jobs.queue_adapter.performing_enqueued_jobs = True
     with app.app_context():
+        session.begin()
         CreateAuthorJob().perform_later()
         assert app.config["EVENTS"] == []
         assert Author.count() == 1

@@ -318,7 +318,7 @@ class TestCallbacks:
         init_models(Base, [(UserBase, User)])
 
         User.create(username="x")
-        assert calls == []
+        assert calls == ["after_commit"]
 
         model.session.commit()
         assert calls == ["after_commit"]
@@ -333,6 +333,7 @@ class TestCallbacks:
 
         init_models(Base, [(UserBase, User)])
 
+        model.session.begin()
         User.create(username="x")
         assert calls == []
 

@@ -32,10 +32,14 @@ Backward compatibility and a supported dual-ORM mode are not requirements.
    original input. A successful save publishes them to that same object's
    instrumented attributes. Failed scalar validation leaves published state
    untouched, so later queries, other saves, and teardown cannot leak those edits.
-7. **Keep teardown auto-commit.** Commit if no exception reaches app-context
-   teardown, otherwise roll back, and always close the session. A handled
-   validation failure or HTTP error response does not itself force rollback.
-   `save()` validates and flushes; it does not commit the surrounding transaction.
+7. **Use Rails-like persistence boundaries.** Standalone `save()`/`create()`/
+   `update()`/`destroy()` operations commit before returning; associated writes
+   share the operation's transaction. Explicit `Model.transaction()` blocks are
+   joined without an inner commit or automatic savepoint. A false return does not
+   abort an explicit outer block; raise to reject the group. Use `requires_new=True`
+   for a savepoint. Implicit transactions opened by queries are not application
+   boundaries. Teardown rolls back unfinished work and closes the session; it
+   never commits. Later request errors cannot undo earlier standalone commits.
 
 There is no longer a requirement for `schema.Post` to exist, or for application
 classes to inherit schema mixins. Bind `Post` to the snapshot's `posts` Table via
@@ -160,7 +164,9 @@ native attribute-state interoperability.
 - `save()` returns a success boolean. Invalid `create()` returns the unsaved
   object with values/errors; invalid `update()` preserves entered values.
 - Queries do not publish edits. A valid-but-unsaved edit is not implicitly saved
-  at commit, including edits made after an earlier successful save.
+  at commit, including edits made after an earlier successful save. Standalone
+  persistence commits its own work; explicitly grouped operations commit only at
+  the outer boundary.
 - Use `apply_changes()` to publish staged scalars explicitly without framework
   validation/callbacks before native `add()`/`flush()`. Reject unpublished staged
   new objects enrolled directly into a native unit of work rather than silently
@@ -171,8 +177,9 @@ native attribute-state interoperability.
 - Saving a graph validates newly associated framework objects before publishing
   them. SQLAlchemy may flush other already-published native work. Constraints
   remain authoritative, including races validation cannot prevent.
-- Database and unexpected callback exceptions propagate. If caught inside an
-  application context, recover/roll back explicitly before further writes.
+- Database and unexpected callback exceptions propagate. Standalone failures
+  clean up their transaction. If caught inside an explicit transaction block,
+  recover/roll back explicitly before further writes.
 - `reload()` discards staged input and errors. Native refresh/expiration changes
   published state but does not itself discard the pending input dictionary.
 - Cast at the model layer and retain before-type-cast values for validation and
@@ -214,7 +221,7 @@ The Rails 8.0.2 references used for casting/failure behavior are:
 | Associations | Keep `@rules` helper signatures; native collections replace custom `Relation`; create via `Post.create(author=author)`. |
 | Dependent destruction | `dependent="destroy"` invokes child framework `destroy()`; native ORM/DB cascades do not imply child framework callbacks. |
 | Callbacks | Explicit framework operations; load callbacks run on actual hydration, not every identity-map lookup; native/bulk operations bypass framework lifecycle guarantees. |
-| Commit hooks | Deferred to the outer transaction; no after-commit dispatch for rolled-back operations. |
+| Transactions and commit hooks | Standalone persistence commits before returning; explicit blocks are joined, savepoints are opt-in, and hooks wait for the outer commit. Teardown only rolls back/closes. |
 | Authentication | Password/reset checks use published digests; failed staged password edits do not invalidate persisted credentials. |
 | Attachments | Existing deferred upload/commit/rollback integration on mapped objects; retain pending attachment input separately from scalar changes. |
 | Jobs | Keep existing queue contracts; pass persisted identities rather than assuming arbitrary mapped instances are JSON job arguments. |

@@ -47,15 +47,29 @@ def mapped_app(discovery_package, tmp_path):
             ),
             "models/author.py": (
                 "from .application_model import ApplicationModel\n"
-                "from flaskteroids.model import validates, after_commit, has_secure_password, PasswordAuthenticator, has_many\n"
+                "from flaskteroids.model import validates, before_save, after_save, after_commit, after_rollback, has_secure_password, PasswordAuthenticator, has_many\n"
                 "from flaskteroids.rules import rules\n"
                 "@rules(validates('name', presence=True),\n"
                 "       validates('age', numericality={'only_integer': True, 'allow_nil': True}),\n"
-                "       has_many('posts', dependent='destroy'), has_secure_password(), after_commit('_committed'))\n"
+                "       has_many('posts', dependent='destroy'), has_secure_password(), after_commit('_committed'),\n"
+                "       before_save('before_persist'), after_save('after_persist'), after_rollback('rolled_back'))\n"
                 "class Author(ApplicationModel, PasswordAuthenticator):\n"
+                "    def before_persist(self):\n"
+                "        from flask import current_app\n"
+                "        callback = current_app.config.get('before_persist')\n"
+                "        return callback(self) if callback else None\n"
+                "    def after_persist(self):\n"
+                "        from flask import current_app\n"
+                "        callback = current_app.config.get('after_persist')\n"
+                "        if callback: callback(self)\n"
+                "    def rolled_back(self):\n"
+                "        from flask import current_app\n"
+                "        current_app.config.setdefault('rollbacks', []).append(self.name)\n"
                 "    def _committed(self):\n"
                 "        from flask import current_app\n"
                 "        current_app.config.setdefault('commits', []).append(self.name)\n"
+                "        callback = current_app.config.get('committed')\n"
+                "        if callback: callback(self)\n"
             ),
             "models/post.py": (
                 "from .application_model import ApplicationModel\n"
@@ -353,6 +367,7 @@ def test_constraint_failure_requires_rollback_and_session_can_be_reused(records)
 
 
 def test_commit_callbacks_wait_for_outer_transaction(records):
+    records.session.begin()
     author = records.Author.create(name="Ada")
     assert records.app.config.get("commits", []) == []
     author.update(name="Augusta")
@@ -361,14 +376,260 @@ def test_commit_callbacks_wait_for_outer_transaction(records):
     assert records.app.config["commits"] == ["Augusta"]
 
 
-def test_teardown_commits_successful_writes_but_not_failed_or_unsaved_edits(mapped_app):
+def test_teardown_preserves_committed_writes_but_not_failed_or_unsaved_edits(
+    mapped_app,
+):
     db = mapped_app.extensions["flaskteroids.db"]
     author_model = db.models["Author"]
     with mapped_app.app_context():
         author = author_model.create(name="Ada")
         other = author_model.create(name="Grace")
+        author_id, other_id = author.id, other.id
         assert author.update(name="") is False
         other.name = "Unsaved"
     with db.new_session() as session:
-        assert session.get(author_model, author.id).name == "Ada"
-        assert session.get(author_model, other.id).name == "Grace"
+        assert session.get(author_model, author_id).name == "Ada"
+        assert session.get(author_model, other_id).name == "Grace"
+
+
+def test_standalone_save_commits_before_returning(records):
+    author = records.Author.create(name="Ada")
+    with records.db.new_session() as independent:
+        assert independent.get(records.Author, author.id).name == "Ada"
+    assert records.app.config["commits"] == ["Ada"]
+    assert not records.session.in_transaction()
+
+
+def test_reads_do_not_turn_later_saves_into_explicit_transactions(records):
+    assert records.Author.count() == 0
+    author = records.Author.create(name="Ada")
+    assert records.Author.find(author.id) is author
+    assert author.update(name="Augusta")
+    with records.db.new_session() as independent:
+        assert independent.get(records.Author, author.id).name == "Augusta"
+    assert records.app.config["commits"] == ["Ada", "Augusta"]
+
+
+def test_explicit_model_transaction_adopts_prior_reads_and_commits_once(records):
+    assert records.Author.count() == 0
+    with records.Author.transaction():
+        author = records.Author.create(name="Ada")
+        assert author.update(name="Augusta")
+        assert records.app.config.get("commits", []) == []
+        with records.db.new_session() as independent:
+            assert independent.get(records.Author, author.id) is None
+    assert records.app.config["commits"] == ["Augusta"]
+    with records.db.new_session() as independent:
+        assert independent.get(records.Author, author.id).name == "Augusta"
+
+
+def test_native_explicit_transaction_is_not_committed_by_save(records):
+    with records.session.begin():
+        author = records.Author.create(name="Ada")
+        with records.db.new_session() as independent:
+            assert independent.get(records.Author, author.id) is None
+        assert records.app.config.get("commits", []) == []
+    assert records.app.config["commits"] == ["Ada"]
+
+
+def test_released_native_savepoint_keeps_the_outer_transaction_explicit(records):
+    assert records.Author.count() == 0
+    with records.session.begin_nested():
+        records.Author.create(name="Ada")
+    records.Author.create(name="Grace")
+    assert records.app.config.get("commits", []) == []
+    with records.db.new_session() as independent:
+        assert independent.scalars(select(records.Author)).all() == []
+    records.session.commit()
+    assert records.app.config["commits"] == ["Ada", "Grace"]
+
+
+def test_after_commit_exception_preserves_data_and_cleans_up_session(records):
+    def fail_after_commit(author):
+        raise RuntimeError("committed callback failed")
+
+    records.app.config["committed"] = fail_after_commit
+    with pytest.raises(RuntimeError, match="committed callback failed"):
+        records.Author.create(name="Ada")
+    assert not records.session.in_transaction()
+    records.app.config.pop("committed")
+    assert records.Author.create(name="Grace").is_persisted()
+    with records.db.new_session() as independent:
+        assert len(independent.scalars(select(records.Author)).all()) == 2
+
+
+def test_false_save_does_not_abort_explicit_transaction(records):
+    with records.Author.transaction():
+        first = records.Author.create(name="Ada")
+        invalid = records.Author.create(name="")
+        assert invalid.is_new_record() and invalid.errors
+        last = records.Author.create(name="Grace")
+    with records.db.new_session() as independent:
+        assert independent.get(records.Author, first.id).name == "Ada"
+        assert independent.get(records.Author, last.id).name == "Grace"
+        assert len(independent.scalars(select(records.Author)).all()) == 2
+
+
+def test_exception_rolls_back_all_saves_in_explicit_transaction(records):
+    with pytest.raises(RuntimeError, match="abort"):
+        with records.Author.transaction():
+            records.Author.create(name="Ada")
+            records.Author.create(name="Grace")
+            raise RuntimeError("abort")
+    assert records.Author.count() == 0
+    assert records.app.config.get("commits", []) == []
+    assert records.app.config["rollbacks"] == ["Ada", "Grace"]
+
+
+def test_nested_framework_transactions_join_without_savepoints(records):
+    statements = []
+    event.listen(
+        records.db.engine,
+        "before_cursor_execute",
+        lambda connection, cursor, statement, *args: statements.append(statement),
+    )
+    with pytest.raises(RuntimeError, match="abort"):
+        with records.Author.transaction():
+            records.Author.create(name="Ada")
+            with records.Author.transaction():
+                records.Author.create(name="Grace")
+            raise RuntimeError("abort")
+    assert records.Author.count() == 0
+    assert not any("SAVEPOINT" in statement.upper() for statement in statements)
+
+
+def test_requires_new_rolls_back_only_the_inner_operation(records):
+    with records.Author.transaction():
+        first = records.Author.create(name="Ada")
+        with pytest.raises(RuntimeError, match="abort"):
+            with records.Author.transaction(requires_new=True):
+                records.Author.create(name="Rejected")
+                raise RuntimeError("abort")
+        last = records.Author.create(name="Grace")
+        assert records.app.config.get("commits", []) == []
+        assert records.app.config["rollbacks"] == ["Rejected"]
+    with records.db.new_session() as independent:
+        assert independent.get(records.Author, first.id).name == "Ada"
+        assert independent.get(records.Author, last.id).name == "Grace"
+        assert len(independent.scalars(select(records.Author)).all()) == 2
+    assert records.app.config["commits"] == ["Ada", "Grace"]
+
+
+def test_released_savepoint_does_not_escape_outer_rollback(records):
+    with pytest.raises(RuntimeError, match="abort"):
+        with records.Author.transaction():
+            with records.Author.transaction(requires_new=True):
+                records.Author.create(name="Ada")
+            assert records.app.config.get("commits", []) == []
+            raise RuntimeError("abort")
+    assert records.Author.count() == 0
+    assert records.app.config["rollbacks"] == ["Ada"]
+
+
+def test_later_failure_does_not_undo_a_previous_standalone_save(records):
+    author = records.Author.create(name="Ada")
+    author_id = author.id
+    with pytest.raises(IntegrityError):
+        records.Author(name=None).save(validate=False)
+    assert not records.session.in_transaction()
+    assert records.Author.create(name="Grace").is_persisted()
+    with records.db.new_session() as independent:
+        assert independent.get(records.Author, author_id).name == "Ada"
+        assert len(independent.scalars(select(records.Author)).all()) == 2
+
+
+def test_callback_failure_rolls_back_associated_writes(records):
+    def fail_after_save(author):
+        records.Post.create(title="Associated", author=author)
+        raise RuntimeError("callback failed")
+
+    records.app.config["after_persist"] = fail_after_save
+    with pytest.raises(RuntimeError, match="callback failed"):
+        records.Author.create(name="Ada")
+    assert records.Author.count() == records.Post.count() == 0
+    assert records.app.config.get("commits", []) == []
+
+
+def test_halted_callback_rolls_back_nested_saves(records):
+    def halt_after_other_save(author):
+        records.app.config.pop("before_persist")
+        records.Author.create(name="Nested")
+        return False
+
+    records.app.config["before_persist"] = halt_after_other_save
+    rejected = records.Author.create(name="Rejected")
+    assert rejected.is_new_record()
+    assert rejected.name == "Rejected"
+    assert records.Author.count() == 0
+    assert records.app.config.get("commits", []) == []
+    assert records.app.config["rollbacks"] == ["Nested"]
+
+
+def test_standalone_graph_save_commits_all_associated_rows(records):
+    post = records.Post(title="First", author=records.Author(name="Ada"))
+    assert post.save()
+    with records.db.new_session() as independent:
+        assert independent.get(records.Post, post.id).author.name == "Ada"
+
+
+def test_standalone_destroy_commits_dependent_deletions(records):
+    author = records.Author.create(name="Ada", posts=[records.Post(title="First")])
+    author_id, post_id = author.id, author.posts[0].id
+    assert author.destroy()
+    with records.db.new_session() as independent:
+        assert independent.get(records.Author, author_id) is None
+        assert independent.get(records.Post, post_id) is None
+
+
+def test_rejected_dependent_destroy_rolls_back_earlier_deletions(records, mocker):
+    author = records.Author.create(
+        name="Ada", posts=[records.Post(title="First"), records.Post(title="Second")]
+    )
+    author_id = author.id
+    destroy = records.Post.destroy
+    attempts = []
+
+    def reject_second(post):
+        attempts.append(post.id)
+        return destroy(post) if len(attempts) == 1 else False
+
+    mocker.patch.object(
+        records.Post, "destroy", autospec=True, side_effect=reject_second
+    )
+    assert author.destroy() is False
+    with records.db.new_session() as independent:
+        assert len(independent.get(records.Author, author_id).posts) == 2
+
+
+def test_explicit_transaction_can_roll_back_destroy(records):
+    author = records.Author.create(name="Ada", posts=[records.Post(title="First")])
+    author_id = author.id
+    with pytest.raises(RuntimeError, match="abort"):
+        with records.Author.transaction():
+            assert author.destroy()
+            raise RuntimeError("abort")
+    with records.db.new_session() as independent:
+        assert len(independent.get(records.Author, author_id).posts) == 1
+
+
+def test_exception_after_standalone_save_does_not_undo_committed_data(mapped_app):
+    db = mapped_app.extensions["flaskteroids.db"]
+    author_model = db.models["Author"]
+    with pytest.raises(RuntimeError, match="request failed"), mapped_app.app_context():
+        author = author_model.create(name="Ada")
+        author_id = author.id
+        raise RuntimeError("request failed")
+    with db.new_session() as independent:
+        assert independent.get(author_model, author_id).name == "Ada"
+
+
+def test_teardown_discards_uncommitted_native_writes(mapped_app):
+    db = mapped_app.extensions["flaskteroids.db"]
+    author_model = db.models["Author"].prepare()
+    with mapped_app.app_context():
+        from flaskteroids.db import session
+
+        session.add(author_model(name="Native").apply_changes())
+        session.flush()
+    with db.new_session() as independent:
+        assert independent.scalars(select(author_model)).all() == []
