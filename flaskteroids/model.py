@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, time
 from inspect import getattr_static
 from typing import Self
 
@@ -434,6 +434,11 @@ class Model(StagedAttributes, SchemaModel):
             for name in self.column_names
             if name not in excluded
         }
+        for name, value in values.items():
+            if isinstance(value, datetime):
+                values[name] = value.isoformat(sep=" ")
+            elif isinstance(value, (date, time)):
+                values[name] = value.isoformat()
         return f"<{type(self).__name__}:{hex(id(self))} {values}>"
 
 
