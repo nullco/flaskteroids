@@ -38,14 +38,14 @@ def mapped_app(discovery_package, tmp_path):
     package = discovery_package(
         {
             "__init__.py": "",
-            "schema.py": SCHEMA,
-            "models/__init__.py": "",
-            "models/application_model.py": (
+            "db/schema.py": SCHEMA,
+            "app/models/__init__.py": "",
+            "app/models/application_model.py": (
                 "from flaskteroids.model import Model\n"
                 "class ApplicationModel(Model):\n"
                 "    __abstract__ = True\n"
             ),
-            "models/author.py": (
+            "app/models/author.py": (
                 "from .application_model import ApplicationModel\n"
                 "from flaskteroids.model import validates, before_save, after_save, after_commit, after_rollback, has_secure_password, PasswordAuthenticator, has_many\n"
                 "from flaskteroids.rules import rules\n"
@@ -71,7 +71,7 @@ def mapped_app(discovery_package, tmp_path):
                 "        callback = current_app.config.get('committed')\n"
                 "        if callback: callback(self)\n"
             ),
-            "models/post.py": (
+            "app/models/post.py": (
                 "from .application_model import ApplicationModel\n"
                 "from flaskteroids.model import validates, belongs_to\n"
                 "from flaskteroids.rules import rules\n"
@@ -87,7 +87,7 @@ def mapped_app(discovery_package, tmp_path):
         "/authors/<int:id>/", endpoint="update_author", view_func=lambda id: ""
     )
     app.database_url = f"sqlite:///{tmp_path / 'mapped.sqlite'}"
-    app.config.paths = SimpleNamespace(models=f"{package}.models")
+    app.config.paths = SimpleNamespace(models=f"{package}.app.models")
     db = SQLAlchemyExtension(app)
     db.metadata.create_all(db.engine)
     yield app

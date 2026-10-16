@@ -186,7 +186,7 @@ def test_generated_migrations_apply_and_rollback_in_fresh_applications(
     versions = root / "db/migrate/versions"
     before = set(versions.glob("*.py"))
     run("generate", "migration", "AddPublishedToPosts", "published:boolean")
-    schema_path = root / "app/schema.py"
+    schema_path = root / "db/schema.py"
     original_schema = schema_path.read_bytes()
     run("db:migrate")
     assert schema_path.read_bytes() != original_schema

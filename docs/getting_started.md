@@ -41,7 +41,7 @@ flask run
 Visit <http://127.0.0.1:5000/posts/> to create, view, edit, and delete posts.
 
 The generator writes a behavioral model and a migration. `db:prepare` applies the
-migration and generates `app/schema.py` from the database. Commit the snapshot;
+migration and generates `db/schema.py` from the database. Commit the snapshot;
 make future schema changes through migrations, not by editing that file.
 
 ## Next steps

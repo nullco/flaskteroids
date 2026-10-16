@@ -15,21 +15,21 @@ def snapshot_app(discovery_package, tmp_path):
     package = discovery_package(
         {
             "__init__.py": "",
-            "models/__init__.py": "",
-            "models/application_model.py": (
+            "app/models/__init__.py": "",
+            "app/models/application_model.py": (
                 "from flaskteroids.model import Model\n"
                 "class ApplicationModel(Model):\n    __abstract__ = True\n"
             ),
-            "models/entry.py": (
+            "app/models/entry.py": (
                 "from .application_model import ApplicationModel\n"
                 "class Entry(ApplicationModel): pass\n"
             ),
         }
     )
     app = Flask(__name__)
-    app.project_root = tmp_path
+    app.project_root = tmp_path / package
     app.database_url = f"sqlite:///{tmp_path / 'snapshot.sqlite'}"
-    app.config.paths = SimpleNamespace(models=f"{package}.models")
+    app.config.paths = SimpleNamespace(models=f"{package}.app.models")
     db = SQLAlchemyExtension(app)
     metadata = sa.MetaData()
     sa.Table("categories", metadata, sa.Column("id", sa.Integer(), primary_key=True))
@@ -58,7 +58,7 @@ def snapshot_app(discovery_package, tmp_path):
         app=app,
         db=db,
         package=package,
-        path=tmp_path / package / "schema.py",
+        path=tmp_path / package / "db/schema.py",
         Entry=db.models["Entry"],
     )
     db.engine.dispose()
@@ -78,7 +78,7 @@ def test_dump_is_database_derived_deterministic_and_importable_without_io(
         "sqlalchemy.engine.Engine.connect",
         side_effect=AssertionError("unexpected connection"),
     )
-    schema = importlib.import_module(f"{state.package}.schema")
+    schema = importlib.import_module(f"{state.package}.db.schema")
     assert set(schema.metadata.tables) == {"categories", "entries"}
     assert not hasattr(schema, "Entry")
     table = schema.metadata.tables["entries"]

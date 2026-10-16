@@ -51,13 +51,13 @@ def model_package(discovery_package):
     def create(schema=SCHEMA, author=AUTHOR, post=POST, extra_files=None):
         files = {
             "__init__.py": "",
-            "models/__init__.py": "",
-            "models/application_model.py": BASE,
-            "models/author.py": dedent(author),
-            "models/post.py": dedent(post),
+            "app/models/__init__.py": "",
+            "app/models/application_model.py": BASE,
+            "app/models/author.py": dedent(author),
+            "app/models/post.py": dedent(post),
         }
         if schema is not None:
-            files["schema.py"] = schema
+            files["db/schema.py"] = schema
         files.update(extra_files or {})
         return discovery_package(files)
 
@@ -65,7 +65,7 @@ def model_package(discovery_package):
 
 
 def load_models(package):
-    return discover_models(f"{package}.models")
+    return discover_models(f"{package}.app.models")
 
 
 def test_declarations_and_discovery_do_not_import_snapshot_or_connect(
@@ -74,12 +74,12 @@ def test_declarations_and_discovery_do_not_import_snapshot_or_connect(
     connect = mocker.patch(
         "sqlalchemy.engine.Engine.connect", side_effect=AssertionError
     )
-    package = model_package()
+    package = model_package(schema='raise AssertionError("snapshot loaded too early")')
     models = load_models(package)
     assert list(models) == ["Author", "Post"]
-    assert f"{package}.schema" not in sys.modules
+    assert f"{package}.db.schema" not in sys.modules
     assert all("__mapper__" not in vars(model) for model in models.values())
-    assert discover_models(f"{package}.models") == models
+    assert discover_models(f"{package}.app.models") == models
     connect.assert_not_called()
 
 
@@ -97,6 +97,30 @@ def test_mapping_requires_snapshot_only_when_used(model_package, mocker):
     assert {mapper.class_ for mapper in author.registry.mappers} == {author, post}
     assert "categories" in author.metadata.tables
     connect.assert_not_called()
+
+
+def test_snapshot_location_is_independent_of_cwd_and_importable_db_packages(
+    model_package, tmp_path, monkeypatch
+):
+    from types import ModuleType
+
+    package = model_package(
+        extra_files={"app/schema.py": 'raise AssertionError("legacy snapshot loaded")'}
+    )
+    monkeypatch.setitem(sys.modules, "db", ModuleType("db"))
+    monkeypatch.setitem(sys.modules, "db.schema", ModuleType("db.schema"))
+    monkeypatch.chdir(tmp_path)
+    author = load_models(package)["Author"]
+    assert author(name="Ada").name == "Ada"
+
+
+def test_snapshot_dependency_file_errors_are_not_disguised(model_package):
+    models = load_models(
+        model_package(schema='open("missing_snapshot_dependency_123")')
+    )
+    with pytest.raises(FileNotFoundError) as error:
+        models["Author"].prepare()
+    assert error.value.filename == "missing_snapshot_dependency_123"
 
 
 def test_native_inspection_and_column_expressions_prepare_lazily(model_package):
@@ -256,10 +280,11 @@ def test_duplicate_names_fail_but_normal_imports_preserve_identity(model_package
     package = model_package()
     models = load_models(package)
     assert (
-        importlib.import_module(f"{package}.models.author").Author is models["Author"]
+        importlib.import_module(f"{package}.app.models.author").Author
+        is models["Author"]
     )
     base = importlib.import_module(
-        f"{package}.models.application_model"
+        f"{package}.app.models.application_model"
     ).ApplicationModel
     with pytest.raises(ProgrammerError, match="Duplicate model name"):
         type("Author", (base,), {})
@@ -291,11 +316,13 @@ def test_separate_applications_with_same_names_have_isolated_registries(
         files.update(
             {
                 f"{name}/__init__.py": "",
-                f"{name}/schema.py": SCHEMA,
-                f"{name}/models/__init__.py": "",
-                f"{name}/models/application_model.py": BASE,
-                f"{name}/models/author.py": AUTHOR,
-                f"{name}/models/post.py": POST,
+                f"{name}/db/schema.py": SCHEMA.replace(
+                    "sa.String()", f"sa.String({20 if name == 'first' else 40})"
+                ),
+                f"{name}/app/models/__init__.py": "",
+                f"{name}/app/models/application_model.py": BASE,
+                f"{name}/app/models/author.py": AUTHOR,
+                f"{name}/app/models/post.py": POST,
             }
         )
     package = discovery_package(files)
@@ -303,6 +330,8 @@ def test_separate_applications_with_same_names_have_isolated_registries(
     second = load_models(f"{package}.second")["Author"].prepare()
     assert first.registry is not second.registry
     assert first.metadata is not second.metadata
+    assert inspect(first).columns.name.type.length == 20
+    assert inspect(second).columns.name.type.length == 40
     assert (
         inspect(first).relationships.posts.mapper.class_
         is not inspect(second).relationships.posts.mapper.class_
@@ -393,7 +422,7 @@ def test_has_one_uses_native_inverse_without_discarding_staged_primary_key(
             'has_many("posts", dependent="destroy"), has_one("profile")',
         ),
         extra_files={
-            "models/profile.py": (
+            "app/models/profile.py": (
                 "from .application_model import ApplicationModel\n"
                 "from flaskteroids.model import belongs_to\n"
                 "from flaskteroids.rules import rules\n"

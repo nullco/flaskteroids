@@ -85,7 +85,7 @@ APPLICATION_HELP = {
     ("db:init",): ["db/migrate", "does not apply migrations", "absent or empty"],
     ("db:create",): ["selected database", "connectable", "no migrations required"],
     ("db:schema:dump",): [
-        "app/schema.py",
+        "db/schema.py",
         "without changing data",
         "initialization runs normally",
     ],

@@ -26,6 +26,8 @@ def test_generated_application_declares_runtime_dependencies(
         "gunicorn",
     ]
     assert "dependency-groups" not in generated
+    assert (tmp_path / "weblog/db/schema.py").is_file()
+    assert not (tmp_path / "weblog/app/schema.py").exists()
 
     dockerfile = (tmp_path / "weblog" / "Dockerfile").read_text()
     assert "uv sync --locked --no-dev --no-install-project" in dockerfile
@@ -143,6 +145,8 @@ with patch('sqlalchemy.engine.Engine.connect', side_effect=AssertionError('unexp
     assert help_result.returncode == 0, help_result.stderr
     migrated = run("-m", "flask", "db:migrate")
     assert migrated.returncode == 0, migrated.stdout + migrated.stderr
+    assert "posts" in (root / "db/schema.py").read_text()
+    assert not (root / "app/schema.py").exists()
 
     fresh = run(
         "-c",

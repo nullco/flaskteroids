@@ -3,7 +3,6 @@
 import ast
 import os
 import stat
-import sys
 import tempfile
 import textwrap
 from pathlib import Path
@@ -64,22 +63,10 @@ def snapshot_source(connection):
 
 def dump_schema(application=None):
     application = application or current_app
-    models_module = application.config.paths.models
-    if not models_module.endswith(".models"):
-        raise click.ClickException(
-            "Schema dumping requires a models package named <application>.models."
-        )
-    module = sys.modules.get(models_module)
-    locations = list(getattr(module, "__path__", ()))
-    if len(locations) == 1:
-        path = Path(locations[0]).parent / "schema.py"
-    else:
-        path = Path(application.project_root).joinpath(
-            *models_module.removesuffix(".models").split("."), "schema.py"
-        )
+    path = Path(application.project_root) / "db/schema.py"
     if not path.resolve().is_relative_to(Path(application.project_root).resolve()):
         raise click.ClickException(
-            "The schema package must be inside the application project root."
+            "The schema snapshot must be inside the application project root."
         )
     engine = application.extensions["flaskteroids.db"].engine
     with engine.connect() as connection:
@@ -107,7 +94,7 @@ def dump_schema(application=None):
 def dump():
     """Refresh the database schema snapshot.
 
-    Regenerate app/schema.py from the selected database without changing data.
+    Regenerate db/schema.py from the selected database without changing data.
     Application initialization runs normally; no model mappings are required.
 
     \b

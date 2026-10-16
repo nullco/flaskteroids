@@ -100,21 +100,21 @@ def test_unregistered_model_fails_clearly(make_app, discovery_package):
     package = discovery_package(
         {
             "__init__.py": "",
-            "schema.py": (
+            "db/schema.py": (
                 "import sqlalchemy as sa\n"
                 "from flaskteroids.schema import Snapshot\n"
                 "snapshot = Snapshot()\n"
                 "metadata = snapshot.metadata\n"
                 "snapshot.create_table('strangers', sa.Column('id', sa.Integer(), primary_key=True))\n"
             ),
-            "models/__init__.py": (
+            "app/models/__init__.py": (
                 "from flaskteroids.model import Model\n"
                 "class ApplicationModel(Model):\n    __abstract__ = True\n"
                 "class Stranger(ApplicationModel): pass\n"
             ),
         }
     )
-    stranger = importlib.import_module(f"{package}.models").Stranger
+    stranger = importlib.import_module(f"{package}.app.models").Stranger
     with make_app("a").app_context():
         with pytest.raises(ProgrammerError, match="Stranger.*not registered"):
             stranger.count()

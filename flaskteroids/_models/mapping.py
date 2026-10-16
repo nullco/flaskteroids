@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import pkgutil
 from importlib import import_module
+from pathlib import Path
 from threading import RLock, get_ident
+from types import ModuleType
 
 from sqlalchemy import MetaData
 from sqlalchemy.orm import MappedColumn, RelationshipProperty, registry
@@ -29,23 +31,42 @@ def _root(cls):
     return type.__getattribute__(cls, "_flaskteroids_model_root")
 
 
+def _schema_location(root):
+    if root.__schema_module__:
+        return root.__schema_module__
+    package = import_module(root.__models_module__)
+    return Path(next(iter(package.__path__))).resolve().parents[1] / "db/schema.py"
+
+
 def _load_schema(root):
     if root._flaskteroids_schema_loaded:
         return
-    name = root.__schema_module__
+    location = _schema_location(root)
     try:
-        schema = import_module(name)
-    except ModuleNotFoundError as error:
-        if error.name == name or name.startswith(f"{error.name}."):
+        if isinstance(location, Path):
+            # Avoid global db imports and stale bytecode after snapshot publication.
+            schema = ModuleType(f"{root.__models_module__}._schema_snapshot")
+            schema.__file__ = str(location)
+            exec(compile(location.read_bytes(), str(location), "exec"), vars(schema))
+        else:
+            schema = import_module(location)
+    except (FileNotFoundError, ModuleNotFoundError) as error:
+        if (
+            isinstance(error, FileNotFoundError) and error.filename == str(location)
+        ) or (
+            isinstance(error, ModuleNotFoundError)
+            and isinstance(location, str)
+            and (error.name == location or location.startswith(f"{error.name}."))
+        ):
             raise ProgrammerError(
-                f"Schema snapshot {name!r} is missing. Run database migrations "
+                f"Schema snapshot {str(location)!r} is missing. Run database migrations "
                 "or db:schema:dump, then start a fresh process."
             ) from error
         raise
     metadata = vars(schema).get("metadata")
     if not isinstance(metadata, MetaData):
         raise ProgrammerError(
-            f"{name} must be a generated schema snapshot with metadata."
+            f"{location} must be a generated schema snapshot with metadata."
         )
     for table in metadata.tables.values():
         copied = table.to_metadata(root.metadata)
@@ -66,7 +87,7 @@ def _table(cls):
     table = root.metadata.tables.get(name)
     if table is None:
         raise ProgrammerError(
-            f"Model {cls.__name__} needs table {name!r} in {root.__schema_module__}. "
+            f"Model {cls.__name__} needs table {name!r} in {_schema_location(root)}. "
             "Run database migrations or db:schema:dump, then start a fresh process."
         )
     if not table.primary_key:
@@ -199,9 +220,7 @@ class SchemaMeta(type):
                 "Models cannot change their application's schema module."
             )
         if abstract and root is None:
-            if schema_module is None and models_module:
-                schema_module = models_module.removesuffix(".models") + ".schema"
-            if schema_module:
+            if schema_module or models_module:
                 owned = registry(metadata=namespace.get("metadata"))
                 namespace.update(
                     registry=owned,
@@ -234,7 +253,7 @@ class SchemaMeta(type):
                     f"{name} must keep columns/tables in the generated schema snapshot."
                 )
         cls = super().__new__(metaclass, name, bases, namespace, **kwargs)
-        if abstract and root is None and schema_module:
+        if abstract and root is None and (schema_module or models_module):
             cls._flaskteroids_model_root = cls
             cls._flaskteroids_model_catalog = {}
             cls._flaskteroids_mapping_lock = RLock()

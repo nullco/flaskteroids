@@ -139,7 +139,7 @@ def test_db_init_remains_strict(preparation_app):
 def test_init_is_registration_only_and_does_not_connect(preparation_app):
     root, run = preparation_app
     write_post_declaration(root)
-    (root / "app/schema.py").unlink()
+    (root / "db/schema.py").unlink()
     shutil.rmtree(root / "db/migrate")
     result = run("db:init")
     assert result.returncode == 0, result.stderr

@@ -26,7 +26,7 @@ add `validates(...)` when invalid input should return errors rather than a
 native constraint exception.
 
 Generators use SQLAlchemy type factories. They do not maintain a second input
-casting API. Migrations define the database; the generated `app/schema.py`
+casting API. Migrations define the database; the generated `db/schema.py`
 snapshot supplies mapped column types. Do not edit it to change a field.
 
 ## Model casting and raw input

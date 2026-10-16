@@ -14,8 +14,10 @@
   native/facade queries now share session identity. Native collections replace
   custom `Relation` wrappers; create children through their model's `create()`.
 - Migrations own schema changes. Successful migration, preparation, and rollback
-  regenerate a committed `app/schema.py` snapshot; `db:schema:dump` refreshes it
+  regenerate a committed `db/schema.py` snapshot; `db:schema:dump` refreshes it
   independently. Imports do not require snapshots or special migration startup.
+  Existing apps with `app/schema.py` should run `flask db:schema:dump`, remove
+  the old snapshot, and restart servers/workers.
 - Model queries are immutable. Native ORM callers can
   explicitly prepare mappings and publish staged attributes with `prepare()` and
   `apply_changes()`. Native inspection tracks published state, not unsaved input.

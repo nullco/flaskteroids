@@ -47,7 +47,7 @@ FLASK_ENV=production bin/flask db:prepare
 ```
 
 Preparation doesn't reset the database or seed records. After successful migration,
-Flaskteroids regenerates `app/schema.py` from the selected database. Commit this
+Flaskteroids regenerates `db/schema.py` from the selected database. Commit this
 read-only snapshot; do not duplicate column changes there by hand. Review migrations
 and the resulting snapshot before deploying: changes and rollbacks can delete data.
 Restart servers/workers afterward; published mappings are not modified in place.
@@ -59,7 +59,7 @@ Restart servers/workers afterward; published mappings are not modified in place.
 | `db:migrate` | Apply pending migrations to an existing database. |
 | `db:rollback` | Undo the most recent migration. |
 | `db:init` | Add migration files to an app that doesn't have them yet. |
-| `db:schema:dump` | Refresh `app/schema.py` from the selected database without changing data. |
+| `db:schema:dump` | Refresh `db/schema.py` from the selected database without changing data. |
 
 New apps already include migration files. If preparation fails, fix the reported
 problem and try again; the database is left in place for you to inspect. If migrations

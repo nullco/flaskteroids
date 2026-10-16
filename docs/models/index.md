@@ -49,9 +49,13 @@ flask db:prepare
 ```
 
 Model/scaffold generators write migrations and behavioral model files. Successful
-`db:migrate`, `db:prepare`, and `db:rollback` regenerate `app/schema.py` from the
+`db:migrate`, `db:prepare`, and `db:rollback` regenerate `db/schema.py` from the
 selected database. Commit it, but **do not edit it manually**. Use
 `flask db:schema:dump` to refresh it independently. See [CLI](../other/cli.md).
+
+The snapshot lives alongside migrations in `db/`, matching Rails conventions.
+For an existing app with `app/schema.py`, run `flask db:schema:dump`, remove the
+old snapshot, and restart servers and workers. No database changes are needed.
 
 The snapshot contains metadata for tables, columns, keys, constraints, indexes,
 and server defaults, including tables without a behavioral model. It contains no

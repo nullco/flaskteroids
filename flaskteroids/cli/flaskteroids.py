@@ -127,7 +127,7 @@ def new(app_name, skip_install):
             "app/models/application_model.py",
             _template(path="app/models/application_model.py.mako"),
         )
-        ab.file("app/schema.py", _template(path="app/schema.py.mako"))
+        ab.file("db/schema.py", _template(path="db/schema.py.mako"))
         ab.file("app/jobs/application_job.py")
         ab.file(
             "app/mailers/application_mailer.py",
