@@ -4,7 +4,6 @@ from sqlalchemy.orm import declarative_base
 
 from flaskteroids import model
 from flaskteroids.model import (
-    Model,
     after_commit,
     after_create,
     after_destroy,
@@ -23,6 +22,7 @@ from flaskteroids.model import (
     before_validation,
 )
 from flaskteroids.rules import rules
+from tests.model.schema_support import model_base
 
 Base = declarative_base()
 
@@ -37,7 +37,7 @@ class UserBase(Base):
 class TestCallbacks:
     def test_before_save_can_modify_attributes(self, init_models):
         @rules(before_save("_normalize"))
-        class User(Model):
+        class User(model_base(Base)):
             def _normalize(self):
                 self.username = self.username.strip().lower()
 
@@ -54,7 +54,7 @@ class TestCallbacks:
             around_save("_around"),
             after_save("_after"),
         )
-        class User(Model):
+        class User(model_base(Base)):
             def _before(self):
                 calls.append("before_save")
 
@@ -76,11 +76,11 @@ class TestCallbacks:
             "after_save",
         ]
 
-    def test_create_vs_update_callbacks(self, init_models):
+    def test_before_callbacks_run_for_matching_persistence_operation(self, init_models):
         calls = []
 
         @rules(before_create("_on_create"), before_update("_on_update"))
-        class User(Model):
+        class User(model_base(Base)):
             def _on_create(self):
                 calls.append("create")
 
@@ -97,11 +97,11 @@ class TestCallbacks:
         user.save()
         assert calls == ["update"]
 
-    def test_after_create_and_after_update(self, init_models):
+    def test_after_callbacks_run_for_matching_persistence_operation(self, init_models):
         calls = []
 
         @rules(after_create("_on_create"), after_update("_on_update"))
-        class User(Model):
+        class User(model_base(Base)):
             def _on_create(self):
                 calls.append("create")
 
@@ -117,11 +117,11 @@ class TestCallbacks:
         user.update(username="y")
         assert calls == ["update"]
 
-    def test_validation_callbacks(self, init_models):
+    def test_validation_callbacks_wrap_validation_in_order(self, init_models):
         calls = []
 
         @rules(before_validation("_before"), after_validation("_after"))
-        class User(Model):
+        class User(model_base(Base)):
             def _before(self):
                 calls.append("before_validation")
 
@@ -137,7 +137,7 @@ class TestCallbacks:
         calls = []
 
         @rules(before_validation("_before"), after_validation("_after"))
-        class User(Model):
+        class User(model_base(Base)):
             def _before(self):
                 calls.append("before_validation")
 
@@ -149,9 +149,11 @@ class TestCallbacks:
         User.new(username="x").save(validate=False)
         assert calls == []
 
-    def test_before_save_halt(self, init_models):
+    def test_before_save_halts_persistence_when_callback_returns_false(
+        self, init_models
+    ):
         @rules(before_save("_abort"))
-        class User(Model):
+        class User(model_base(Base)):
             def _abort(self):
                 return False
 
@@ -161,9 +163,11 @@ class TestCallbacks:
         assert user.save() is False
         assert user.is_new_record()
 
-    def test_around_save_halt(self, init_models):
+    def test_around_save_halts_persistence_when_callback_stops_before_yield(
+        self, init_models
+    ):
         @rules(around_save("_abort"))
-        class User(Model):
+        class User(model_base(Base)):
             def _abort(self):
                 return
                 yield  # pragma: no cover
@@ -174,7 +178,7 @@ class TestCallbacks:
         assert user.save() is False
         assert user.is_new_record()
 
-    def test_destroy_callbacks(self, init_models):
+    def test_destroy_callbacks_wrap_deletion_in_order(self, init_models):
         calls = []
 
         @rules(
@@ -182,7 +186,7 @@ class TestCallbacks:
             around_destroy("_around"),
             after_destroy("_after"),
         )
-        class User(Model):
+        class User(model_base(Base)):
             def _before(self):
                 calls.append("before_destroy")
 
@@ -205,9 +209,11 @@ class TestCallbacks:
             "after_destroy",
         ]
 
-    def test_before_destroy_halt(self, init_models):
+    def test_before_destroy_halts_deletion_when_callback_returns_false(
+        self, init_models
+    ):
         @rules(before_destroy("_abort"))
-        class User(Model):
+        class User(model_base(Base)):
             def _abort(self):
                 return False
 
@@ -217,11 +223,11 @@ class TestCallbacks:
         assert user.destroy() is False
         assert User.find_by(username="x")
 
-    def test_if_condition_by_method_name(self, init_models):
+    def test_callbacks_evaluate_named_if_condition(self, init_models):
         calls = []
 
         @rules(before_save("_cb", if_="_should_run"))
-        class User(Model):
+        class User(model_base(Base)):
             def _cb(self):
                 calls.append("cb")
 
@@ -236,11 +242,11 @@ class TestCallbacks:
         User.create(username="yes")
         assert calls == ["cb"]
 
-    def test_unless_condition_by_callable(self, init_models):
+    def test_callbacks_evaluate_callable_unless_condition(self, init_models):
         calls = []
 
         @rules(before_save("_cb", unless_=lambda user: user.username == "skip"))
-        class User(Model):
+        class User(model_base(Base)):
             def _cb(self):
                 calls.append("cb")
 
@@ -252,11 +258,11 @@ class TestCallbacks:
         User.create(username="go")
         assert calls == ["cb"]
 
-    def test_on_option(self, init_models):
+    def test_callbacks_apply_on_filter_to_save_operations(self, init_models):
         calls = []
 
         @rules(before_save("_cb", on="create"))
-        class User(Model):
+        class User(model_base(Base)):
             def _cb(self):
                 calls.append("cb")
 
@@ -276,7 +282,7 @@ class TestCallbacks:
             before_save("_first"),
             before_save("_second", prepend=True),
         )
-        class User(Model):
+        class User(model_base(Base)):
             def _first(self):
                 calls.append("first")
 
@@ -295,7 +301,7 @@ class TestCallbacks:
             after_save("_first"),
             after_save("_second"),
         )
-        class User(Model):
+        class User(model_base(Base)):
             def _first(self):
                 calls.append("first")
 
@@ -307,43 +313,46 @@ class TestCallbacks:
         User.create(username="x")
         assert calls == ["second", "first"]
 
-    def test_after_commit(self, init_models):
+    def test_after_commit_runs_once_for_committed_save(self, init_models):
         calls = []
 
         @rules(after_commit("_cb"))
-        class User(Model):
+        class User(model_base(Base)):
             def _cb(self):
                 calls.append("after_commit")
 
         init_models(Base, [(UserBase, User)])
 
         User.create(username="x")
-        assert calls == []
+        assert calls == ["after_commit"]
 
         model.session.commit()
         assert calls == ["after_commit"]
 
-    def test_after_rollback(self, init_models):
+    def test_after_rollback_runs_for_rolled_back_save(self, init_models):
         calls = []
 
         @rules(after_rollback("_cb"))
-        class User(Model):
+        class User(model_base(Base)):
             def _cb(self):
                 calls.append("after_rollback")
 
         init_models(Base, [(UserBase, User)])
 
+        model.session.begin()
         User.create(username="x")
         assert calls == []
 
         model.session.rollback()
         assert calls == ["after_rollback"]
 
-    def test_after_initialize(self, init_models):
+    def test_after_initialize_runs_for_new_and_freshly_loaded_records(
+        self, init_models
+    ):
         calls = []
 
         @rules(after_initialize("_cb"))
-        class User(Model):
+        class User(model_base(Base)):
             def _cb(self):
                 calls.append("initialize")
 
@@ -354,14 +363,17 @@ class TestCallbacks:
 
         user = User.create(username="x")
         calls.clear()
+        assert User.find(user.id) is user
+        assert calls == []
+        model.session.expunge(user)
         User.find(user.id)
         assert calls == ["initialize"]
 
-    def test_after_find(self, init_models):
+    def test_after_find_runs_for_freshly_loaded_records(self, init_models):
         calls = []
 
         @rules(after_find("_cb"))
-        class User(Model):
+        class User(model_base(Base)):
             def _cb(self):
                 calls.append("find")
 
@@ -370,25 +382,22 @@ class TestCallbacks:
         user = User.create(username="x")
         assert calls == []
 
+        assert User.find(user.id) is user
+        assert calls == []
+        model.session.expunge(user)
         User.find(user.id)
         assert calls == ["find"]
 
-    def test_on_is_not_supported_on_create_callbacks(self, init_models):
+    @pytest.mark.parametrize(
+        "callback, operation", [(before_create, "update"), (before_destroy, "destroy")]
+    )
+    def test_operation_specific_callbacks_reject_on_option(
+        self, init_models, callback, operation
+    ):
         from flaskteroids.exceptions import ProgrammerError
 
-        @rules(before_create("_cb", on="update"))
-        class User(Model):
-            def _cb(self):
-                pass
-
-        with pytest.raises(ProgrammerError):
-            init_models(Base, [(UserBase, User)])
-
-    def test_on_is_not_supported_on_destroy_callbacks(self, init_models):
-        from flaskteroids.exceptions import ProgrammerError
-
-        @rules(before_destroy("_cb", on="destroy"))
-        class User(Model):
+        @rules(callback("_cb", on=operation))
+        class User(model_base(Base)):
             def _cb(self):
                 pass
 
@@ -399,7 +408,7 @@ class TestCallbacks:
         calls = []
 
         @rules(after_commit("_cb", on="destroy"))
-        class User(Model):
+        class User(model_base(Base)):
             def _cb(self):
                 calls.append("after_commit_destroy")
 
@@ -417,7 +426,9 @@ class TestCallbacks:
         calls = []
 
         @rules(before_save("_cb"))
-        class BaseUser(Model):
+        class BaseUser(model_base(Base)):
+            __abstract__ = True
+
             def _cb(self):
                 calls.append("cb")
 
@@ -429,3 +440,22 @@ class TestCallbacks:
 
         User.create(username="x")
         assert calls == ["cb"]
+
+    def test_aborted_create_preserves_new_record_and_skips_after_save(
+        self, init_models
+    ):
+        calls = []
+
+        @rules(before_create("_abort"), after_save("_after"))
+        class User(model_base(Base)):
+            def _abort(self):
+                return False
+
+            def _after(self):
+                calls.append("after_save")
+
+        init_models(Base, [(UserBase, User)])
+        user = User.create(username="x")
+        assert user.is_new_record()
+        assert User.count() == 0
+        assert calls == []

@@ -100,9 +100,14 @@ module = ["celery", "celery.*"]
 ignore_missing_imports = true
 
 [dependency-groups]
+integration = [
+    "psycopg[binary]>=3.3",
+    "PyMySQL[rsa]>=1.1",
+]
 dev = [
     "mypy>=2.4.0",
     "pytest-cov>=7.1.0",
     "pytest-mock>=3.16.0",
+    "python-dotenv>=1.2",
     "ruff>=0.17.0",
 ]

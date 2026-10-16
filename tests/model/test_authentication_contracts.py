@@ -3,8 +3,9 @@ from sqlalchemy import Column, DateTime, Integer, String
 from sqlalchemy.orm import declarative_base
 from werkzeug.security import check_password_hash
 
-from flaskteroids.model import Model, PasswordAuthenticator, has_secure_password
+from flaskteroids.model import PasswordAuthenticator, has_secure_password
 from flaskteroids.rules import rules
+from tests.model.schema_support import model_base
 
 Base = declarative_base()
 
@@ -23,14 +24,14 @@ class AccountTable(Base):
 @pytest.fixture(params=["password", "passcode"])
 def account_model(request, init_models):
     @rules(has_secure_password(request.param))
-    class Account(Model, PasswordAuthenticator):
+    class Account(model_base(Base), PasswordAuthenticator):
         pass
 
     init_models(Base, [(AccountTable, Account)])
     return Account, request.param
 
 
-def test_loaded_password_updates_and_confirmation(account_model):
+def test_loaded_accounts_validate_password_changes_and_confirmation(account_model):
     Account, field = account_model
     account = Account.create(name="one", **{field: "secret"})
     loaded = Account.find(account.id)
@@ -43,7 +44,7 @@ def test_loaded_password_updates_and_confirmation(account_model):
     assert Account.find(account.id).authenticate("changed")
 
 
-def test_missing_user_still_checks_hash(account_model, mocker):
+def test_authentication_checks_hash_for_missing_users(account_model, mocker):
     Account, field = account_model
     check = mocker.patch(
         "flaskteroids._models.authentication.check_password_hash",

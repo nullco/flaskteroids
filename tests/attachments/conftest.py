@@ -6,6 +6,7 @@ from werkzeug.datastructures import FileStorage
 
 from flaskteroids.application import Application
 from flaskteroids.attachments.schema import metadata as storage_metadata
+from flaskteroids.db import session
 from flaskteroids.testing import TestDeliveryMethod, TestQueueAdapter
 
 
@@ -43,6 +44,11 @@ def app(tmp_path):
             self.database_url = url
 
     return StorageApplication.initialize(environment="test", root_path=tmp_path)
+
+
+@pytest.fixture
+def pending_transaction(app_ctx):
+    return session.begin()
 
 
 @pytest.fixture

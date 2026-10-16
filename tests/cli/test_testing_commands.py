@@ -71,11 +71,3 @@ def test_test_command_restores_environment_on_error(cli_runner, mocker, monkeypa
     assert result.exit_code == 1
     assert isinstance(result.exception, RuntimeError)
     assert os.environ["FLASK_ENV"] == "development"
-
-
-@pytest.mark.parametrize("command", ["test", "test:system"])
-def test_flask_test_command_help(cli_runner, command):
-    result = cli_runner.invoke(args=[command, "--help"])
-
-    assert result.exit_code == 0
-    assert "PYTEST_ARGS" in result.output

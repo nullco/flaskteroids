@@ -64,7 +64,7 @@ def test_dependent_purge_preserves_a_shared_blob_during_app_teardown(
 def test_pending_blob_reuse_survives_removing_original_attachment(
     app, storage, upload, mocker, operation
 ):
-    with app.app_context():
+    with app.app_context(), Document.transaction():
         write = mocker.spy(storage.service(), "upload")
         original = Document.create(title="Original", avatar=upload())
         blob = original.avatar.blob
@@ -98,7 +98,7 @@ def test_pending_blob_can_move_between_attachment_names(app, upload):
 
 
 def test_nested_removal_of_shared_pending_blob_preserves_its_upload(app, upload):
-    with app.app_context():
+    with app.app_context(), Document.transaction():
         original = Document.create(title="Original", avatar=upload())
         with session.begin_nested():
             shared = Document.create(title="Shared", avatar=original.avatar.blob)
@@ -111,17 +111,17 @@ def test_nested_removal_of_shared_pending_blob_preserves_its_upload(app, upload)
 def test_clearing_pending_collection_cancels_unshared_uploads(
     app, storage, upload, mocker
 ):
-    with app.app_context():
+    with app.app_context(), Document.transaction():
         write = mocker.spy(storage.service(), "upload")
         document = Document.create(title="Example", files=[upload(b"file", "file.txt")])
         assert document.update(files=[])
     write.assert_not_called()
 
 
-def test_rolled_back_shared_attachment_does_not_keep_a_cancelled_upload(
+def test_rollback_of_shared_attachment_cancels_unreferenced_upload(
     app, storage, upload, mocker
 ):
-    with app.app_context():
+    with app.app_context(), Document.transaction():
         write = mocker.spy(storage.service(), "upload")
         original = Document.create(title="Original", avatar=upload())
         nested = session.begin_nested()
@@ -134,11 +134,11 @@ def test_rolled_back_shared_attachment_does_not_keep_a_cancelled_upload(
         assert not Document.first().avatar.attached()
 
 
-def test_requests_keep_existing_app_context_lifecycle_outside_test_isolation(
+def test_requests_preserve_explicit_ambient_transaction(
     app, client, storage, upload, mocker
 ):
     app.add_url_rule("/request-count", view_func=lambda: {"count": Document.count()})
-    with app.app_context():
+    with app.app_context(), Document.transaction():
         write = mocker.spy(storage.service(), "upload")
         Document.create(title="Setup", avatar=upload())
         assert client.get("/request-count").json == {"count": 1}
@@ -166,7 +166,7 @@ def test_streamed_test_requests_keep_their_isolated_context(
         return Response(body(), mimetype="text/plain")
 
     app.add_url_rule("/request-stream", view_func=streamed_request)
-    with transactional_test(app), app.app_context():
+    with transactional_test(app), app.app_context(), Document.transaction():
         write = mocker.spy(storage.service(), "upload")
         Document.create(title="Setup", avatar=upload())
         response = client.get("/request-stream", buffered=False)
@@ -176,7 +176,7 @@ def test_streamed_test_requests_keep_their_isolated_context(
         assert Document.count() == 2
 
 
-def test_request_helper_does_not_commit_ambient_uploads(
+def test_request_helper_preserves_ambient_upload_transaction(
     app, client, storage, upload, mocker
 ):
     def create_document():
@@ -186,7 +186,12 @@ def test_request_helper_does_not_commit_ambient_uploads(
     app.add_url_rule(
         "/request-write", endpoint="request_write", view_func=create_document
     )
-    with transactional_test(app), app.app_context(), activate_test_context(client):
+    with (
+        transactional_test(app),
+        app.app_context(),
+        activate_test_context(client),
+        Document.transaction(),
+    ):
         write = mocker.spy(storage.service(), "upload")
         setup_document = Document.create(title="Setup", avatar=upload())
         get("/request-write")
@@ -221,8 +226,9 @@ def test_failed_request_rolls_back_only_request_work(
     app.config["PROPAGATE_EXCEPTIONS"] = propagate
 
     def fail_after_write():
-        Document.create(title="Failed request", avatar=upload())
-        raise RuntimeError("Request failed")
+        with Document.transaction():
+            Document.create(title="Failed request", avatar=upload())
+            raise RuntimeError("Request failed")
 
     app.add_url_rule("/request-failure", view_func=fail_after_write)
     with transactional_test(app), app.app_context(), activate_test_context(client):

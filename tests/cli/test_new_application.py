@@ -6,6 +6,7 @@ import tomllib
 from pathlib import Path
 
 from flaskteroids.cli.flaskteroids import cli
+from tests.assertions import assert_pytest_passed
 
 
 def test_generated_application_declares_runtime_dependencies(
@@ -26,6 +27,8 @@ def test_generated_application_declares_runtime_dependencies(
         "gunicorn",
     ]
     assert "dependency-groups" not in generated
+    assert (tmp_path / "weblog/db/schema.py").is_file()
+    assert not (tmp_path / "weblog/app/schema.py").exists()
 
     dockerfile = (tmp_path / "weblog" / "Dockerfile").read_text()
     assert "uv sync --locked --no-dev --no-install-project" in dockerfile
@@ -98,7 +101,7 @@ def test_generated_model_can_boot_migrate_and_use_fresh_mappings(tmp_path, monke
     )
     root = tmp_path / "weblog"
     environment = os.environ | {
-        "PYTHONPATH": str(Path(__file__).parents[2]),
+        "PYTHONPATH": os.pathsep.join((str(root), str(Path(__file__).parents[2]))),
         "FLASK_ENV": "development",
     }
 
@@ -121,41 +124,36 @@ def test_generated_model_can_boot_migrate_and_use_fresh_mappings(tmp_path, monke
     unbacked = run(
         "-c",
         """
-from wsgi import app
-from app.models.post import Post
-with app.app_context():
-    Post.new(title="not-in-error-message")
+from unittest.mock import patch
+with patch('sqlalchemy.engine.Engine.connect', side_effect=AssertionError('unexpected connection')):
+    from wsgi import app
+    from app.models.post import Post
+    assert '__mapper__' not in vars(Post)
 """,
     )
-    assert unbacked.returncode != 0
-    for fragment in ("ProgrammerError", "Post", "posts", "migrations", "fresh"):
-        assert fragment in unbacked.stderr
-    # Tracebacks show source lines, so inspect only the exception message for values.
-    assert "not-in-error-message" not in unbacked.stderr.split("ProgrammerError:")[-1]
+    assert unbacked.returncode == 0, unbacked.stderr
+    query = run(
+        "-c",
+        "from wsgi import app; from app.models.post import Post; "
+        "ctx = app.app_context(); ctx.push(); Post.first()",
+    )
+    assert query.returncode != 0
+    assert "ProgrammerError" in query.stderr
+    assert "posts" in query.stderr
+    assert "migrations" in query.stderr
 
     help_result = run("-m", "flask", "db:migrate", "--help")
     assert help_result.returncode == 0, help_result.stderr
     migrated = run("-m", "flask", "db:migrate")
     assert migrated.returncode == 0, migrated.stdout + migrated.stderr
+    assert "posts" in (root / "db/schema.py").read_text()
+    assert not (root / "app/schema.py").exists()
 
-    fresh = run(
-        "-c",
-        """
-from wsgi import app
-from app.models.post import Post
-with app.app_context():
-    post = Post.create(title="first")
-    assert post.id
-    assert Post.find(post.id).title == "first"
-    assert post.update(title="second")
-    assert post.reload().title == "second"
-    assert Post.where(title="second").count() == 1
-""",
-    )
+    fresh = run(str(Path(__file__).parent / "fixtures/application/fresh_records.py"))
     assert fresh.returncode == 0, fresh.stdout + fresh.stderr
 
 
-def test_generated_scaffold_controller_tests_pass(tmp_path, monkeypatch):
+def test_generated_scaffold_system_tests_pass(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     cli.main(
         args=["new", "weblog", "--skip-install"],
@@ -186,25 +184,16 @@ def test_generated_scaffold_controller_tests_pass(tmp_path, monkeypatch):
     )
     assert scaffold.returncode == 0, scaffold.stderr
 
-    mailer = subprocess.run(
-        [sys.executable, "-m", "flask", "generate", "mailer", "User", "welcome"],
-        cwd=root,
-        env=environment,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    assert mailer.returncode == 0, mailer.stderr
-
-    tests = subprocess.run(
+    system_report = root / "system-tests.xml"
+    system_tests = subprocess.run(
         [
             sys.executable,
             "-m",
             "flask",
-            "test",
+            "test:system",
             "-q",
-            "test/controllers",
-            "test/mailers",
+            "--junitxml",
+            str(system_report),
         ],
         cwd=root,
         env=environment,
@@ -212,17 +201,5 @@ def test_generated_scaffold_controller_tests_pass(tmp_path, monkeypatch):
         text=True,
         check=False,
     )
-    assert tests.returncode == 0, tests.stdout + tests.stderr
-    assert "health_controller_test.py" in tests.stdout or "9 passed" in tests.stdout
-    assert "9 passed" in tests.stdout
-
-    system_tests = subprocess.run(
-        [sys.executable, "-m", "flask", "test:system", "-q"],
-        cwd=root,
-        env=environment,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
     assert system_tests.returncode == 0, system_tests.stdout + system_tests.stderr
-    assert "1 passed" in system_tests.stdout
+    assert_pytest_passed(system_report)

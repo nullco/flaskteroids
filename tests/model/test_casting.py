@@ -1,4 +1,5 @@
 from datetime import date, datetime, time
+from decimal import Decimal
 
 import pytest
 from sqlalchemy import (
@@ -9,6 +10,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     Integer,
+    Numeric,
     String,
     Text,
     Time,
@@ -18,7 +20,7 @@ from sqlalchemy import (
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import declarative_base
 
-from flaskteroids.model import Model
+from tests.model.schema_support import model_base
 
 Base = declarative_base()
 
@@ -32,6 +34,7 @@ class EntryTable(Base):
     text_value = Column(Text)
     integer_value = Column(Integer)
     float_value = Column(Float)
+    decimal_value = Column(Numeric(10, 2))
     boolean_value = Column(Boolean)
     datetime_value = Column(DateTime)
     date_value = Column(Date)
@@ -41,7 +44,7 @@ class EntryTable(Base):
     updated_at = Column(DateTime)
 
 
-class Entry(Model):
+class Entry(model_base(Base)):
     pass
 
 
@@ -50,6 +53,7 @@ VALUES = [
     ("text_value", "Existing text"),
     ("integer_value", 42),
     ("float_value", 1.5),
+    ("decimal_value", Decimal("1.50")),
     ("boolean_value", True),
     ("datetime_value", datetime(2023, 1, 1, 12)),
     ("date_value", date(2023, 1, 1)),
@@ -132,3 +136,53 @@ def test_json_none_uses_json_null_without_changing_storage_semantics(engine, ses
 
     assert stored == (False, "null")
     assert entry.reload().json_value is None
+
+
+@pytest.mark.parametrize(
+    ("field", "raw", "typed", "stored"),
+    [
+        ("string_value", 42, "42", "42"),
+        ("text_value", True, "t", "t"),
+        ("string_value", False, "f", "f"),
+        ("integer_value", "42", 42, 42),
+        ("integer_value", "  ", None, None),
+        ("integer_value", "12garbage", 12, 12),
+        ("integer_value", "garbage", 0, None),
+        ("integer_value", "1_000", 1000, 1000),
+        ("float_value", "1.5", 1.5, 1.5),
+        ("float_value", "1.5garbage", 1.5, 1.5),
+        ("float_value", "", None, None),
+        ("decimal_value", "1.50", Decimal("1.50"), Decimal("1.50")),
+        ("decimal_value", False, Decimal("0"), Decimal("0")),
+        ("boolean_value", "", None, None),
+        ("boolean_value", "false", False, False),
+        ("boolean_value", "FALSE", False, False),
+        ("boolean_value", "f", False, False),
+        ("boolean_value", "F", False, False),
+        ("boolean_value", "0", False, False),
+        ("boolean_value", 0, False, False),
+        ("boolean_value", "off", False, False),
+        ("boolean_value", "OFF", False, False),
+        ("boolean_value", "anything", True, True),
+        ("date_value", "2023-01-01", date(2023, 1, 1), date(2023, 1, 1)),
+        ("date_value", "invalid", None, None),
+        (
+            "datetime_value",
+            "2023-01-01T12:00:00",
+            datetime(2023, 1, 1, 12),
+            datetime(2023, 1, 1, 12),
+        ),
+        ("datetime_value", "invalid", None, None),
+        ("time_value", "12:00:00", time(12), time(12)),
+        ("time_value", "invalid", None, None),
+        ("json_value", {"key": "value"}, {"key": "value"}, {"key": "value"}),
+    ],
+)
+def test_model_casts_input_preserves_raw_values_and_serializes_for_database(
+    field, raw, typed, stored
+):
+    entry = Entry.new(required_value="Required", **{field: raw})
+    assert getattr(entry, field) == typed
+    assert entry.read_attribute_before_type_cast(field) == raw
+    assert entry.save()
+    assert getattr(entry.reload(), field) == stored

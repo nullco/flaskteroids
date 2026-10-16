@@ -1,140 +1,159 @@
-from __future__ import annotations
+"""Decorator declarations translated to native relationships before mapping."""
 
-from collections.abc import Callable, Iterator
-from functools import partial
-from typing import TYPE_CHECKING, Any
+from sqlalchemy import inspect
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm.attributes import NO_VALUE
 
-from flask import current_app
-
-from flaskteroids._models.records import _build
+from flaskteroids.db import session
 from flaskteroids.declarations import AssociationDefinition, model_for
-from flaskteroids.exceptions import ProgrammerError, RecordNotFoundException
+from flaskteroids.exceptions import ProgrammerError
 from flaskteroids.inflector import inflector
 
-if TYPE_CHECKING:
-    from flaskteroids.extensions.db import ResolvedAssociation, SQLAlchemyExtension
-    from flaskteroids.model import Model
+
+def _declare(name, kind, class_name, foreign_key, dependent, inverse_of, optional):
+    if not isinstance(name, str) or not name.isidentifier() or name.startswith("_"):
+        raise ProgrammerError("Association names must be public Python identifiers.")
+    if class_name is not None and (not isinstance(class_name, str) or not class_name):
+        raise ProgrammerError("Association targets must be nonempty strings.")
+    if foreign_key is not None and (
+        not isinstance(foreign_key, str) or not foreign_key
+    ):
+        raise ProgrammerError("Association foreign keys must be nonempty strings.")
+    if dependent not in (None, "destroy"):
+        raise ProgrammerError("Association dependent must be 'destroy' or None.")
+
+    def bind(cls):
+        target = class_name or inflector.camelize(
+            inflector.singularize(name) if kind == "has_many" else name
+        )
+        key = foreign_key or inflector.foreign_key(
+            target if kind == "belongs_to" else cls.__name__
+        )
+        definition = model_for(cls)
+        if name in definition.associations:
+            raise ProgrammerError(f"Duplicate association {cls.__name__}.{name}.")
+        if any(name in vars(base) for base in cls.__mro__):
+            raise ProgrammerError(
+                f"Association {cls.__name__}.{name} conflicts with a model attribute."
+            )
+        definition.associations[name] = AssociationDefinition(
+            name, kind, target, key, dependent, inverse_of, optional
+        )
+        if kind == "belongs_to" and not optional:
+            definition.validators.append(
+                lambda *, instance: _validate_target(instance, name, target, key)
+            )
+
+    return bind
 
 
 def belongs_to(
-    name: str, class_name: str | None = None, foreign_key: str | None = None
-) -> Callable[[type[Model]], None]:
-    def bind(cls: type[Model]) -> None:
-        target = class_name or inflector.camelize(name)
-        fk_name = foreign_key or inflector.foreign_key(target)
-        definition = model_for(cls)
-        definition.associations[name] = AssociationDefinition(
-            name, "belongs_to", target, fk_name
-        )
-
-        def rel_wrapper(self):
-            association = _get_association(self.__class__, name=name)
-            if association.name in self._changes:
-                return self._changes[association.name]
-            related_base_instance = getattr(self._base_instance, association.name)
-            if related_base_instance is None:
-                return None
-            return _build(association.target, related_base_instance)
-
-        setattr(cls, name, property(rel_wrapper))
-        definition.validators.append(partial(_validate_fk, field=fk_name))
-
-    return bind
-
-
-class Relation[RelatedModel: "Model"]:
-    def __init__(
-        self, instance: Model, related_cls: type[RelatedModel], name: str
-    ) -> None:
-        self._instance = instance
-        self._related_cls = related_cls
-        self._name = name
-
-    def _entries(self) -> list[Any]:
-        return getattr(self._instance._base_instance, self._name)
-
-    def __len__(self) -> int:
-        return len(self._entries())
-
-    def __iter__(self) -> Iterator[RelatedModel]:
-        for v in self._entries():
-            yield _build(self._related_cls, v)
-
-    def __repr__(self) -> str:
-        return repr([v for v in self])
-
-    def create(self, **kwargs) -> RelatedModel:
-        association = _get_association(self._instance.__class__, name=self._name)
-        kwargs.setdefault(association.foreign_key, self._instance.id)
-        related_instance = self._related_cls.new(**kwargs)
-        entries = self._entries()
-        if not related_instance.save():
-            return related_instance
-        if related_instance._base_instance not in entries:
-            entries.append(related_instance._base_instance)
-        self._instance.save()
-        return related_instance
+    name, class_name=None, foreign_key=None, *, inverse_of=None, optional=False
+):
+    return _declare(
+        name, "belongs_to", class_name, foreign_key, None, inverse_of, optional
+    )
 
 
 def has_many(
-    name: str,
-    class_name: str | None = None,
-    foreign_key: str | None = None,
-    dependent: str | None = None,
-) -> Callable[[type[Model]], None]:
-    def bind(cls: type[Model]) -> None:
-        target = class_name or inflector.camelize(inflector.singularize(name))
-        fk_name = foreign_key or inflector.foreign_key(cls.__name__)
-        model_for(cls).associations[name] = AssociationDefinition(
-            name, "has_many", target, fk_name, dependent
-        )
-
-        def rel_wrapper(self):
-            association = _get_association(self.__class__, name=name)
-            return Relation(self, association.target, association.name)
-
-        setattr(cls, name, property(rel_wrapper))
-
-    return bind
-
-
-def _validate_fk(
-    *, instance: Model, field: str, config: bool = True
-) -> list[tuple[str, str]]:
-    if not config:
-        return []
-    association = _get_association(instance.__class__, name=field)
-    if not association:
-        return []
-    value = getattr(instance, field)
-    if not value:
-        return [(field, f"{association.name} must exist")]
-    related_cls = association.target
-    try:
-        related_cls.find(value)
-        return []
-    except RecordNotFoundException:
-        return [(field, f"{association.name} must exist")]
-
-
-def _get_association(
-    model_cls: type[Model], *, name: str
-) -> ResolvedAssociation | None:
-    definition = next(
-        (
-            entry
-            for entry in model_for(model_cls).associations.values()
-            if entry.name == name or entry.foreign_key == name
-        ),
-        None,
+    name, class_name=None, foreign_key=None, dependent=None, *, inverse_of=None
+):
+    return _declare(
+        name, "has_many", class_name, foreign_key, dependent, inverse_of, True
     )
-    if definition is None:
-        return None
-    db: SQLAlchemyExtension = current_app.extensions["flaskteroids.db"]
-    association = db.binding(model_cls).associations[definition.name]
-    try:
-        db.binding(association.target)
-    except ProgrammerError as error:
-        error.add_note(f"While using {model_cls.__name__}.{definition.name}")
-        raise
-    return association
+
+
+def has_one(
+    name, class_name=None, foreign_key=None, dependent=None, *, inverse_of=None
+):
+    return _declare(
+        name, "has_one", class_name, foreign_key, dependent, inverse_of, True
+    )
+
+
+def _validate_target(instance, name, target_name, key):
+    state = inspect(instance)
+    attribute = state.attrs[name]
+    if attribute.history.has_changes() or instance.is_new_record():
+        value = attribute.loaded_value
+        if value is not NO_VALUE and value is not None:
+            return []
+        if attribute.history.has_changes():
+            return [(name, f"{name} must exist")]
+    identity = getattr(instance, key)
+    target = instance._flaskteroids_model_root._flaskteroids_model_catalog[target_name]
+    if identity is not None and session.get(target, identity) is not None:
+        return []
+    return [(name, f"{name} must exist")]
+
+
+def relationship_properties(cls, catalog, table_for):
+    result = {}
+    source = table_for(cls)
+    for name, definition in model_for(cls).associations.items():
+        if name in source.columns:
+            raise ProgrammerError(
+                f"Association {cls.__name__}.{name} conflicts with a snapshot column."
+            )
+        target = catalog[definition.target]
+        target_table = table_for(target)
+        fk_table, pk_table = (
+            (source, target_table)
+            if definition.kind == "belongs_to"
+            else (target_table, source)
+        )
+        if definition.foreign_key not in fk_table.columns:
+            raise ProgrammerError(
+                f"Association {cls.__name__}.{name} needs {fk_table.name}.{definition.foreign_key}."
+            )
+        if len(pk_table.primary_key) != 1:
+            raise ProgrammerError(
+                "Association helpers require a single-column primary key; use relationship() for composite keys."
+            )
+        key = fk_table.c[definition.foreign_key]
+        primary_key = next(iter(pk_table.primary_key))
+        inverses = [
+            other.name
+            for other in model_for(target).associations.values()
+            if other.target == cls.__name__
+            and other.foreign_key == definition.foreign_key
+            and (other.kind == "belongs_to") != (definition.kind == "belongs_to")
+        ]
+        inverse = definition.inverse_of
+        if inverse is not None:
+            if inverse not in inverses:
+                raise ProgrammerError(
+                    f"Invalid inverse {target.__name__}.{inverse} for {cls.__name__}.{name}."
+                )
+        elif len(inverses) > 1:
+            raise ProgrammerError(
+                f"Ambiguous inverse for {cls.__name__}.{name}; specify inverse_of."
+            )
+        else:
+            inverse = next(iter(inverses), None)
+        result[name] = relationship(
+            target,
+            primaryjoin=primary_key == key,
+            foreign_keys=[key],
+            back_populates=inverse,
+            uselist=definition.kind == "has_many",
+            remote_side=[primary_key]
+            if cls is target and definition.kind == "belongs_to"
+            else None,
+        )
+    return result
+
+
+def destroy_dependents(instance):
+    for definition in model_for(type(instance)).associations.values():
+        if definition.dependent != "destroy":
+            continue
+        value = getattr(instance, definition.name)
+        for record in (
+            list(value)
+            if definition.kind == "has_many"
+            else ([value] if value is not None else [])
+        ):
+            if not record.destroy():
+                return False
+    return True

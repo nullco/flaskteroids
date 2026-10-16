@@ -2,9 +2,9 @@ import pytest
 from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.orm import declarative_base
 
-from flaskteroids import model
-from flaskteroids.model import Model, belongs_to, has_many, validates
+from flaskteroids.model import validates
 from flaskteroids.rules import rules
+from tests.model.schema_support import model_base
 
 
 @pytest.fixture(autouse=True)
@@ -30,51 +30,37 @@ class GroupBase(Base):
     name = Column(String())
 
 
-@rules(validates("username"), belongs_to("group"))
-class User(Model):
+ApplicationModel = model_base(
+    Base,
+    relationships={
+        "User": {"group": {"argument": "Group", "back_populates": "users"}},
+        "Group": {
+            "users": {
+                "argument": "User",
+                "back_populates": "group",
+                "cascade": "all, delete-orphan",
+            }
+        },
+    },
+)
+
+
+@rules(validates("username"))
+class User(ApplicationModel):
     pass
 
 
-@rules(has_many("users", dependent="destroy"))
-class Group(model.Model):
+class Group(ApplicationModel):
     pass
 
 
-def test_create():
-    group = Group.create(name="one")
-    user = User.create(username="one", group=group)
-    assert user.id
-
-
-def test_edit():
-    group = Group.create(name="one")
-    user = User.create(username="one", group=group)
-    user.username = "two"
-    user.save()
-
-    user = User.find(id=user.id)
-    assert user.username == "two"
-
-
-def test_save():
-    group = Group.create(name="one")
-    user = User.new(username="one", group=group)
-    assert user.save()
-
-
-def test_find():
-    group = Group.create(name="one")
-    user = User.create(username="one", group=group)
-    assert User.find(id=user.id)
-
-
-def test_belongs_to():
+def test_belongs_to_returns_associated_parent():
     group = Group.create(name="one")
     user = User.create(username="one", group=group)
     assert user.group.id == group.id
 
 
-def test_has_many():
+def test_has_many_returns_associated_children():
     group = Group.create(name="one")
     User.create(username="one", group=group)
     User.create(username="two", group=group)
@@ -83,16 +69,7 @@ def test_has_many():
     assert len([u for u in User.all()]) == 3
 
 
-def test_create_many():
-    group = Group.create(name="one")
-    group.users.create(username="one")
-    group.users.create(username="two")
-    group.users.create(username="three")
-    assert len(group.users) == 3
-    assert len([u for u in User.all()]) == 3
-
-
-def test_destroy():
+def test_destroy_cascades_to_associated_children():
     group = Group.create(name="one")
     User.create(username="one", group=group)
     User.create(username="two", group=group)
@@ -113,39 +90,31 @@ def user_groups():
 
 
 @pytest.mark.usefixtures("user_groups")
-def test_lazy_on_many(engine):
+@pytest.mark.parametrize("eager, expected_queries", [(False, 3), (True, 2)])
+def test_collection_loading_batches_queries_with_includes(
+    engine, eager, expected_queries
+):
     def capture():
-        [user for group in Group.all() for user in group.users]
+        groups = Group.includes("users") if eager else Group.all()
+        return [user for group in groups for user in group.users]
 
     captured_statements = capture_statements(engine, capture)
-    assert len(captured_statements) == 3
+    assert len(captured_statements) == expected_queries
 
 
 @pytest.mark.usefixtures("user_groups")
-def test_lazy_on_one(engine):
+@pytest.mark.parametrize("eager, expected_queries", [(False, 3), (True, 2)])
+def test_parent_loading_batches_queries_with_includes(
+    engine, session, eager, expected_queries
+):
+    session.expunge_all()
+
     def capture():
-        [user.group for user in User.all()]
+        users = User.includes("group") if eager else User.all()
+        return [user.group for user in users]
 
     captured_statements = capture_statements(engine, capture)
-    assert len(captured_statements) == 3
-
-
-@pytest.mark.usefixtures("user_groups")
-def test_includes_on_many(engine):
-    def capture():
-        [user for group in Group.includes("users").all() for user in group.users]
-
-    captured_statements = capture_statements(engine, capture)
-    assert len(captured_statements) == 2
-
-
-@pytest.mark.usefixtures("user_groups")
-def test_includes_on_one(engine):
-    def capture():
-        [user.group for user in User.includes("group").all()]
-
-    captured_statements = capture_statements(engine, capture)
-    assert len(captured_statements) == 2
+    assert len(captured_statements) == expected_queries
 
 
 def capture_statements(engine, func):
@@ -159,6 +128,8 @@ def capture_statements(engine, func):
         captured_statements.append(statement)
 
     event.listen(engine, "before_cursor_execute", before_cursor_execute)
-    func()
-    event.remove(engine, "before_cursor_execute", before_cursor_execute)
+    try:
+        func()
+    finally:
+        event.remove(engine, "before_cursor_execute", before_cursor_execute)
     return captured_statements

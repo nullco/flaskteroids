@@ -1,10 +1,12 @@
 import pytest
 
-from flaskteroids.discovery import discover_classes
+from flaskteroids.discovery import discover_classes, discover_methods
 
 
 @pytest.mark.parametrize("suffix", ["", ".app", ".app.jobs"])
-def test_absent_optional_package(discovery_package, suffix):
+def test_discovery_returns_empty_results_for_absent_optional_packages(
+    discovery_package, suffix
+):
     name = discovery_package({})
     assert discover_classes(name + suffix, object) == {}
 
@@ -16,25 +18,29 @@ def test_absent_optional_package(discovery_package, suffix):
         {"__init__.py": "", "app/__init__.py": ""},
     ],
 )
-def test_absent_leaf_package(discovery_package, files):
+def test_discovery_returns_empty_results_for_absent_leaf_packages(
+    discovery_package, files
+):
     name = discovery_package(files)
     assert discover_classes(f"{name}.app.jobs", object) == {}
 
 
-def test_empty_package(discovery_package):
+def test_discovery_returns_empty_results_for_empty_packages(discovery_package):
     name = discovery_package({"__init__.py": ""})
     assert discover_classes(name, object) == {}
 
 
-def test_discovery_and_ignore(discovery_package):
+def test_discovery_orders_classes_and_applies_ignore_filter(discovery_package):
     name = discovery_package(
         {
             "__init__.py": "",
-            "records.py": "class Post: pass\nclass Comment: pass\n",
+            "records.py": "class Post: pass\nAlias = Post\nclass Comment: pass\n",
         }
     )
-    assert set(discover_classes(name, object)) == {"Post", "Comment"}
-    assert set(discover_classes(name, object, ignore={"Comment"})) == {"Post"}
+    entries = discover_classes(name, object)
+    assert list(entries) == ["Alias", "Comment", "Post"]
+    assert entries["Alias"] is entries["Post"]
+    assert list(discover_classes(name, object, ignore={"Comment"})) == ["Alias", "Post"]
 
 
 @pytest.mark.parametrize("location", ["__init__.py", "child.py"])
@@ -64,7 +70,7 @@ def test_unusable_or_unrelated_missing_names_propagate(discovery_package, missin
         discover_classes(name, object)
 
 
-def test_child_import_is_not_optional(discovery_package):
+def test_discovery_propagates_missing_child_imports(discovery_package):
     name = discovery_package(
         {
             "__init__.py": "",
@@ -76,7 +82,7 @@ def test_child_import_is_not_optional(discovery_package):
     assert raised.value.name == f"{name}.child"
 
 
-def test_undotted_prefix_is_not_an_absent_ancestor(discovery_package):
+def test_discovery_propagates_errors_with_undotted_name_prefixes(discovery_package):
     name = discovery_package(
         {
             "__init__.py": "raise ModuleNotFoundError('broken', name=__name__[:-1])",
@@ -101,7 +107,26 @@ def test_other_import_failures_propagate(discovery_package, location, source, er
         discover_classes(name, object)
 
 
-def test_configured_module_must_be_a_package(discovery_package):
+def test_discovery_rejects_configured_modules_that_are_not_packages(discovery_package):
     name = discovery_package({"__init__.py": "", "module.py": ""})
     with pytest.raises(AttributeError, match="__path__"):
         discover_classes(f"{name}.module", object)
+
+
+def test_method_discovery_selects_public_methods_and_applies_ignore_filter():
+    class Example:
+        def zebra(self):
+            pass
+
+        def alpha(self):
+            pass
+
+        def _private(self):
+            pass
+
+        @property
+        def value(self):
+            return "value"
+
+    assert discover_methods(Example) == ["alpha", "zebra"]
+    assert discover_methods(Example, ignore={"zebra"}) == ["alpha"]

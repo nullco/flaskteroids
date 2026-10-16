@@ -54,10 +54,17 @@ description: Use when building or modifying a Flaskteroids application.
   already have one. Keep records, queries, and files in the app that created them.
 - Custom rules set class attributes. Put database queries and work that needs an
   application in actions, callbacks, or initializers.
-- In `bin/flask shell`, use `session.commit()` to save pending changes or
-  `session.rollback()` to discard them. Normal context exit also commits.
-- Run `bin/flask db:prepare` to create missing model tables, then restart the app.
-  The app can start before migration, but models need their tables before use.
+- Standalone model `save()`/`create()`/`update()`/`destroy()` commit before returning,
+  including in `bin/flask shell`. Use `with Model.transaction():` to group operations;
+  saves join that block without committing. False results do not abort an explicit
+  block; raise to reject the group. Nested blocks join unless `requires_new=True`
+  requests a savepoint. Context exit rolls back unfinished work, never commits it.
+  Native writes require explicit commit/transaction handling. Use `discard_changes()`
+  or `reload()` to discard staged input; rollback cannot undo prior standalone commits.
+- Run `bin/flask db:prepare` to apply migrations and regenerate `app/schema.py`,
+  then restart. Commit the snapshot, never edit it by hand. `db:schema:dump` refreshes
+  it independently. Model declarations import without it; construction, queries,
+  and mapped fields need it. All commands use normal application initialization.
 - Fix broken imports in model, controller, mailer, and job packages; don't suppress them.
 
 ## Preserve application behavior during UI changes
@@ -89,15 +96,24 @@ Always use public Flaskteroids abstractions when they cover the task. This is a
 requirement, not merely a stylistic preference: do not bypass the framework with
 dependency internals or introduce a parallel implementation of a supported feature.
 
-- Use the application's base models and Flaskteroids querying, associations,
-  validations, callbacks, and secure-password APIs instead of direct SQLAlchemy
-  session management, mapped model classes, or relationship plumbing.
+- Use the application's abstract `ApplicationModel` base, Rails-like queries,
+  and `@rules(belongs_to(...), has_many(...), ...)` declarations for routine work.
+  Models themselves are native SQLAlchemy-mapped objects, prepared lazily from
+  the generated snapshot. Native statements/options are supported on those same
+  objects for complex queries; `Model.prepare()` explicitly prepares bare native
+  class APIs without database I/O. Do not introduce separate mapped row classes.
+- `Model.all()` and query-level `all()` return lazy scopes, never lists. Chain
+  filters/order/pagination directly; use `list(query)` when a list is needed.
+  Iteration executes the scope; repeated iteration queries again without caching.
 - Unknown public model attributes raise `AttributeError`. For temporary values,
   declare class defaults or properties with setters, or use private attributes.
   A type annotation alone isn't enough. Don't overwrite framework methods or state.
-- Assign belongs-to associations their target model or `None`; save new targets
-  first. Use iteration and `create()` for has-many collections, not replacement.
-  A rejected `update()` doesn't save or undo earlier assignments in that call.
+- Assign belongs-to associations their target model or `None`; framework saves
+  validate new associated objects. Collections are native: use append/remove or
+  replacement, and `Child.create(parent=parent, ...)`, not `parent.children.create()`.
+  Native relationship mutations are not scalar staging. A rejected scalar update
+  retains its input and does not undo a prior collection mutation. `apply_changes()`
+  explicitly publishes staged scalars for native writes, bypassing validation/callbacks.
 - Use application controllers, `config/routes.py`, resourceful routing, strong
   parameters (`params.expect`), and framework response helpers instead of standalone
   Flask routes or manually rebuilding the request pipeline. `render(json=value,

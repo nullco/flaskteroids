@@ -1,11 +1,19 @@
+from contextlib import contextmanager
 from pathlib import Path
 
 import click
 from alembic import command
+from alembic.script import ScriptDirectory
+from alembic.script.revision import RevisionError
 from alembic.util import CommandError
+from flask import current_app
 from flask.cli import with_appcontext
+from sqlalchemy.engine import make_url
+from sqlalchemy.exc import DBAPIError
 
 from flaskteroids.cli.db.config import get_config
+from flaskteroids.cli.db.lifecycle import _error_code, ensure_database
+from flaskteroids.cli.db.snapshot import dump_schema
 
 
 @click.command("db:init")
@@ -42,14 +50,38 @@ def migrate():
     upgrade_database(get_config())
 
 
+@click.command("db:create")
+@with_appcontext
+def create():
+    """Ensure the selected database exists and is connectable.
+
+    Does not apply migrations, seed records, or start a database server.
+    Uses the current environment and DATABASE_URL; no migrations required.
+
+    \b
+    Example:
+      flask db:create
+    """
+    ensure_selected_database()
+    click.echo("Database is available.")
+
+
+def ensure_selected_database():
+    ensure_database(
+        current_app.database_url,
+        maintenance_database=current_app.config.database_tasks.maintenance_database,
+    )
+
+
 @click.command("db:prepare")
 @with_appcontext
 def prepare():
     """Prepare the selected database with migrations.
 
     Requires an existing valid db/migrate tree; does not repair migration files,
-    reset data, create external databases, or seed records. Uses the current
-    environment and honors DATABASE_URL. Start servers in a fresh process.
+    reset data, or seed records. Ensures the selected supported database exists,
+    then applies migrations. Uses the current environment and honors DATABASE_URL.
+    Start servers in a fresh process.
 
     \b
     Examples:
@@ -57,18 +89,55 @@ def prepare():
       FLASK_ENV=test bin/flask db:prepare
     """
     config = get_config()
+    preflight_migrations(config)
+    ensure_selected_database()
+    upgrade_database(config)
+
+
+def preflight_migrations(config):
     directory = Path(config.get_main_option("script_location"))
     for name in ("alembic.ini", "env.py", "script.py.mako"):
         if not (directory / name).is_file():
             raise CommandError(f"Missing migration resource: {directory / name}")
     if not (directory / "versions").is_dir():
         raise CommandError(f"Missing migration versions directory: {directory}")
-    upgrade_database(config)
+    try:
+        scripts = ScriptDirectory.from_config(config)
+        list(scripts.walk_revisions())
+        if len(scripts.get_heads()) > 1:
+            raise CommandError(
+                "Multiple migration heads are unsupported; merge them before preparing."
+            )
+    except (RevisionError, SyntaxError, ImportError, KeyError) as error:
+        raise click.ClickException(
+            f"Invalid migration revision graph ({type(error).__name__}); repair migrations before preparing."
+        ) from None
 
 
 def upgrade_database(config):
     """Apply migrations using the application's existing Alembic configuration."""
-    command.upgrade(config, revision="head")
+    with migration_errors("migration"):
+        command.upgrade(config, revision="head")
+    with migration_errors("schema snapshot (migrations already applied)"):
+        dump_schema()
+
+
+@contextmanager
+def migration_errors(operation):
+    try:
+        yield
+    except DBAPIError as error:
+        backend = {
+            "sqlite": "SQLite",
+            "postgresql": "PostgreSQL",
+            "mysql": "MySQL",
+        }.get(make_url(current_app.database_url).get_backend_name(), "Database")
+        code = _error_code(error)
+        detail = f" (code {code})" if code is not None else ""
+        raise click.ClickException(
+            f"{backend} {operation} failed{detail}. Inspect migrations and database access; "
+            "the database has been left in place for diagnosis."
+        ) from None
 
 
 @click.command("db:rollback")
@@ -86,4 +155,7 @@ def rollback():
     """
     config = get_config()
     revision = "-1"
-    command.downgrade(config, revision=revision)
+    with migration_errors("rollback"):
+        command.downgrade(config, revision=revision)
+    with migration_errors("schema snapshot (rollback already applied)"):
+        dump_schema()

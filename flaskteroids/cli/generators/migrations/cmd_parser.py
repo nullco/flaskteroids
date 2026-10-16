@@ -1,5 +1,4 @@
 import re
-from datetime import UTC, datetime
 from typing import ClassVar
 
 import sqlalchemy as sa
@@ -37,21 +36,12 @@ class _CreateTableCommand:
                             sa.Column(
                                 "id", sa.Integer(), primary_key=True, autoincrement=True
                             ),
-                            sa.Column(
-                                "created_at",
-                                sa.DateTime(),
-                                default=lambda: datetime.now(UTC),
-                            ),
-                            sa.Column(
-                                "updated_at",
-                                sa.DateTime(),
-                                default=lambda: datetime.now(UTC),
-                                onupdate=lambda: datetime.now(UTC),
-                            ),
+                            sa.Column("created_at", sa.DateTime()),
+                            sa.Column("updated_at", sa.DateTime()),
                             *[
                                 sa.Column(
                                     name=am.group(1),
-                                    type_=fields.get(am.group(2)).new_column(),
+                                    type_=fields[am.group(2)](),
                                     nullable=not bool(am.group(3)),
                                 )
                                 for am in args_matches.get("column", [])
@@ -136,7 +126,7 @@ class _AddColumnsToTableCommand:
                                     cmd_match.group(2),
                                     sa.Column(
                                         name=am.group(1),
-                                        type_=fields.get(am.group(2)).new_column(),
+                                        type_=fields[am.group(2)](),
                                         nullable=not bool(am.group(3)),
                                     ),
                                 )
@@ -177,7 +167,7 @@ class _RemoveColumnsFromTableCommand:
                         cmd_match.group(2),
                         sa.Column(
                             name=am.group(1),
-                            type_=fields.get(am.group(3)).new_column(),
+                            type_=fields[am.group(3)](),
                             nullable=not bool(am.group(4)),
                         ),
                     )

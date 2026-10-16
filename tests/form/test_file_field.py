@@ -1,36 +1,44 @@
 from flaskteroids.form import Form
+from tests.assertions import HTML
 
 
-def test_file_field_never_renders_existing_value():
+def test_file_field_renders_blank_value_for_existing_attachment():
     form = Form("user", {"avatar": "private-key"})
-    html = str(form.file_field("avatar", accept="image/png"))
-    assert 'type="file"' in html
-    assert 'name="user[avatar]"' in html
-    assert 'accept="image/png"' in html
-    assert "value=" not in html
-    assert "private-key" not in html
+    source = str(form.file_field("avatar", accept="image/png"))
+    html = HTML(source)
+    field = next(attrs for tag, attrs in html.elements if attrs.get("type") == "file")
+
+    assert html.has("input", type="file", name="user[avatar]", accept="image/png")
+    assert "value" not in field
+    assert "private-key" not in source
     assert form.multipart
 
 
 def test_multiple_file_field_uses_array_names_and_hidden_blank():
-    html = str(Form("user").file_field("photos", multiple=True))
-    assert html.count('name="user[photos][]"') == 2
-    assert 'type="hidden"' in html
-    assert 'multiple="multiple"' in html
-    assert 'value=""' in html
+    html = HTML(Form("user").file_field("photos", multiple=True))
+    field = next(attrs for tag, attrs in html.elements if attrs.get("type") == "file")
+
+    assert html.has("input", type="file", name="user[photos][]")
+    assert "multiple" in field
+    assert html.has("input", type="hidden", name="user[photos][]", value="")
 
 
 def test_hidden_blank_can_be_disabled():
-    html = str(Form("user").file_field("photos", multiple=True, include_hidden=False))
-    assert 'type="hidden"' not in html
+    html = HTML(Form("user").file_field("photos", multiple=True, include_hidden=False))
+
+    assert html.has("input", type="file", name="user[photos][]")
+    assert not html.has("input", type="hidden")
 
 
 def test_file_field_escapes_attributes():
-    html = str(Form("user").file_field("avatar", accept='" onfocus="alert(1)'))
-    assert 'accept="&#34; onfocus=&#34;alert(1)"' in html
+    payload = '" onfocus="alert(1)'
+    html = HTML(Form("user").file_field("avatar", accept=payload))
+
+    assert html.has("input", type="file", accept=payload)
+    assert all("onfocus" not in attrs for _, attrs in html.elements)
 
 
 def test_hidden_field_supports_retained_signed_blob_ids():
-    html = str(Form("user").hidden_field("photos", value="signed-id", multiple=True))
-    assert 'name="user[photos][]"' in html
-    assert 'value="signed-id"' in html
+    html = HTML(Form("user").hidden_field("photos", value="signed-id", multiple=True))
+
+    assert html.has("input", type="hidden", name="user[photos][]", value="signed-id")

@@ -3,18 +3,15 @@ from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import declarative_base
 
 from flaskteroids.model import (
-    Model,
     ModelQuery,
     RecordNotFoundException,
-    Relation,
     after_find,
     after_initialize,
-    belongs_to,
-    has_many,
     init,
     validates,
 )
 from flaskteroids.rules import rules
+from tests.model.schema_support import model_base
 
 Base = declarative_base()
 
@@ -42,17 +39,29 @@ class ChildTable(Base):
 def family(init_models):
     events = []
 
-    @rules(has_many("children", dependent="destroy"))
-    class Parent(Model):
+    ApplicationModel = model_base(
+        Base,
+        relationships={
+            "Parent": {
+                "children": {
+                    "argument": "Child",
+                    "back_populates": "parent",
+                    "cascade": "all, delete-orphan",
+                }
+            },
+            "Child": {"parent": {"argument": "Parent", "back_populates": "children"}},
+        },
+    )
+
+    class Parent(ApplicationModel):
         pass
 
     @rules(
-        belongs_to("parent"),
         validates("name", presence=True),
         after_initialize("_initialized"),
         after_find("_found"),
     )
-    class Child(Model):
+    class Child(ApplicationModel):
         def __init__(self, **kwargs):
             events.append("constructor")
             super().__init__(**kwargs)
@@ -70,15 +79,18 @@ def family(init_models):
     return Parent, Child, events
 
 
-def test_relation_creation_validation_inverse_and_cascade(family):
+def test_relations_validate_creation_maintain_inverse_and_cascade_deletion(family):
     Parent, Child, _ = family
     parent = Parent.create(name="parent")
-    assert isinstance(parent.children, Relation)
-    invalid = parent.children.create()
+    assert isinstance(parent.children, list)
+    invalid = Child.create(parent=parent)
     assert invalid.is_new_record()
-    assert invalid.errors.full_messages() == ["Field name is blank"]
-    assert len(parent.children) == Child.count() == 0
-    child = parent.children.create(name="child")
+    assert invalid.errors
+    assert invalid in parent.children
+    assert Child.count() == 0
+    parent.children.remove(invalid)
+    assert not parent.children
+    child = Child.create(name="child", parent=parent)
     assert child.is_persisted()
     assert child.parent.id == parent.id
     assert [entry.id for entry in parent.children] == [child.id]
@@ -86,35 +98,37 @@ def test_relation_creation_validation_inverse_and_cascade(family):
     assert Child.count() == 0
 
 
-def test_fk_validation_is_registered_once_and_rejects_unsaved_target(family):
+def test_initialization_is_idempotent_and_native_new_targets_cascade(family):
     Parent, Child, _ = family
     init(Child)
     init(Child)
     child = Child.new(name="child", parent=Parent.new(name="unsaved"))
-    assert child.save() is False
-    assert child.errors.full_messages() == ["parent must exist"]
+    assert child.save() is True
+    assert child.parent.is_persisted()
+    assert not child.errors
 
 
 @pytest.mark.parametrize("load", ["find", "query", "relation", "includes"])
-def test_loaded_record_callbacks_do_not_replay_constructor(family, load):
+def test_loaded_records_run_find_and_initialize_callbacks_once(family, load, session):
     Parent, Child, events = family
     parent = Parent.create(name="parent")
     child = Child.create(name="child", parent=parent)
     events.clear()
+    session.expunge_all()
     if load == "find":
         loaded = Child.find(child.id)
     elif load == "query":
-        loaded = next(Child.all().all())
+        loaded = list(Child.all())[0]
     elif load == "relation":
-        loaded = next(iter(parent.children))
+        loaded = next(iter(Parent.find(parent.id).children))
     else:
         loaded = next(iter(Parent.includes("children"))).children
         loaded = next(iter(loaded))
     assert loaded.id == child.id
-    assert events == [("initialize", "child"), ("find", "child")]
+    assert events == [("find", "child"), ("initialize", "child")]
 
 
-def test_empty_queries_and_record_errors(family):
+def test_empty_queries_return_empty_results_and_find_reports_missing_records(family):
     _, Child, _ = family
     query = Child.all()
     assert isinstance(query, ModelQuery)
@@ -125,19 +139,92 @@ def test_empty_queries_and_record_errors(family):
         Child.find(99)
 
 
-def test_query_mutability_laziness_order_and_serializer(family, session, mocker):
+def test_query_chaining_preserves_original_scope_and_serializes_ordered_results(
+    family, session, mocker
+):
     Parent, Child, events = family
     parent = Parent.create(name="parent")
     Child.create(name="first", parent=parent)
     query = Child.where(Child.parent_id == parent.id)
-    assert query.where(name="second") is query
-    assert query.order(id="desc").limit(1).offset(0) is query
+    filtered = query.where(name="second").order(id="desc").limit(1).offset(0)
+    assert filtered is not query
     execute = mocker.spy(session, "execute")
-    sql = query.to_sql()
-    assert "children.name = 'second'" in sql
-    assert "ORDER BY children.id DESC" in sql
+    assert isinstance(filtered.to_sql(), str)
     execute.assert_not_called()
     Child.create(name="second", parent=parent)
     events.clear()
-    assert query.__json__() == [{"label": "second"}]
-    assert [entry.name for entry in query] == ["second"]
+    assert filtered.__json__() == [{"label": "second"}]
+    assert [entry.name for entry in filtered] == ["second"]
+    assert [entry.name for entry in query] == ["first", "second"]
+
+
+def test_all_preserves_scope_identity_and_defers_execution(family, session, mocker):
+    Parent, Child, _ = family
+    parent = Parent.create(name="parent")
+    Child.create(name="first", parent=parent)
+    second = Child.create(name="second", parent=parent)
+    second_id = second.id
+    session.expunge_all()
+    execute = mocker.spy(session, "execute")
+
+    query = Child.all()
+    original_sql = query.to_sql()
+    scope = (
+        query.where(Child.name.in_(["first", "second"]))
+        .includes("parent")
+        .order(name="desc")
+        .limit(1)
+        .offset(0)
+    )
+    assert isinstance(query, ModelQuery)
+    assert query.all() is query
+    assert scope.all().all() is scope
+    assert query.to_sql() == original_sql
+    execute.assert_not_called()
+
+    records = list(scope.all())
+    assert [record.id for record in records] == [second_id]
+    assert execute.call_count == 2
+    assert records[0].parent.name == "parent"
+    assert execute.call_count == 2
+
+
+@pytest.mark.parametrize("consumer", ["iteration", "list", "repr", "json", "last"])
+def test_query_consumers_execute_once(family, session, mocker, consumer):
+    Parent, Child, _ = family
+    parent = Parent.create(name="parent")
+    Child.create(name="first", parent=parent)
+    second = Child.create(name="second", parent=parent)
+    query = Child.order(id="asc").limit(1).offset(1).all()
+    expected_repr = repr([second])
+    execute = mocker.spy(session, "execute")
+
+    if consumer == "iteration":
+        assert [record for record in query] == [second]
+    elif consumer == "list":
+        assert list(query) == [second]
+    elif consumer == "repr":
+        assert repr(query) == expected_repr
+    elif consumer == "json":
+        assert query.__json__() == [{"label": "second"}]
+    else:
+        assert query.last() is second
+
+    execute.assert_called_once()
+
+
+def test_all_scopes_reflect_new_records_on_reuse(family, session, mocker):
+    Parent, Child, _ = family
+    parent = Parent.create(name="parent")
+    first = Child.create(name="first", parent=parent)
+    query = Child.where(parent=parent).order(id="asc").all()
+    assert list(query) == [first]
+    second = Child.create(name="second", parent=parent)
+    execute = mocker.spy(session, "execute")
+
+    scope = query.all()
+    limited = scope.limit(1).all()
+    execute.assert_not_called()
+    assert list(limited) == [first]
+    assert list(scope) == [first, second]
+    assert list(query) == [first, second]

@@ -195,6 +195,8 @@ def run_callbacks(instance, kind, operation, body, *args, **kwargs):
         raise
 
     _finalize_around(generators)
+    if result is _HALTED:
+        return _HALTED
 
     for callback in reversed(after):
         if not callback.applies(instance, operation):

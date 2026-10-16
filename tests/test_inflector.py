@@ -14,12 +14,16 @@ def inflector():
         ("cat", "cats"),
         ("person", "people"),
         ("Person", "People"),
+        ("PERSON", "PEOPLE"),
+        ("", ""),
         ("sheep", "sheep"),
         ("box", "boxes"),
         ("query", "queries"),
     ],
 )
-def test_pluralize(inflector, word, expected):
+def test_pluralize_applies_english_inflection_and_preserves_case(
+    inflector, word, expected
+):
     assert inflector.pluralize(word) == expected
 
 
@@ -30,12 +34,16 @@ def test_pluralize(inflector, word, expected):
         ("cats", "cat"),
         ("people", "person"),
         ("People", "Person"),
+        ("PEOPLE", "PERSON"),
+        ("", ""),
         ("sheep", "sheep"),
         ("boxes", "box"),
         ("queries", "query"),
     ],
 )
-def test_singularize(inflector, word, expected):
+def test_singularize_applies_english_inflection_and_preserves_case(
+    inflector, word, expected
+):
     assert inflector.singularize(word) == expected
 
 
@@ -45,9 +53,10 @@ def test_singularize(inflector, word, expected):
         ("UserProfile", "user_profile"),
         ("APIClient", "api_client"),
         ("SomeHTTPResponse", "some_http_response"),
+        ("", ""),
     ],
 )
-def test_underscore(inflector, word, expected):
+def test_underscore_converts_class_names_to_snake_case(inflector, word, expected):
     assert inflector.underscore(word) == expected
 
 
@@ -58,9 +67,12 @@ def test_underscore(inflector, word, expected):
         ("api_client", True, "ApiClient"),
         ("some_http_response", True, "SomeHttpResponse"),
         ("user_profile", False, "userProfile"),
+        ("", True, ""),
     ],
 )
-def test_camelize(inflector, word, uppercase_first, expected):
+def test_camelize_converts_snake_case_using_requested_capitalization(
+    inflector, word, uppercase_first, expected
+):
     assert inflector.camelize(word, uppercase_first_letter=uppercase_first) == expected
 
 
@@ -71,7 +83,9 @@ def test_camelize(inflector, word, uppercase_first, expected):
         ("Category", "categories"),
     ],
 )
-def test_tableize(inflector, class_name, expected):
+def test_tableize_converts_class_names_to_plural_table_names(
+    inflector, class_name, expected
+):
     assert inflector.tableize(class_name) == expected
 
 
@@ -82,7 +96,9 @@ def test_tableize(inflector, class_name, expected):
         ("categories", "Category"),
     ],
 )
-def test_classify(inflector, table_name, expected):
+def test_classify_converts_table_names_to_singular_class_names(
+    inflector, table_name, expected
+):
     assert inflector.classify(table_name) == expected
 
 
@@ -93,7 +109,9 @@ def test_classify(inflector, table_name, expected):
         ("UserProfile", "user_profile_id"),
     ],
 )
-def test_foreign_key(inflector, class_name, expected):
+def test_foreign_key_appends_id_to_snake_case_class_names(
+    inflector, class_name, expected
+):
     assert inflector.foreign_key(class_name) == expected
 
 
@@ -117,47 +135,17 @@ def spanish_inflector():
         ("cat", "en", "cats"),
     ],
 )
-def test_pluralize_with_locales(spanish_inflector, word, locale, expected):
+def test_pluralize_applies_rules_for_selected_locale(
+    spanish_inflector, word, locale, expected
+):
     if locale is None:
         assert spanish_inflector.pluralize(word) == expected
     else:
         assert spanish_inflector.pluralize(word, locale=locale) == expected
 
 
-class TestEmptyStringHandling:
-    def test_pluralize_empty_string(self, inflector):
-        assert inflector.pluralize("") == ""
-
-    def test_singularize_empty_string(self, inflector):
-        assert inflector.singularize("") == ""
-
-    def test_underscore_empty_string(self, inflector):
-        assert inflector.underscore("") == ""
-
-    def test_camelize_empty_string(self, inflector):
-        assert inflector.camelize("") == ""
-
-
 class TestIrregularCaseHandling:
-    def test_pluralize_lowercase_irregular(self, inflector):
-        assert inflector.pluralize("person") == "people"
-
-    def test_pluralize_capitalized_irregular(self, inflector):
-        assert inflector.pluralize("Person") == "People"
-
-    def test_pluralize_uppercase_irregular(self, inflector):
-        assert inflector.pluralize("PERSON") == "PEOPLE"
-
-    def test_singularize_lowercase_irregular(self, inflector):
-        assert inflector.singularize("people") == "person"
-
-    def test_singularize_capitalized_irregular(self, inflector):
-        assert inflector.singularize("People") == "Person"
-
-    def test_singularize_uppercase_irregular(self, inflector):
-        assert inflector.singularize("PEOPLE") == "PERSON"
-
-    def test_add_irregular_with_capitalized_input(self, inflector):
+    def test_add_irregular_normalizes_capitalized_rule_inputs(self, inflector):
         inflector.add_irregular("Child", "Children")
         assert inflector.pluralize("child") == "children"
         assert inflector.pluralize("Child") == "Children"
@@ -166,13 +154,19 @@ class TestIrregularCaseHandling:
 
 
 class TestRuleRemovalSafety:
-    def test_remove_plural_rule_unknown_locale_no_error(self, inflector):
-        inflector.remove_plural_rule(r"$", locale="unknown")
+    @pytest.mark.parametrize("kind, pattern", [("plural", r"$"), ("singular", r"s$")])
+    def test_rule_removal_preserves_existing_rules_for_unknown_locale(
+        self, inflector, kind, pattern
+    ):
+        rules = getattr(inflector, f"get_{kind}_rules")
+        original = list(rules("en"))
 
-    def test_remove_singular_rule_unknown_locale_no_error(self, inflector):
-        inflector.remove_singular_rule(r"s$", locale="unknown")
+        getattr(inflector, f"remove_{kind}_rule")(pattern, locale="unknown")
 
-    def test_remove_plural_rule_existing_locale(self, inflector):
+        assert rules("unknown") == []
+        assert rules("en") == original
+
+    def test_remove_plural_rule_removes_matching_pattern(self, inflector):
         inflector.remove_plural_rule(r"$", locale="en")
         rules = inflector.get_plural_rules("en")
         assert all(r[0].pattern != r"$" for r in rules)
@@ -183,14 +177,15 @@ class TestMatchCaseMixedCase:
         inflector.add_irregular("iPhone", "iPhones")
         assert inflector.pluralize("iPhone") == "iphones"
 
-    def test_single_uppercase_letter(self, inflector):
+    def test_pluralize_capitalizes_replacement_for_single_uppercase_letter(
+        self, inflector
+    ):
         inflector.add_irregular("I", "we")
         assert inflector.pluralize("I") == "We"
 
 
-class TestUnknownLocale:
-    def test_pluralize_unknown_locale_returns_word(self, inflector):
-        assert inflector.pluralize("cat", locale="unknown") == "cat"
-
-    def test_singularize_unknown_locale_returns_word(self, inflector):
-        assert inflector.singularize("cats", locale="unknown") == "cats"
+@pytest.mark.parametrize(
+    "method, word", [("pluralize", "cat"), ("singularize", "cats")]
+)
+def test_inflection_preserves_words_for_unknown_locales(inflector, method, word):
+    assert getattr(inflector, method)(word, locale="unknown") == word

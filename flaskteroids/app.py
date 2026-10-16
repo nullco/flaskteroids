@@ -15,6 +15,7 @@ from flaskteroids.cli import testing as testing_commands
 from flaskteroids.cli.assets import precompile as assets_precompile
 from flaskteroids.cli.attachments import install as attachments_install
 from flaskteroids.cli.db import commands as db_commands
+from flaskteroids.cli.db.snapshot import dump as schema_dump
 from flaskteroids.cli.generators import commands as generate_commands
 from flaskteroids.csrf import CSRFToken
 from flaskteroids.db import session
@@ -86,9 +87,11 @@ def _register_cli_commands(app):
     app.cli.add_command(generate_commands.generate, name="generate")
     app.cli.add_command(generate_commands.generate, name="g")
     app.cli.add_command(db_commands.init)
+    app.cli.add_command(db_commands.create)
     app.cli.add_command(db_commands.migrate)
     app.cli.add_command(db_commands.prepare)
     app.cli.add_command(db_commands.rollback)
+    app.cli.add_command(schema_dump)
     app.cli.add_command(credentials_commands.show)
     app.cli.add_command(credentials_commands.edit)
     app.cli.add_command(testing_commands.test)

@@ -1,5 +1,5 @@
-from flaskteroids.model import Model
+from .application_model import ApplicationModel
 
 
-class User(Model):
+class User(ApplicationModel):
     pass

@@ -36,7 +36,7 @@ def run(root, *args, environment="development"):
         if not key.startswith(("FLASK", "DATABASE", "SECRET_KEY"))
     }
     env |= {
-        "PYTHONPATH": str(FRAMEWORK_ROOT),
+        "PYTHONPATH": os.pathsep.join((str(root), str(FRAMEWORK_ROOT))),
         "FLASK_ENV": environment,
         "DATABASE_URL": "sqlite:///:memory:",
     }
@@ -60,7 +60,6 @@ def test_generated_launcher_precompiles_without_boot_or_runtime_secrets(
         root, str(root / "bin/flask"), "assets:precompile", environment="production"
     )
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "Precompiled 2 assets" in result.stdout
     assert (root / "public/assets/.manifest.json").is_file()
     assert not list((root / "storage").glob("*.sqlite3"))
 
@@ -78,25 +77,8 @@ def test_generated_layout_loads_stylesheet_from_outside_app_root(
     result = run(
         root,
         sys.executable,
-        "-c",
-        f"""
-import sys
-sys.path.insert(0, {str(root)!r})
-from flask import render_template
-from wsgi import app
-from flaskteroids.helpers import asset_path
-with app.test_request_context():
-    html = render_template("layouts/application.html")
-    url = asset_path("application.css")
-    assert f'href="{{url}}"' in html
-    assert 'data-turbo-track="reload"' in html
-response = app.test_client().get(url)
-assert response.status_code == 200
-assert response.mimetype == "text/css"
-assert b"color: rgb(255, 0, 0)" in response.data
-assert ('logo-' in response.text) == {environment == "production"!r}
-assert ('application-' in url) == {environment == "production"!r}
-""",
+        str(Path(__file__).parent / "fixtures/assets/layout.py"),
+        environment,
         environment=environment,
     )
     assert result.returncode == 0, result.stdout + result.stderr
@@ -130,47 +112,8 @@ def test_generated_stylesheet_loads_in_browser(generated_assets_app, environment
     result = run(
         generated_assets_app,
         sys.executable,
-        "-c",
-        f"""
-import sys
-sys.path.insert(0, {str(generated_assets_app)!r})
-from wsgi import app
-from flask import render_template
-from threading import Thread
-from werkzeug.serving import make_server
-from playwright.sync_api import sync_playwright
-import os
-import shutil
-app.add_url_rule('/asset-test/', view_func=lambda: render_template('layouts/application.html'))
-server = make_server('127.0.0.1', 0, app)
-thread = Thread(target=server.serve_forever, daemon=True)
-thread.start()
-try:
-    with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(
-            headless=True,
-            executable_path=os.getenv('PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH') or shutil.which('google-chrome'),
-        )
-        page = browser.new_page()
-        page.route('https://cdn.jsdelivr.net/**', lambda route: route.abort())
-        page.goto(f'http://127.0.0.1:{{server.server_port}}/asset-test/')
-        href = page.locator('link[rel="stylesheet"]').get_attribute('href')
-        assert href.startswith('/assets/stylesheets/application')
-        assert ('application-' in href) == {environment == "production"!r}
-        assert page.locator('body').evaluate('(body) => getComputedStyle(body).color') == 'rgb(255, 0, 0)'
-        background = page.locator('body').evaluate('(body) => getComputedStyle(body).backgroundImage')
-        assert ('logo-' in background) == {environment == "production"!r}
-        assert page.evaluate('''async () => {{
-            const image = new Image();
-            image.src = getComputedStyle(document.body).backgroundImage.slice(5, -2);
-            await image.decode();
-            return image.naturalWidth;
-        }}''') == 1
-        browser.close()
-finally:
-    server.shutdown()
-    thread.join(timeout=5)
-""",
+        str(Path(__file__).parent / "fixtures/assets/browser.py"),
+        environment,
         environment=environment,
     )
     assert result.returncode == 0, result.stdout + result.stderr

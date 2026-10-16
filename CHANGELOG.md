@@ -2,6 +2,33 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- Standalone model saves, updates, creation, and destruction now commit before
+  returning, including associated writes. Use `Model.transaction()` to group
+  operations; nested blocks join by default and `requires_new=True` requests a
+  savepoint. Context teardown no longer commits unfinished native writes. Attachment
+  uploads and commit hooks follow the actual operation/outer transaction boundary.
+- Replace reflected row-wrapper models with lazy native mappings of application
+  classes. Keep the existing `@rules` association syntax and staged scalar edits;
+  native/facade queries now share session identity. Native collections replace
+  custom `Relation` wrappers; create children through their model's `create()`.
+- Migrations own schema changes. Successful migration, preparation, and rollback
+  regenerate a committed `db/schema.py` snapshot; `db:schema:dump` refreshes it
+  independently. Imports do not require snapshots or special migration startup.
+  Existing apps with `app/schema.py` should run `flask db:schema:dump`, remove
+  the old snapshot, and restart servers/workers.
+- Model queries are immutable. Native ORM callers can
+  explicitly prepare mappings and publish staged attributes with `prepare()` and
+  `apply_changes()`. Native inspection tracks published state, not unsaved input.
+- Remove the duplicate `Field.as_primitive()` / `from_column_type()` casting API.
+  Generator field names now select native SQLAlchemy type factories. Model casting
+  retains before-type-cast input; empty boolean strings cast to null, and numericality
+  validation checks the original input.
+- Initialize simple literal defaults from the generated server-default metadata;
+  leave functions/computed values to the server. Explicit non-primary-key nulls do
+  not accidentally reapply server defaults. See [Models](docs/models/index.md).
+
 ## 0.6.0 - 2026-10-15
 
 ### Added

@@ -1,7 +1,7 @@
 from flaskteroids import cache
 
 
-def test_cache(mocker):
+def test_value_decorator_caches_repeated_calls(mocker):
     mock = mocker.Mock()
 
     @cache.value("my-key", ttl=30)

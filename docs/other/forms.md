@@ -32,9 +32,12 @@ Use `file_field('avatar')` or `file_field('documents', multiple=True)` for uploa
 
 ## Form values and escaping
 
-Model-backed forms use database column values, pending column changes, and
-assigned writable virtual fields. They do not use the model's JSON response
-serialization or evaluate read-only virtual fields such as reset tokens.
+Model-backed forms use before-type-cast scalar input and assigned writable virtual
+fields, falling back to published mapped values. Failed validation therefore keeps
+the original submission available even when a cast would lose information.
+Authentication secrets, digests, confirmations, and reset tokens are excluded by
+default. Forms do not use JSON response serialization or evaluate read-only virtual
+fields such as reset tokens. Re-enter passwords after an unsuccessful submission.
 
 Field names, prefixes, attribute values, input values, and textarea values are
 escaped. Keep field names and attribute names application-defined. Invalid HTML

@@ -20,6 +20,6 @@ class Child(Parent):
     pass
 
 
-def test_rules():
+def test_bind_rules_applies_parent_rules_before_child_rules():
     bind_rules(Child)
     assert Child.test_rules == ["one", "two", "three"]

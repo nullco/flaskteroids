@@ -5,7 +5,7 @@ from flaskteroids.extensions.jobs import JobsExtension
 from flaskteroids.jobs.job import Job
 
 
-def test_application_defined_adapter_and_dynamic_configuration(mocker):
+def test_application_uses_custom_adapter_and_dynamic_configuration(mocker):
     registrations = []
     enqueued = []
     result = object()

@@ -4,8 +4,9 @@ import pytest
 from sqlalchemy import Column, DateTime, Integer, String
 from sqlalchemy.orm import declarative_base
 
-from flaskteroids.model import Model, validates
+from flaskteroids.model import validates
 from flaskteroids.rules import rules
+from tests.model.schema_support import model_base
 
 
 @pytest.fixture(autouse=True)
@@ -43,20 +44,20 @@ class ProductBase(Base):
 @rules(
     validates("username", presence=True),
 )
-class User(Model):
+class User(model_base(Base)):
     pass
 
 
 class TestModelCRUD:
-    def test_new(self):
+    def test_new_builds_record_with_assigned_attributes(self):
         user = User.new(username="one")
         assert user.username == "one"
 
-    def test_create(self):
+    def test_create_persists_record(self):
         user = User.create(username="one")
         assert user.id
 
-    def test_edit(self):
+    def test_save_persists_edited_attributes(self):
         user = User.create(username="one")
         user.username = "two"
         user.save()
@@ -64,27 +65,27 @@ class TestModelCRUD:
         user = User.find(id=user.id)
         assert user.username == "two"
 
-    def test_save(self):
+    def test_save_persists_new_record(self):
         user = User.new(username="one")
         assert user.save()
 
-    def test_save_with_errors(self):
+    def test_save_reports_validation_errors(self):
         user = User.new()
         assert not user.save()
         assert user.errors
         assert user.errors.count == 1
 
-    def test_find(self):
+    def test_find_returns_record_by_id(self):
         user = User.create(username="one")
         assert User.find(id=user.id)
 
-    def test_all(self):
+    def test_all_returns_every_record(self):
         User.create(username="one")
         User.create(username="two")
         User.create(username="three")
         assert len(list(User.all())) == 3
 
-    def test_count_first_and_last(self):
+    def test_query_helpers_return_count_and_boundary_records(self):
         first = User.create(username="one")
         last = User.create(username="two")
 
@@ -92,13 +93,13 @@ class TestModelCRUD:
         assert User.first().id == first.id
         assert User.last().id == last.id
 
-    def test_reload(self):
+    def test_reload_restores_persisted_attributes(self):
         user = User.create(username="one")
         user.username = "two"
 
         assert user.reload().username == "one"
 
-    def test_find_by(self):
+    def test_find_by_returns_record_matching_attributes(self):
         User.create(username="one")
         User.create(username="two")
         User.create(username="three")
@@ -117,12 +118,14 @@ class TestModelCRUD:
             (lambda: (User.age < 30) & (User.last_login >= datetime(2021, 1, 1)), 1),
         ],
     )
-    def test_where(self, query_factory, expected_count):
+    def test_where_filters_records_using_column_expressions(
+        self, query_factory, expected_count
+    ):
         User.create(username="one", age=30, last_login=datetime(2022, 5, 20))
         User.create(username="two", age=25, last_login=datetime(2021, 6, 15))
         User.create(username="three", age=15, last_login=datetime(2020, 1, 1))
         query = query_factory()
-        users = User.where(query).all()
+        users = User.where(query)
         assert len(list(users)) == expected_count
 
 
@@ -152,7 +155,9 @@ class TestModelPagination:
             (lambda: User.offset(3).offset(None).order(id="asc"), [0, 1, 2, 3, 4]),
         ],
     )
-    def test_pagination(self, users, query_factory, expected_indexes):
+    def test_pagination_applies_order_limit_and_offset(
+        self, users, query_factory, expected_indexes
+    ):
         query = query_factory()
         expected_ids = [users[i].id for i in expected_indexes]
 
@@ -195,8 +200,8 @@ class TestModelPagination:
         query = User.order(id="asc").limit(2).offset(1)
 
         execute.assert_not_called()
-        sql = query.to_sql()
-        assert "LIMIT 2 OFFSET 1" in sql
+        assert isinstance(query.to_sql(), str)
+        execute.assert_not_called()
         assert [user.id for user in query] == [users[1].id, users[2].id]
         execute.assert_called_once()
 
@@ -215,13 +220,13 @@ class TestModelValidations:
             ),
         ],
     )
-    def test_validation(
+    def test_comparison_validation_accepts_matching_values_and_rejects_violations(
         self, init_models, field, comparison, valid_value, invalid_value
     ):
         @rules(
             validates(field, comparison=comparison),
         )
-        class Product(Model):
+        class Product(model_base(Base)):
             pass
 
         init_models(

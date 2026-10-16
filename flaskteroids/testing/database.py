@@ -16,6 +16,7 @@ def transactional_test(application):
     factory = sessionmaker(
         bind=connection,
         autoflush=False,
+        expire_on_commit=False,
         join_transaction_mode="create_savepoint",
     )
 

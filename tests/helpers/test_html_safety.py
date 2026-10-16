@@ -6,6 +6,7 @@ from markupsafe import Markup
 
 from flaskteroids.form import Form
 from flaskteroids.helpers import button_to, form_with, link_to
+from tests.assertions import HTML
 
 
 @pytest.fixture
@@ -17,23 +18,22 @@ def request_context():
 
 
 def test_link_text_and_attributes_are_escaped():
-    html = str(
+    html = HTML(
         link_to("<b>Link</b> & more", '/search?q="test"&page=1', title='" onclick="bad')
     )
 
-    assert "&lt;b&gt;Link&lt;/b&gt; &amp; more" in html
-    assert 'href="/search?q=&#34;test&#34;&amp;page=1"' in html
-    assert 'title="&#34; onclick=&#34;bad"' in html
-    assert "<b>Link</b>" not in html
+    assert html.text == "<b>Link</b> & more"
+    assert html.has("a", href='/search?q="test"&page=1', title='" onclick="bad')
+    assert not html.has("b")
 
 
 def test_link_accepts_trusted_text_but_escapes_trusted_attributes():
-    html = str(
+    html = HTML(
         link_to(Markup("<strong>Link</strong>"), "/", title=Markup('" onclick="bad'))
     )
 
-    assert "<strong>Link</strong>" in html
-    assert 'title="&#34; onclick=&#34;bad"' in html
+    assert html.has("strong")
+    assert html.has("a", title='" onclick="bad')
 
 
 @pytest.mark.parametrize(
@@ -50,7 +50,7 @@ def test_link_accepts_trusted_text_but_escapes_trusted_attributes():
     ],
 )
 def test_link_allows_supported_urls(path):
-    assert "href=" in str(link_to("Link", path))
+    assert HTML(link_to("Link", path)).has("a", href=path)
 
 
 @pytest.mark.parametrize(
@@ -72,29 +72,34 @@ def test_link_rejects_unsafe_urls(path):
 
 @pytest.mark.usefixtures("request_context")
 def test_button_escapes_text_and_action(mocker):
-    mocker.patch(
-        "flaskteroids.helpers.url_for", return_value='/delete/1?next="bad"&ok=1'
-    )
+    action = '/delete/1?next="bad"&ok=1'
+    mocker.patch("flaskteroids.helpers.url_for", return_value=action)
 
-    html = str(button_to("<b>Delete</b>", SimpleNamespace(id=1), "DELETE"))
+    html = HTML(button_to("<b>Delete</b>", SimpleNamespace(id=1), "DELETE"))
 
-    assert "&lt;b&gt;Delete&lt;/b&gt;" in html
-    assert 'action="/delete/1?next=&#34;bad&#34;&amp;ok=1"' in html
+    assert "<b>Delete</b>" in html.text
+    assert not html.has("b")
+    assert html.has("form", action=action)
 
 
 @pytest.mark.usefixtures("request_context")
 def test_button_accepts_trusted_text():
-    assert "<strong>Save</strong>" in str(
+    html = HTML(
         button_to(Markup("<strong>Save</strong>"), SimpleNamespace(id=1), "POST")
     )
+
+    assert html.has("strong")
+    assert "Save" in html.text
 
 
 @pytest.mark.usefixtures("request_context")
 def test_form_escapes_action_and_method():
-    html = str(form_with(url='/posts?next="bad"&ok=1', method='PUT" onclick="bad'))
+    action = '/posts?next="bad"&ok=1'
+    method = 'PUT" onclick="bad'
+    html = HTML(form_with(url=action, method=method))
 
-    assert 'action="/posts?next=&#34;bad&#34;&amp;ok=1"' in html
-    assert 'value="PUT&#34; onclick=&#34;bad"' in html
+    assert html.has("form", action=action)
+    assert html.has("input", name="_method", value=method)
 
 
 @pytest.mark.parametrize(
@@ -108,9 +113,8 @@ def test_form_rejects_non_http_urls(url):
 
 
 def test_collection_select_escapes_values_labels_and_prompt():
-    form = Form("user")
-    html = str(
-        form.collection_select(
+    html = HTML(
+        Form("user").collection_select(
             "choice",
             [{"id": '" onclick="bad', "name": "<script>bad</script>"}],
             "id",
@@ -119,13 +123,14 @@ def test_collection_select_escapes_values_labels_and_prompt():
         )
     )
 
-    assert 'value="&#34; onclick=&#34;bad"' in html
-    assert "&lt;script&gt;bad&lt;/script&gt;" in html
-    assert "&lt;b&gt;Choose&lt;/b&gt;" in html
+    assert html.has("option", value='" onclick="bad')
+    assert "<script>bad</script>" in html.text
+    assert "<b>Choose</b>" in html.text
+    assert not html.has("script")
 
 
 def test_collection_select_accepts_trusted_labels_but_escapes_values():
-    html = str(
+    html = HTML(
         Form(None).collection_select(
             "choice",
             [
@@ -140,14 +145,14 @@ def test_collection_select_accepts_trusted_labels_but_escapes_values():
         )
     )
 
-    assert "<strong>Choice</strong>" in html
-    assert "<em>Choose</em>" in html
-    assert 'value="&#34; onclick=&#34;bad"' in html
+    assert html.has("strong")
+    assert html.has("em")
+    assert html.has("option", value='" onclick="bad')
 
 
 @pytest.mark.parametrize("value", ["a&b", "<choice>", '"quoted"', 1])
 def test_collection_select_compares_unescaped_values(value):
-    html = str(
+    html = HTML(
         Form(None, {"choice": value}).collection_select(
             "choice",
             [{"id": value, "name": "Selected"}],
@@ -156,7 +161,12 @@ def test_collection_select_compares_unescaped_values(value):
         )
     )
 
-    assert " selected>" in html
+    option = next(
+        attrs
+        for tag, attrs in html.elements
+        if tag == "option" and attrs.get("value") == str(value)
+    )
+    assert "selected" in option
 
 
 @pytest.mark.parametrize(
@@ -172,29 +182,36 @@ def test_collection_select_compares_unescaped_values(value):
     ],
 )
 def test_field_names_and_prefixes_are_escaped(helper):
-    form = Form('user" onclick="bad')
+    prefix = 'user" onclick="bad'
+    form = Form(prefix)
     field = '<script>bad</script>"'
     if helper == "collection_select":
-        html = str(form.collection_select(field, [], "id", "name"))
+        html = HTML(form.collection_select(field, [], "id", "name"))
     else:
-        html = str(getattr(form, helper)(field))
+        html = HTML(getattr(form, helper)(field))
 
-    assert "<script>" not in html.lower()
-    assert 'user" onclick="bad' not in html
-    assert "&#34;" in html
+    assert not html.has("script")
+    assert all("onclick" not in attrs for _, attrs in html.elements)
+    assert any(
+        prefix in value
+        for _, attrs in html.elements
+        for value in attrs.values()
+        if isinstance(value, str)
+    )
 
 
 def test_submit_escapes_value():
-    assert 'value="&#34; onclick=&#34;bad"' in str(Form(None).submit('" onclick="bad'))
+    payload = '" onclick="bad'
+
+    assert HTML(Form(None).submit(payload)).has("input", value=payload)
 
 
 def test_text_area_escapes_trusted_field_values():
-    html = str(
-        Form(None, {"bio": Markup("</textarea><script>bad</script>")}).text_area("bio")
-    )
+    payload = "</textarea><script>bad</script>"
+    html = HTML(Form(None, {"bio": Markup(payload)}).text_area("bio"))
 
-    assert "&lt;/textarea&gt;&lt;script&gt;bad&lt;/script&gt;" in html
-    assert "<script>" not in html
+    assert html.text == payload
+    assert not html.has("script")
 
 
 @pytest.mark.usefixtures("request_context")
@@ -207,11 +224,9 @@ def test_button_rejects_unsafe_generated_action(mocker):
 
 @pytest.mark.parametrize("value", ["<b>A</b> & B", Markup('" onclick="bad')])
 def test_input_values_are_escaped_once(value):
-    html = str(Form(None, {"name": value}).text_field("name"))
+    html = HTML(Form(None, {"name": value}).text_field("name"))
 
-    assert str(value) not in html
-    assert "&amp;lt;" not in html
-    assert "&amp;#34;" not in html
+    assert html.has("input", value=str(value))
 
 
 @pytest.mark.parametrize("name", ['bad" onclick="bad', "bad name", "bad=value"])

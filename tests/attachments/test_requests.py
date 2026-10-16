@@ -155,7 +155,7 @@ def test_tampered_blob_and_service_tokens_are_rejected(client, download_url):
         assert client.get("/".join(parts)).status_code == 404
 
 
-def test_service_tokens_cannot_be_used_as_blob_tokens(client, download_url):
+def test_blob_routes_reject_service_tokens(client, download_url):
     service_url = client.get(download_url).location
     parts = download_url.split("/")
     parts[-2] = service_url.split("/")[-2]
@@ -207,7 +207,7 @@ def test_permanent_blob_links_are_identical_when_generated_later(
         assert blob_path(document.avatar) == first
 
 
-def test_configured_proxy_route_and_absolute_helper(app, download_url):
+def test_proxy_configuration_controls_route_and_absolute_url(app, download_url):
     app.config.attachments.resolve_model_to_route = "proxy"
     with app.test_request_context():
         document = Document.first()
@@ -220,7 +220,7 @@ def test_invalid_disposition_returns_bad_request(client, download_url):
     assert client.get(download_url + "?disposition=invalid").status_code == 400
 
 
-def test_purged_blob_link_cannot_access_a_replacement(app, client, download_url):
+def test_blob_routes_reject_links_to_purged_blobs(app, client, download_url):
     with app.app_context():
         Document.first().avatar.purge()
     assert client.get(download_url).status_code == 404
@@ -277,9 +277,8 @@ def test_retained_blob_ids_are_merged_with_multiple_uploads(app, client, upload)
         ]
 
 
-def test_upload_failure_after_commit_does_not_roll_back_metadata(
-    app, client, storage, mocker
-):
+def test_upload_failure_after_commit_preserves_metadata(app, client, storage, mocker):
+    app.config["PROPAGATE_EXCEPTIONS"] = True
     with app.app_context():
         service = storage.service()
     attempted = []
@@ -316,8 +315,8 @@ def test_missing_file_redirects_then_returns_not_found(app, client, download_url
     assert client.get(download_url, follow_redirects=True).status_code == 404
 
 
-def test_standalone_upload_survives_database_rollback_like_rails(app, client):
-    with app.test_request_context():
+def test_standalone_upload_survives_later_database_rollback(app, client):
+    with app.test_request_context(), Document.transaction():
         blob = Blob.create_and_upload(io=io.BytesIO(b"report"), filename="report.txt")
         service_url = blob.url()
         url = blob_path(blob)

@@ -49,7 +49,9 @@ def response_client():
 @pytest.mark.parametrize(
     "status", [200, HTTPStatus.CREATED, HTTPStatus.UNPROCESSABLE_ENTITY]
 )
-def test_json_values_and_status(response_client, render_template, value, status):
+def test_json_render_preserves_values_and_status(
+    response_client, render_template, value, status
+):
     client = response_client(lambda: render(json=value, status=status))
 
     response = client.get("/response/")
@@ -177,7 +179,7 @@ def test_html_render_preserves_status(response_client, render_template):
     assert response.text == "<p>Invalid form</p>"
 
 
-def test_implicit_html_render_still_works(response_client, render_template):
+def test_implicit_html_render_selects_action_template(response_client, render_template):
     render_template.return_value = "<p>Default template</p>"
     response = response_client(lambda: None).get("/response/")
 
@@ -185,7 +187,9 @@ def test_implicit_html_render_still_works(response_client, render_template):
     assert response.text == "<p>Default template</p>"
 
 
-def test_explicit_empty_html_response_is_not_replaced(response_client, render_template):
+def test_explicit_empty_html_response_preserves_empty_body(
+    response_client, render_template
+):
     response = response_client(lambda: "").get("/response/")
 
     assert response.status_code == 200

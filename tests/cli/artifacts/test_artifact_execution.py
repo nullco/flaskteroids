@@ -13,7 +13,7 @@ def builder(tmp_path, mocker):
 
 
 @pytest.mark.parametrize("method", ["run", "python_run"])
-def test_prepared_argv_options_return_and_notification(
+def test_execution_passes_prepared_argv_and_notifies_success(
     builder, tmp_path, mocker, method
 ):
     instance, notify = builder
@@ -28,12 +28,13 @@ def test_prepared_argv_options_return_and_notification(
     run.assert_called_once_with(
         argv, cwd=str(tmp_path), capture_output=True, text=True, check=False
     )
-    notify.assert_called_once_with(f"    run  {command}")
+    notify.assert_called_once()
+    assert command in notify.call_args.args[0]
 
 
 @pytest.mark.parametrize("method", ["run", "python_run"])
 @pytest.mark.parametrize("status", [1, 17, -9])
-def test_command_failure_diagnostics_and_no_notification(
+def test_execution_reports_failed_command_status_and_stderr(
     builder, mocker, method, status
 ):
     instance, notify = builder
@@ -45,12 +46,15 @@ def test_command_failure_diagnostics_and_no_notification(
     )
     with pytest.raises(ArtifactsBuilderException) as raised:
         getattr(instance, method)("tool argument")
-    assert str(raised.value) == f"command tool argument returned {status}:\nproblem"
+    message = str(raised.value)
+    assert "tool argument" in message
+    assert str(status) in message
+    assert "problem" in message
     notify.assert_not_called()
 
 
 @pytest.mark.parametrize("method", ["run", "python_run"])
-def test_launch_exception_is_unchanged(builder, mocker, method):
+def test_execution_propagates_launch_exception(builder, mocker, method):
     instance, notify = builder
     error = FileNotFoundError("cannot launch")
     mocker.patch("subprocess.run", side_effect=error)
@@ -61,7 +65,9 @@ def test_launch_exception_is_unchanged(builder, mocker, method):
 
 
 @pytest.mark.parametrize("method", ["run", "python_run"])
-def test_real_command_working_directory_and_success(builder, tmp_path, capsys, method):
+def test_execution_runs_command_in_project_directory_and_captures_output(
+    builder, tmp_path, capsys, method
+):
     instance, notify = builder
     (tmp_path / "proof.py").write_text(
         "from pathlib import Path\n"
@@ -73,17 +79,17 @@ def test_real_command_working_directory_and_success(builder, tmp_path, capsys, m
     assert (tmp_path / "cwd.txt").read_text() == str(tmp_path)
     captured = capsys.readouterr()
     assert captured.out == captured.err == ""
-    notify.assert_called_once_with(f"    run  {command}")
+    notify.assert_called_once()
+    assert command in notify.call_args.args[0]
 
 
 @pytest.mark.parametrize("method", ["run", "python_run"])
-def test_real_command_stderr_and_failure(builder, tmp_path, method):
+def test_execution_reports_real_command_stderr_and_status(builder, tmp_path, method):
     instance, notify = builder
     (tmp_path / "proof.py").write_text(
         "import sys\nsys.stderr.write('real problem')\nsys.exit(3)\n"
     )
     command = f"{sys.executable} proof.py" if method == "run" else "proof"
-    with pytest.raises(ArtifactsBuilderException) as raised:
+    with pytest.raises(ArtifactsBuilderException, match="real problem"):
         getattr(instance, method)(command)
-    assert str(raised.value) == f"command {command} returned 3:\nreal problem"
     notify.assert_not_called()

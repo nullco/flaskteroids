@@ -2,23 +2,9 @@
 
 Configure application-wide settings in `config/application.py` and override them in `config/environments/`. Database settings live in `config/database.yml`. Store secrets in encrypted credentials and use initializers to configure external libraries during boot.
 
-## Application boot
+## Application settings
 
-A generated application boots through `config/environment.py`:
-
-```python
-from config.application import Application
-
-application = Application.initialize()
-```
-
-`wsgi.py` exposes that application to Flask and WSGI servers:
-
-```python
-from config.environment import application as app
-```
-
-Application-wide configuration lives in `config/application.py`:
+Start with `config/application.py` for settings shared by every environment:
 
 ```python
 from flaskteroids.application import Application as FlaskteroidsApplication
@@ -41,17 +27,19 @@ Requests and jobs run inside an application context. In scripts, open one before
 using models or enqueueing jobs:
 
 ```python
+from config.environment import application
+
 with application.app_context():
     user = User.find(1)
     MyJob().perform_later(user_id=user.id)
 ```
 
-Each context has its own database session. Normal exit commits pending changes;
-an exception rolls them back. You can also call `session.commit()` or
-`session.rollback()` explicitly.
-
-If you use multiple applications, keep records, queries, and files in the app
-that created them. Restart the application after changing its database schema.
+Each context has its own database session, but is not itself a transaction.
+Standalone model persistence commits before returning. Use `with Model.transaction():`
+to group operations; an escaping exception rolls that group back. Context exit
+rolls back unfinished work and closes the session, without undoing earlier
+standalone commits. Native writes require explicit commit/transaction handling.
+See [Models](models/index.md#assignment-validation-and-persistence).
 
 ## Environments
 
@@ -89,7 +77,7 @@ application.env.test
 application.env.production
 ```
 
-Read environment variables explicitly in configuration code. Flaskteroids does not map arbitrary SMTP, job, or application environment variables to settings.
+Read other environment variables with `os.environ` in your configuration.
 
 ## Database configuration
 
@@ -109,42 +97,56 @@ test:
   database: storage/test.sqlite3
 
 production:
-  adapter: postgresql
-  database: my_application_production
+  url: ${DATABASE_URL}
 ```
 
-Values can reference environment variables with `${NAME}` or `${NAME:-default}`:
+The generated app uses SQLite for development and tests. For another database,
+install its driver and set `DATABASE_URL`:
 
-```yaml
-production:
-  adapter: postgresql
-  database: ${DATABASE_NAME}
-  username: ${DATABASE_USER:-postgres}
-  password: ${DATABASE_PASSWORD}
+For PostgreSQL:
+
+```sh
+uv add 'psycopg[binary]'
+export DATABASE_URL='postgresql+psycopg://app:password@localhost/my_app'
 ```
 
-`DATABASE_URL` uses the following precedence:
+Or for MySQL:
 
-- When present, it overrides connection values from the selected environment.
-- An explicit `url` entry in `database.yml` takes precedence over `DATABASE_URL`.
-- Without either URL, Flaskteroids constructs the connection URL from the selected settings.
+```sh
+uv add 'PyMySQL[rsa]'
+export DATABASE_URL='mysql+pymysql://app:password@localhost/my_app'
+```
 
-## Setup and production preparation
+YAML values can reference environment variables with `${NAME}` or
+`${NAME:-default}`. Connection settings are chosen in this order:
 
-`bin/setup` defaults FLASK_ENV only when unset, honors DATABASE_URL and uses
-`uv sync` followed by `bin/flask db:prepare`. It creates conventional `storage/`,
-not arbitrary configured directories. Preparation applies existing migrations,
-retains records and credentials, and propagates bad revisions, scripts, inaccessible
-DBs and connection failures. It does not repair migration files, reset, seed, or
-create external databases. Add/lock external database drivers explicitly.
+1. An explicit `url` in `database.yml`.
+2. `DATABASE_URL`.
+3. Individual settings such as `adapter`, `database`, `username`, and `password`.
 
-The default Docker web entrypoint prepares once before Gunicorn workers start.
-Fleet deployments must coordinate one release step and override the entrypoint;
-this is not concurrent migration coordination. Production SQLite/local attachments
-require persistent writable `/app/storage`. Production must receive the matching
-FLASKTEROIDS_MASTER_KEY at runtime, never during build. SECRET_KEY_BASE remains
-an optional override, not a substitute for decryptable production credentials.
-Workers need a reachable CELERY_BROKER_URL. SMTP/external storage still need settings.
+## Preparing for deployment
+
+On a fresh checkout, run `bin/setup` to install dependencies and prepare the
+database. Before deploying database changes, prepare your production environment:
+
+```sh
+FLASK_ENV=production bin/flask db:prepare
+```
+
+Start PostgreSQL or MySQL yourself and give the application permission to create
+its database. If your host provisions it for you, use `db:migrate` to apply changes.
+PostgreSQL preparation also needs access to the `postgres` database; choose another
+with `config.database_tasks.maintenance_database` if your host requires it.
+See [database commands](other/cli.md#database-preparation) for the everyday workflow.
+
+Provide `FLASKTEROIDS_MASTER_KEY` when starting production so the app can read its
+[encrypted credentials](#encrypted-credentials). Keep the key out of your image
+and source control. SQLite databases and local uploads need persistent storage.
+
+The generated Docker setup prepares the database before starting the web app.
+When deploying several instances, arrange one release step for migrations instead
+of letting every instance run them. Your generated `deploy/README.md` walks through
+that setup.
 
 ## Encrypted credentials
 
@@ -185,7 +187,7 @@ application.credentials['payments']['api_key']
 
 ## Initializers
 
-Files in `config/initializers/*.py` run once during application initialization, in filename order and inside the application context. Use initializers to configure external libraries:
+Put startup configuration for external libraries in `config/initializers/`:
 
 ```python
 # config/initializers/payments.py
@@ -197,14 +199,6 @@ application.extensions['payments'] = Client(
 )
 ```
 
-## Boot order
-
-Flaskteroids initializes an application in this order:
-
-1. Select the environment.
-2. Apply `config/application.py` configuration.
-3. Apply `config/environments/<environment>.py`.
-4. Load `config/database.yml` and credentials.
-5. Initialize framework components.
-6. Run files in `config/initializers/`.
-7. Finish route and application setup.
+Keep database queries out of initializers when possible. Query from an action,
+job, or function when the data is needed, so database setup can run before tables
+exist.

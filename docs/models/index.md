@@ -1,599 +1,347 @@
 # Models
 
-Models inherit from `flaskteroids.model.Model` and wrap SQLAlchemy table objects with an Active Record-style API. Database columns defined in migrations become attributes on model instances.
+Flaskteroids models are SQLAlchemy-mapped application objects with Rails-like
+querying, validation, and persistence methods. Columns come from a generated
+snapshot of the migrated database; behavior and association rules stay in model
+files. There is no separate mapped row hidden behind a model.
 
-Use models to query records, define associations and validations, and handle passwords.
+## Define models and migrate
 
-## Define a model
+All application models inherit an abstract application base:
 
-Inherit from `Model` and declare associations and validations inside `@rules`:
+```python
+# app/models/application_model.py
+from flaskteroids.model import Model
+
+class ApplicationModel(Model):
+    __abstract__ = True
+```
+
+```python
+# app/models/author.py
+from app.models.application_model import ApplicationModel
+from flaskteroids.model import has_many, validates
+from flaskteroids.rules import rules
+
+@rules(has_many("posts", dependent="destroy"), validates("name", presence=True))
+class Author(ApplicationModel):
+    def greeting(self):
+        return f"Hello, {self.name}"
+```
 
 ```python
 # app/models/post.py
-from flaskteroids.model import Model, validates, belongs_to, has_many
+from app.models.application_model import ApplicationModel
+from flaskteroids.model import belongs_to, validates
 from flaskteroids.rules import rules
 
-@rules(
-    # --- Associations ---
-    belongs_to('user'),
-    has_many('comments'),
-
-    # --- Validations ---
-    validates('title', presence=True, length={'minimum': 5}),
-    validates('content', presence=True)
-)
-class Post(Model):
-    # Database columns (title, content, user_id, etc.) are automatically available
+@rules(belongs_to("author"), validates("title", presence=True))
+class Post(ApplicationModel):
     pass
 ```
 
-## Custom rules and inheritance
+Create the tables through migrations:
 
-A custom rule receives a class. Use it to set class attributes. Put database
-queries and other work that needs an application in an action, callback, or
-initializer instead.
+```sh
+flask generate model Author name:string
+flask generate model Post title:string author:references
+flask db:prepare
+```
+
+Model/scaffold generators write migrations and behavioral model files. Successful
+`db:migrate`, `db:prepare`, and `db:rollback` regenerate `db/schema.py` from the
+selected database. Commit it, but **do not edit it manually**. Use
+`flask db:schema:dump` to refresh it independently. See [CLI](../other/cli.md).
+
+The snapshot lives alongside migrations in `db/`, matching Rails conventions.
+For an existing app with `app/schema.py`, run `flask db:schema:dump`, remove the
+old snapshot, and restart servers and workers. No database changes are needed.
+
+The snapshot contains metadata for tables, columns, keys, constraints, indexes,
+and server defaults, including tables without a behavioral model. It contains no
+model behavior, validators, or relationship choices. `Post` conventionally maps
+to `posts`; a model may set `__table_name__ = "legacy_posts"` for another table.
+
+## Lazy mapping and normal startup
+
+Importing a model only declares its behavior and collects its `@rules`. It does
+not require a snapshot or connect to the database. Mapping happens when needed:
+constructing a record, using the query facade, or accessing a mapped expression
+such as `Post.title`.
+
+Consequently, ordinary application startup and migration commands work before a
+new model has a table in the snapshot. They use the same initialization path;
+initializers are not skipped. An initializer that actually uses an unavailable
+model still fails with migration guidance.
+
+The mapper reads the snapshot, not the live database. Restart servers and workers
+after migration. Do not reload schema files or alter published mappings in place.
+Abstract behavior bases need no table. Concrete model inheritance, duplicate model
+names within an application model set, and columns that shadow model APIs are
+rejected. Different model sets have isolated registries; matching schemas can use
+the same mapped classes with separate engines/sessions.
+
+## Queries
 
 ```python
-def searchable(*names):
-    def prepare(cls):
-        cls.search_fields = names
-    return prepare
-
-
-@rules(searchable('title'))
-class Post(Model):
-    pass
+post = Post.find(1)                      # Raises RecordNotFoundException if absent
+post = Post.find_by(title="First")       # Returns None if absent
+posts = Post.all()                      # A lazy query
+posts = Post.where(title="First")       # A filtered lazy query
+records = list(posts)                   # Execute and obtain a list of Post objects
+posts = Post.where(Post.title.ilike("a%"))
+page = posts.order(title="asc").limit(20).offset(40)
+count = page.count()
+first = page.first()
+last = page.last()
 ```
 
-Rules run once for each class. Inherited rules run before the child's rules, in
-base-class order. A shared ancestor contributes its rules once. Declaring the
-same rule twice runs it twice. If a rule uses a list or dictionary, create a new
-one for each class so children do not change their parents' values.
+Queries are lazy and **immutable**. Chain or assign the returned query; a call to
+`query.where(...)` does not change the original query. `all()` always returns a
+lazy query, including when called on an existing scope; it never executes SQL.
+Iterating a query loads its selected records. Use `list(query)` when you need a
+list. Queries are reusable; each iteration executes again rather than caching
+results. Default ordering is ascending primary key; `order()` also accepts native
+SQLAlchemy ordering expressions. Limits and offsets must be nonnegative or `None`.
+`count()` respects the selected scope/page. `first()` returns one record or `None`;
+`last()` materializes the selected scope to honor custom ordering and pagination.
 
-## Temporary attributes
-
-Unknown attributes raise `AttributeError`, helping you catch typos. This applies
-to both direct assignment and values passed to `new()`, `create()`, or `update()`.
-
-For values you don't want to save, declare a class default or use a private name:
+Use eager loading to avoid per-row relationship queries:
 
 ```python
-class Post(Model):
-    delivery_hint = None
-
-
-post = Post.new(title="Draft", delivery_hint="preview")
-post._render_cache = {}
-# post.titel = "Typo" raises AttributeError
-```
-
-Inherited defaults and properties with setters work too. A type annotation alone
-isn't enough. Read-only attributes and framework methods cannot be overwritten.
-
-Temporary values aren't saved or included in automatic JSON or form data.
-They survive `reload()` on the same instance; separately loaded instances start
-with class defaults. Initialize lists and dictionaries per instance, not as
-shared class defaults.
-
-## Associations
-
-Associations define relationships between models.
-
-### belongs_to
-
-Use `belongs_to` when the model holds a foreign key to another model. For example, a post belongs to a user:
-
-```python
-from flaskteroids.model import Model, belongs_to
-from flaskteroids.rules import rules
-
-@rules(
-    belongs_to('user')
-)
-class Post(Model):
-    pass
-
-# Usage
-post = Post.find(1)
-user = post.user  # Access the associated User
-```
-
-You can customize the association:
-
-```python
-from flaskteroids.model import Model, belongs_to
-from flaskteroids.rules import rules
-
-
-@rules(
-    belongs_to('author', class_name='User', foreign_key='author_id')
-)
-class Post(Model):
-    pass
-```
-
-Set `post.user` to a `User` instance, or `None` to clear it, then call
-`post.save()`. Save new users first. A wrong model type raises `TypeError`;
-clearing a required association makes `save()` return `False`.
-
-### has_many
-
-Use `has_many` for a one-to-many relationship. For example, a post has many comments:
-
-```python
-from flaskteroids.model import Model, has_many
-from flaskteroids.rules import rules
-
-@rules(
-    has_many('comments')
-)
-class Post(Model):
-    pass
-
-# Usage
-post = Post.find(1)
-comments = post.comments  # Returns a Relation object
-for comment in comments:
-    print(comment.content)
-
-# Create associated records
-new_comment = post.comments.create(content="Great post!", author="John")
-```
-
-Collections support iteration and `create()`, not `append()` or `remove()`.
-Replacing a collection with `post.comments = []` raises `AttributeError`.
-
-Set `dependent='destroy'` to delete associated records when you destroy the parent:
-
-```python
-from flaskteroids.model import Model, has_many
-from flaskteroids.rules import rules
-
-@rules(
-    has_many('comments', dependent='destroy')  # Deletes comments when post is deleted
-)
-class Post(Model):
-    pass
-```
-
-## Validations
-
-Validations check model attributes before saving. A failed validation prevents the save and adds messages to the model's `errors` object.
-
-### Presence
-
-Reject `None`, empty strings, and whitespace-only strings (including Unicode
-whitespace). Validation does not trim or otherwise change the attribute:
-`" hello "` is valid and is stored unchanged. Numeric zero remains valid.
-
-```python
-from flaskteroids.model import Model, validates
-from flaskteroids.rules import rules
-
-@rules(
-    validates('title', presence=True)
-)
-class Post(Model):
-    pass
-```
-
-### Length
-
-Validates the length of a string field.
-
-```python
-from flaskteroids.model import Model, validates
-from flaskteroids.rules import rules
-
-
-@rules(
-    validates('title', length={'minimum': 5, 'maximum': 100}),
-    validates('password', length={'minimum': 8})
-)
-class Post(Model):
-    pass
-```
-
-### Confirmation
-
-Require a field to match its confirmation field, usually for passwords:
-
-```python
-from flaskteroids.model import Model, validates
-from flaskteroids.rules import rules
-
-
-@rules(
-    validates('password', confirmation=True)
-)
-class User(Model):
-    pass
-
-# Requires both 'password' and 'password_confirmation' fields to match
-user = User.new(password="secret", password_confirmation="secret")
-```
-
-## Password hashing
-
-Use `has_secure_password()` to hash passwords and `PasswordAuthenticator` for authentication methods. The database table needs a `password_digest` column.
-
-```python
-from flaskteroids.model import Model, PasswordAuthenticator, has_secure_password
-from flaskteroids.rules import rules
-
-@rules(
-    has_secure_password()
-)
-class User(Model, PasswordAuthenticator):
-    pass
-
-# Usage
-user = User.create(email="user@example.com", password="secret")
-user.authenticate("secret")  # Returns True
-
-# Class methods
-User.authenticate_by(email="user@example.com", password="secret")  # Returns user or None
-```
-
-The rule and authenticator provide:
-
-- Automatic password hashing to `password_digest`
-- Virtual fields: `password`, `password_confirmation`, `password_reset_token`
-- Validation for password length and confirmation
-- Password reset tokens that expire after 15 minutes and become invalid after a
-  successful password change
-
-## JSON serialization
-
-`render(json=record)` and `render(json=Model.all())` serialize database columns,
-including pending column changes. They omit `password`, `password_confirmation`,
-`password_digest`, and `password_reset_token`. The corresponding attributes for
-custom `has_secure_password()` field names are omitted too. The same serialization
-and filtering apply to records and queries nested in dictionaries, lists, or tuples:
-
-```python
-return render(json=[first_post, second_post])
-return render(json={"posts": Post.all()})
-```
-
-Virtual fields and associations are not included automatically. Serialization
-does not generate reset tokens or evaluate read-only virtual fields. Read
-`user.password_reset_token` explicitly when issuing a password reset.
-
-To select fewer columns or add an application-specific value, override the existing
-`__json__()` protocol. Queries and nested collections use the same override for
-each record:
-
-```python
-class User(Model):
-    def __json__(self):
-        data = super().__json__()
-        return {"id": data["id"], "name": data["name"]}
-```
-
-All other database columns are included by default. Filter application-specific
-secrets in your override, and do not add authentication fields back to the result.
-`form_with(model=record)` extracts form values independently of `__json__()`.
-Changing response serialization does not change model-backed form values.
-
-Applications upgrading from the previous behavior must explicitly select any
-virtual fields they intend to publish. Passwords, digests, and reset tokens must
-not be published through ordinary record responses.
-
-## Callbacks
-
-Callbacks run at specific points in a model's lifecycle. Declare them inside `@rules`, alongside associations and validations.
-
-```python
-from flaskteroids.model import Model, before_save, after_create
-from flaskteroids.rules import rules
-
-@rules(
-    before_save('_normalize_email'),
-    after_create('_send_welcome_email'),
-)
-class User(Model):
-    def _normalize_email(self):
-        self.email = self.email.strip().lower()
-
-    def _send_welcome_email(self):
-        # enqueue a mailer / background job
-        pass
-```
-
-### Available callbacks
-
-Save callbacks run in this order:
-
-```
-before_validation
-after_validation
-before_save
-around_save
-  before_create / before_update
-  around_create / around_update
-  after_create  / after_update
-after_save
-after_commit / after_rollback
-```
-
-For destruction:
-
-```
-before_destroy
-around_destroy
-after_destroy
-after_commit
-```
-
-Two callbacks run when you instantiate or load records:
-
-- `after_initialize` runs when you instantiate a model with `new` or `create`, or load it from the database.
-- `after_find` runs when you load a model through `find`, `find_by`, `all`, or an association.
-
-### Before, around, and after
-
-Before callbacks run before the operation. Returning `False` halts the chain and aborts the operation. In that case, `save()` or `destroy()` returns `False`.
-
-Around callbacks wrap the operation using a generator. Code before `yield` runs before the operation. Code after `yield` runs after it. An around callback that never yields also halts the chain.
-
-After callbacks run when the operation completes.
-
-```python
-@rules(
-    before_save('_before'),
-    around_save('_around'),
-    after_save('_after'),
-)
-class Post(Model):
-    def _before(self):
-        pass
-
-    def _around(self):
-        # runs before the save
-        yield
-        # runs after the save
-
-    def _after(self):
-        pass
-```
-
-Before callbacks run in registration order. After callbacks run in reverse registration order.
-
-### Conditional callbacks
-
-Use `if_` and `unless_` to control when a callback runs. Each accepts a method name as a string, or a callable that receives the model instance.
-
-```python
-@rules(
-    before_save('_normalize_email', if_='_email_present'),
-    before_save('_log_change', unless_=lambda user: user.admin),
-)
-class User(Model):
-    def _email_present(self):
-        return bool(self.email)
-```
-
-Use `on=` to restrict a callback to `'create'` or `'update'`. Commit and rollback callbacks also accept `'destroy'`. The option is available only on validation, save, commit, and rollback callbacks:
-
-```python
-@rules(
-    before_validation('_generate_slug', on='create'),
-    after_commit('_broadcast', on=['create', 'update']),
-)
-class Post(Model):
-    pass
-```
-
-### Ordering with `prepend`
-
-By default, Flaskteroids adds callbacks to the end of the chain. Pass `prepend=True` to insert a callback at the front:
-
-```python
-@rules(
-    before_save('_first'),
-    before_save('_second', prepend=True),  # runs before _first
-)
-class Post(Model):
-    pass
-```
-
-### After commit and after rollback
-
-`after_commit` runs once the surrounding database transaction commits. Use it for work that must wait until the data is saved, such as sending an email or purging a cache. `after_rollback` runs once the transaction rolls back. Both accept `on='create'`, `on='update'`, or `on='destroy'`.
-
-```python
-@rules(
-    after_commit('_purge_cache'),
-)
-class Post(Model):
-    def _purge_cache(self):
-        pass
-```
-
-## Querying models
-
-Start a query with `where`, `order`, or `all`. These methods return a `ModelQuery` that you can chain to filter, order, or paginate records.
-
-### Finding records
-
-```python
-# Find by ID
-post = Post.find(1)
-
-# Find first by criteria
-post = Post.find_by(title="Hello World")
-
-# Get all records
-posts = list(Post.all())
-```
-
-### Where clauses
-
-```python
-# Simple where
-posts = Post.where(published=True)
-
-# Multiple conditions
-posts = Post.where(published=True).where(user_id=1)
-
-# Using expressions
-from sqlalchemy import or_
-posts = Post.where(or_(Post.title.like("%hello%"), Post.content.like("%world%")))
-```
-
-### Eager loading with `includes`
-
-Load associated records to avoid N+1 queries.
-
-```python
-# Eager load associations
-posts = Post.includes('user', 'comments').all()
-
-for post in posts:
-    print(post.user.name)  # No additional query
-    for comment in post.comments:
-        print(comment.content)  # No additional query
-```
-
-### Ordering
-
-```python
-# Order by created_at descending
-posts = Post.order(created_at='desc').all()
-
-# Multiple order clauses
-posts = Post.order(created_at='desc', title='asc').all()
-```
-
-### Limit, offset, and pagination
-
-Use `limit()` to cap the number of records and `offset()` to skip records. Both
-methods work directly on a model or in a query chain and are applied in SQL:
-
-```python
-posts = Post.limit(10)
-posts = Post.offset(20)
-posts = Post.where(published=True).order(id='asc').limit(10).offset(20)
-
-# Page numbers start at 1
-page = 3
-per_page = 20
-posts = Post.where(published=True).order(id='asc').limit(per_page).offset((page - 1) * per_page)
+posts = Post.includes("author")
+authors = Author.includes("posts.author")
 records = list(posts)
-
-# Count all matching records separately from the page
-page_count = posts.count()
-total_count = Post.where(published=True).count()
 ```
 
-Always use a deterministic order, such as `id`, for pagination. Limits and offsets must be non-negative integers. `limit(0)` returns no records, and `offset(0)` skips none.
+`includes()` accepts dotted relationship paths and uses native select-in loaders.
+Unknown relationships raise `AttributeError`; malformed paths raise `ValueError`.
+For complex queries, use `query.statement`, `query.options(...)`, or native SQLAlchemy.
 
-Repeated calls replace the previous value. `limit(None)` or `offset(None)` clears that clause. Queries execute when you request records or a count.
-
-`count()`, `first()`, and `last()` respect the selected page. `last()` loads the selected records when a limit or offset is present.
-
-## CRUD operations
-
-### Creating records
+## Assignment, validation, and persistence
 
 ```python
-# Create and save immediately
-post = Post.create(title="New Post", content="Content here")
+post = Post.new(title="First", author=author)
+if post.save():
+    identifier = post.id
+else:
+    messages = post.errors.full_messages()
 
-# Create without saving
-post = Post.new(title="New Post", content="Content here")
-post.save()  # Returns True on success
+post = Post.create(title="", author=author)  # Returns the invalid, unsaved object
+assert post.errors
+assert post.update(title="Fixed")
 ```
 
-### Updating records
+Scalar assignments are staged on the mapped object. Reads expose entered values,
+but SQLAlchemy's published state is unchanged until a successful save. Invalid
+updates retain their input/errors without being flushed by another object's save
+or a later commit. This also applies to valid edits never explicitly
+saved, and to edits made after an earlier save.
+
+A standalone `save()` validates, flushes, and **commits before returning**.
+`create()` and `update()` use that same boundary. Associated rows persisted by the
+save share its transaction. Failure or a halted callback rolls back a standalone
+operation; earlier successful standalone saves remain committed.
+
+Use an explicit transaction to group operations:
 
 ```python
-post = Post.find(1)
-post.title = "Updated Title"
+with Author.transaction():
+    author = Author.create(name="Ada")
+    post = Post.create(title="First", author=author)
+    if post.errors:
+        raise ValueError("Post is invalid")
+# Both writes commit here; an escaping exception rolls both back.
+```
+
+Saves inside an explicit transaction join it without committing. A `False` return
+does not abort that outer transaction; raise an exception when the group must
+fail together. Nested `Model.transaction()` blocks also join by default. Use
+`Model.transaction(requires_new=True)` for a savepoint, catching failures outside
+that inner block if the outer operation should continue. After-commit callbacks
+wait for the outer commit, not savepoint release. Transactions are shared across
+models in the same application, not scoped to the class naming the block.
+
+`save(validate=False)` explicitly bypasses validation. Database constraints remain
+authoritative: integrity errors propagate rather than becoming validation errors.
+Standalone failures clean up their transaction. If a database exception is caught
+inside an explicit block, recover/roll back that transaction before further writes.
+A preceding query does not turn a standalone save into an explicit transaction.
+
+```python
+@rules(
+    validates("title", presence=True, length={"minimum": 3, "maximum": 100}),
+    validates("quantity", numericality={"only_integer": True}),
+    validates("quantity", comparison={"greater_than_or_equal_to": 0}),
+    validates("email", confirmation=True),
+)
+class Product(ApplicationModel):
+    pass
+```
+
+`confirmation=True` makes a writable confirmation field available. Validators run
+in declaration order. `errors` is truthy when populated and exposes `count`,
+`full_messages()`, and JSON full-message lists. `is_valid()` runs validation without
+publishing input. Types/casting do not replace explicit user-facing validation.
+
+Model assignment casts supported scalar types and retains original input through
+`read_attribute_before_type_cast(name)` and `attributes_before_type_cast`.
+Numericality checks raw input rather than trusting a permissive numeric cast.
+Model-backed forms redisplay that input after failed validation; see
+[Fields](../other/fields.md) and [Forms](../other/forms.md).
+
+`reload()` refreshes published state and discards staged scalar input/errors.
+`discard_changes()` only discards staged scalars. Native refresh/expiration does
+not by itself clear the staging dictionary.
+
+### Defaults
+
+Put persistent defaults in migrations. Simple SQL literal server defaults are
+available on new objects without querying the database. SQL functions, computed
+columns, and generated identities remain server-owned and populate on flush.
+Explicit `None` is not mistaken for a request to reuse a server default; JSON
+retains its native JSON-null behavior. As a framework convention, `save()` maintains
+declared `created_at`/`updated_at` attributes itself; native writes do not implicitly
+run that timestamp lifecycle.
+
+Python default functions are not recoverable from a database snapshot. Implement
+application-side defaults explicitly in behavior/callbacks, rather than writing
+`Column.default` definitions or editing the generated snapshot.
+
+## Association decorators
+
+Keep association declarations inside `@rules`:
+
+```python
+@rules(
+    belongs_to("author", class_name="User", foreign_key="author_id"),
+    has_many("comments", dependent="destroy"),
+    has_one("preview", class_name="Preview", foreign_key="post_id"),
+)
+class Post(ApplicationModel):
+    pass
+```
+
+The helpers translate into SQLAlchemy relationships before mapping. Class names
+and foreign keys are inferred conventionally; the shown positional/keyword options
+remain available. `belongs_to()` requires its target by default; use
+`optional=True` when absence is allowed. `inverse_of="posts"` selects an explicit
+inverse when conventions would be ambiguous. The helpers require single-column
+primary keys; use native relationships for more complex joins.
+
+```python
+post.author = author
+assert post in author.posts
 post.save()
 
-# Or update multiple fields at once
-post.update(title="New Title", content="New Content")
+post = Post.create(title="Next", author=author)
 ```
 
-If `update()` encounters an unknown attribute, it raises without saving. Earlier
-valid assignments from that call aren't undone.
+Collections are native SQLAlchemy collections, not custom `Relation` wrappers.
+They support assignment, append/remove, iteration, and native loader behavior.
+Create a record with `Post.create(author=author, ...)`, not `author.posts.create()`.
+Related new framework objects are validated before their staged scalars are
+published by a framework save.
 
-### Null attributes
+Relationship mutations are **not scalar staging**: they have native unit-of-work
+semantics. A failed scalar validation does not undo a prior collection edit. When
+abandoning an invalid transient child, remove it from the collection; do not leave
+an unpublished new object pending in the session. For coherent inverse updates,
+assign the relationship itself; raw foreign-key edits may require reloading cached
+relationships, just as with native SQLAlchemy.
 
-Column assignments preserve `None` for every supported field type. An explicit
-`record.update(name=None)` requests clearing that attribute; omitting `name` from
-an update leaves its existing value unchanged. Direct assignment and `new()` use
-the same casting rules. See [Fields](../other/fields.md#null-values) for JSON
-storage details.
+### Deletion
 
-Null values still undergo validation and database constraints. For example,
-`Post.new(title=None)` fails `save()` when `title` has presence validation, just
-like an omitted title. A rejected update retains the pending null in memory but
-does not save it; use `reload()` to restore persisted values. Saving SQL `NULL`
-to a non-nullable column without applicable validation still raises a database
-integrity error.
+`record.destroy()` runs framework destroy callbacks and commits a standalone
+deletion before returning. Like `save()`, it joins an explicit transaction when
+one is open. `dependent="destroy"` calls related records' framework `destroy()`
+methods, including their callbacks and attachment cleanup, in the same boundary.
+A halted standalone destruction returns `False` and rolls back earlier dependent
+deletions. Inside an explicit transaction, raise on rejection when the whole group
+must roll back.
 
-Applications upgrading from older casting behavior must assign `False`
-explicitly when they mean false, rather than using `None`. Previously saved
-`"None"` strings and false values are not automatically rewritten.
+Native `session.delete()` and ORM/database cascades do not automatically run
+framework child `destroy()` callbacks. Native `relationship()` options are an
+escape hatch, but must not be confused with the helper's callback-aware contract.
+Database `ON DELETE` choices belong in migrations.
 
-### Deleting records
+## Native SQLAlchemy and transactions
 
 ```python
-post = Post.find(1)
-post.destroy()
+from sqlalchemy import inspect, select
+from sqlalchemy.orm import selectinload
+from flaskteroids.db import session
+
+Author.prepare()  # Explicit, database-free mapping for bare native class APIs
+mapper = inspect(Author)
+author = session.get(Author, 1)
+authors = session.scalars(select(Author).options(selectinload(Author.posts))).all()
+assert Author.find(author.id) is author
 ```
 
-## Missing tables
+Facade and native queries return the same objects within a session. Mapped columns
+and relationships are real SQLAlchemy attributes. Staged scalar values are the
+intentional boundary: SQLAlchemy history and SQL predicates describe published
+state, not `record.changes`. `read_published_attribute(name)` bypasses staged input.
 
-If a model's table doesn't exist yet, the app can still start, but using that
-model raises `ProgrammerError`. Run `flask db:migrate`, then restart the app.
-
-Other setup errors, such as an invalid association or a table without a primary
-key, must be fixed before the app can start.
-
-## Validation errors
-
-Models include an `errors` object for validation errors. `render(json=record.errors,
-status=422)` returns a JSON list of full messages, or `[]` when there are no errors.
+Native callers can explicitly publish without validation or framework callbacks:
 
 ```python
-post = Post.new(title="")  # Invalid: title is required
-post.save()  # Returns False
-
-if post.errors:
-    print("Errors:", post.errors.full_messages())
-
-# Errors are automatically cleared on successful save
+post = Post(title="Native", author=author).apply_changes()
+session.add(post)
+session.flush()
 ```
 
-## Authentication
+Directly adding a new record with unpublished staged input is rejected at flush,
+rather than silently inserting null/default data. Native/bulk operations bypass
+framework validations and operation callbacks. In-place mutable values follow
+native SQLAlchemy tracking; use scalar reassignment when you want staged edits.
 
-For models with secure passwords:
+Sessions are app-context-local, with autoflush disabled and committed attributes
+retained. There is **no automatic request-wide transaction**. An exception or HTTP
+error after a successful standalone save does not undo its commit. Context teardown
+rolls back unfinished work and closes the session; it never commits native writes.
 
-```python
-# Authenticate a user
-user = User.authenticate_by(email="user@example.com", password="secret")
+`from flaskteroids.db import transaction` exposes the same transaction context as
+`Model.transaction()`. Native `with session.begin():` blocks are also respected;
+use the framework context when a previous read has already implicitly opened a
+SQLAlchemy transaction. Native writes require an explicit transaction or an
+explicit `session.commit()`. A framework save flushes the session's published
+work, including native pending changes, so use explicit boundaries when mixing
+the two APIs. Caller-created sessions are caller-owned.
 
-# Password reset tokens
-token = user.password_reset_token
-# Within 15 minutes, before the password changes
-user = User.find_by_password_reset_token(token)
-```
+## Callbacks and authentication
 
-Reset tokens are signed and scoped to the model and password field. They contain a
-keyed fingerprint of the password digest, not the digest itself. Any successful
-password change invalidates all outstanding reset tokens, even when setting the
-same password again. Failed password updates and changes to unrelated fields do
-not invalidate existing tokens.
+Declare callbacks through `@rules(before_validation(...), before_save(...), ...)`.
+Supported operation callbacks include before/after validation; before/around/after
+save, create, update, and destroy; after initialize/find; and after commit/rollback.
+Around callbacks are generators that yield once. Before callbacks returning
+`False` halt their operation. Callback bodies can update staged scalar attributes.
 
-Reading `password_reset_token` generates a fresh token using the current password
-digest and timestamp. For custom password fields, such as `has_secure_password('passcode')`,
-read `passcode_reset_token`; verification still uses `find_by_password_reset_token()`.
+Load callbacks run when an object is actually hydrated, not on every query that
+returns an already-loaded identity. After-find runs before after-initialize on
+hydration. Commit/rollback callbacks are queued by successful framework operations
+and are transaction-scoped; after-commit runs only after the outer commit, not a
+flush/savepoint. Native and bulk writes do not imply these framework hooks.
 
-Verification raises `itsdangerous.SignatureExpired` for expired tokens and
-`itsdangerous.BadSignature` for invalid or revoked tokens. Previously issued tokens
-from versions without expiration and password-change protection are rejected;
-users must request a new reset link.
+Use `PasswordAuthenticator` and `@rules(has_secure_password())` for password
+behavior; a custom field name such as `has_secure_password("passcode")` is supported.
+Authentication/reset-token checks use published digests, so a failed staged password
+edit does not invalidate persisted credentials. Passwords, digests, confirmations,
+and reset tokens are excluded from default JSON/form data. Explicit raw-input APIs
+remain sensitive; do not log them. Attachments retain their post-commit upload and
+rollback semantics; see [Attachments](../other/attachments.md).
+
+## Temporary attributes and serialization
+
+Unknown public assignments raise `AttributeError`. Declare a class default or a
+property with a setter for transient values, or use a private cache name. Initialize
+mutable caches per instance. Transients are not automatically saved or serialized;
+ordinary identity-map lookups return the same instance and its transient state.
+Framework methods and metadata cannot be replaced through assignment.
+
+Default JSON contains mapped scalar attributes, including staged values, excluding
+authentication secrets and virtual fields. Override `__json__()` to define an
+application-specific response, or add names to `_serialization_exclude` as a set.
+Forms obtain values independently of that response representation. Dynamic mapped
+fields are not generally inferred by ordinary Python editors/type checkers.

@@ -142,9 +142,10 @@ def test_repeated_setup_runs_middleware_processors_and_csrf_once(make_app):
     assert app.config["SETUP_EVENTS"] == ["request"]
 
 
-def test_shell_context_does_not_mutate_models_or_commit_pending_uploads(make_app):
+def test_shell_context_preserves_models_and_pending_uploads(make_app):
     a, b = make_app("a"), make_app("b")
     with a.app_context():
+        session.begin()
         shell = a.make_shell_context()
         assert shell["Author"] is Author
         a.make_shell_context()
@@ -161,6 +162,7 @@ def test_shell_context_does_not_mutate_models_or_commit_pending_uploads(make_app
         assert author.avatar.download() == b"pending"
     assert a.config["EVENTS"] == [("commit", "a")]
     with a.app_context():
+        session.begin()
         author = Author.first()
         assert author.update(name="updated")
         assert a.config["EVENTS"] == [("commit", "a")]
@@ -174,8 +176,12 @@ def test_shell_context_does_not_mutate_models_or_commit_pending_uploads(make_app
 
     with a.app_context():
         response = a.test_client().post("/after-shell/")
-        assert response.json == {"committed": False}
-        assert a.config["EVENTS"] == [("commit", "a"), ("rollback", "updated")]
+        assert response.json == {"committed": True}
+        assert a.config["EVENTS"] == [
+            ("commit", "a"),
+            ("rollback", "updated"),
+            ("commit", "request"),
+        ]
     assert a.config["EVENTS"] == [
         ("commit", "a"),
         ("rollback", "updated"),
@@ -184,7 +190,7 @@ def test_shell_context_does_not_mutate_models_or_commit_pending_uploads(make_app
 
 
 @pytest.mark.parametrize("key", ["db", "jobs", "mail", "routes", "attachments"])
-def test_resource_owning_extensions_cannot_be_rebound(make_app, key):
+def test_resource_owning_extensions_reject_rebinding(make_app, key):
     a, b = make_app("a"), make_app("b")
     with pytest.raises(ProgrammerError, match="cannot be shared"):
         a.extensions[f"flaskteroids.{key}"].init_app(b)

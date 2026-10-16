@@ -43,7 +43,7 @@ def init_models(engine, mocker):
             app.config.paths = SimpleNamespace(models="test_models")
             app.database_url = str(engine.url)
             mocker.patch(
-                "flaskteroids.extensions.db.discover_classes",
+                "flaskteroids.extensions.db.discover_models",
                 return_value={model.__name__: model for _, model in model_base_tuples},
             )
             mocker.patch(

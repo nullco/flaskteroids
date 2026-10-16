@@ -49,7 +49,7 @@ class UserTest(ModelTest):
             expected_test_content,
         )
 
-    def test_generate_with_different_model_name(
+    def test_generate_derives_paths_from_model_name(
         self, artifacts_builder, migrations_generate
     ):
         generate("Post", [])

@@ -5,19 +5,16 @@ import flaskteroids.cli.db.commands as db
 
 @pytest.fixture
 def command(mocker):
+    mocker.patch.object(db, "dump_schema")
     return mocker.patch.object(db, "command")
 
 
-def test_init(cli_runner, command):
-    cli_runner.invoke(args="db:init")
-    command.init.assert_called()
+@pytest.mark.parametrize(
+    "task, operation",
+    [("init", "init"), ("migrate", "upgrade"), ("rollback", "downgrade")],
+)
+def test_database_command_dispatches_to_alembic(cli_runner, command, task, operation):
+    result = cli_runner.invoke(args=f"db:{task}")
 
-
-def test_migrate(cli_runner, command):
-    cli_runner.invoke(args="db:migrate")
-    command.upgrade.assert_called()
-
-
-def test_rollback(cli_runner, command):
-    cli_runner.invoke(args="db:rollback")
-    command.downgrade.assert_called()
+    assert result.exit_code == 0, result.output
+    getattr(command, operation).assert_called_once()

@@ -60,7 +60,7 @@ class TestExpectParameters:
     @pytest.mark.parametrize(
         "raw_input", [{}, {"todo": None}, {"todo": {}}, {"todo": {"admin": True}}]
     )
-    def test_dictionary_root_must_be_present_after_filtering(self, raw_input):
+    def test_expect_requires_dictionary_root_after_filtering(self, raw_input):
         params = ActionParameters.new(raw_input)
 
         with pytest.raises(MissingParameter):
@@ -127,7 +127,7 @@ class TestExpectParameters:
             {"items": [{"name": []}]},
         ],
     )
-    def test_invalid_supplied_nested_fields_still_raise(self, attributes):
+    def test_expect_rejects_invalid_supplied_nested_fields(self, attributes):
         params = ActionParameters.new({"todo": attributes})
 
         with pytest.raises(InvalidParameter):
@@ -152,7 +152,7 @@ class TestExpectParameters:
             "files": [upload],
         }
 
-    def test_arbitrary_objects_are_not_permitted_uploads(self):
+    def test_expect_rejects_arbitrary_objects_as_uploads(self):
         params = ActionParameters.new({"user": {"avatar": object()}})
         with pytest.raises(InvalidParameter):
             params.expect(user=["avatar"])
@@ -224,7 +224,9 @@ class TestExpectParameters:
             ),
         ],
     )
-    def test_ok_parameters(self, raw_input, expect_input, expect_output):
+    def test_expect_returns_permitted_parameters_in_schema_shape(
+        self, raw_input, expect_input, expect_output
+    ):
         params = ActionParameters.new(raw_input)
         args, kwargs = expect_input
         output = params.expect(*args, **kwargs)
@@ -234,7 +236,7 @@ class TestExpectParameters:
         "raw_input, expect_input",
         [({"user": "admin", "password": "S3cr3t!"}, ["user", "password", "birthdate"])],
     )
-    def test_missing_parameters(self, raw_input, expect_input):
+    def test_expect_rejects_missing_requested_scalar(self, raw_input, expect_input):
         params = ActionParameters.new(raw_input)
         with pytest.raises(MissingParameter):
             params.expect(*expect_input)
@@ -248,7 +250,9 @@ class TestExpectParameters:
             )
         ],
     )
-    def test_invalid_parameters(self, raw_input, expect_input):
+    def test_expect_rejects_invalid_positional_nested_parameters(
+        self, raw_input, expect_input
+    ):
         params = ActionParameters.new(raw_input)
         with pytest.raises(InvalidParameter):
             params.expect(*expect_input)

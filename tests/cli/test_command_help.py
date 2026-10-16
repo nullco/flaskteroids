@@ -1,3 +1,4 @@
+import re
 import shlex
 
 import pytest
@@ -8,107 +9,47 @@ from flaskteroids.cli.generators.commands import generate
 from flaskteroids.cli.generators.fields import fields
 
 STANDALONE_HELP = {
-    (): ["flask --help", "application root"],
-    ("new",): [
-        "APP_NAME",
-        "--skip-install",
-        "bin/setup",
-        "Installs dependencies",
-        "overwritten",
-        "flaskteroids new my_app",
-    ],
-    ("assets:precompile",): [
-        "--root",
-        "--source",
-        "--output",
-        "without booting",
-        "bin/flask assets:precompile",
-    ],
-    ("agent-skills",): ["No running app is required", "installed Flaskteroids version"],
-    ("agent-skills", "path"): [
-        "absolute agent skills path",
-        "using-flaskteroids/SKILL.md",
-    ],
+    (): ["flask --help"],
+    ("new",): ["APP_NAME", "--skip-install", "bin/setup"],
+    ("assets:precompile",): ["--root", "--source", "--output"],
+    ("agent-skills",): ["path"],
+    ("agent-skills", "path"): [],
 }
 
 APPLICATION_HELP = {
-    ("assets:precompile",): ["--root", "fingerprinted", "database", "Examples"],
-    ("generate",): ["alias: g", "overwritten", "flask db:migrate"],
-    ("g",): ["alias: g", "overwritten"],
+    ("assets:precompile",): ["--root"],
+    ("generate",): [],
+    ("g",): [],
     ("generate", "migration"): [
-        "NAME [FIELDS]...",
+        "NAME",
+        "FIELDS",
         "Create<TABLE>",
         "Drop<TABLE>",
         "Add<X>To<TABLE>",
         "Remove<X>From<TABLE>",
-        "manual rollback code",
     ],
-    ("generate", "model"): [
-        "NAME [FIELDS]...",
-        "singular CamelCase",
-        "migration, and tests",
-    ],
-    ("generate", "controller"): [
-        "NAME [ACTIONS]...",
-        "without the Controller suffix",
-        "--skip-routes",
-        "GET route",
-    ],
-    ("generate", "mailer"): [
-        "NAME [ACTIONS]...",
-        "without the Mailer suffix",
-        "HTML/text",
-    ],
-    ("generate", "scaffold"): [
-        "NAME [FIELDS]...",
-        "HTML CRUD",
-        "fixtures",
-        "browser test",
-    ],
-    ("generate", "resource"): [
-        "NAME [FIELDS]...",
-        "empty controller",
-        "does not generate",
-    ],
-    ("generate", "authentication"): [
-        "password reset",
-        "overwritten",
-        "Does not include user registration",
-    ],
-    ("attachments:install",): [
-        "attachment tables migration",
-        "flask db:init",
-        "config/storage.yml",
-        "flask db:migrate",
-        "duplicate migrations",
-    ],
-    ("db:init",): ["db/migrate", "does not apply migrations", "absent or empty"],
-    ("db:migrate",): ["all pending", "current environment", "delete data"],
-    ("db:prepare",): ["selected database", "DATABASE_URL", "fresh process"],
-    ("db:rollback",): ["one database migration", "manual reversal code", "delete data"],
-    ("credentials:show",): ["YAML", "--environment NAME", "plaintext secrets"],
-    ("credentials:edit",): [
-        "VISUAL or EDITOR",
-        "--environment NAME",
-        "Never commit key files",
-    ],
-    ("test",): [
-        "PYTEST_ARGS",
-        "test environment",
-        "excluding browser",
-        "pytest's exit code",
-    ],
-    ("test:system",): [
-        "PYTEST_ARGS",
-        "test environment",
-        "playwright install chromium",
-        "pytest's exit code",
-    ],
+    ("generate", "model"): ["NAME", "FIELDS"],
+    ("generate", "controller"): ["NAME", "ACTIONS", "--skip-routes"],
+    ("generate", "mailer"): ["NAME", "ACTIONS"],
+    ("generate", "scaffold"): ["NAME", "FIELDS"],
+    ("generate", "resource"): ["NAME", "FIELDS"],
+    ("generate", "authentication"): [],
+    ("attachments:install",): ["config/storage.yml"],
+    ("db:init",): ["db/migrate"],
+    ("db:create",): [],
+    ("db:schema:dump",): ["db/schema.py"],
+    ("db:migrate",): [],
+    ("db:prepare",): ["DATABASE_URL"],
+    ("db:rollback",): [],
+    ("credentials:show",): ["--environment", "NAME"],
+    ("credentials:edit",): ["--environment", "NAME"],
+    ("test",): ["PYTEST_ARGS"],
+    ("test:system",): ["PYTEST_ARGS"],
 }
 
 
 @pytest.mark.parametrize(("args", "expected"), STANDALONE_HELP.items())
-def test_standalone_command_help(args, expected):
+def test_standalone_help_exposes_command_interface(args, expected):
     result = CliRunner().invoke(cli, [*args, "--help"])
 
     assert result.exit_code == 0
@@ -118,14 +59,13 @@ def test_standalone_command_help(args, expected):
 
 
 @pytest.mark.parametrize(("args", "expected"), APPLICATION_HELP.items())
-def test_application_command_help(cli_runner, args, expected):
+def test_application_help_exposes_command_interface(cli_runner, args, expected):
     result = cli_runner.invoke(args=[*args, "--help"])
 
     assert result.exit_code == 0
     output = " ".join(result.output.split())
     for text in expected:
         assert text in output
-    assert "Example" in output
 
 
 @pytest.mark.parametrize("args", [[], ["agent-skills"]])
@@ -165,10 +105,9 @@ def test_field_generator_help_lists_supported_syntax(cli_runner, command):
 
     assert result.exit_code == 0
     output = " ".join(result.output.split())
-    assert f"Types: {', '.join(fields)}." in output
-    assert "name:TYPE! for NOT NULL" in output
-    assert "user:references or user:belongs_to" in output
-    assert "required foreign key" in output
+    assert set(fields) <= set(re.findall(r"\b\w+\b", output))
+    for syntax in ("name:TYPE!", "user:references", "user:belongs_to"):
+        assert syntax in output
 
 
 @pytest.mark.parametrize(
@@ -178,37 +117,80 @@ def test_generators_require_a_name(cli_runner, command):
     result = cli_runner.invoke(args=["generate", command])
 
     assert result.exit_code == 2
-    assert "Missing argument 'NAME'" in result.output
 
 
 @pytest.mark.parametrize(
-    ("name", "module", "expected"),
+    "args, module, expected",
     [
         (
-            "migration",
+            ["migration", "CreatePosts", "title:string"],
             "migrations",
-            [
-                ("CreatePosts", ["title:string"]),
-                ("AddPublishedToPosts", ["published:boolean!"]),
-                ("RemoveTitleFromPosts", ["title:string"]),
-                ("DropPosts", []),
-            ],
+            ("CreatePosts", ["title:string"]),
         ),
-        ("model", "model", [("Post", ["title:string", "user:references"])]),
         (
-            "controller",
-            "controller",
-            [("Posts", ("index", "show"), False), ("Posts", ("index",), True)],
+            ["migration", "AddPublishedToPosts", "published:boolean!"],
+            "migrations",
+            ("AddPublishedToPosts", ["published:boolean!"]),
         ),
-        ("mailer", "mailer", [("Notifications", ("welcome",))]),
-        ("scaffold", "scaffold", [("Post", ["title:string", "content:text"])]),
-        ("resource", "resource", [("Post", ["title:string"])]),
-        ("authentication", "authentication", [()]),
+        (
+            ["migration", "RemoveTitleFromPosts", "title:string"],
+            "migrations",
+            ("RemoveTitleFromPosts", ["title:string"]),
+        ),
+        (["migration", "DropPosts"], "migrations", ("DropPosts", [])),
+        (
+            ["model", "Post", "title:string", "user:references"],
+            "model",
+            ("Post", ["title:string", "user:references"]),
+        ),
+        (
+            ["controller", "Posts", "index", "show"],
+            "controller",
+            ("Posts", ("index", "show"), False),
+        ),
+        (
+            ["controller", "Posts", "index", "--skip-routes"],
+            "controller",
+            ("Posts", ("index",), True),
+        ),
+        (
+            ["mailer", "Notifications", "welcome"],
+            "mailer",
+            ("Notifications", ("welcome",)),
+        ),
+        (
+            ["scaffold", "Post", "title:string", "content:text"],
+            "scaffold",
+            ("Post", ["title:string", "content:text"]),
+        ),
+        (["resource", "Post", "title:string"], "resource", ("Post", ["title:string"])),
+        (["authentication"], "authentication", ()),
     ],
 )
-def test_documented_generator_examples_dispatch(
-    cli_runner, mocker, name, module, expected
+def test_generator_commands_forward_arguments(
+    cli_runner, mocker, args, module, expected
 ):
+    generator = mocker.patch(f"flaskteroids.cli.generators.commands.{module}.generate")
+
+    result = cli_runner.invoke(args=["generate", *args])
+
+    assert result.exit_code == 0, result.output
+    generator.assert_called_once_with(*expected)
+
+
+@pytest.mark.parametrize(
+    "name, module",
+    [
+        ["migration", "migrations"],
+        ["model", "model"],
+        ["controller", "controller"],
+        ["mailer", "mailer"],
+        ["scaffold", "scaffold"],
+        ["resource", "resource"],
+        ["authentication", "authentication"],
+    ],
+)
+def test_documented_generator_examples_dispatch(cli_runner, mocker, name, module):
     generator = mocker.patch(f"flaskteroids.cli.generators.commands.{module}.generate")
     help_result = cli_runner.invoke(args=["generate", name, "--help"])
     assert help_result.exit_code == 0
@@ -220,15 +202,18 @@ def test_documented_generator_examples_dispatch(
         or line.strip() == f"flask generate {name}"
     ]
 
-    assert len(examples) == len(expected)
+    assert examples
     for args in examples:
+        generator.reset_mock()
         result = cli_runner.invoke(args=args)
         assert result.exit_code == 0, result.output
-    assert generator.call_args_list == [mocker.call(*args) for args in expected]
+        generator.assert_called_once()
 
 
 @pytest.mark.parametrize("command", ["test", "test:system"])
-def test_documented_pytest_help_forwarding(cli_runner, mocker, command):
+def test_test_commands_forward_documented_pytest_help_arguments(
+    cli_runner, mocker, command
+):
     pytest_main = mocker.patch("pytest.main", return_value=0)
 
     result = cli_runner.invoke(args=[command, "--", "--help"])

@@ -13,6 +13,7 @@ from tests.attachments.app.models.document import Document
 pytestmark = pytest.mark.usefixtures("app_ctx")
 
 
+@pytest.mark.usefixtures("pending_transaction")
 def test_attachment_is_saved_with_new_record(upload, storage):
     document = Document.new(title="Example", avatar=upload())
     assert document.avatar.attached()
@@ -41,12 +42,13 @@ def test_attach_to_persisted_record_saves_immediately(upload):
     assert Document.find(document.id).avatar.attached()
 
 
-def test_attach_does_not_save_other_pending_changes(upload):
+def test_attach_preserves_other_pending_changes(upload):
     document = Document.create(title="Original")
     document.title = "Changed"
     document.avatar.attach(upload())
-    assert Document.find(document.id).title == "Original"
-    assert not Document.find(document.id).avatar.attached()
+    assert Document.find(document.id) is document
+    assert document.read_published_attribute("title") == "Original"
+    assert document.avatar.attachment is None
     assert document.save()
     assert Document.find(document.id).avatar.attached()
     assert Document.find(document.id).title == "Changed"
@@ -69,7 +71,7 @@ def test_failed_validation_keeps_upload_for_retry(upload):
         (b"\x89PNG\r\n\x1a\n" + b"x" * 256, "exceeds 256 bytes"),
     ],
 )
-def test_attachment_validations_do_not_save_record(upload, data, message):
+def test_attachment_validation_preserves_new_record_state(upload, data, message):
     document = Document.new(title="Invalid", avatar=upload(data))
     assert document.save() is False
     assert any(message in error for error in document.errors.full_messages())
@@ -111,6 +113,7 @@ def test_replacement_is_rolled_back_without_deleting_old_blob(upload, storage, a
     document = Document.create(title="Example", avatar=upload())
     original = document.avatar.blob
     session.commit()
+    session.begin()
     document.avatar.attach(upload(b"\x89PNG\r\n\x1a\nnew", "new.png"))
     replacement = document.avatar.blob
     session.rollback()
@@ -122,7 +125,8 @@ def test_replacement_is_rolled_back_without_deleting_old_blob(upload, storage, a
         Blob.find(replacement.id)
 
 
-def test_model_upload_never_reaches_the_service_on_rollback(upload, storage, mocker):
+@pytest.mark.usefixtures("pending_transaction")
+def test_rollback_discards_upload_before_service_delivery(upload, storage, mocker):
     write = mocker.spy(storage.service(), "upload")
     document = Document.create(title="Example", avatar=upload())
     blob = document.avatar.blob
@@ -133,6 +137,7 @@ def test_model_upload_never_reaches_the_service_on_rollback(upload, storage, moc
     assert Document.count() == 0
 
 
+@pytest.mark.usefixtures("pending_transaction")
 def test_nested_rollback_removes_only_nested_upload(upload, storage):
     outer = Document.create(title="Outer", avatar=upload())
     outer_blob = outer.avatar.blob
@@ -146,7 +151,8 @@ def test_nested_rollback_removes_only_nested_upload(upload, storage):
     assert storage.service().exist(outer_blob.key)
 
 
-def test_nested_commit_does_not_escape_outer_rollback(upload, storage):
+@pytest.mark.usefixtures("pending_transaction")
+def test_outer_rollback_reverts_nested_attachment_commit(upload, storage):
     Document.create(title="Outer")
     with session.begin_nested():
         document = Document.create(title="Inner", avatar=upload())
@@ -180,9 +186,7 @@ def test_purge_deletes_the_file_synchronously(upload, storage):
         Blob.find(blob.id)
 
 
-def test_shared_blob_is_not_purged_until_last_attachment_is_removed(
-    upload, storage, app
-):
+def test_shared_blob_survives_until_last_attachment_is_removed(upload, storage, app):
     first = Document.create(title="First", avatar=upload())
     blob = first.avatar.blob
     session.commit()
@@ -198,6 +202,17 @@ def test_shared_blob_is_not_purged_until_last_attachment_is_removed(
     assert not storage.service().exist(blob.key)
 
 
+def test_direct_attachment_purge_detaches_but_preserves_a_shared_blob(upload, storage):
+    original = Document.create(title="Original", avatar=upload())
+    blob = original.avatar.blob
+    shared = Document.create(title="Shared", avatar=blob)
+    assert original.avatar.attachment.purge() is False
+    assert not original.reload().avatar.attached()
+    assert shared.reload().avatar.blob.id == blob.id
+    assert storage.service().exist(blob.key)
+
+
+@pytest.mark.usefixtures("pending_transaction")
 def test_destroy_enqueues_purge_after_commit(upload, storage, app):
     document = Document.create(title="Example", avatar=upload())
     blob = document.avatar.blob
@@ -215,6 +230,7 @@ def test_destroy_rollback_preserves_attachment(upload, storage, app):
     document = Document.create(title="Example", avatar=upload())
     blob = document.avatar.blob
     session.commit()
+    session.begin()
     document.destroy()
     session.rollback()
     assert Document.find(document.id).avatar.attached()
@@ -222,7 +238,7 @@ def test_destroy_rollback_preserves_attachment(upload, storage, app):
     assert not app.extensions["flaskteroids.jobs"].queue_adapter.enqueued_jobs
 
 
-def test_blank_single_file_input_does_not_remove_existing_attachment(upload):
+def test_blank_single_file_input_preserves_existing_attachment(upload):
     document = Document.create(title="Example", avatar=upload())
     document.update(avatar=FileStorage(io.BytesIO(), filename=""))
     assert document.avatar.attached()
@@ -237,7 +253,7 @@ def test_signed_blob_id_can_retain_an_existing_attachment(upload):
     assert document.avatar.blob.id == blob.id
 
 
-def test_programmatic_upload_and_integrity_check(storage):
+def test_programmatic_upload_verifies_integrity(storage):
     blob = Blob.create_and_upload(io=io.BytesIO(b"content"), filename="../report.txt")
     assert blob.filename == "report.txt"
     assert blob.download() == b"content"
@@ -247,7 +263,9 @@ def test_programmatic_upload_and_integrity_check(storage):
         pass
 
 
-def test_attachment_service_override_and_synchronous_purge(upload, storage, app):
+def test_attachment_uses_service_override_and_purges_synchronously(
+    upload, storage, app
+):
     storage.configurations["archive"] = {"service": "Disk", "root": "archive-storage"}
     document = Document.create(
         title="Example", archive=upload(b"archive", "archive.txt")
@@ -262,7 +280,7 @@ def test_attachment_service_override_and_synchronous_purge(upload, storage, app)
     assert not blob.service.exist(blob.key)
 
 
-def test_moving_a_blob_between_attachment_names_does_not_purge_it(upload, storage):
+def test_moving_blob_between_attachment_names_preserves_it(upload, storage):
     storage.configurations["archive"] = {"service": "Disk", "root": "archive-storage"}
     document = Document.create(
         title="Example", archive=upload(b"archive", "archive.txt")
@@ -294,7 +312,7 @@ def test_attachment_metadata_is_available_in_after_commit_callbacks(upload):
     assert Document.committed_filenames[-1] == "avatar.png"
 
 
-def test_keyword_attach_matches_rails_io_and_filename(upload):
+def test_keyword_attach_accepts_io_and_filename(upload):
     document = Document.create(title="Example")
     document.files.attach(io=io.BytesIO(b"report"), filename="report.txt")
     session.commit()
@@ -303,7 +321,7 @@ def test_keyword_attach_matches_rails_io_and_filename(upload):
     assert document.avatar.attached()
 
 
-def test_nested_purge_is_not_enqueued_until_outer_commit(upload, app):
+def test_nested_purge_waits_for_outer_commit(upload, app):
     document = Document.create(title="Example", avatar=upload())
     session.commit()
     with session.begin_nested():

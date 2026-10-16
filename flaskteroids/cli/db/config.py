@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 from alembic import command
 from alembic.config import Config as AlembicConfig
@@ -22,8 +23,12 @@ def initialize_migrations(directory):
 
 def get_config():
     config = Config()
-    config.config_file_name = os.path.join(_directory, "alembic.ini")
+    directory = Path(current_app.project_root) / _directory
+    config.config_file_name = str(directory / "alembic.ini")
     config.set_main_option("revision_environment", "true")
-    config.set_main_option("script_location", _directory)
-    config.set_main_option("sqlalchemy.url", current_app.database_url)
+    config.set_main_option("script_location", str(directory).replace("%", "%%"))
+    url = current_app.database_url
+    if not isinstance(url, str):
+        url = url.render_as_string(hide_password=False)
+    config.set_main_option("sqlalchemy.url", url.replace("%", "%%"))
     return config
