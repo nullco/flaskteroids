@@ -149,7 +149,7 @@ def test_lazy_on_one(engine, session):
 @pytest.mark.usefixtures("user_groups")
 def test_includes_on_many(engine):
     def capture():
-        [user for group in Group.includes("users").all() for user in group.users]
+        [user for group in Group.includes("users") for user in group.users]
 
     captured_statements = capture_statements(engine, capture)
     assert len(captured_statements) == 2
@@ -158,7 +158,7 @@ def test_includes_on_many(engine):
 @pytest.mark.usefixtures("user_groups")
 def test_includes_on_one(engine):
     def capture():
-        [user.group for user in User.includes("group").all()]
+        [user.group for user in User.includes("group")]
 
     captured_statements = capture_statements(engine, capture)
     assert len(captured_statements) == 2

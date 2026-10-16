@@ -123,7 +123,7 @@ class TestModelCRUD:
         User.create(username="two", age=25, last_login=datetime(2021, 6, 15))
         User.create(username="three", age=15, last_login=datetime(2020, 1, 1))
         query = query_factory()
-        users = User.where(query).all()
+        users = User.where(query)
         assert len(list(users)) == expected_count
 
 

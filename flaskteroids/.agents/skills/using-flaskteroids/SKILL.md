@@ -102,6 +102,9 @@ dependency internals or introduce a parallel implementation of a supported featu
   the generated snapshot. Native statements/options are supported on those same
   objects for complex queries; `Model.prepare()` explicitly prepares bare native
   class APIs without database I/O. Do not introduce separate mapped row classes.
+- `Model.all()` and query-level `all()` return lazy scopes, never lists. Chain
+  filters/order/pagination directly; use `list(query)` when a list is needed.
+  Iteration executes the scope; repeated iteration queries again without caching.
 - Unknown public model attributes raise `AttributeError`. For temporary values,
   declare class defaults or properties with setters, or use private attributes.
   A type annotation alone isn't enough. Don't overwrite framework methods or state.

@@ -118,7 +118,7 @@ def test_loaded_record_callbacks_do_not_replay_constructor(family, load, session
     if load == "find":
         loaded = Child.find(child.id)
     elif load == "query":
-        loaded = Child.all().all()[0]
+        loaded = list(Child.all())[0]
     elif load == "relation":
         loaded = next(iter(Parent.find(parent.id).children))
     else:
@@ -156,3 +156,75 @@ def test_query_immutability_laziness_order_and_serializer(family, session, mocke
     assert filtered.__json__() == [{"label": "second"}]
     assert [entry.name for entry in filtered] == ["second"]
     assert [entry.name for entry in query] == ["first", "second"]
+
+
+def test_all_preserves_the_scope_without_executing_it(family, session, mocker):
+    Parent, Child, _ = family
+    parent = Parent.create(name="parent")
+    Child.create(name="first", parent=parent)
+    second = Child.create(name="second", parent=parent)
+    second_id = second.id
+    session.expunge_all()
+    execute = mocker.spy(session, "execute")
+
+    query = Child.all()
+    original_sql = query.to_sql()
+    scope = (
+        query.where(Child.name.in_(["first", "second"]))
+        .includes("parent")
+        .order(name="desc")
+        .limit(1)
+        .offset(0)
+    )
+    assert isinstance(query, ModelQuery)
+    assert query.all() is query
+    assert scope.all().all() is scope
+    assert query.to_sql() == original_sql
+    execute.assert_not_called()
+
+    records = list(scope.all())
+    assert [record.id for record in records] == [second_id]
+    assert execute.call_count == 2
+    assert records[0].parent.name == "parent"
+    assert execute.call_count == 2
+
+
+@pytest.mark.parametrize("consumer", ["iteration", "list", "repr", "json", "last"])
+def test_query_consumers_execute_once(family, session, mocker, consumer):
+    Parent, Child, _ = family
+    parent = Parent.create(name="parent")
+    Child.create(name="first", parent=parent)
+    second = Child.create(name="second", parent=parent)
+    query = Child.order(id="asc").limit(1).offset(1).all()
+    expected_repr = repr([second])
+    execute = mocker.spy(session, "execute")
+
+    if consumer == "iteration":
+        assert [record for record in query] == [second]
+    elif consumer == "list":
+        assert list(query) == [second]
+    elif consumer == "repr":
+        assert repr(query) == expected_repr
+    elif consumer == "json":
+        assert query.__json__() == [{"label": "second"}]
+    else:
+        assert query.last() is second
+
+    execute.assert_called_once()
+
+
+def test_all_scopes_remain_reusable_without_caching(family, session, mocker):
+    Parent, Child, _ = family
+    parent = Parent.create(name="parent")
+    first = Child.create(name="first", parent=parent)
+    query = Child.where(parent=parent).order(id="asc").all()
+    assert list(query) == [first]
+    second = Child.create(name="second", parent=parent)
+    execute = mocker.spy(session, "execute")
+
+    scope = query.all()
+    limited = scope.limit(1).all()
+    execute.assert_not_called()
+    assert list(limited) == [first]
+    assert list(scope) == [first, second]
+    assert list(query) == [first, second]

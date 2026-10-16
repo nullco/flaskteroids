@@ -99,6 +99,52 @@ def test_model_json_excludes_authentication_fields(account_model, json_response,
     assert json_response({"data": {"users": [user]}}) == {"data": {"users": [expected]}}
 
 
+@pytest.mark.parametrize("state", ["new", "created", "loaded", "updated", "pending"])
+def test_model_repr_restores_class_address_and_published_columns(account_model, state):
+    account, password_field = account_model
+    values = {"name": "Alice", password_field: "secret-password"}
+    user = account.new(**values) if state == "new" else account.create(**values)
+    published_name = None if state == "new" else "Alice"
+    if state == "loaded":
+        from flaskteroids.db import session
+
+        identity = user.id
+        session.expunge(user)
+        user = account.find(identity)
+    elif state == "updated":
+        assert user.update(name="Bob")
+        published_name = "Bob"
+    elif state == "pending":
+        user.name = "Unsaved name"
+        setattr(user, password_field, "replacement-password")
+
+    expected = {"id": user.id, "name": published_name}
+    assert repr(user) == f"<{account.__name__}:{hex(id(user))} {expected}>"
+
+
+def test_model_repr_does_not_generate_reset_tokens(account_model, mocker):
+    account, password_field = account_model
+    user = account.create(name="Alice", **{password_field: "secret-password"})
+    dumps = mocker.spy(URLSafeTimedSerializer, "dumps")
+
+    representation = repr(user)
+
+    dumps.assert_not_called()
+    assert "secret-password" not in representation
+    assert getattr(user, f"{password_field}_digest") not in representation
+    assert "password_digest" not in representation
+    assert "passcode_digest" not in representation
+
+
+def test_model_repr_does_not_use_custom_json_serialization(account_model, mocker):
+    account, _ = account_model
+    mocker.patch.object(account, "__json__", return_value={"response": "custom"})
+    user = account.create(name="Alice")
+    expected = {"id": user.id, "name": "Alice"}
+
+    assert repr(user) == f"<{account.__name__}:{hex(id(user))} {expected}>"
+
+
 def test_model_list_preserves_order_and_input(account_model, json_response):
     account, _ = account_model
     first = account.new(name="Alice")

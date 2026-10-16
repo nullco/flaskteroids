@@ -16,7 +16,7 @@
 - Migrations own schema changes. Successful migration, preparation, and rollback
   regenerate a committed `app/schema.py` snapshot; `db:schema:dump` refreshes it
   independently. Imports do not require snapshots or special migration startup.
-- Model queries are immutable; `all()` returns a list. Native ORM callers can
+- Model queries are immutable. Native ORM callers can
   explicitly prepare mappings and publish staged attributes with `prepare()` and
   `apply_changes()`. Native inspection tracks published state, not unsaved input.
 - Remove the duplicate `Field.as_primitive()` / `from_column_type()` casting API.

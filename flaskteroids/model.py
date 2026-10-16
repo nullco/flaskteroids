@@ -427,8 +427,14 @@ class Model(StagedAttributes, SchemaModel):
         finally:
             destroying.remove(self)
 
-    def __repr__(self):
-        return f"<{type(self).__name__} identity={inspect(self).identity!r}>"
+    def __repr__(self) -> str:
+        excluded = self._sensitive_attributes()
+        values = {
+            name: self.read_published_attribute(name)
+            for name in self.column_names
+            if name not in excluded
+        }
+        return f"<{type(self).__name__}:{hex(id(self))} {values}>"
 
 
 @event.listens_for(Model, "load", propagate=True)

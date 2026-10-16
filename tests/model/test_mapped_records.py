@@ -270,13 +270,13 @@ def test_query_reuse_order_pagination_count_and_native_options(records):
     assert authors.where(name="Ada").count() == 1
     assert authors.count() == 2
     page = records.Author.order(name="desc").limit(2).offset(1)
-    assert [author.name for author in page.all()] == ["Augusta", "Ada"]
+    assert [author.name for author in page] == ["Augusta", "Ada"]
     assert page.count() == 2
     assert page.first().name == "Augusta"
     assert page.last().name == "Ada"
     assert records.Author.limit(0).first() is None
     assert records.Author.all().options(selectinload(records.Author.posts)).count() == 3
-    assert records.session.scalars(authors.statement).all() == authors.all()
+    assert records.session.scalars(authors.statement).all() == list(authors)
     with pytest.raises(RecordNotFoundException):
         records.Author.find(999)
 
@@ -298,7 +298,7 @@ def test_facade_and_native_eager_loading_avoid_per_row_queries(records, native):
                 select(records.Author).options(selectinload(records.Author.posts))
             ).all()
         else:
-            authors = records.Author.includes("posts").all()
+            authors = list(records.Author.includes("posts"))
         assert {author.posts[0].title for author in authors} == {
             "Ada",
             "Grace",

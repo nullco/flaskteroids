@@ -131,7 +131,7 @@ def test_concurrent_sessions_share_classes_not_identity_maps(make_app):
         with app.app_context():
             barrier.wait(timeout=10)
             assert Author.count() == 0
-            assert Author.includes("stories").all() == []
+            assert list(Author.includes("stories")) == []
             return inspect(Author)
 
     with ThreadPoolExecutor(max_workers=4) as pool:

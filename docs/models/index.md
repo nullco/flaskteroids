@@ -82,7 +82,9 @@ the same mapped classes with separate engines/sessions.
 ```python
 post = Post.find(1)                      # Raises RecordNotFoundException if absent
 post = Post.find_by(title="First")       # Returns None if absent
-posts = Post.where(title="First").all()  # A list of mapped Post objects
+posts = Post.all()                      # A lazy query
+posts = Post.where(title="First")       # A filtered lazy query
+records = list(posts)                   # Execute and obtain a list of Post objects
 posts = Post.where(Post.title.ilike("a%"))
 page = posts.order(title="asc").limit(20).offset(40)
 count = page.count()
@@ -91,8 +93,11 @@ last = page.last()
 ```
 
 Queries are lazy and **immutable**. Chain or assign the returned query; a call to
-`query.where(...)` does not change the original query. Queries are reusable and
-iterable. Default ordering is ascending primary key; `order()` also accepts native
+`query.where(...)` does not change the original query. `all()` always returns a
+lazy query, including when called on an existing scope; it never executes SQL.
+Iterating a query loads its selected records. Use `list(query)` when you need a
+list. Queries are reusable; each iteration executes again rather than caching
+results. Default ordering is ascending primary key; `order()` also accepts native
 SQLAlchemy ordering expressions. Limits and offsets must be nonnegative or `None`.
 `count()` respects the selected scope/page. `first()` returns one record or `None`;
 `last()` materializes the selected scope to honor custom ordering and pagination.
@@ -100,8 +105,9 @@ SQLAlchemy ordering expressions. Limits and offsets must be nonnegative or `None
 Use eager loading to avoid per-row relationship queries:
 
 ```python
-posts = Post.includes("author").all()
-authors = Author.includes("posts.author").all()
+posts = Post.includes("author")
+authors = Author.includes("posts.author")
+records = list(posts)
 ```
 
 `includes()` accepts dotted relationship paths and uses native select-in loaders.

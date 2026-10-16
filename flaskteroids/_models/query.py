@@ -91,7 +91,11 @@ class ModelQuery[QueryModel: "Model"]:
             raise ValueError("Offset must be a nonnegative integer or None")
         return self._with(self.statement.offset(value))
 
-    def all(self) -> list[QueryModel]:
+    def all(self) -> Self:
+        """Return this scope without executing it."""
+        return self
+
+    def _load_records(self) -> list[QueryModel]:
         return self._session().execute(self.statement).scalars().unique().all()
 
     def first(self) -> QueryModel | None:
@@ -103,7 +107,7 @@ class ModelQuery[QueryModel: "Model"]:
 
     def last(self) -> QueryModel | None:
         # Honor explicit ordering and pagination instead of silently replacing it.
-        records = self.all()
+        records = self._load_records()
         return records[-1] if records else None
 
     def count(self) -> int:
@@ -130,10 +134,10 @@ class ModelQuery[QueryModel: "Model"]:
         return found
 
     def __iter__(self) -> Iterator[QueryModel]:
-        return iter(self.all())
+        return iter(self._load_records())
 
     def __repr__(self) -> str:
-        return repr(self.all())
+        return repr(self._load_records())
 
     def to_sql(self) -> str:
         return str(self.statement.compile(compile_kwargs={"literal_binds": True}))
