@@ -90,6 +90,10 @@ The scaffold generates a model, migration, controller, views, and routes. Visit
 
 ## Next steps
 
+For a step-by-step tutorial, follow [Getting started with Flaskteroids](https://nullco.github.io/flaskteroids/getting_started/).
+Build a product catalog while learning models, controllers, forms, authentication,
+uploads, email, and testing.
+
 - Run `bin/setup` for a fresh checkout or after changing dependencies. Commit `uv.lock`.
 - To defer installation, use `flaskteroids new my_app --skip-install`, then run `bin/setup` later.
 - See [Testing](https://nullco.github.io/flaskteroids/testing/) for browser setup and [Configuration](https://nullco.github.io/flaskteroids/configuration/) for environments and secrets.

@@ -6,7 +6,7 @@ The framework chooses an application layout and discovers models, controllers, a
 
 Generators create models, controllers, scaffolds, mailers, and authentication code. Applications include environment-specific settings, encrypted credentials, and pytest-based tests with YAML fixtures and transactional rollback. Browser tests use Playwright.
 
-Start with [Getting started](getting_started.md) to create an application and generate a posts resource.
+Start with [Getting started](getting_started.md) to build a product catalog, learn the MVC workflow, and add authentication, uploads, email, and tests.
 
 ## Guides
 
