@@ -2,7 +2,8 @@
 
 This guide walks you through building a small product catalog called `store`.
 You will create records, display them in a browser, build forms, require login
-for changes, attach product images, and send email.
+for changes, and attach product images. Then you'll track stock and let visitors
+subscribe to an email when a sold-out product becomes available again.
 
 By the end, you will know how to:
 
@@ -10,7 +11,8 @@ By the end, you will know how to:
 - Work with models, migrations, and validations.
 - Follow a request through routes, controllers, and views.
 - Build a complete create, read, update, and delete (CRUD) interface.
-- Add authentication, uploads, and background email delivery.
+- Add authentication, uploads, associations, and inventory tracking.
+- Connect model callbacks to background restock emails and unsubscribe links.
 - Test your application and prepare it for deployment.
 
 You need basic Python and HTML knowledge, but no prior experience with Flask,
@@ -19,7 +21,8 @@ as you build the application.
 
 ## 1. The Flaskteroids approach
 
-Flaskteroids is a Python MVC framework built with Flask, SQLAlchemy, and Celery. It gives these components a shared application structure and workflow.
+Flaskteroids is a Python MVC framework built with Flask, SQLAlchemy, and Celery.
+It gives these components a shared application structure and workflow.
 Two ideas guide that workflow:
 
 - **Convention over configuration:** names and directories tell the framework
@@ -164,12 +167,13 @@ data or adding constraints.
 Apply the migration:
 
 ```sh
-bin/flask db:prepare
+bin/flask db:migrate
 ```
 
-`db:prepare` creates the database if necessary and applies pending migrations.
-It then regenerates `db/schema.py`. The generated database configuration uses
-`storage/development.sqlite3` for development and a separate database for tests.
+`db:migrate` applies pending migrations and regenerates `db/schema.py`. The
+application generator already prepared the development database. The generated
+database configuration uses `storage/development.sqlite3` for development and a
+separate database for tests.
 
 Open `app/models/product.py`:
 
@@ -190,69 +194,93 @@ the most recent migration; a rollback that drops data cannot recover that data.
 
 ## 5. Work with records in the shell
 
-Open an application-aware Python shell:
+Before building pages, let's see what a product can do. Open the application
+shell:
 
 ```sh
 bin/flask shell
 ```
 
-Run the following Python examples there. The shell provides an application
-context and makes your application models available automatically, so you can
-use `Product` directly without importing it.
+The shell provides an application context and makes your models available
+automatically. You can use `Product` directly. In the examples below, `>>>` is
+the Python prompt, not something to type; the lines without it show the result.
 
 ### Create and query
 
-```python
-product = Product.new(name="T-Shirt", description="A comfortable cotton shirt.")
-product.save()
-product.id
+Build a product and save it:
+
+```pycon
+>>> product = Product.new(name="T-Shirt", description="A comfortable cotton shirt.")
+>>> product.save()
+True
+>>> product.name
+'T-Shirt'
 ```
 
 `new()` builds an unsaved object. `save()` validates and persists it, returning
-`True` on success. You can also build and save in one call:
+`True` on success. The database assigns `product.id` when the record is saved.
+Create another product with the combined build-and-save operation:
 
-```python
-Product.create(name="Pants", description="Everyday trousers.")
+```pycon
+>>> pants = Product.create(name="Pants", description="Everyday trousers.")
+>>> Product.count()
+2
+>>> [item.name for item in Product.all()]
+['T-Shirt', 'Pants']
 ```
 
-`create()` returns the object, including when validation fails. Check its errors
-rather than assuming every returned object was saved.
+`create()` returns the object, including when validation fails. Later we will
+use its errors to explain unsuccessful saves.
 
-Try a few queries:
+Find and filter records:
 
-```python
-list(Product.all())
-Product.count()
-Product.find(product.id)
-Product.find_by(name="T-Shirt")
-list(Product.where(name="Pants").order(name="asc"))
+```pycon
+>>> Product.find(product.id).name
+'T-Shirt'
+>>> Product.find_by(name="Pants").description
+'Everyday trousers.'
+>>> [item.name for item in Product.where(name="Pants").order(name="asc")]
+['Pants']
 ```
 
-`all()` and `where()` return lazy queries; iteration or `list()` loads their
-records. `find()` raises `RecordNotFoundException` if the record is absent;
-`find_by()` returns `None`. Queries are immutable: keep the result when chaining
-filters or ordering.
+`find()` raises `RecordNotFoundException` if the record is absent; `find_by()`
+returns `None`. `all()` and `where()` return lazy queries: iteration loads the
+records. Keep the returned query when chaining filters or ordering.
 
 ### Update and delete
 
-```python
-product.update(name="Cotton T-Shirt")
+Change the shirt's name, then try assigning and saving a description separately:
 
-product.description = "Available in several colors."
-product.save()
-
-temporary = Product.create(name="Sample", description="For this example only.")
-temporary.destroy()
+```pycon
+>>> product.update(name="Cotton T-Shirt")
+True
+>>> product.description = "Available in several colors."
+>>> product.save()
+True
 ```
 
 Assignments alone do not save a record. A standalone `save()`, `create()`,
 `update()`, or `destroy()` commits before returning; no extra session or commit
-call is needed. For operations that must succeed together, use
-`with Product.transaction():`; see [Models](models/index.md#assignment-validation-and-persistence).
+call is needed. See [Models](models/index.md#assignment-validation-and-persistence)
+when several operations need to succeed together.
+
+Create a temporary product and delete it:
+
+```pycon
+>>> temporary = Product.create(name="Sample", description="For this example only.")
+>>> temporary.destroy()
+True
+>>> Product.count()
+2
+```
+
+The temporary record is gone, while our shirt and pants remain. We'll use those
+products when we build the catalog page.
 
 ### Add validation
 
-Exit the shell with `exit()`. Replace `app/models/product.py` with:
+A product without a name would be hard to browse. Exit the shell with `exit()`,
+then replace `app/models/product.py` with:
 
 ```python
 from app.models.application_model import ApplicationModel
@@ -266,30 +294,35 @@ class Product(ApplicationModel):
 ```
 
 `@rules` collects declarations such as validations, associations, and callbacks.
-This rule requires a nonblank name. It does not change the database structure,
+This rule requires a nonblank name. It changes behavior, not database structure,
 so there is no migration to run.
 
-Open a **new** `bin/flask shell` so it loads the edited model:
+Open a new `bin/flask shell` to load the edited model:
 
-```python
-product = Product.new(name="", description="Still available for redisplay.")
-product.save()
-product.errors.full_messages()
+```pycon
+>>> product = Product.new(name="", description="Still available for redisplay.")
+>>> product.save()
+False
+>>> bool(product.errors)
+True
+>>> product.description
+'Still available for redisplay.'
 ```
 
-The save returns `False`, and `full_messages()` explains the validation failure.
-The object retains the submitted description so a form can display it again.
-You can fix the object and retry:
+Run `product.errors.full_messages()` to read the validation messages. Notice that
+the object still holds the entered description. That will let us redisplay a
+form without making the visitor type everything again.
 
-```python
-product.name = "Socks"
-product.save()
-exit()
+Fix the name and retry:
+
+```pycon
+>>> product.name = "Socks"
+>>> product.save()
+True
 ```
 
-Invalid scalar updates also retain their input without publishing it to the
-database. Validation is not a substitute for database constraints; add those
-through migrations when required by your data model.
+Exit with `exit()`. Your development database now has three products: Cotton
+T-Shirt, Pants, and Socks. Next, let's give them a home on the web.
 
 ## 6. Follow a request through the application
 
@@ -393,61 +426,31 @@ the products you created in the shell.
 
 ## 7. Build the CRUD interface
 
-Now we will add the remaining actions and views. The complete controller below
-is the version to use for this stage. Replace
-`app/controllers/products_controller.py` with:
+The catalog lists product names, but visitors cannot open a product yet. We'll
+add that first, then create products in the browser, edit them, and finally
+remove them. Keep the existing controller actions as you add each new one.
+
+### Show a product
+
+In `app/controllers/products_controller.py`, import `params` and add a `show`
+action. The controller now looks like this:
 
 ```python
 from app.controllers.application_controller import ApplicationController
 from app.models.product import Product
-from flaskteroids import params, redirect_to
-from flaskteroids.actions import before_action
-from flaskteroids.controller import render
-from flaskteroids.routes import product_path, products_path
-from flaskteroids.rules import rules
+from flaskteroids import params
 
 
-@rules(before_action("_set_product", only=["show", "edit", "update", "destroy"]))
 class ProductsController(ApplicationController):
     def index(self):
         self.products = Product.all()
 
     def show(self):
-        pass
-
-    def new(self):
-        self.product = Product.new()
-
-    def edit(self):
-        pass
-
-    def create(self):
-        self.product = Product.new(**self._product_params())
-        if self.product.save():
-            return redirect_to(product_path(self.product))
-        return render("new", status=422)
-
-    def update(self):
-        if self.product.update(**self._product_params()):
-            return redirect_to(product_path(self.product))
-        return render("edit", status=422)
-
-    def destroy(self):
-        self.product.destroy()
-        return redirect_to(products_path(), status=303)
-
-    def _set_product(self):
         self.product = Product.find(params["id"])
-
-    def _product_params(self):
-        return params.expect(product=["name", "description"])
 ```
 
-### Show a product
-
-The `_set_product` callback loads a record before `show`, `edit`, `update`, or
-`destroy`. For `/products/1/`, `params["id"]` is `1`. Extracting that lookup keeps
-it out of each action.
+The resource route captures the ID from `/products/<int:id>/`. The `show` action
+finds that product and makes it available to its template as `product`.
 
 Create `app/views/products/show.html`:
 
@@ -458,70 +461,134 @@ Create `app/views/products/show.html`:
   <h1>{{ product.name }}</h1>
   <p>{{ product.description }}</p>
   {{ link_to("Back", url_for("index_product")) }}
-  {{ link_to("Edit", url_for("edit_product", id=product.id)) }}
-  {% call(form) form_with(url=url_for("destroy_product", id=product.id), method="DELETE") %}
-    {{ form.submit("Delete") }}
-  {% endcall %}
 {% endblock %}
 ```
 
-In templates, `url_for("show_product", id=product.id)` builds a URL from its
-named endpoint. Endpoint names appear in `bin/flask routes`. In Python, the
-`flaskteroids.routes` module also provides helpers such as `product_path(product)`.
-`link_to` creates a link. The `form_with` block creates a deletion form with a
-CSRF token and hidden method override. Unlike GET links, these forms can safely
-perform state-changing requests.
+Now give visitors a way to reach it. In `app/views/products/index.html`, replace
+`<li>{{ product.name }}</li>` with:
 
-Replace `app/views/products/index.html` with:
+```html
+<li>{{ link_to(product.name, url_for("show_product", id=product.id)) }}</li>
+```
+
+`link_to` builds a link, and `url_for` builds its URL from a named endpoint.
+Endpoint names appear in `bin/flask routes`. Python code can also use helpers
+such as `product_path(product)` from `flaskteroids.routes`.
+
+**Try it:** refresh the catalog, click Cotton T-Shirt, and follow Back. You can
+now browse both the collection and an individual product without typing its ID.
+
+### Create products in the browser
+
+So far we have created products in the shell. A web form needs two actions:
+`new` displays it, and `create` processes its submission.
+
+In the controller, expand the `flaskteroids` import and add these imports:
+
+```python
+from flaskteroids import params, redirect_to
+from flaskteroids.controller import render
+from flaskteroids.routes import product_path
+```
+
+Add these methods inside `ProductsController`, keeping `index` and `show`:
+
+```python
+    def new(self):
+        self.product = Product.new()
+
+    def create(self):
+        self.product = Product.new(**self._product_params())
+        if self.product.save():
+            return redirect_to(product_path(self.product))
+        return render("new", status=422)
+
+    def _product_params(self):
+        return params.expect(product=["name", "description"])
+```
+
+Create `app/views/products/new.html`:
 
 ```html
 {% extends "layouts/application.html" %}
 
 {% block body %}
-  <h1>Products</h1>
-  {{ link_to("New product", url_for("new_product")) }}
-  <ul>
-    {% for product in products %}
-      <li>{{ link_to(product.name, url_for("show_product", id=product.id)) }}</li>
-    {% else %}
-      <li>No products yet.</li>
-    {% endfor %}
-  </ul>
+  <h1>New product</h1>
+  {% call(form) form_with(model=product) %}
+    {% if product.errors %}
+      <ul class="errors">
+        {% for message in product.errors.full_messages() %}
+          <li>{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    <div>
+      {{ form.label("name") }}
+      {{ form.text_field("name") }}
+    </div>
+    <div>
+      {{ form.label("description") }}
+      {{ form.text_area("description") }}
+    </div>
+    {{ form.submit("Save product") }}
+  {% endcall %}
+  {{ link_to("Cancel", url_for("index_product")) }}
 {% endblock %}
 ```
 
-### Share a form between new and edit
+`form_with(model=product)` chooses the creation URL, includes a CSRF token, and
+fills its inputs from the model. The generated field names put the submission
+inside a `product` object.
 
-Create `app/views/products/_form.html`:
+Our `_product_params()` method uses `params.expect()` to require that outer
+object and select only `name` and `description`. It does not require every
+listed field to be present. Never pass unfiltered request data to a model:
+visitors can submit attributes that your HTML form does not expose.
+
+After the heading in `app/views/products/index.html`, add:
 
 ```html
-{% call(form) form_with(model=product) %}
-  {% if product.errors %}
-    <ul class="errors">
-      {% for message in product.errors.full_messages() %}
-        <li>{{ message }}</li>
-      {% endfor %}
-    </ul>
-  {% endif %}
-
-  <div>
-    {{ form.label("name") }}
-    {{ form.text_field("name") }}
-  </div>
-  <div>
-    {{ form.label("description") }}
-    {{ form.text_area("description") }}
-  </div>
-  {{ form.submit("Save product") }}
-{% endcall %}
+{{ link_to("New product", url_for("new_product")) }}
 ```
 
-The underscore marks a reusable partial. `form_with(model=product)` chooses the
-creation or update URL from the record's state, includes a CSRF token, and fills
-fields from the model. Existing records use a hidden method override because
-HTML forms only submit GET or POST directly.
+**Try it:** click New product and create a product named Hat. You should land on
+its show page. Follow Back and check that Hat appears in the catalog.
 
-Create `app/views/products/new.html`:
+### Help visitors correct mistakes
+
+Open New product again. Enter a description, leave the name blank, and save.
+You should stay on the form, see a validation message, and keep your description.
+
+That happens because `create` renders `new` with status 422 when saving fails.
+Rendering reuses the invalid `product`, including its errors and entered values.
+A redirect would start a new request and lose that state.
+
+Enter a name and save again. The same form now succeeds. We have connected the
+validation we tried in the shell to a useful browser experience.
+
+### Edit an existing product
+
+Editing has the same two-part shape: `edit` displays a form and `update` saves
+its submission. Add these methods to `ProductsController`:
+
+```python
+    def edit(self):
+        self.product = Product.find(params["id"])
+
+    def update(self):
+        self.product = Product.find(params["id"])
+        if self.product.update(**self._product_params()):
+            return redirect_to(product_path(self.product))
+        return render("edit", status=422)
+```
+
+We could copy the creation form, but then every new field would need two edits.
+Instead, move the complete `{% call(form) form_with(model=product) %}` block,
+through its `{% endcall %}`, from `new.html` into a new file:
+`app/views/products/_form.html`.
+
+The underscore marks this as a reusable partial. Replace `new.html` with:
 
 ```html
 {% extends "layouts/application.html" %}
@@ -545,168 +612,127 @@ Create `app/views/products/edit.html`:
 {% endblock %}
 ```
 
-Both includes receive the current `product` variable.
+Both includes receive the current `product`. For a persisted record,
+`form_with` chooses the update URL and supplies a hidden method override:
+HTML forms only submit GET or POST directly, while our update route uses PUT
+or PATCH.
 
-### Accept only intended attributes
+After the Back link in `app/views/products/show.html`, add:
 
-Our `_product_params()` method uses:
-
-```python
-return params.expect(product=["name", "description"])
+```html
+{{ link_to("Edit", url_for("edit_product", id=product.id)) }}
 ```
 
-This requires an outer `product` object and selects only the permitted fields.
-It does not require every listed field to be present. Never pass unfiltered
-request data to `create()` or `update()`; users could submit attributes that your
-form does not expose.
+**Try it:** edit Hat, change its description, and save. Then try an edit with a
+blank name. The editing form should retain your changes and explain the error,
+just like the creation form. Correct the name before continuing.
 
-### Handle validation failures
+### Extract the repeated lookup
 
-On success, `create` and `update` redirect to the product. On failure, they render
-the form with status 422. Rendering keeps the invalid object, its errors, and
-its entered values; redirecting would start a new request and lose that state.
+`show`, `edit`, and `update` all start with the same product lookup. A
+`before_action` lets us run it once before any of those actions.
 
-Try these steps in your browser:
+Add these controller imports:
 
-1. Create a product with a name and description.
-2. Submit a new product with a blank name; check that the error and description remain.
-3. Edit a product, blank its name, and check the same behavior.
-4. Correct the name and save again.
-5. Delete a product and confirm that it disappears from the list.
+```python
+from flaskteroids.actions import before_action
+from flaskteroids.rules import rules
+```
 
-We now have a complete CRUD interface. The delete action above assumes the
-model's default destruction behavior; if you later add callbacks that can reject
-destruction, handle a `False` result explicitly.
+Place this decorator directly above `class ProductsController(...)`:
+
+```python
+@rules(before_action("_set_product", only=["show", "edit", "update"]))
+```
+
+Replace `show`, `edit`, and `update` with these methods, and add `_set_product`:
+
+```python
+    def show(self):
+        pass
+
+    def edit(self):
+        pass
+
+    def update(self):
+        if self.product.update(**self._product_params()):
+            return redirect_to(product_path(self.product))
+        return render("edit", status=422)
+
+    def _set_product(self):
+        self.product = Product.find(params["id"])
+```
+
+Keep `index`, `new`, `create`, and `_product_params` unchanged. Empty `show` and
+`edit` actions still render their matching templates; the callback supplies the
+record first.
+
+**Try it:** visit a product and edit it again. The behavior should be identical;
+we have removed duplication without changing the interface.
+
+### Delete a product
+
+We can browse, create, and edit. The last CRUD operation is deletion.
+
+Add `products_path` to the existing route-helper import:
+
+```python
+from flaskteroids.routes import product_path, products_path
+```
+
+Add this action:
+
+```python
+    def destroy(self):
+        self.product.destroy()
+        return redirect_to(products_path(), status=303)
+```
+
+Include `destroy` in the callback's action list:
+
+```python
+@rules(before_action("_set_product", only=["show", "edit", "update", "destroy"]))
+```
+
+After the Edit link in `app/views/products/show.html`, add a deletion form:
+
+```html
+{% call(form) form_with(url=url_for("destroy_product", id=product.id), method="DELETE") %}
+  {{ form.submit("Delete") }}
+{% endcall %}
+```
+
+This generates a POST form with a CSRF token and a hidden DELETE override.
+Deleting data is a state-changing operation, not a GET link. The controller
+redirects with status 303 so the browser retrieves the catalog afterward.
+
+**Try it:** create a temporary product, delete it, and confirm that it disappears
+from the catalog. Keep the original products for the next chapters.
+
+You now have a complete CRUD interface. If you later add callbacks that can
+reject destruction, handle a `False` result from `destroy()` explicitly.
 
 ### The scaffold shortcut
 
-For future resources, a scaffold generates the model, migration, CRUD controller,
-views, routes, fixtures, and tests together. For example, in a separate app:
+You have built the pieces yourself so you can understand and customize them.
+For a future resource, a scaffold generates those pieces together. For example,
+in a separate application:
 
 ```sh
 bin/flask generate scaffold Post title:string content:text
-bin/flask db:prepare
+bin/flask db:migrate
 ```
 
-Do **not** generate a Product scaffold over this tutorial: generators may
-replace files you have edited. Building it manually first makes the generated
-code easier to understand and customize.
+Do not generate a Product scaffold over this tutorial: generators may overwrite
+your work. Next, let's decide who should be allowed to change the catalog.
 
-## 8. Test what you have built
-
-Tests run against the `test` environment, not your development catalog.
-`bin/flask test` prepares its database and runs pytest-based tests. Framework test
-classes roll back their changes between tests.
-
-### Model tests and fixtures
-
-Create `test/fixtures/products.yml` (and its parent directory if needed):
-
-```yaml
-shirt:
-  name: T-Shirt
-  description: A comfortable cotton shirt.
-```
-
-Replace `test/models/product_test.py` with:
-
-```python
-from test.test_helper import ModelTest
-
-from app.models.product import Product
-
-
-class ProductTest(ModelTest):
-    fixtures = ["products"]
-
-    def test_save_persists_valid_product(self):
-        product = Product.new(name="Socks", description="Warm socks.")
-
-        assert product.save()
-        assert Product.find(product.id).name == "Socks"
-
-    def test_save_rejects_blank_name(self):
-        product = Product.new(name="")
-
-        assert not product.save()
-        assert product.errors
-        assert product.id is None
-
-    def test_update_retains_invalid_input(self):
-        product = self.products("shirt")
-
-        assert not product.update(name="", description="Entered description.")
-        assert product.name == ""
-        assert product.description == "Entered description."
-        assert product.errors
-```
-
-Fixture labels such as `shirt` avoid depending on a particular database ID.
-
-### Request tests
-
-Replace the generated `test/controllers/products_controller_test.py` with:
-
-```python
-from test.test_helper import IntegrationTest, get, post
-
-from app.models.product import Product
-from flaskteroids.routes import new_product_path, product_path, products_path
-
-
-class ProductsControllerTest(IntegrationTest):
-    def test_index_displays_catalog(self):
-        get(products_path())
-
-        self.assert_response("success")
-
-    def test_create_persists_product(self):
-        with self.assert_difference(Product.count):
-            post(
-                products_path(),
-                params={"product": {"name": "Socks", "description": "Warm socks."}},
-            )
-
-        self.assert_redirected_to(product_path(Product.last()))
-
-    def test_create_rejects_blank_name(self):
-        with self.assert_difference(Product.count, by=0):
-            post(products_path(), params={"product": {"name": ""}})
-
-        self.assert_response(422)
-
-    def test_new_displays_form(self):
-        get(new_product_path())
-
-        self.assert_response("success")
-```
-
-Run them:
-
-```sh
-bin/flask test
-bin/flask test test/models/product_test.py
-```
-
-The request helpers simulate HTTP requests; they do not require a running
-server. Browser tests are separate and use Playwright:
-
-```sh
-.venv/bin/playwright install chromium
-bin/flask test:system
-```
-
-Our manually built resource has no browser tests yet; an empty system suite
-succeeds. Scaffolds generate a starting browser test. See [Testing](testing.md)
-for writing your own.
-
-## 9. Require login to change products
+## 8. Require login to change products
 
 Right now, anyone can create, edit, or delete products. Stop the server and run:
 
 ```sh
 bin/flask generate authentication
-bin/flask db:prepare
+bin/flask db:migrate
 ```
 
 The generator adds `User` and `Session` models, login/logout and password-reset
@@ -809,59 +835,19 @@ Log out and verify that browsing still works, while `/products/new/` requires
 login again. Password reset also needs working mail delivery before real users
 can rely on it.
 
-### Update the request tests
+**Checkpoint:** guests can browse the catalog, but only signed-in users can
+create, edit, or delete products. Keep the account you created: we'll use it to
+manage inventory shortly. We'll add automated checks after building the features.
 
-The write actions now need authentication. Add these imports to
-`test/controllers/products_controller_test.py`:
+## 9. Upload product images
 
-```python
-from app.models.user import User
-from flaskteroids.routes import new_session_path, session_path
-```
-
-Add a setup method inside the existing test class:
-
-```python
-    def setup(self):
-        User.create(
-            email_address="owner@example.org",
-            password="test-password-only",
-            password_confirmation="test-password-only",
-        )
-        post(
-            session_path(),
-            params={
-                "email_address": "owner@example.org",
-                "password": "test-password-only",
-            },
-        )
-```
-
-This uses the actual login endpoint rather than manufacturing a session cookie.
-Add a separate class in the same file for guest access:
-
-```python
-class PublicProductsTest(IntegrationTest):
-    def test_guest_can_browse_products(self):
-        get(products_path())
-
-        self.assert_response("success")
-
-    def test_guest_is_redirected_to_login(self):
-        get(new_product_path())
-
-        self.assert_redirected_to(new_session_path())
-```
-
-Run `bin/flask test` again.
-
-## 10. Upload product images
-
+A shopper can browse the catalog, but an image makes a product easier to
+recognize. Let's add a photo without changing the product's ordinary edit flow.
 Install the attachment tables and configuration:
 
 ```sh
 bin/flask attachments:install
-bin/flask db:prepare
+bin/flask db:migrate
 ```
 
 Stop and restart the server after this migration, as with other schema changes.
@@ -910,8 +896,9 @@ In the `body` block of `app/views/products/show.html`, add:
 ```
 
 Log in, edit a product, and upload a small PNG or JPEG. After saving, its show
-page should display the image. Files become available after the save commits.
-An empty single-file input keeps the existing image.
+page should display the image. Reopen Edit and save without selecting another
+file: the existing image should remain. Files become available after the save
+commits.
 
 Development uses local disk storage. Signed download links are accessible to
 anyone who has the link by default, which suits public catalog images but not
@@ -919,125 +906,525 @@ private documents. Content-type checks are not file scanning. See
 [Attachments](other/attachments.md) for storage services, authorization, request
 size limits, and cleanup jobs.
 
-## 11. Send product email
+## 10. Notify visitors when products return to stock
 
-Mailers pair an action with HTML and plain-text templates. Let's create an email
-that shares a product's details:
+Our catalog can describe a product and show its image, but it cannot answer a
+shopper's next question: "Can I get one?" Let's track inventory. If a product
+sells out, visitors will be able to subscribe to a restock email and unsubscribe
+later.
+
+### Track inventory
+
+Stop the server and generate a migration for the existing products table:
 
 ```sh
-bin/flask generate mailer Product details
+bin/flask generate migration AddInventoryCountToProducts inventory_count:integer
+```
+
+Open the new file under `db/migrate/versions/`. Keep its generated revision
+metadata and `downgrade()`, but replace `upgrade()` with:
+
+```python
+def upgrade():
+    op.add_column(
+        "products",
+        sa.Column("inventory_count", sa.Integer(), nullable=False, server_default="0"),
+    )
+```
+
+The generated migration already imports `op` and `sqlalchemy as sa`. The default
+of zero gives existing products an inventory count as well as new ones.
+
+Apply it:
+
+```sh
+bin/flask db:migrate
+```
+
+Replace `app/models/product.py` with the following, preserving the image rule
+we added earlier:
+
+```python
+from app.models.application_model import ApplicationModel
+from flaskteroids.model import has_one_attached, validates
+from flaskteroids.rules import rules
+
+
+@rules(
+    validates("name", presence=True),
+    validates("inventory_count", numericality={"only_integer": True}),
+    validates("inventory_count", comparison={"greater_than_or_equal_to": 0}),
+    has_one_attached(
+        "featured_image",
+        max_size=2 * 1024 * 1024,
+        content_types=["image/png", "image/jpeg"],
+    ),
+)
+class Product(ApplicationModel):
+    pass
+```
+
+The database supplies the default; validations explain invalid user input.
+Add this field before the submit button in `app/views/products/_form.html`:
+
+```html
+<div>
+  {{ form.label("inventory_count") }}
+  {{ form.number_field("inventory_count") }}
+</div>
+```
+
+Replace `_product_params()` in `ProductsController` so edits can include stock:
+
+```python
+    def _product_params(self):
+        return params.expect(
+            product=["name", "description", "featured_image", "inventory_count"]
+        )
+```
+
+Create `app/views/products/_inventory.html`:
+
+```html
+{% if product.inventory_count > 0 %}
+  <p>{{ product.inventory_count }} in stock</p>
+{% else %}
+  <p>Out of stock</p>
+{% endif %}
+```
+
+Include it after the description in `app/views/products/show.html`:
+
+```html
+{% include "products/_inventory.html" %}
+```
+
+Restart the server. **Try it:** an existing product should say Out of stock.
+Log in, edit its inventory count to 5, and save: the page should say 5 in stock.
+Try -1 and check that the form explains the error and keeps the entered value.
+Finally set the count to 0 so we can build the subscription experience.
+
+### Remember who wants an email
+
+A product can have many subscribers, and each subscriber belongs to a product.
+Generate the subscriber model and its migration:
+
+```sh
+bin/flask generate model Subscriber product:references email:string unsubscribe_token:string
+```
+
+The reference creates `product_id` and a foreign key. Open the generated
+CreateSubscribers migration and add this after `op.create_table(...)` in
+`upgrade()`:
+
+```python
+    op.create_index(
+        "ix_subscribers_unsubscribe_token",
+        "subscribers",
+        ["unsubscribe_token"],
+        unique=True,
+    )
+```
+
+The generated `downgrade()` drops the table, including its index. Apply the
+migration:
+
+```sh
+bin/flask db:migrate
+```
+
+Replace `app/models/subscriber.py` with:
+
+```python
+from secrets import token_urlsafe
+
+from app.models.application_model import ApplicationModel
+from flaskteroids.model import before_create, belongs_to, validates
+from flaskteroids.rules import rules
+
+
+@rules(
+    belongs_to("product"),
+    validates("email", presence=True),
+    before_create("_assign_unsubscribe_token"),
+)
+class Subscriber(ApplicationModel):
+    def _assign_unsubscribe_token(self):
+        self.unsubscribe_token = token_urlsafe(32)
+```
+
+A `before_create` callback assigns a random token before the record is first
+saved. That token will let someone unsubscribe without an account. Treat it
+like a credential: do not expose a subscriber list or log the tokens.
+
+In `app/models/product.py`, add `has_many` to the existing model import and add
+`has_many("subscribers", dependent="destroy")` inside `@rules(...)`.
+Deleting a product will now delete its subscriptions too.
+
+Restart the server, then open `bin/flask shell`:
+
+```pycon
+>>> product = Product.find_by(name="Cotton T-Shirt")
+>>> subscriber = Subscriber.create(product=product, email="reader@example.org")
+>>> subscriber.product.name
+'Cotton T-Shirt'
+>>> [person.email for person in product.subscribers]
+['reader@example.org']
+>>> bool(subscriber.unsubscribe_token)
+True
+```
+
+The association connects the objects without manually looking up a foreign-key
+value. Exit the shell. Next, let's let visitors do this from the product page.
+
+### Add the subscription form
+
+Create `app/controllers/subscribers_controller.py`:
+
+```python
+from app.controllers.application_controller import ApplicationController
+from app.models.product import Product
+from app.models.subscriber import Subscriber
+from flaskteroids import params, redirect_to
+from flaskteroids.actions import skip_before_action
+from flaskteroids.controller import render
+from flaskteroids.routes import product_path
+from flaskteroids.rules import rules
+
+
+@rules(skip_before_action("_require_authentication"))
+class SubscribersController(ApplicationController):
+    def create(self):
+        self.product = Product.find(params["product_id"])
+        attributes = params.expect(subscriber=["email"])
+        self.subscriber = Subscriber.find_by(product_id=self.product.id, **attributes)
+        if self.subscriber is None:
+            self.subscriber = Subscriber.new(product=self.product, **attributes)
+            if not self.subscriber.save():
+                return render("new", status=422)
+        return redirect_to(
+            product_path(self.product), notice="We will email you when it is back in stock."
+        )
+```
+
+Subscriptions are public, unlike editing stock. The email is allowlisted, and
+the product comes from the URL rather than an editable form field. Looking up
+an existing subscription avoids adding another during ordinary repeat visits;
+a production signup service also needs confirmation and abuse controls.
+
+In `config/routes.py`, keep the existing routes and add this inside `register`:
+
+```python
+    route.post(
+        "/products/<int:product_id>/subscribers/",
+        to="subscribers#create",
+        as_="product_subscribers",
+    )
+```
+
+The nested URL tells the controller which product the visitor wants to follow.
+Replace `app/views/products/_inventory.html` with:
+
+```html
+{% if product.inventory_count > 0 %}
+  <p>{{ product.inventory_count }} in stock</p>
+{% else %}
+  <p>Out of stock</p>
+  <p>Email me when it is available:</p>
+  {% call(form) form_with(url=url_for("product_subscribers", product_id=product.id)) %}
+    {{ form.email_field("email", name="subscriber[email]", required=True, placeholder="you@example.org") }}
+    {{ form.submit("Notify me") }}
+  {% endcall %}
+{% endif %}
+```
+
+The explicit field name `subscriber[email]` groups the submitted email under
+`subscriber`, just as our product form groups its attributes under `product`.
+The controller filters that object with `params.expect(subscriber=["email"])`.
+
+Create `app/views/subscribers/new.html` for invalid submissions:
+
+```html
+{% extends "layouts/application.html" %}
+
+{% block body %}
+  <h1>Follow {{ product.name }}</h1>
+  <ul class="errors">
+    {% for message in subscriber.errors.full_messages() %}
+      <li>{{ message }}</li>
+    {% endfor %}
+  </ul>
+  {% call(form) form_with(url=url_for("product_subscribers", product_id=product.id)) %}
+    {{ form.email_field("email", name="subscriber[email]", value=subscriber.email, required=True) }}
+    {{ form.submit("Notify me") }}
+  {% endcall %}
+  {{ link_to("Back", url_for("show_product", id=product.id)) }}
+{% endblock %}
+```
+
+Our successful redirect sets a flash notice. In
+`app/views/layouts/application.html`, add this just after `<body>`, before the
+`body` block:
+
+```html
+{% if flash.notice %}<p role="status">{{ flash.notice }}</p>{% endif %}
+{% if flash.alert %}<p role="alert">{{ flash.alert }}</p>{% endif %}
+```
+
+**Try it:** log out, open an out-of-stock product, and subscribe with another
+email address. You should return to the product and see the confirmation.
+Subscribe with the same address again: the ordinary repeat request should still
+show confirmation, not create another record. In a new shell, select the product
+with `product = Product.find_by(name="Cotton T-Shirt")`, then check
+`Subscriber.where(product_id=product.id).count()`.
+
+### Let subscribers leave
+
+Before sending notifications, let's give recipients a way to stop them. Add
+these routes inside `register` in `config/routes.py`:
+
+```python
+    route.get("/unsubscribe/<token>/", to="unsubscribes#show", as_="unsubscribe")
+    route.post(
+        "/unsubscribe/<token>/", to="unsubscribes#destroy", as_="cancel_subscription"
+    )
+```
+
+Create `app/controllers/unsubscribes_controller.py`:
+
+```python
+from app.controllers.application_controller import ApplicationController
+from app.models.subscriber import Subscriber
+from flaskteroids import params, redirect_to
+from flaskteroids.actions import skip_before_action
+from flaskteroids.rules import rules
+
+
+@rules(skip_before_action("_require_authentication"))
+class UnsubscribesController(ApplicationController):
+    def show(self):
+        self.subscriber = Subscriber.find_by(unsubscribe_token=params["token"])
+        if self.subscriber is None:
+            return redirect_to("/", notice="This subscription is no longer active.")
+
+    def destroy(self):
+        subscriber = Subscriber.find_by(unsubscribe_token=params["token"])
+        if subscriber is not None:
+            subscriber.destroy()
+        return redirect_to("/", notice="You are unsubscribed.")
+```
+
+Create `app/views/unsubscribes/show.html`:
+
+```html
+{% extends "layouts/application.html" %}
+
+{% block body %}
+  <h1>Stop following {{ subscriber.product.name }}?</h1>
+  {% call(form) form_with(url=url_for("cancel_subscription", token=subscriber.unsubscribe_token)) %}
+    {{ form.submit("Unsubscribe") }}
+  {% endcall %}
+{% endblock %}
+```
+
+Opening an email link displays a confirmation; only submitting its CSRF-protected
+POST form removes the subscription. Email link scanners therefore do not
+unsubscribe someone just by following a GET request. Invalid or already-used
+tokens redirect safely to the catalog.
+
+### Write the restock email
+
+Generate a mailer:
+
+```sh
+bin/flask generate mailer Product in_stock
 ```
 
 Replace `app/mailers/product_mailer.py` with:
 
 ```python
 from app.mailers.application_mailer import ApplicationMailer
-from app.models.product import Product
+from flask import url_for
 
 
 class ProductMailer(ApplicationMailer):
-    def details(self, product_id, recipient):
-        product = Product.find(product_id)
-        self.product_name = product.name
-        self.description = product.description
-        return self.mail(to=recipient, subject=f"About {product.name}")
+    def in_stock(self, product_name, product_id, recipient, unsubscribe_token):
+        self.product_name = product_name
+        self.product_url = url_for("show_product", id=product_id, _external=True)
+        self.unsubscribe_url = url_for(
+            "unsubscribe", token=unsubscribe_token, _external=True
+        )
+        return self.mail(to=recipient, subject=f"{product_name} is back in stock")
 ```
 
-Replace `app/views/product_mailer/details.html` with:
+Mail actions expose instance variables to templates, just like controllers.
+Email links need absolute URLs, so we use `_external=True`.
+
+Replace `app/views/product_mailer/in_stock.html` with:
 
 ```html
-<h1>{{ product_name }}</h1>
-<p>{{ description }}</p>
+<h1>Good news!</h1>
+<p>{{ link_to(product_name, product_url) }} is back in stock.</p>
+<p>{{ link_to("Unsubscribe", unsubscribe_url) }}</p>
 ```
 
-Replace `app/views/product_mailer/details.txt` with:
+Replace `app/views/product_mailer/in_stock.txt` with:
 
 ```text
-{{ product_name }}
+Good news! {{ product_name }} is back in stock.
+{{ product_url }}
 
-{{ description }}
+Unsubscribe: {{ unsubscribe_url }}
 ```
 
-The template variables are scalar values, so they can also be serialized when
-we enqueue delivery. Do not put ORM objects or open files in background payloads.
+### Preview delivery locally
 
-### Test delivery without SMTP
-
-Replace the generated `test/mailers/product_mailer_test.py` with:
+We want to see the message without needing a real mailbox. Create
+`app/mailers/console_delivery.py`, an application-owned development adapter:
 
 ```python
-from test.test_helper import MailerTest
+class ConsoleDeliveryMethod:
+    def __init__(self, application, config):
+        pass
 
-from app.mailers.product_mailer import ProductMailer
-
-
-class ProductMailerTest(MailerTest):
-    fixtures = ["products"]
-
-    def test_delivers_product_details(self):
-        product = self.products("shirt")
-
-        with self.assert_emails(1):
-            ProductMailer().details(product.id, "reader@example.org").deliver_now()
-
-    def test_delivers_queued_product_details(self):
-        product = self.products("shirt")
-
-        with self.assert_emails(1), self.perform_enqueued_jobs():
-            ProductMailer().details(product.id, "reader@example.org").deliver_later()
+    def deliver(self, message):
+        print(f"To: {message['To']}", flush=True)
+        print(f"Subject: {message['Subject']}", flush=True)
+        print(message.get_body(preferencelist=("plain",)).get_content(), flush=True)
 ```
 
-Run:
+Replace `config/environments/development.py` with:
 
-```sh
-bin/flask test test/mailers/product_mailer_test.py
+```python
+from app.mailers.console_delivery import ConsoleDeliveryMethod
+
+
+def configure(config):
+    config.enable_reloading = True
+    config.consider_all_requests_local = True
+    config.action_controller.perform_caching = False
+    config.attachments.service = "local"
+    config["SERVER_NAME"] = "127.0.0.1:5000"
+    config.action_mailer.perform_deliveries = True
+    config.action_mailer.delivery_method = ConsoleDeliveryMethod
+    config.active_job.broker_url = "sqla+sqlite:///storage/jobs_database.db"
 ```
 
-The test environment uses in-memory mail and queue adapters. These tests neither
-contact an SMTP server nor require a Celery broker.
+`SERVER_NAME` supplies a host for absolute links even in the shell. This adapter
+prints mail; it does not send real messages. The development queue uses a local
+SQLite file, so this example needs no separate broker server.
 
-### Immediate versus background delivery
-
-In an application context, such as `bin/flask shell`, delivery calls look like:
+Restart the web server. Open a new `bin/flask shell` and preview one email:
 
 ```python
 from app.mailers.product_mailer import ProductMailer
 
-product = Product.find_by(name="Socks")
-ProductMailer().details(product.id, "reader@example.org").deliver_now()
+subscriber = Subscriber.find_by(email="reader@example.org")
+product = subscriber.product
+ProductMailer().in_stock(
+    product.name, product.id, subscriber.email, subscriber.unsubscribe_token
+).deliver_now()
 ```
 
-Generated development configuration disables actual email delivery. The call
-above does not send real mail until you configure SMTP and enable
-`config.action_mailer.perform_deliveries` in your environment configuration.
-Keep SMTP credentials out of source control; see [Configuration](configuration.md).
+You should see a readable message preview in the shell, with a subject ending
+in "is back in stock", a product link, and an unsubscribe link. Exit the shell.
+The data passed to the mailer is ordinary strings and an ID, ready for queuing.
 
-To enqueue delivery instead:
+### Trigger notifications after a restock
+
+Now connect inventory to email. Replace `app/models/product.py` with:
 
 ```python
-ProductMailer().details(product.id, "reader@example.org").deliver_later()
+from app.mailers.product_mailer import ProductMailer
+from app.models.application_model import ApplicationModel
+from flaskteroids.model import (
+    after_commit,
+    after_rollback,
+    before_update,
+    has_many,
+    has_one_attached,
+    validates,
+)
+from flaskteroids.rules import rules
+
+
+@rules(
+    validates("name", presence=True),
+    validates("inventory_count", numericality={"only_integer": True}),
+    validates("inventory_count", comparison={"greater_than_or_equal_to": 0}),
+    has_one_attached(
+        "featured_image",
+        max_size=2 * 1024 * 1024,
+        content_types=["image/png", "image/jpeg"],
+    ),
+    has_many("subscribers", dependent="destroy"),
+    before_update("_prepare_restock_emails"),
+    after_commit("_deliver_restock_emails", on="update"),
+    after_rollback("_clear_restock_emails"),
+)
+class Product(ApplicationModel):
+    def _prepare_restock_emails(self):
+        if self.inventory_count == 0:
+            self._clear_restock_emails()
+        elif self.read_published_attribute("inventory_count") == 0:
+            self._restock_emails = [
+                ProductMailer().in_stock(
+                    self.name, self.id, subscriber.email, subscriber.unsubscribe_token
+                )
+                for subscriber in self.subscribers
+            ]
+
+    def _deliver_restock_emails(self):
+        messages = getattr(self, "_restock_emails", [])
+        self._clear_restock_emails()
+        for message in messages:
+            message.deliver_later()
+
+    def _clear_restock_emails(self):
+        self._restock_emails = []
 ```
 
-**Outside tests, enqueuing requires a reachable Celery broker and a worker.**
-Flaskteroids does not provision either service. Once a broker is configured,
-start the worker from the application root in another terminal:
+Before an update, we compare the entered inventory count with its previously
+saved value using `read_published_attribute()`. A change from zero to a positive
+count prepares one email per subscriber. An ordinary description edit or a
+change from 5 to 6 does not prepare a new batch.
+
+Preparing messages captures their recipients and links. `after_commit` enqueues
+them only after the product's update succeeds; a rollback clears the pending
+messages. The queued payload contains scalar template data, not model objects.
+See [Models](models/index.md) for more about callbacks and transactions.
+
+### Watch the complete feature work
+
+Restart the web server to load the model. From `store`, start a worker in another
+terminal:
 
 ```sh
 .venv/bin/celery -A jobs worker --loglevel=info
 ```
 
-Both processes need matching broker configuration. Generated production settings
-read `CELERY_BROKER_URL`; configure `config.active_job.broker_url` explicitly for
-development if you want to try a local broker. Start the worker only after the
-database is prepared. A disabled delivery setting remains disabled in the
-worker, too.
+The web process and worker read the same development configuration and local
+queue. Keep both running for this checkpoint:
 
-This separates the HTTP response from delivery work. The same queue supports
-application jobs with a `perform()` method; see [Background jobs](other/jobs.md)
-and [Mailers](other/mailers.md). Attachment replacement/deletion may also enqueue
-cleanup work, so deployed applications using uploads need a worker.
+1. Log in and set Cotton T-Shirt's inventory count to 0.
+2. Log out and subscribe from its product page with a second email address.
+3. Log in again, change the inventory count to 5, and save.
+4. Watch the worker terminal: one message per subscribed address should appear.
+5. Change the count from 5 to 6. There should be no new restock email.
+6. Copy an unsubscribe URL from a message into the browser and confirm removal.
+7. Set stock to 0 and then 5 again. That recipient should no longer get an email.
 
-## 12. Add styles and understand assets
+We now have a reason for every piece: inventory drives the page, associations
+remember interested visitors, callbacks notice a restock, and a mailer and job
+queue deliver the notification outside the request.
+
+The console adapter is for development only. Real delivery needs SMTP settings
+and a sender address; production also needs a worker and a suitable shared broker
+when running multiple instances. Generated production settings read
+`CELERY_BROKER_URL`. See [Mailers](other/mailers.md), [Background jobs](other/jobs.md),
+and [Configuration](configuration.md) for those settings.
+
+## 11. Give the store a little polish
 
 The generated layout already includes `app/assets/stylesheets/application.css`.
 Replace or extend that file with:
@@ -1081,6 +1468,265 @@ manifest together; production has no fallback to source files.
 The generated layout also loads Turbo from a CDN. Flaskteroids' asset compiler
 does not install import maps, bundle JavaScript, or compile Sass. See
 [Assets](other/assets.md) when extending the frontend.
+
+## 12. Test the store's behavior
+
+We have exercised the store in a browser. Let's turn its important behaviors
+into repeatable tests: valid products save, guests can subscribe but cannot edit,
+and restocking emails the right people.
+
+Tests use a separate `test` environment and database. `bin/flask test` applies
+pending migrations and runs pytest-based tests. Framework test classes roll back
+their database changes between tests. The test mail and queue adapters keep
+messages in memory, so you do not need the development worker or real SMTP.
+
+### Give the tests a small catalog
+
+Create `test/fixtures/products.yml`:
+
+```yaml
+shirt:
+  name: T-Shirt
+  description: A comfortable cotton shirt.
+  inventory_count: 0
+```
+
+Create `test/fixtures/subscribers.yml`:
+
+```yaml
+reader:
+  product: shirt
+  email: reader@example.org
+  unsubscribe_token: reader-test-token
+
+another:
+  product: shirt
+  email: another@example.org
+  unsubscribe_token: another-test-token
+```
+
+Fixture labels connect subscribers to `shirt` without hard-coded IDs. These
+example tokens belong only to the test database; real subscriptions generate
+random ones. Declare both fixture sets in tests that need the association.
+
+### Test products and restock notifications
+
+Replace `test/models/product_test.py` with:
+
+```python
+from test.test_helper import ModelTest
+
+import pytest
+
+from app.models.product import Product
+
+
+class ProductTest(ModelTest):
+    fixtures = ["products", "subscribers"]
+
+    def test_save_persists_valid_product(self):
+        product = Product.new(name="Socks", description="Warm socks.")
+
+        assert product.save()
+        assert Product.find(product.id).name == "Socks"
+
+    def test_save_rejects_blank_name(self):
+        product = Product.new(name="")
+
+        assert not product.save()
+        assert product.errors
+        assert product.id is None
+
+    def test_inventory_rejects_negative_input(self):
+        product = Product.new(name="Socks", inventory_count=-1)
+
+        assert not product.save()
+        assert product.inventory_count == -1
+        assert product.errors
+
+    def test_restock_emails_subscribers(self):
+        product = self.products("shirt")
+
+        with self.assert_emails(2), self.perform_enqueued_jobs():
+            assert product.update(inventory_count=5)
+
+        assert {message["To"] for message in self.deliveries} == {
+            "reader@example.org",
+            "another@example.org",
+        }
+
+    def test_positive_stock_adjustment_preserves_notification_count(self):
+        product = self.products("shirt")
+        assert product.update(inventory_count=5)
+
+        with self.assert_emails(0), self.perform_enqueued_jobs():
+            assert product.update(inventory_count=6)
+
+    def test_rolled_back_restock_keeps_queue_empty(self):
+        product = self.products("shirt")
+
+        with pytest.raises(ValueError, match="Cancel restock"):
+            with Product.transaction():
+                assert product.update(inventory_count=5)
+                assert not self.enqueued_jobs
+                raise ValueError("Cancel restock")
+
+        assert not self.enqueued_jobs
+```
+
+The notification test changes stock from zero to five and performs jobs as they
+are enqueued. It checks the recipients as well as the count. The other cases
+check that ordinary stock adjustments and rolled-back updates do not produce
+restock notifications.
+
+Run just these tests:
+
+```sh
+bin/flask test test/models/product_test.py
+```
+
+You should see them pass without contacting a broker or mail server.
+
+### Check the actual email
+
+Replace the generated `test/mailers/product_mailer_test.py` with:
+
+```python
+from test.test_helper import MailerTest
+
+from app.mailers.product_mailer import ProductMailer
+
+
+class ProductMailerTest(MailerTest):
+    fixtures = ["products", "subscribers"]
+
+    def test_email_contains_product_and_unsubscribe_links(self):
+        product = self.products("shirt")
+        subscriber = self.subscribers("reader")
+
+        with self.assert_emails(1):
+            ProductMailer().in_stock(
+                product.name, product.id, subscriber.email, subscriber.unsubscribe_token
+            ).deliver_now()
+
+        message = self.deliveries[0]
+        assert message["To"] == subscriber.email
+        assert message["Subject"] == "T-Shirt is back in stock"
+        text = message.get_body(preferencelist=("plain",)).get_content()
+        assert f"/products/{product.id}/" in text
+        assert f"/unsubscribe/{subscriber.unsubscribe_token}/" in text
+```
+
+### Check guest access and subscriptions
+
+Replace `test/controllers/products_controller_test.py` with:
+
+```python
+from test.test_helper import IntegrationTest, get, post
+
+from app.models.subscriber import Subscriber
+from flaskteroids.routes import new_product_path, new_session_path, products_path
+
+
+class ProductsControllerTest(IntegrationTest):
+    fixtures = ["products", "subscribers"]
+
+    def test_guest_can_browse_products(self):
+        get(products_path())
+
+        self.assert_response("success")
+
+    def test_guest_is_redirected_to_login(self):
+        get(new_product_path())
+
+        self.assert_redirected_to(new_session_path())
+
+    def test_guest_can_subscribe_to_product(self):
+        product = self.products("shirt")
+
+        with self.assert_difference(Subscriber.count):
+            post(
+                f"/products/{product.id}/subscribers/",
+                params={"subscriber": {"email": "new-reader@example.org"}},
+            )
+
+        assert Subscriber.find_by(
+            product_id=product.id, email="new-reader@example.org"
+        )
+
+    def test_unsubscribe_link_requires_confirmation(self):
+        subscriber = self.subscribers("reader")
+        path = f"/unsubscribe/{subscriber.unsubscribe_token}/"
+
+        with self.assert_difference(Subscriber.count, by=0):
+            get(path)
+        self.assert_response("success")
+
+        with self.assert_difference(Subscriber.count, by=-1):
+            post(path)
+        self.assert_redirected_to("/")
+```
+
+The request helpers simulate HTTP without starting a web server. Checking both
+GET and POST makes the unsubscribe boundary explicit: following the email link
+is safe; confirming the form removes the subscription.
+
+### Walk through an edit in a real browser
+
+Create `test/system/products_test.py`:
+
+```python
+from test.test_helper import SystemTest
+
+from app.models.user import User
+from flaskteroids.routes import new_product_path
+
+
+class ProductsTest(SystemTest):
+    def setup(self):
+        User.create(
+            email_address="owner@example.org",
+            password="test-password-only",
+            password_confirmation="test-password-only",
+        )
+
+    def test_owner_creates_and_edits_product(self):
+        self.visit(new_product_path())
+        self.page.get_by_placeholder("Enter your email address").fill("owner@example.org")
+        self.page.locator('input[name="password"]').fill("test-password-only")
+        self.click_on("Sign in")
+        self.assert_selector("h1", text="New product")
+
+        self.fill_in("Name", with_="Browser hat")
+        self.fill_in("Description", with_="A hat created in the browser.")
+        self.click_on("Save product")
+        self.assert_selector("h1", text="Browser hat")
+
+        self.click_on("Edit")
+        self.fill_in("Name", with_="Updated browser hat")
+        self.click_on("Save product")
+        self.assert_selector("h1", text="Updated browser hat")
+```
+
+The test follows the login flow rather than constructing a session cookie. Its
+password is fixed test data, not an account used in development or production.
+Browser tests use Playwright. Install Chromium once, then run the suite:
+
+```sh
+.venv/bin/playwright install chromium
+bin/flask test:system
+```
+
+You should see the browser journey pass. Run all non-browser tests too:
+
+```sh
+bin/flask test
+```
+
+The generated health and authentication tests should pass alongside the tests
+we wrote. You now have checks for the whole story, from editing a product to
+subscribing and delivering its restock email. See [Testing](testing.md) for
+uploads, additional assertions, and running selected tests in parallel.
 
 ## 13. Security and continuous integration
 
@@ -1152,7 +1798,9 @@ For a real deployment:
 2. Configure your database and install its driver if using PostgreSQL or MySQL.
 3. Coordinate migrations once per release when running multiple instances; do
    not use each web instance as migration coordination.
-4. Configure mail, external storage if needed, and a Celery broker and worker.
+4. Configure SMTP and a sender address for real mail, your canonical host via
+   `SERVER_NAME` for email links, external storage if needed, and a Celery broker
+   and worker. The tutorial's console adapter is only enabled in development.
 5. Put the application behind HTTPS and arrange persistent storage and backups.
 6. Create an initial user through an application shell in the production
    environment, using your host's execution facility and the account creation
@@ -1164,16 +1812,16 @@ above is not a complete internet-facing deployment recipe.
 
 ## 15. Where to go next
 
-You have built a catalog with persistence, validation, HTML forms, authenticated
-editing, image uploads, mail delivery, and tests.
+You started with an empty application and built a working store: visitors browse
+products, owners manage stock and images, and subscribers hear when a product
+returns. Tests now check the behavior that makes those features work together.
 
 Next, try expanding it:
 
-- Add an inventory count using a new migration, a validation, a form field, and
-  a permitted parameter.
-- Add subscribers using `Subscriber` and `Product` associations, then send
-  restock notifications through a mailer and background jobs.
-- Add a browser test for a logged-in user creating and editing a product.
+- Add product categories with another model and association.
+- Add pagination and filtering to the catalog.
+- Confirm subscription addresses before enabling notifications for real visitors.
+- Write a browser test for the complete subscribe-and-unsubscribe journey.
 - Return JSON alongside HTML using controller content negotiation.
 
 Explore the focused guides as you go:
