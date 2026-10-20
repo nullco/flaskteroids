@@ -10,8 +10,8 @@
 {% endwith %}
 
 <div>
-  <a href="{{ url_for('edit_${singular}', id=${singular}.id) }}">Edit this ${singular}</a> |
-  <a href="{{ url_for('index_${singular}') }}">Back to ${plural}</a>
-  {{ button_to('Destroy this ${singular}', ${singular}, 'delete') }}
+  <a href="{{ edit_${singular}_path(${singular}) }}">Edit this ${singular}</a> |
+  <a href="{{ ${plural}_path() }}">Back to ${plural}</a>
+  {{ button_to('Destroy this ${singular}', ${singular}, method='delete') }}
 </div>
 {% endblock %}

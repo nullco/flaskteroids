@@ -4,6 +4,24 @@
 
 ### Breaking changes
 
+- Resource helpers generate slashless canonical paths and `.json` suffixes, with
+  direct optional-trailing-slash recognition (no redirects or body replay).
+  Nested routes preserve the parent's member parameter and bind separate ancestor
+  parameters. Conventional collection/member helpers replace action-specific
+  resource helper aliases and work in templates as well as Python. Missing or
+  conflicting bindings/helper names fail diagnostically.
+- Model-backed forms infer PATCH for persisted records, honor explicit URLs and
+  methods independently, and support nested model sequences and explicit field
+  scope. `button_to` accepts URLs/records/sequences and a keyword-only `method`;
+  defaults are POST for URLs/new records and PATCH for persisted records. Unsafe
+  methods use browser-valid POST forms with hidden overrides; GET forms omit CSRF.
+- Normalize eligible POST method overrides before route matching and CSRF checks.
+  Form values take precedence over the header; query strings never override.
+  Unmatched framework operations return 404 rather than 405 and never retry
+  create. `_method` is retained in application parameters. Native Flask endpoints
+  retain their ordinary dispatch. See [adoption instructions](docs/other/routing-upgrade.md)
+  for changed URLs, helpers, defaults, parsing boundaries, and edited auth files.
+
 - Standalone model saves, updates, creation, and destruction now commit before
   returning, including associated writes. Use `Model.transaction()` to group
   operations; nested blocks join by default and `requires_new=True` requests a
@@ -28,6 +46,12 @@
 - Initialize simple literal defaults from the generated server-default metadata;
   leave functions/computed values to the server. Explicit non-primary-key nulls do
   not accidentally reapply server defaults. See [Models](docs/models/index.md).
+
+### Fixed
+
+- Standard session-resource logout, generated scaffold deletion, and nested child
+  model forms work with CSRF enabled without JavaScript or application-owned route
+  workarounds. Generators and the getting-started guide use those workflows.
 
 ## 0.6.0 - 2026-10-15
 

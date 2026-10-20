@@ -401,6 +401,10 @@ class Model(StagedAttributes, SchemaModel):
         state = inspect(self)
         return state.transient or state.pending
 
+    def to_param(self):
+        """The public route identity; override intentionally for slug-based URLs."""
+        return str(self.id) if self.is_persisted() else None
+
     @transactional(rollback_on_false=True)
     def destroy(self):
         current_app.extensions["flaskteroids.db"].require_model(type(self))

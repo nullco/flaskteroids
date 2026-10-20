@@ -51,7 +51,7 @@ class FormatResponder:
         self._handlers = {"text/html": html, "application/json": json}
 
     def _get_accepts(self):
-        if request.path.endswith(".json/"):
+        if request.path.rstrip("/").endswith(".json"):
             return "application/json"
         accept_mimetypes = request.accept_mimetypes
         accepts = accept_mimetypes.best_match(self._handlers.keys()) or "text/html"

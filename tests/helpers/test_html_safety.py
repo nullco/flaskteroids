@@ -1,5 +1,3 @@
-from types import SimpleNamespace
-
 import pytest
 from flask import Flask
 from markupsafe import Markup
@@ -71,11 +69,9 @@ def test_link_rejects_unsafe_urls(path):
 
 
 @pytest.mark.usefixtures("request_context")
-def test_button_escapes_text_and_action(mocker):
+def test_button_escapes_text_and_action():
     action = '/delete/1?next="bad"&ok=1'
-    mocker.patch("flaskteroids.helpers.url_for", return_value=action)
-
-    html = HTML(button_to("<b>Delete</b>", SimpleNamespace(id=1), "DELETE"))
+    html = HTML(button_to("<b>Delete</b>", action, method="DELETE"))
 
     assert "<b>Delete</b>" in html.text
     assert not html.has("b")
@@ -84,9 +80,7 @@ def test_button_escapes_text_and_action(mocker):
 
 @pytest.mark.usefixtures("request_context")
 def test_button_accepts_trusted_text():
-    html = HTML(
-        button_to(Markup("<strong>Save</strong>"), SimpleNamespace(id=1), "POST")
-    )
+    html = HTML(button_to(Markup("<strong>Save</strong>"), "/records", method="POST"))
 
     assert html.has("strong")
     assert "Save" in html.text
@@ -215,11 +209,9 @@ def test_text_area_escapes_trusted_field_values():
 
 
 @pytest.mark.usefixtures("request_context")
-def test_button_rejects_unsafe_generated_action(mocker):
-    mocker.patch("flaskteroids.helpers.url_for", return_value="javascript:bad")
-
+def test_button_rejects_unsafe_action():
     with pytest.raises(ValueError):
-        button_to("Delete", SimpleNamespace(id=1), "DELETE")
+        button_to("Delete", "javascript:bad", method="DELETE")
 
 
 @pytest.mark.parametrize("value", ["<b>A</b> & B", Markup('" onclick="bad')])

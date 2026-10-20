@@ -1,7 +1,7 @@
 import logging
 from http import HTTPStatus
 
-from flask import has_request_context
+from flask import has_request_context, request
 from werkzeug.exceptions import default_exceptions
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -132,6 +132,8 @@ def _prepare_template_contexts(app):
 def _setup_csrf(app):
     @app.before_request
     def _():
+        if request.environ.get("flaskteroids.routing_error"):
+            raise request.routing_exception
         csrft = CSRFToken(app.config.get("SECRET_KEY"))
         csrft.validate()
 

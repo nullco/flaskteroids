@@ -64,8 +64,8 @@ def generate():
         "config/routes.py",
         add_routes(
             [
-                "route.resource('session')",
-                "route.resources('passwords', param='token')",
+                "route.resource('session', only=['new', 'create', 'destroy'])",
+                "route.resources('passwords', param='token', only=['new', 'create', 'edit', 'update'])",
             ]
         ),
     )

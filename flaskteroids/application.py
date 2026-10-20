@@ -67,6 +67,11 @@ class Application(Flask):
         self._run_initializers()
         finalize_app(self)
 
+    def request_context(self, environ):
+        from flaskteroids._request_context import RoutingRequestContext
+
+        return RoutingRequestContext(self, environ)
+
     def configure(self, config):
         config.load_defaults("0.1")
 

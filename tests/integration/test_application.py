@@ -1,53 +1,16 @@
 """The same generated-application scenarios run against every database backend."""
 
-import os
 import shutil
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
-from click.testing import CliRunner
 
-from flaskteroids.cli.flaskteroids import cli
 from tests.assertions import assert_pytest_passed
 
 
 @pytest.fixture(scope="module")
-def generated_application(tmp_path_factory):
-    root = tmp_path_factory.mktemp("application") / "weblog"
-    result = CliRunner().invoke(cli, ["new", str(root), "--skip-install"])
-    assert result.exit_code == 0, result.output
-    (root / ".venv").symlink_to(Path(sys.prefix), target_is_directory=True)
-    environment = {
-        key: value
-        for key, value in os.environ.items()
-        if not key.startswith(("FLASK", "UV_"))
-    }
-    environment.update(
-        FLASK_ENV="test",
-        PYTHONPATH=os.pathsep.join((str(root), str(Path(__file__).parents[2]))),
-        DATABASE_URL=os.environ.get("DATABASE_URL", "sqlite:///storage/test.sqlite3"),
-    )
-
-    def run(*args, script=None):
-        command = (
-            [sys.executable, str(Path(__file__).parent / "scenarios" / script)]
-            if script is not None
-            else [str(root / "bin/flask"), *args]
-        )
-        result = subprocess.run(
-            command,
-            cwd=root,
-            env=environment,
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=120,
-        )
-        assert result.returncode == 0, result.stdout + result.stderr
-        return result
-
+def generated_application(generated_app_factory):
+    root, run = generated_app_factory("weblog")
     (root / "app/models/deferred_record.py").write_text(
         "from app.models.application_model import ApplicationModel\n"
         "class DeferredRecord(ApplicationModel):\n    pass\n"

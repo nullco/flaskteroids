@@ -229,11 +229,11 @@ def test_forms_render_staged_values_independently_of_response_serialization(
     user.name = "Bob"
     user.name_confirmation = "Bob"
     dumps = mocker.spy(URLSafeTimedSerializer, "dumps")
-    mocker.patch("flaskteroids.helpers.url_for", return_value="/accounts/")
 
     with flask_app.test_request_context():
         html = form_with(
             model=user,
+            url="/accounts",
             caller=lambda form: (
                 form.text_field("name") + form.text_field("name_confirmation")
             ),

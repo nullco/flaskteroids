@@ -1,7 +1,7 @@
 from http import HTTPStatus
-from flask import url_for
 from flaskteroids import params, rules, redirect_to
 from flaskteroids.actions import before_action
+from flaskteroids.routes import ${plural}_path, ${singular}_path
 from flaskteroids.controller import render, head, respond
 from app.controllers.application_controller import ApplicationController
 from app.models.${model_ref} import ${model}
@@ -35,7 +35,7 @@ class ${controller}Controller(ApplicationController):
         self.${model_ref} = ${model}.new(**self._${model_ref}_params())
         if self.${model_ref}.save():
             return respond(
-                html=lambda: redirect_to(url_for('show_${singular}', id=self.${singular}.id), notice="${singular.title()} was successfully created."),
+                html=lambda: redirect_to(${singular}_path(self.${singular}), notice="${singular.title()} was successfully created."),
                 json=lambda: render(json=self.${model_ref})
             )
         else:
@@ -47,7 +47,7 @@ class ${controller}Controller(ApplicationController):
     def update(self):
         if self.${model_ref}.update(**self._${model_ref}_params()):
             return respond(
-                html=lambda: redirect_to(url_for('show_${singular}', id=self.${model_ref}.id), notice="${singular.title()} was successfully updated."),
+                html=lambda: redirect_to(${singular}_path(self.${model_ref}), notice="${singular.title()} was successfully updated."),
                 json=lambda: render(json=self.${model_ref})
             )
         else:
@@ -59,7 +59,7 @@ class ${controller}Controller(ApplicationController):
     def destroy(self):
         self.${model_ref}.destroy()
         return respond(
-            html=lambda: redirect_to(url_for('index_${singular}'), status=HTTPStatus.SEE_OTHER),
+            html=lambda: redirect_to(${plural}_path(), status=HTTPStatus.SEE_OTHER),
             json=lambda: head(HTTPStatus.NO_CONTENT)
         )
 

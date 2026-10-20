@@ -5,20 +5,6 @@ from tests.assertions import HTML
 
 
 @pytest.fixture
-def url_for(mocker):
-    return mocker.patch("flaskteroids.helpers.url_for")
-
-
-@pytest.fixture
-def model_instance(mocker):
-    model_instance = mocker.Mock()
-    model_instance.__class__.__name__ = "TestModel"
-    model_instance.id = 1
-    model_instance.configure_mock(**{"_form_data.return_value": {"name": "test"}})
-    return model_instance
-
-
-@pytest.fixture
 def render_template(mocker):
     render_template = mocker.patch("flaskteroids.helpers.render_template")
     render_template.return_value = "<div>test</div>"
@@ -39,32 +25,13 @@ class TestHelpers:
         assert html.has("a", href="/test", class_="btn", id="link")
         assert html.text == "Click me"
 
-    def test_button_to_generates_delete_form(self, model_instance, url_for):
-        url_for.return_value = "/delete/1"
-        result = button_to("Delete", model_instance, "delete")
+    def test_button_to_generates_delete_form(self):
+        result = button_to("Delete", "/records/1", method="delete")
         html = HTML(result)
-        assert html.has("form", method="DELETE", action="/delete/1")
+        assert html.has("form", method="POST", action="/records/1")
+        assert html.has("input", name="_method", value="DELETE")
         assert html.has("button", type="submit")
         assert "Delete" in html.text
-
-    @pytest.mark.parametrize(
-        "identity, action, override", [(None, "/create", ""), (1, "/update/1", "PUT")]
-    )
-    def test_form_with_selects_model_route_and_method_override(
-        self, model_instance, url_for, identity, action, override
-    ):
-        model_instance.id = identity
-        url_for.return_value = action
-
-        result = form_with(model=model_instance, caller=lambda _: "<input>")
-
-        html = HTML(result)
-        assert html.has("form", action=action, method="POST")
-        assert html.has("input", name="_method", value=override)
-        if identity is None:
-            url_for.assert_called_with("create_test_model")
-        else:
-            url_for.assert_called_with("update_test_model", id=identity)
 
     def test_render_calls_render_template(self, render_template):
         result = render("test.html", name="value")

@@ -128,7 +128,7 @@ for column selection and authentication-field filtering.
 
 ## Content negotiation
 
-Use `respond` to return HTML or JSON from the same action. It selects a handler based on the request's `Accept` header or a `.json/` URL suffix:
+Use `respond` to return HTML or JSON from the same action. It selects a handler based on the request's `Accept` header or a `.json` URL suffix:
 
 ```python
 from flaskteroids.controller import ActionController, render, respond

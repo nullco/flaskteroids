@@ -141,7 +141,9 @@ def test_raw_input_and_numericality_survive_failed_submission(records, value):
     assert author.read_attribute_before_type_cast("age") == value
     assert author.save() is False
     with records.app.test_request_context():
-        html = form_with(model=author, caller=lambda form: form.number_field("age"))
+        html = form_with(
+            model=author, url="/authors", caller=lambda form: form.number_field("age")
+        )
     assert f'value="{value}"' in html
     author.name = "Ada"
     valid = value == "12"
@@ -274,6 +276,7 @@ def test_authentication_excludes_sensitive_input_from_serialization(records):
     with records.app.test_request_context():
         html = form_with(
             model=author,
+            url="/authors",
             caller=lambda form: (
                 form.password_field("password") + form.text_field("password_digest")
             ),

@@ -187,10 +187,11 @@ def test_transients_descriptors_and_private_caches_are_instance_local(mocker, se
     assert loaded._render_cache == {}
     assert "delivery_hint" not in user.__json__()
     assert "category" not in user.__json__()
-    mocker.patch("flaskteroids.helpers.url_for", return_value="/users/")
     with current_app.test_request_context():
         html = form_with(
-            model=user, caller=lambda form: form.text_field("delivery_hint")
+            model=user,
+            url="/users",
+            caller=lambda form: form.text_field("delivery_hint"),
         )
     assert "preview" not in html
 

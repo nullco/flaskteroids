@@ -24,3 +24,24 @@ PostgreSQL/MySQL matrix; the Python-version matrix uses SQLite.
 **Use only a fresh, disposable database.** Tests create tables and write/delete
 records, then roll back their migrations. The account needs permission to create
 and migrate the database. A configured but unavailable database fails the tests.
+
+## Routing/form correctness
+
+`test_routing_correctness.py` generates a catalog plus authentication and nested
+subscriptions. It exercises actual/form/header logout, CSRF rejection, child
+create/update and validation redisplay, and raw numeric input through generated
+controllers/templates. Shared generation/subprocess fixtures live in
+`tests/generated_application.py`; executable scenarios and application edits are
+ordinary source files. No known-failure markers remain.
+
+Browser workflows live separately in `tests/system/test_routing_workflows.py`,
+so the database-only integration job remains browser-free. They exercise generated
+navigation, CRUD, nested forms, scaffold deletion, and normal session logout with
+CSRF enabled and JavaScript both disabled/enabled. External Turbo loading is
+blocked: remote/Turbo behavior is outside this correctness package.
+
+`tests/routing/` covers method override behavior, native route boundaries,
+multipart uploads/limits, resource identities/helpers, and model form/button
+inference. Method override inputs and expectations are ordinary Python test data
+in `tests/routing/method_override_cases.py`. These suites test Flaskteroids and its
+generated applications, not Rails or Rack.

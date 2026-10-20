@@ -25,10 +25,73 @@ Use `form_with` to build model-backed forms and `params.expect` to filter submit
 {% endcall %}
 ```
 
+### Destinations and HTTP methods
+
+New records infer their collection URL and POST. Persisted records infer their
+member URL and **PATCH**, rendered as POST with a hidden `_method`. An explicit
+method always wins; `method="PUT"` remains supported for an update.
+
+An explicit URL changes only the destination. The model still supplies values,
+errors, and default method inference:
+
+```html
+{% call(form) form_with(model=post, url="/review", method="POST") %}
+  {{ form.text_field("title") }}
+  {{ form.submit("Review") }}
+{% endcall %}
+```
+
+With a persisted `post`, omitting `method="POST"` here would infer PATCH, not POST.
+`url=None` (or omission) permits inference; `url=False` omits `action`; `url=""`
+keeps an explicit empty action targeting the current page.
+
+Ordinary nested model destinations accept a list or tuple:
+
+```html
+{% call(form) form_with(model=[product, subscriber]) %}
+  {{ form.email_field("email") }}
+  {{ form.submit("Subscribe") }}
+{% endcall %}
+```
+
+A new child submits to `product_subscribers_path(product)` with POST; a persisted
+child submits to `product_subscriber_path(product, subscriber)` with PATCH.
+Fields use the child prefix (`subscriber[email]`) and child values, including
+rejected input. `scope="signup"` overrides that prefix without changing the
+value/error-owning model. Missing ancestor identities fail diagnostically.
+Nested URLs do **not** enable nested-attribute mass assignment or persistence.
+
 Field helpers include `text_field`, `text_area`, `password_field`, and `checkbox`.
 Use `file_field('avatar')` or `file_field('documents', multiple=True)` for uploads.
 `form_with` detects these fields and adds multipart encoding. See
 [Attachments](attachments.md) for attachment forms and permitted parameters.
+
+## Buttons that submit forms
+
+```html
+{{ button_to("Create", "/products") }}
+{{ button_to("Save", product) }}
+{{ button_to("Delete", product, method="DELETE") }}
+{{ button_to("Log out", session_path(), method="DELETE") }}
+```
+
+The default is POST for an explicit URL or new record and PATCH for a persisted
+record. Nested model sequences infer from the final record, just like forms.
+Deletion is always explicit. GET and POST render native HTML methods;
+PUT/PATCH/DELETE render POST plus the corresponding hidden override. GET forms
+include neither CSRF tokens nor method overrides, preventing tokens in query
+strings. Unsafe forms include a CSRF token.
+
+Button attributes and form attributes are separate:
+
+```html
+{{ button_to("Save", product, id="save-button", form={"id": "save-form", "class": "inline"}) }}
+```
+
+Labels and attributes are escaped; trusted `Markup` is permitted for labels,
+not unescaped attributes. Unsupported/executable destination schemes are rejected.
+Action omission, arbitrary extra hidden button parameters, and remote/Turbo
+options are not part of this bounded button API.
 
 ## Form values and escaping
 
@@ -122,7 +185,11 @@ errors and unrelated exceptions are not translated into 400 responses.
 
 ## CSRF protection
 
-Flaskteroids checks CSRF tokens on state-changing requests, meaning all methods except GET, HEAD, OPTIONS, and TRACE. `form_with` includes the token for you.
+Flaskteroids checks CSRF tokens on state-changing requests, meaning all methods
+except GET, HEAD, OPTIONS, and TRACE. `form_with` and `button_to` include the token
+for unsafe forms, never GET forms. POST method overrides are normalized before
+routing and this check; an overridden DELETE receives the same protection as an
+actual DELETE request. See [Routing](../controllers/routing.md#html-method-overrides).
 
 Tokens are signed, expire after one hour, and are bound to a random nonce stored in
 the browser session. A token from another session is rejected. Clearing the session

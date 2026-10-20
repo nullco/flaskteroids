@@ -6,11 +6,23 @@ class HTML(HTMLParser):
     def __init__(self, source):
         super().__init__()
         self.elements = []
+        self.forms = []
+        self._form = None
         self.text = ""
         self.feed(str(source))
 
     def handle_starttag(self, tag, attrs):
-        self.elements.append((tag, dict(attrs)))
+        attrs = dict(attrs)
+        self.elements.append((tag, attrs))
+        if tag == "form":
+            self._form = {"attributes": attrs, "fields": {}}
+            self.forms.append(self._form)
+        elif tag == "input" and self._form is not None and "name" in attrs:
+            self._form["fields"][attrs["name"]] = attrs.get("value", "")
+
+    def handle_endtag(self, tag):
+        if tag == "form":
+            self._form = None
 
     def handle_data(self, data):
         self.text += data

@@ -109,7 +109,7 @@ def test_users_update_redirects_after_valid_submission(client):
         "/users/", data={"csrf_token": csrf_token, "user.username": "test"}
     )
     location = res.location
-    res = client.get(f"{location}edit")
+    res = client.get(f"{location}/edit")
     csrf_token = _extract_csrf_token(res)
     res = client.put(
         location, data={"csrf_token": csrf_token, "user.username": "updated"}

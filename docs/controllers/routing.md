@@ -1,212 +1,201 @@
 # Routing
 
-Define routes in `config/routes.py`. Its `register` function receives a router instance. You can map individual HTTP methods and paths, or use `resources` to generate CRUD routes.
+Define routes in `config/routes.py`. Its `register` function receives a router.
+Actions use `"controller#action"`: `products#show` calls
+`ProductsController.show` from `app/controllers`.
 
-## Route format
-
-Routes map requests to controller actions using `"controller#action"`. Flaskteroids discovers controllers in the `CONTROLLERS['LOCATION']` directory, which defaults to `app/controllers`. It converts controller names to CamelCase and appends `Controller`. For example, `posts#show` calls `PostsController.show`.
-
-## Standard routes
-
-Map an HTTP method and path to an action:
-
-### GET routes
-
-Define a GET route using `router.get(path, to="controller#action", as_=None)`:
+## Individual routes
 
 ```python
-# config/routes.py
-def register(router):
-    router.get("/", to="welcome#index")
-    router.get("/about", to="pages#about")
-    router.get("/users/<int:id>", to="users#show")
+def register(route):
+    route.root(to="products#index")
+    route.get("/about", to="pages#about", as_="about")
+    route.post("/login", to="sessions#create")
+    route.put("/products/<int:id>", to="products#update")
+    route.patch("/products/<int:id>", to="products#update")
+    route.delete("/products/<int:id>", to="products#destroy")
 ```
 
-### POST routes
+Use Flask/Werkzeug converter syntax for typed bindings. A root route is optional;
+without one, Flaskteroids displays its welcome page. Explicit individual paths
+keep the slash spelling you declare.
 
-Define a POST route using `router.post(path, to="controller#action", as_=None)`:
+## Resources
 
 ```python
-def register(router):
-    router.post("/users", to="users#create")
-    router.post("/login", to="sessions#create")
+def register(route):
+    route.resources("products")
 ```
 
-### PUT routes
+| Method | Path | Action | Public path helper |
+| --- | --- | --- | --- |
+| GET | `/products` | index | `products_path()` |
+| POST | `/products` | create | `products_path()` |
+| GET | `/products/new` | new | `new_product_path()` |
+| GET | `/products/<int:id>` | show | `product_path(product)` |
+| GET | `/products/<int:id>/edit` | edit | `edit_product_path(product)` |
+| PUT/PATCH | `/products/<int:id>` | update | `product_path(product)` |
+| DELETE | `/products/<int:id>` | destroy | `product_path(product)` |
 
-Define a PUT route using `router.put(path, to="controller#action", as_=None)`:
+Collection and member helpers name destinations, not individual actions. HTTP
+methods distinguish create from index, and update/destroy from show. Resource
+paths are generated **without trailing slashes**. Requests with a trailing slash
+also dispatch directly, including write requests; there is no redirect or body
+replay. This tolerance also applies to `.json/` requests.
+
+Limit actions with `only`; an empty list generates no resource actions:
 
 ```python
-def register(router):
-    router.put("/users/<int:id>", to="users#update")
+route.resources("products", only=["create", "update", "destroy"])
 ```
 
-### PATCH routes
-
-Define a PATCH route using `router.patch(path, to="controller#action", as_=None)`:
-
-```python
-def register(router):
-    router.patch("/users/<int:id>", to="users#update")
-```
-
-Resource update routes accept both PUT and PATCH.
-
-### DELETE routes
-
-Define a DELETE route using `router.delete(path, to="controller#action", as_=None)`:
-
-```python
-def register(router):
-    router.delete("/users/<int:id>", to="users#destroy")
-```
-
-### Root route
-
-The root route maps `/`. If you do not define one, Flaskteroids adds a route to its welcome controller.
-
-```python
-def register(router):
-    router.root(to="welcome#index")  # or router.get("/", to="welcome#index")
-```
-
-## Resource routes
-
-Use `resources` to generate the standard CRUD routes for a controller.
-
-### Plural resources
-
-The `router.resources(name, param=None, only=None, nested=None)` method generates standard CRUD routes for a plural resource:
-
-```python
-def register(router):
-    router.resources("posts")
-```
-
-This generates the following routes:
-
-| HTTP method | Path                   | Controller#Action | Named route    |
-|-------------|------------------------|-------------------|----------------|
-| GET         | /posts/                | posts#index       | index_post     |
-| GET         | /posts/new/            | posts#new         | new_post       |
-| POST        | /posts/                | posts#create      | create_post    |
-| GET         | /posts/<int:id>/       | posts#show        | show_post      |
-| GET         | /posts/<int:id>/edit/  | posts#edit        | edit_post      |
-| PUT/PATCH   | /posts/<int:id>/       | posts#update      | update_post    |
-| DELETE      | /posts/<int:id>/       | posts#destroy     | destroy_post   |
-
-The identifier defaults to `<int:id>`. Use `param` to change its name or type:
-
-```python
-def register(router):
-    router.resources("posts", param="int:post_id")
-    # or for string IDs
-    router.resources("posts", param="post_id")
-```
-
-### Limiting actions
-
-Use the `only` parameter to generate only specific actions:
-
-```python
-def register(router):
-    router.resources("posts", only=["index", "show"])
-    # Generates only GET /posts/ and GET /posts/<int:id>/
-```
+The collection/member helpers remain available without index/show. Unsupported
+operations on framework routes return 404; they do not fall back to another verb.
+Unrelated native Flask endpoints retain their normal method handling (including
+405). A native endpoint matching the original method takes precedence over
+framework override handling at a shared path.
 
 ### Singular resources
 
-For a resource without an identifier in its path, such as `/profile`, use `router.resource(name, only=None)`:
+A singular resource has no member ID:
 
 ```python
-def register(router):
-    router.resource("profile")
+route.resource("session", only=["new", "create", "destroy"])
 ```
 
-This generates:
-
-| HTTP method | Path              | Controller#Action | Named route        |
-|-------------|-------------------|-------------------|--------------------|
-| GET         | /profile/new/     | profiles#new      | new_profile        |
-| POST        | /profile/         | profiles#create   | create_profile     |
-| GET         | /profile/         | profiles#show     | show_profile       |
-| GET         | /profile/edit/    | profiles#edit     | edit_profile       |
-| PUT/PATCH   | /profile/         | profiles#update   | update_profile     |
-| DELETE      | /profile/         | profiles#destroy  | destroy_profile    |
-
-The controller name is still plural, so `profile` routes to `ProfilesController`.
+This provides `new_session_path()` at `/session/new` and `session_path()` at
+`/session`. POST creates a session; DELETE destroys it. The controller remains
+plural: `SessionsController`. A default singular resource additionally provides
+show, edit, and PUT/PATCH update, but never index.
 
 ### Nested resources
 
-Nest resources to create hierarchical routes:
-
 ```python
-def register(router):
-    router.resources("users", nested=lambda r: [
-        *r.resources("posts"),
-        *r.resources("comments")
-    ])
-```
-
-The generated paths include:
-
-- `GET /users/<int:user_id>/posts/`
-- `POST /users/<int:user_id>/posts/`
-- `GET /users/<int:user_id>/posts/<int:id>/`
-
-## Named routes
-
-Flaskteroids generates a name for each route. Use `as_` to override it:
-
-```python
-def register(router):
-    router.get("/dashboard", to="users#dashboard", as_="user_dashboard")
-    router.resources("posts", as_="articles")  # Affects all generated routes
-```
-
-### Path and URL helpers
-
-Resource routes generate path and URL helpers:
-
-```python
-from flaskteroids.routes import (
-    edit_post_path,
-    new_post_path,
-    post_path,
-    post_url,
-    posts_path,
+route.resources(
+    "products",
+    nested=lambda child: child.resources("subscribers"),
 )
-
-posts_path()             # /posts/
-new_post_path()          # /posts/new/
-post_path(post)          # /posts/1/
-edit_post_path(post)     # /posts/1/edit/
-post_url(post)           # http://example.test/posts/1/
 ```
 
-Helpers accept either a model instance or an identifier.
+The parent's own member routes still receive `id`. A subscriber collection
+receives `product_id`; a subscriber member receives both `product_id` and its own
+`id`.
 
-## JSON routes
+```python
+products_path()                              # /products
+product_path(product)                        # /products/1
+product_subscribers_path(product)            # /products/1/subscribers
+product_subscriber_path(product, subscriber) # /products/1/subscribers/2
+new_product_subscriber_path(product)         # /products/1/subscribers/new
+edit_product_subscriber_path(product, subscriber)
+# /products/1/subscribers/2/edit
+```
 
-Resource routes also include `.json/` paths for `index`, `create`, `show`, `update`, and `destroy`:
+Multiple levels retain each ancestor's identity. To declare siblings, concatenate
+or unpack the returned route lists:
 
-| HTTP method | Path | Action |
-| --- | --- | --- |
-| GET | `/posts/.json/` | `posts#index` |
-| POST | `/posts/.json/` | `posts#create` |
-| GET | `/posts/<int:id>/.json/` | `posts#show` |
-| PUT/PATCH | `/posts/<int:id>/.json/` | `posts#update` |
-| DELETE | `/posts/<int:id>/.json/` | `posts#destroy` |
+```python
+route.resources("products", nested=lambda child: [
+    *child.resources("subscribers"),
+    *child.resources("reviews"),
+])
+```
 
-## Method overrides
+### Custom parameters
 
-HTML forms support GET and POST. To submit a PUT or DELETE request, include a `_method` parameter in a POST form:
+```python
+route.resources(
+    "products", param="slug",
+    nested=lambda child: child.resources("subscribers"),
+)
+```
+
+The parent receives `slug`; the child receives `product_slug` plus its own `id`.
+`param="int:sku"` instead supplies integer `sku` and `product_sku` bindings.
+Changing a route parameter does not guess an attribute on a model. Pass explicit
+identifiers or intentionally override the model's public `to_param()`:
+
+```python
+product_path("cotton-shirt")
+product_subscriber_path(product_slug="cotton-shirt", id=2)
+
+class Product(ApplicationModel):
+    def to_param(self):
+        return self.slug if self.is_persisted() else None
+```
+
+The default `to_param()` returns a persisted record's ID as a string; unsaved
+records have no member identity. Model-backed forms/buttons for new records use
+collection destinations instead.
+
+## Helpers in Python and templates
+
+```python
+from flaskteroids.routes import product_path, product_url
+
+product_path(product)               # /products/1
+product_path(id=1, page=2)           # /products/1?page=2
+product_url(product)                # https://example.test/products/1
+```
+
+The same helpers are available directly in Jinja:
 
 ```html
-<form action="/posts/1" method="POST">
-  <input type="hidden" name="_method" value="PUT">
-  <!-- form fields -->
-</form>
+{{ link_to(product.name, product_path(product)) }}
 ```
 
-Flaskteroids dispatches the request using the `_method` value rather than POST. Include a CSRF token as described in [Forms](../other/forms.md).
+Every `_path` helper has an absolute `_url` counterpart. Helpers resolve against
+the active application, including its script prefix; they do not query records
+or obtain missing bindings from the current request. Missing bindings raise
+`ValueError`; extra positional or duplicate bindings raise `TypeError`. Ambiguous
+route/helper declarations and template-global collisions are configuration errors.
+
+Outside a request, use an application context and configure Flask's `SERVER_NAME`
+and, where needed, `APPLICATION_ROOT` and `PREFERRED_URL_SCHEME`. Explicit callers
+control query values; do not forward unfiltered request parameters to URL helpers.
+Native Flask `url_for` remains available for advanced endpoint-based routing.
+
+An individual route's `as_` declares its public helper name:
+
+```python
+route.get("/dashboard", to="products#index", as_="dashboard")
+# dashboard_path(), dashboard_url()
+```
+
+## JSON destinations
+
+Use format suffixes, not separate action helpers:
+
+```python
+products_path(format="json")        # /products.json
+product_path(product, format="json") # /products/1.json
+```
+
+CRUD actions dispatch to the same controller actions as their HTML paths. A
+controller's `respond` selects JSON from a `.json` suffix or the Accept header.
+Only JSON format generation is currently supported.
+
+## HTML method overrides
+
+Browsers submit GET or POST forms. [`form_with` and `button_to`](../other/forms.md)
+render PUT/PATCH/DELETE as POST plus a hidden `_method` and a CSRF token:
+
+```html
+{{ button_to("Log out", session_path(), method="DELETE") }}
+```
+
+Only original POST requests are eligible. Form `_method` takes precedence over
+`X-HTTP-Method-Override`; the header is a fallback when the form parameter is
+absent. Query parameters never override the HTTP method. Values are normalized to
+uppercase; supported overrides are GET, HEAD, PUT, POST, DELETE, OPTIONS, PATCH,
+LINK, and UNLINK. Unsupported values leave POST in place. Empty or non-scalar
+form values block header fallback; repeated scalar values use the last value.
+
+Normalization happens before route matching and CSRF validation, using the same
+request and dependency-owned multipart parser. The effective method is visible
+as `request.method`. Both `request.form` and application `params` retain `_method`;
+CSRF tokens remain filtered from `params`. Malformed eligible POST form bodies are rejected with
+400 rather than dispatching a fallback action. Configured content length,
+multipart field-size, and part-count limits remain enforced.
+
+See [routing/form adoption](../other/routing-upgrade.md) for existing applications.

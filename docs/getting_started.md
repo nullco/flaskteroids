@@ -330,7 +330,7 @@ Our product data exists, but it has no web interface yet. A page request follows
 this path:
 
 ```text
-GET /products/
+GET /products
   → config/routes.py
   → ProductsController.index()
   → Product.all()
@@ -355,16 +355,17 @@ home page. `resources()` creates the standard CRUD routes:
 
 | Method | Path | Action | Purpose |
 | --- | --- | --- | --- |
-| GET | `/products/` | `index` | List products. |
-| GET | `/products/new/` | `new` | Display a creation form. |
-| POST | `/products/` | `create` | Save a new product. |
-| GET | `/products/<int:id>/` | `show` | Display one product. |
-| GET | `/products/<int:id>/edit/` | `edit` | Display an editing form. |
-| PUT/PATCH | `/products/<int:id>/` | `update` | Save changes. |
-| DELETE | `/products/<int:id>/` | `destroy` | Delete a product. |
+| GET | `/products` | `index` | List products. |
+| GET | `/products/new` | `new` | Display a creation form. |
+| POST | `/products` | `create` | Save a new product. |
+| GET | `/products/<int:id>` | `show` | Display one product. |
+| GET | `/products/<int:id>/edit` | `edit` | Display an editing form. |
+| PUT/PATCH | `/products/<int:id>` | `update` | Save changes. |
+| DELETE | `/products/<int:id>` | `destroy` | Delete a product. |
 
 GET retrieves information. POST creates it, PUT/PATCH updates it, and DELETE
-removes it. Notice the trailing slashes in resource paths.
+removes it. Helpers generate slashless resource URLs. A trailing slash is also
+accepted without redirecting or replaying a request body.
 
 Inspect the application's routes with:
 
@@ -449,7 +450,7 @@ class ProductsController(ApplicationController):
         self.product = Product.find(params["id"])
 ```
 
-The resource route captures the ID from `/products/<int:id>/`. The `show` action
+The resource route captures the ID from `/products/<int:id>`. The `show` action
 finds that product and makes it available to its template as `product`.
 
 Create `app/views/products/show.html`:
@@ -460,7 +461,7 @@ Create `app/views/products/show.html`:
 {% block body %}
   <h1>{{ product.name }}</h1>
   <p>{{ product.description }}</p>
-  {{ link_to("Back", url_for("index_product")) }}
+  {{ link_to("Back", products_path()) }}
 {% endblock %}
 ```
 
@@ -468,12 +469,13 @@ Now give visitors a way to reach it. In `app/views/products/index.html`, replace
 `<li>{{ product.name }}</li>` with:
 
 ```html
-<li>{{ link_to(product.name, url_for("show_product", id=product.id)) }}</li>
+<li>{{ link_to(product.name, product_path(product)) }}</li>
 ```
 
-`link_to` builds a link, and `url_for` builds its URL from a named endpoint.
-Endpoint names appear in `bin/flask routes`. Python code can also use helpers
-such as `product_path(product)` from `flaskteroids.routes`.
+`link_to` builds a link. Resource helpers such as `product_path(product)`
+have the same meaning in templates and Python; import them from
+`flaskteroids.routes` in Python code. Native Flask `url_for` remains available
+for custom endpoint-based routing.
 
 **Try it:** refresh the catalog, click Cotton T-Shirt, and follow Back. You can
 now browse both the collection and an individual product without typing its ID.
@@ -533,7 +535,7 @@ Create `app/views/products/new.html`:
     </div>
     {{ form.submit("Save product") }}
   {% endcall %}
-  {{ link_to("Cancel", url_for("index_product")) }}
+  {{ link_to("Cancel", products_path()) }}
 {% endblock %}
 ```
 
@@ -549,7 +551,7 @@ visitors can submit attributes that your HTML form does not expose.
 After the heading in `app/views/products/index.html`, add:
 
 ```html
-{{ link_to("New product", url_for("new_product")) }}
+{{ link_to("New product", new_product_path()) }}
 ```
 
 **Try it:** click New product and create a product named Hat. You should land on
@@ -596,7 +598,7 @@ The underscore marks this as a reusable partial. Replace `new.html` with:
 {% block body %}
   <h1>New product</h1>
   {% include "products/_form.html" %}
-  {{ link_to("Cancel", url_for("index_product")) }}
+  {{ link_to("Cancel", products_path()) }}
 {% endblock %}
 ```
 
@@ -608,19 +610,19 @@ Create `app/views/products/edit.html`:
 {% block body %}
   <h1>Edit product</h1>
   {% include "products/_form.html" %}
-  {{ link_to("Cancel", url_for("show_product", id=product.id)) }}
+  {{ link_to("Cancel", product_path(product)) }}
 {% endblock %}
 ```
 
 Both includes receive the current `product`. For a persisted record,
-`form_with` chooses the update URL and supplies a hidden method override:
-HTML forms only submit GET or POST directly, while our update route uses PUT
-or PATCH.
+`form_with` chooses its member URL and PATCH. The helper renders a POST form
+with a hidden PATCH override because browsers submit only GET or POST directly.
+An explicit `method="PUT"` is supported, but PATCH is the inferred update method.
 
 After the Back link in `app/views/products/show.html`, add:
 
 ```html
-{{ link_to("Edit", url_for("edit_product", id=product.id)) }}
+{{ link_to("Edit", edit_product_path(product)) }}
 ```
 
 **Try it:** edit Hat, change its description, and save. Then try an edit with a
@@ -694,12 +696,10 @@ Include `destroy` in the callback's action list:
 @rules(before_action("_set_product", only=["show", "edit", "update", "destroy"]))
 ```
 
-After the Edit link in `app/views/products/show.html`, add a deletion form:
+After the Edit link in `app/views/products/show.html`, add a deletion button:
 
 ```html
-{% call(form) form_with(url=url_for("destroy_product", id=product.id), method="DELETE") %}
-  {{ form.submit("Delete") }}
-{% endcall %}
+{{ button_to("Delete", product, method="DELETE") }}
 ```
 
 This generates a POST form with a CSRF token and a hidden DELETE override.
@@ -759,8 +759,8 @@ exit()
 `has_secure_password()` hashes the password; the database stores a digest, not
 its plaintext. Use a real password of your own, and do not put it in source code.
 
-Restart the server and visit <http://127.0.0.1:5000/products/new/>. You should be
-redirected to the login page at `/session/new/`. Log in with your account.
+Restart the server and visit <http://127.0.0.1:5000/products/new>. You should be
+redirected to the login page at `/session/new`. Log in with your account.
 
 ### Keep the catalog public
 
@@ -795,23 +795,19 @@ application's generated authentication concern. The new callback exposes an
 
 ### Show login and logout controls
 
-In `config/routes.py`, add
-`route.post("/logout/", to="sessions#destroy", as_="logout")` inside the existing
-`register(route)` function, keeping the authentication routes the generator added.
-Use this dedicated POST endpoint for logout: standard HTML forms cannot send
-DELETE directly, and the generated singular session resource shares its POST
-path with login. This keeps logout working without custom JavaScript.
+Use the generated singular session resource for logout. Its `session_path()`
+destination accepts POST for login and DELETE for logout; `button_to` renders
+the browser-safe POST form, hidden DELETE override, and CSRF token. No extra
+logout endpoint or JavaScript is needed.
 
 In `app/views/products/index.html`, replace the New product link with:
 
 ```html
 {% if authenticated %}
-  {{ link_to("New product", url_for("new_product")) }}
-  {% call(form) form_with(url=url_for("logout")) %}
-    {{ form.submit("Log out") }}
-  {% endcall %}
+  {{ link_to("New product", new_product_path()) }}
+  {{ button_to("Log out", session_path(), method="DELETE") }}
 {% else %}
-  {{ link_to("Log in", url_for("new_session")) }}
+  {{ link_to("Log in", new_session_path()) }}
 {% endif %}
 ```
 
@@ -819,10 +815,8 @@ In `app/views/products/show.html`, wrap the Edit and Delete controls:
 
 ```html
 {% if authenticated %}
-  {{ link_to("Edit", url_for("edit_product", id=product.id)) }}
-  {% call(form) form_with(url=url_for("destroy_product", id=product.id), method="DELETE") %}
-    {{ form.submit("Delete") }}
-  {% endcall %}
+  {{ link_to("Edit", edit_product_path(product)) }}
+  {{ button_to("Delete", product, method="DELETE") }}
 {% endif %}
 ```
 
@@ -831,7 +825,7 @@ write actions even if someone sends a request directly. This example has one
 role: every account can manage the catalog. Ownership checks, permissions, and
 public registration need additional application rules.
 
-Log out and verify that browsing still works, while `/products/new/` requires
+Log out and verify that browsing still works, while `/products/new` requires
 login again. Password reset also needs working mail delivery before real users
 can rely on it.
 
@@ -1112,15 +1106,19 @@ the product comes from the URL rather than an editable form field. Looking up
 an existing subscription avoids adding another during ordinary repeat visits;
 a production signup service also needs confirmation and abuse controls.
 
-In `config/routes.py`, keep the existing routes and add this inside `register`:
+In `config/routes.py`, replace the existing `route.resources("products")`
+declaration with the nested resource, keeping your other routes:
 
 ```python
-    route.post(
-        "/products/<int:product_id>/subscribers/",
-        to="subscribers#create",
-        as_="product_subscribers",
+    route.resources(
+        "products",
+        nested=lambda child: child.resources("subscribers", only=["create"]),
     )
 ```
+
+Product member actions still receive `id`; subscriber creation receives
+`product_id`. Python and templates can both use
+`product_subscribers_path(product)`.
 
 The nested URL tells the controller which product the visitor wants to follow.
 Replace `app/views/products/_inventory.html` with:
@@ -1131,16 +1129,17 @@ Replace `app/views/products/_inventory.html` with:
 {% else %}
   <p>Out of stock</p>
   <p>Email me when it is available:</p>
-  {% call(form) form_with(url=url_for("product_subscribers", product_id=product.id)) %}
-    {{ form.email_field("email", name="subscriber[email]", required=True, placeholder="you@example.org") }}
+  {% call(form) form_with(model=[product, Subscriber.new()]) %}
+    {{ form.email_field("email", required=True, placeholder="you@example.org") }}
     {{ form.submit("Notify me") }}
   {% endcall %}
 {% endif %}
 ```
 
-The explicit field name `subscriber[email]` groups the submitted email under
-`subscriber`, just as our product form groups its attributes under `product`.
-The controller filters that object with `params.expect(subscriber=["email"])`.
+The final model determines field scope and values, so the email is named
+`subscriber[email]` automatically. The parent supplies the nested URL binding;
+it does not become the field prefix or enable nested-attribute persistence.
+The controller filters the child with `params.expect(subscriber=["email"])`.
 
 Create `app/views/subscribers/new.html` for invalid submissions:
 
@@ -1154,11 +1153,11 @@ Create `app/views/subscribers/new.html` for invalid submissions:
       <li>{{ message }}</li>
     {% endfor %}
   </ul>
-  {% call(form) form_with(url=url_for("product_subscribers", product_id=product.id)) %}
-    {{ form.email_field("email", name="subscriber[email]", value=subscriber.email, required=True) }}
+  {% call(form) form_with(model=[product, subscriber]) %}
+    {{ form.email_field("email", required=True) }}
     {{ form.submit("Notify me") }}
   {% endcall %}
-  {{ link_to("Back", url_for("show_product", id=product.id)) }}
+  {{ link_to("Back", product_path(product)) }}
 {% endblock %}
 ```
 
@@ -1245,12 +1244,13 @@ Replace `app/mailers/product_mailer.py` with:
 ```python
 from app.mailers.application_mailer import ApplicationMailer
 from flask import url_for
+from flaskteroids.routes import product_url
 
 
 class ProductMailer(ApplicationMailer):
     def in_stock(self, product_name, product_id, recipient, unsubscribe_token):
         self.product_name = product_name
-        self.product_url = url_for("show_product", id=product_id, _external=True)
+        self.product_url = product_url(product_id)
         self.unsubscribe_url = url_for(
             "unsubscribe", token=unsubscribe_token, _external=True
         )
@@ -1258,7 +1258,9 @@ class ProductMailer(ApplicationMailer):
 ```
 
 Mail actions expose instance variables to templates, just like controllers.
-Email links need absolute URLs, so we use `_external=True`.
+Email links need absolute URLs: `product_url` is the absolute counterpart of
+`product_path`. The custom unsubscribe endpoint still uses `url_for` with
+`_external=True`.
 
 Replace `app/views/product_mailer/in_stock.html` with:
 
@@ -1613,7 +1615,7 @@ class ProductMailerTest(MailerTest):
         assert message["To"] == subscriber.email
         assert message["Subject"] == "T-Shirt is back in stock"
         text = message.get_body(preferencelist=("plain",)).get_content()
-        assert f"/products/{product.id}/" in text
+        assert f"/products/{product.id}" in text
         assert f"/unsubscribe/{subscriber.unsubscribe_token}/" in text
 ```
 
@@ -1646,7 +1648,7 @@ class ProductsControllerTest(IntegrationTest):
 
         with self.assert_difference(Subscriber.count):
             post(
-                f"/products/{product.id}/subscribers/",
+                f"/products/{product.id}/subscribers",
                 params={"subscriber": {"email": "new-reader@example.org"}},
             )
 

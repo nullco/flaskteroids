@@ -1,0 +1,10 @@
+{% if subscriber.errors %}
+  <ul id="errors">
+    {% for message in subscriber.errors.full_messages() %}<li>{{ message }}</li>{% endfor %}
+  </ul>
+{% endif %}
+{% call(form) form_with(model=[product, subscriber]) %}
+  {{ form.label("email") }}
+  {{ form.email_field("email") }}
+  {{ form.submit("Subscribe") }}
+{% endcall %}

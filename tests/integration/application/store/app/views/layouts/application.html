@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>{% block title %}Store{% endblock %}</title>
+    {{ stylesheet_link_tag("application") }}
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@latest/dist/turbo.es2017-esm.min.js"></script>
+  </head>
+  <body>
+    <nav>
+      {{ link_to("Products", products_path()) }}
+      {% if product is defined and product.is_persisted() %}
+        {{ link_to("Subscribe to product", new_product_subscriber_path(product)) }}
+        {% for child in product.subscribers %}
+          {{ link_to("Edit subscription", edit_product_subscriber_path(product, child)) }}
+        {% endfor %}
+      {% endif %}
+      {{ button_to("Log out", session_path(), method="DELETE") }}
+    </nav>
+    {% block body %}{% endblock %}
+  </body>
+</html>

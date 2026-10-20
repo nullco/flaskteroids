@@ -13,11 +13,11 @@
     {% with ${model_ref}=${model_ref} %}
     {% include "${plural}/_${model_ref}.html" %}
     {% endwith %}
-    <a href="{{ url_for('show_${singular}', id=${model_ref}.id) }}">Show this ${singular}</a>
+    <a href="{{ ${singular}_path(${model_ref}) }}">Show this ${singular}</a>
   {%  endfor %}
 </div>
 
 
-<a href="{{ url_for('new_${singular}') }}">New ${singular}</a>
+<a href="{{ new_${singular}_path() }}">New ${singular}</a>
 
 {% endblock %}
