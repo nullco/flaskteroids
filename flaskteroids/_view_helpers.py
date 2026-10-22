@@ -7,21 +7,29 @@ from dataclasses import dataclass
 from flaskteroids.exceptions import ProgrammerError
 from flaskteroids.rules import declaration
 
-# None means ordinary Flask rendering; mailers explicitly select their own scope.
+# None means ordinary Flask rendering; owner-bound renders select their scope.
 render_scope = ContextVar("flaskteroids.helper_scope", default=None)
 active_view = ContextVar("flaskteroids.active_view", default=None)
 render_assigns = ContextVar("flaskteroids.helper_assigns", default=None)
 
 
 @contextmanager
-def mailer_scope(owner, assigns):
-    token = render_scope.set(("mailer", owner))
+def owner_scope(kind, owner, assigns):
+    token = render_scope.set((kind, owner))
     assigns_token = render_assigns.set(assigns)
     try:
         yield
     finally:
         render_assigns.reset(assigns_token)
         render_scope.reset(token)
+
+
+def mailer_scope(owner, assigns):
+    return owner_scope("mailer", owner, assigns)
+
+
+def controller_scope(owner):
+    return owner_scope("controller", owner, vars(owner))
 
 
 @dataclass(frozen=True)

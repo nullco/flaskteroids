@@ -37,7 +37,7 @@ def mark_action_wrapper(wrapper, original):
     return wrapper
 
 
-def decorate_action(cls, action_fn):
+def decorate_action(cls, action_fn, *, performed=None):
     @wraps(action_fn)
     def wrapper(*args, **kwargs):
         definition = actions_for(cls)
@@ -46,6 +46,8 @@ def decorate_action(cls, action_fn):
         ]
         for ba in before_action:
             res = ba(*args, **kwargs)
+            if performed is not None and performed(args[0]):
+                return None
             if res:
                 return res
         generators = []

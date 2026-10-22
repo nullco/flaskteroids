@@ -42,8 +42,8 @@ def test_hooks_apply_selection_filters_and_preserve_registration_order(hook, sel
     init(Example)
     init(Example)
     instance = Example()
-    assert instance.index() == "index response"
-    assert instance.extra() == "extra response"
+    instance.index()
+    instance.extra()
     if hook is before_action:
         assert events == ["callback", "callback", "index"] + (
             ["extra"] if selection else ["callback", "callback", "extra"]

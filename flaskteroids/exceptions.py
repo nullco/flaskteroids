@@ -3,6 +3,10 @@ class ProgrammerError(Exception):
         super().__init__(*args)
 
 
+class DoubleRenderError(ProgrammerError):
+    pass
+
+
 class UserError(Exception):
     def __init__(self, *args: object) -> None:
         super().__init__(*args)

@@ -4,7 +4,7 @@ from jinja2 import DictLoader
 
 from flaskteroids.actions import get_actions
 from flaskteroids.concern import Concern
-from flaskteroids.controller import ActionController, helper_method, init, render
+from flaskteroids.controller import ActionController, helper_method, init
 from flaskteroids.exceptions import ProgrammerError
 
 
@@ -39,7 +39,7 @@ def helpers_controller():
             self.prefix = request.headers.get("X-Prefix", "default")
             self.value = "<example>"
             if request.args.get("explicit"):
-                return render("show", status=422)
+                return self.render("show", status=422)
 
         def _secret(self):
             return "private"
@@ -66,6 +66,20 @@ def test_helpers_render_in_views_layouts_and_partials(
         )
 
     assert get_actions(helpers_controller) == ["show"]
+
+
+def test_render_uses_the_receiving_controllers_assigns_and_helpers(
+    helper_app, helpers_controller
+):
+    with helper_app.test_request_context("/"):
+        receiver = helpers_controller()
+        receiver.prefix = "receiver"
+        receiver.value = "body"
+        ActionController()
+        response = receiver.render("show")
+        assert response.get_data(as_text=True) == (
+            "receiver:layoutreceiver:bodyreceiver:partial"
+        )
 
 
 def test_helpers_are_scoped_to_the_current_controller(helper_app, helpers_controller):

@@ -2,6 +2,7 @@ from functools import wraps
 
 from flask import g, jsonify, make_response, render_template, request
 
+from flaskteroids._view_helpers import controller_scope
 from flaskteroids._view_helpers import helper as helper
 from flaskteroids._view_helpers import helper_method as helper_method
 from flaskteroids.actions import (
@@ -13,8 +14,11 @@ from flaskteroids.actions import (
     register_actions,
 )
 from flaskteroids.declarations import actions_for
+from flaskteroids.exceptions import DoubleRenderError, ProgrammerError
 from flaskteroids.inflector import inflector
 from flaskteroids.rules import bind_rules
+
+_UNSET = object()
 
 
 def init(cls):
@@ -36,14 +40,37 @@ def _decorate_actions(cls):
 
 def _decorate_action(cls, action):
     original = action
-    action = decorate_action(cls, action)
+
+    @wraps(action)
+    def invoke(self, *args, **kwargs):
+        result = original(self, *args, **kwargs)
+        if self.response is None and result is not None:
+            self._response = make_response(result)
+        if self.response is None and self._action_depth == 1:
+            self.render()
+        return self.response
+
+    action = decorate_action(
+        cls, invoke, performed=lambda controller: controller.response is not None
+    )
 
     @wraps(action)
     def wrapper(self, *args, **kwargs):
-        res = action(self, *args, **kwargs)
-        if res is not None:
-            return res
-        return render(action.__name__)
+        outermost = getattr(self, "_action_depth", 0) == 0
+        if outermost:
+            self._action_name = action.__name__
+            self._response = None
+            self._action_depth = 0
+        self._action_depth += 1
+        try:
+            result = action(self, *args, **kwargs)
+            if self.response is None and result is not None:
+                self._response = make_response(result)
+            if self.response is None and outermost:
+                self.render()
+            return self.response
+        finally:
+            self._action_depth -= 1
 
     return mark_action_wrapper(wrapper, original)
 
@@ -65,20 +92,6 @@ class FormatResponder:
             return handler()
         else:
             return "406 Not Acceptable", 406
-
-
-def render(action=None, *, status=200, json=None):
-    if action:
-        cname = inflector.underscore(
-            g.controller.__class__.__name__.replace("Controller", "")
-        )
-        view = render_template(
-            f"{cname}/{action}.html",
-            **{**g.controller.__dict__, "params": g.controller.params},
-        )
-        return make_response(view, status)
-    else:
-        return make_response(jsonify(_serialize_json(json)), status)
 
 
 def _serialize_json(value):
@@ -105,7 +118,14 @@ def respond(**kwargs):
 
 
 class ActionController:
-    __slots__ = ("_params", "__dict__", "__weakref__")
+    __slots__ = (
+        "_params",
+        "_response",
+        "_action_name",
+        "_action_depth",
+        "__dict__",
+        "__weakref__",
+    )
 
     def __init__(self, *args, **kwargs) -> None:
         g.controller = self
@@ -115,3 +135,32 @@ class ActionController:
         if not hasattr(self, "_params"):
             self._params = ActionParameters()
         return self._params
+
+    @property
+    def response(self):
+        return getattr(self, "_response", None)
+
+    def render(self, action=None, *, status=200, json=_UNSET):
+        if self.response is not None:
+            raise DoubleRenderError("This controller has already prepared a response.")
+        if json is not _UNSET:
+            if action is not None:
+                raise ProgrammerError("Choose either a template or JSON to render.")
+            response = make_response(jsonify(_serialize_json(json)), status)
+        else:
+            action = (
+                action if action is not None else getattr(self, "_action_name", None)
+            )
+            if not action:
+                raise ProgrammerError(
+                    "Specify a template when rendering outside an action."
+                )
+            cname = inflector.underscore(type(self).__name__.removesuffix("Controller"))
+            template = action if "/" in action else f"{cname}/{action}"
+            with controller_scope(self):
+                view = render_template(
+                    f"{template}.html", **{**vars(self), "params": self.params}
+                )
+            response = make_response(view, status)
+        self._response = response
+        return response

@@ -508,7 +508,6 @@ Add these imports to the controller:
 
 ```python
 from flaskteroids import redirect_to
-from flaskteroids.controller import render
 from flaskteroids.routes import product_path
 ```
 
@@ -522,7 +521,7 @@ Add these methods inside `ProductsController`, keeping `index` and `show`:
         self.product = Product.new(**self._product_params())
         if self.product.save():
             return redirect_to(product_path(self.product))
-        return render("new", status=422)
+        return self.render("new", status=422)
 
     def _product_params(self):
         return self.params.expect(product=["name", "description"])
@@ -601,7 +600,7 @@ its submission. Add these methods to `ProductsController`:
         self.product = Product.find(self.params["id"])
         if self.product.update(**self._product_params()):
             return redirect_to(product_path(self.product))
-        return render("edit", status=422)
+        return self.render("edit", status=422)
 ```
 
 We could copy the creation form, but then every new field would need two edits.
@@ -681,7 +680,7 @@ Replace `show`, `edit`, and `update` with these methods, and add `_set_product`:
     def update(self):
         if self.product.update(**self._product_params()):
             return redirect_to(product_path(self.product))
-        return render("edit", status=422)
+        return self.render("edit", status=422)
 
     def _set_product(self):
         self.product = Product.find(self.params["id"])
@@ -1090,7 +1089,6 @@ from app.controllers.application_controller import ApplicationController
 from app.models.product import Product
 from flaskteroids import redirect_to
 from flaskteroids.actions import skip_before_action
-from flaskteroids.controller import render
 from flaskteroids.routes import product_path
 
 
@@ -1103,7 +1101,7 @@ class SubscribersController(ApplicationController):
             **self.params.expect(subscriber=["email"])
         ).first_or_create()
         if not self.subscriber.is_persisted():
-            return render("new", status=422)
+            return self.render("new", status=422)
         return redirect_to(
             product_path(self.product),
             notice="We will email you when it is back in stock.",

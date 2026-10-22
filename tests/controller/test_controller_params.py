@@ -38,7 +38,7 @@ def test_callbacks_actions_and_rendering_share_controller_params(render_template
         "inputs/show.html",
         before_value="Reader",
         filtered={"name": "Allowed"},
-        after_value="Reader",
         params=controller.params,
     )
     assert controller.params["action_seen"] is True
+    assert controller.after_value == "Reader"

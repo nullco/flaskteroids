@@ -3,7 +3,6 @@ from app.models.product import Product
 from app.models.subscriber import Subscriber
 
 from flaskteroids import redirect_to
-from flaskteroids.controller import render
 from flaskteroids.routes import product_path
 
 
@@ -19,7 +18,7 @@ class SubscribersController(ApplicationController):
         )
         if self.subscriber.save():
             return redirect_to(product_path(self.product))
-        return render("new", status=422)
+        return self.render("new", status=422)
 
     def edit(self):
         self.product = Product.find(self.params["product_id"])
@@ -34,4 +33,4 @@ class SubscribersController(ApplicationController):
         )
         if self.subscriber.update(**self.params.expect(subscriber=["email"])):
             return redirect_to(product_path(self.product))
-        return render("edit", status=422)
+        return self.render("edit", status=422)

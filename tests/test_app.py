@@ -2,10 +2,10 @@ import re
 from http import HTTPStatus
 
 import pytest
+from flask import jsonify
 
 from flaskteroids import __version__
 from flaskteroids.application import Application
-from flaskteroids.controller import render
 from flaskteroids.exceptions import (
     InvalidParameter,
     MissingParameter,
@@ -81,7 +81,7 @@ def test_parameter_errors_return_bad_request(client, accept, data):
 def test_parameter_error_handlers_can_be_overridden(client, exception, data):
     @client.application.errorhandler(exception)
     def parameter_error(error):
-        return render(json={"error": type(error).__name__}, status=400)
+        return jsonify(error=type(error).__name__), 400
 
     csrf_token = _extract_csrf_token(client.get("/users/new/"))
     response = client.post("/users/", data={"csrf_token": csrf_token, **data})

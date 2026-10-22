@@ -253,8 +253,8 @@ class HelpersExtension:
             owner_class = type(owner) if owner is not None else None
             assigns = vars(owner) if owner is not None else {}
         else:
-            _, owner = scope
-            scope = ("mailer", id(owner) if owner is not None else None)
+            kind, owner = scope
+            scope = (kind, id(owner) if owner is not None else None)
             owner_class = type(owner) if owner is not None else None
             assigns = render_assigns.get() or {}
         view = active_view.get()
