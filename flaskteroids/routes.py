@@ -2,6 +2,7 @@ from uuid import UUID
 
 from flask import current_app, url_for
 
+from flaskteroids._routing import collection_route_key
 from flaskteroids.inflector import inflector
 
 
@@ -71,7 +72,9 @@ def _polymorphic_path(destination):
     names = [inflector.underscore(type(record).__name__) for record in ancestors]
     target_name = inflector.underscore(type(target).__name__)
     names.append(
-        target_name if target.is_persisted() else inflector.pluralize(target_name)
+        target_name
+        if target.is_persisted()
+        else collection_route_key(inflector.pluralize(target_name))
     )
     bindings = records if target.is_persisted() else ancestors
     return RouteHelper("_".join(names) + "_path")(*bindings)

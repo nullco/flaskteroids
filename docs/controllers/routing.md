@@ -39,9 +39,8 @@ def register(route):
 
 Collection and member helpers name destinations, not individual actions. HTTP
 methods distinguish create from index, and update/destroy from show. Resource
-paths are generated **without trailing slashes**. Requests with a trailing slash
-also dispatch directly, including write requests; there is no redirect or body
-replay. This tolerance also applies to `.json/` requests.
+paths are generated **without trailing slashes**. Requests with or without a
+trailing slash reach the same action, including `.json/` requests.
 
 Limit actions with `only`; an empty list generates no resource actions:
 
@@ -51,9 +50,20 @@ route.resources("products", only=["create", "update", "destroy"])
 
 The collection/member helpers remain available without index/show. Unsupported
 operations on framework routes return 404; they do not fall back to another verb.
-Unrelated native Flask endpoints retain their normal method handling (including
-405). A native endpoint matching the original method takes precedence over
-framework override handling at a shared path.
+
+### Uncountable resources
+
+Uncountable names distinguish collection and member helpers with `_index`:
+
+```python
+route.resources("fish")
+
+fish_index_path()  # /fish
+fish_path(fish)    # /fish/1
+new_fish_path()    # /fish/new
+```
+
+Model-backed forms and buttons use these same names, including nested resources.
 
 ### Singular resources
 
@@ -112,6 +122,7 @@ route.resources(
 
 The parent receives `slug`; the child receives `product_slug` plus its own `id`.
 `param="int:sku"` instead supplies integer `sku` and `product_sku` bindings.
+Path bindings take precedence over query parameters and form fields.
 Changing a route parameter does not guess an attribute on a model. Pass explicit
 identifiers or intentionally override the model's public `to_param()`:
 
@@ -184,18 +195,11 @@ render PUT/PATCH/DELETE as POST plus a hidden `_method` and a CSRF token:
 {{ button_to("Log out", session_path(), method="DELETE") }}
 ```
 
-Only original POST requests are eligible. Form `_method` takes precedence over
-`X-HTTP-Method-Override`; the header is a fallback when the form parameter is
-absent. Query parameters never override the HTTP method. Values are normalized to
-uppercase; supported overrides are GET, HEAD, PUT, POST, DELETE, OPTIONS, PATCH,
-LINK, and UNLINK. Unsupported values leave POST in place. Empty or non-scalar
-form values block header fallback; repeated scalar values use the last value.
+Use the helpers rather than building hidden fields yourself. An overridden
+DELETE has the same routing and CSRF protection as an actual DELETE request.
+Overrides apply to all routes in the application, including native Flask routes;
+`request.method` reports the effective method.
 
-Normalization happens before route matching and CSRF validation, using the same
-request and dependency-owned multipart parser. The effective method is visible
-as `request.method`. Both `request.form` and application `params` retain `_method`;
-CSRF tokens remain filtered from `params`. Malformed eligible POST form bodies are rejected with
-400 rather than dispatching a fallback action. Configured content length,
-multipart field-size, and part-count limits remain enforced.
-
-See [routing/form adoption](../other/routing-upgrade.md) for existing applications.
+For manual requests, only POST can be overridden. The `_method` form field takes
+precedence over `X-HTTP-Method-Override`; query parameters cannot change the method.
+Unsupported values leave the request as POST.

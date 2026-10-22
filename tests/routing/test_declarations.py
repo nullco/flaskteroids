@@ -1,6 +1,8 @@
 import pytest
 from flask import render_template_string
 
+from flaskteroids.exceptions import ProgrammerError
+
 
 @pytest.mark.parametrize("method", ["get", "post", "put", "patch", "delete"])
 def test_individual_verbs_dispatch_to_named_actions(make_routing_app, method):
@@ -14,6 +16,36 @@ def test_individual_verbs_dispatch_to_named_actions(make_routing_app, method):
     response = app.test_client().open("/operation", method=method.upper())
     assert response.status_code == 200
     assert response.json["method"] == method.upper()
+
+
+def test_individual_routes_share_a_controller_action_across_verbs(make_routing_app):
+    def register(route):
+        route.root(to="products#index")
+        route.get("/about", to="pages#about", as_="about")
+        route.post("/login", to="sessions#create")
+        route.put("/products/<int:id>", to="products#update")
+        route.patch("/products/<int:id>", to="products#update")
+        route.delete("/products/<int:id>", to="products#destroy")
+
+    client = make_routing_app(register).test_client()
+    for method in ("PUT", "PATCH"):
+        response = client.open("/products/1", method=method)
+        assert response.json["action"] == "update"
+        assert response.json["params"] == {"id": 1}
+
+
+@pytest.mark.parametrize("explicit", [False, True])
+def test_duplicate_individual_declarations_report_collisions(
+    make_routing_app, explicit
+):
+    def register(route):
+        options = {"as_": "operation"} if explicit else {}
+        route.put("/operation", to="probes#update", **options)
+        method = route.patch if explicit else route.put
+        method("/operation", to="probes#update", **options)
+
+    with pytest.raises(ProgrammerError, match="endpoint"):
+        make_routing_app(register)
 
 
 def test_absolute_helper_retains_a_declared_name_ending_in_path(make_routing_app):

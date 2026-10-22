@@ -11,7 +11,7 @@
 
 <div>
   <a href="{{ edit_${singular}_path(${singular}) }}">Edit this ${singular}</a> |
-  <a href="{{ ${plural}_path() }}">Back to ${plural}</a>
+  <a href="{{ ${collection}_path() }}">Back to ${plural}</a>
   {{ button_to('Destroy this ${singular}', ${singular}, method='delete') }}
 </div>
 {% endblock %}

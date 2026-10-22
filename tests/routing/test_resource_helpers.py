@@ -1,7 +1,9 @@
 import pytest
 from flask import render_template_string
 
+import flaskteroids.routes as helpers
 from flaskteroids.exceptions import ProgrammerError
+from flaskteroids.helpers import button_to, form_with
 from flaskteroids.routes import (
     edit_product_path,
     edit_product_subscriber_path,
@@ -40,6 +42,54 @@ def test_helpers_generate_conventional_paths_and_dispatch(
             == path
         )
     assert routing_app.test_client().get(path).status_code == 200
+
+
+@pytest.mark.parametrize("name", ["fish", "equipment"])
+@pytest.mark.parametrize("nested", [False, True])
+def test_uncountable_resources_share_conventional_helpers_and_model_destinations(
+    make_routing_app, name, nested
+):
+    from tests.assertions import HTML
+    from tests.routing.app.models.records import Equipment, Fish, Product
+
+    def register(route):
+        if nested:
+            route.resources("products", nested=lambda child: child.resources(name))
+        else:
+            route.resources(name)
+
+    app = make_routing_app(register)
+    model = {"fish": Fish, "equipment": Equipment}[name]
+    with app.test_request_context():
+        parent = Product.create(name="Parent") if nested else None
+        record = model.create(
+            name="Persisted", product_id=parent.id if parent else None
+        )
+        fresh = model.new(name="Entered")
+        prefix = "product_" if nested else ""
+        bindings = (parent,) if nested else ()
+        collection = f"/products/{parent.id}/{name}" if nested else f"/{name}"
+        member = f"{collection}/{record.id}"
+        assert getattr(helpers, f"{prefix}{name}_index_path")(*bindings) == collection
+        assert getattr(helpers, f"{prefix}{name}_path")(*bindings, record) == member
+        assert (
+            getattr(helpers, f"new_{prefix}{name}_path")(*bindings)
+            == collection + "/new"
+        )
+        for child, url, method in (
+            (fresh, collection, "POST"),
+            (record, member, "PATCH"),
+        ):
+            destination = [parent, child] if nested else child
+            assert HTML(form_with(model=destination)).has("form", action=url)
+            html = HTML(button_to("Save", destination))
+            assert html.has("form", action=url)
+            assert html.has("input", name="_method", value=method) == (
+                method == "PATCH"
+            )
+    client = app.test_client()
+    assert client.get(collection).json["action"] == "index"
+    assert client.get(member).json["action"] == "show"
 
 
 def test_parent_and_child_keep_distinct_member_bindings(routing_app):

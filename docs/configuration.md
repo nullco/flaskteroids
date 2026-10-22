@@ -21,6 +21,18 @@ class Application(FlaskteroidsApplication):
 
 `config.load_defaults()` selects the framework defaults for the given version. Updating Flaskteroids does not change that selection. Change the version passed to `load_defaults()` to adopt newer defaults.
 
+## Request limits
+
+Set request limits in `configure`, rather than in request or controller callbacks:
+
+```python
+config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # Total request body: 16 MiB
+config["MAX_FORM_MEMORY_SIZE"] = 500_000         # Each multipart text field
+config["MAX_FORM_PARTS"] = 1_000                # Multipart fields and files
+```
+
+Requests that exceed these limits are rejected with **413 Content Too Large**.
+
 ## Using models and jobs in scripts
 
 Requests and jobs run inside an application context. In scripts, open one before

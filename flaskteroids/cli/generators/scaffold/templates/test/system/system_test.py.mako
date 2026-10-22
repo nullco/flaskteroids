@@ -1,5 +1,5 @@
 from test.test_helper import SystemTest
-from flaskteroids.routes import ${plural}_path
+from flaskteroids.routes import ${collection}_path
 
 
 class ${controller}Test(SystemTest):
@@ -9,6 +9,6 @@ class ${controller}Test(SystemTest):
         self.${singular} = self.${plural}("one")
 
     def test_visiting_the_index(self):
-        self.visit(${plural}_path())
+        self.visit(${collection}_path())
 
         self.assert_selector("h1", text="${plural.title()}")

@@ -17,6 +17,14 @@ class Subscriber(ApplicationModel):
     pass
 
 
+class Fish(ApplicationModel):
+    pass
+
+
+class Equipment(ApplicationModel):
+    pass
+
+
 class Category(ApplicationModel):
     def to_param(self):
         return self.slug if self.is_persisted() else None

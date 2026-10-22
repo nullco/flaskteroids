@@ -4,7 +4,7 @@ from flaskteroids.routes import (
     edit_${singular}_url,
     new_${singular}_url,
     ${singular}_url,
-    ${plural}_url,
+    ${collection}_url,
 )
 
 
@@ -15,7 +15,7 @@ class ${controller}ControllerTest(IntegrationTest):
         self.${singular} = self.${plural}("one")
 
     def test_should_get_index(self):
-        get(${plural}_url())
+        get(${collection}_url())
 
         self.assert_response("success")
 
@@ -27,7 +27,7 @@ class ${controller}ControllerTest(IntegrationTest):
     def test_should_create_${singular}(self):
         with self.assert_difference(${model}.count):
             post(
-                ${plural}_url(),
+                ${collection}_url(),
                 params={
                     "${singular}": {
                         ${attributes}
@@ -63,4 +63,4 @@ class ${controller}ControllerTest(IntegrationTest):
         with self.assert_difference(${model}.count, by=-1):
             delete(${singular}_url(self.${singular}))
 
-        self.assert_redirected_to(${plural}_url())
+        self.assert_redirected_to(${collection}_url())

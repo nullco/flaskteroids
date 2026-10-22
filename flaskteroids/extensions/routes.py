@@ -3,10 +3,11 @@ from dataclasses import dataclass
 from importlib import import_module
 
 from flask import request
-from werkzeug.exceptions import BadRequest, HTTPException, MethodNotAllowed
+from werkzeug.exceptions import BadRequest, HTTPException
 
 from flaskteroids import params
-from flaskteroids._routing import RouteDescription
+from flaskteroids._method_override import FORM_PAIRS
+from flaskteroids._routing import RouteDescription, collection_route_key
 from flaskteroids.controller import ActionController, init
 from flaskteroids.discovery import discover_classes
 from flaskteroids.exceptions import ProgrammerError
@@ -40,6 +41,7 @@ class RoutesExtension:
         self._app = app
         self._paths = set()
         self._endpoints = set()
+        self._targets = {}
         self._helpers = {}
         self._controllers = discover_classes(
             app.config.paths.controllers, ActionController
@@ -135,21 +137,15 @@ class RoutesExtension:
     def has_path(self, path):
         return path in self._paths
 
-    def matches_request(self, adapter, method):
-        """A matching native endpoint wins; otherwise identify managed path misses."""
-        try:
-            rule, _ = adapter.match(method=method, return_rule=True)
-            return rule.endpoint in self._endpoints
-        except MethodNotAllowed as error:
-            for candidate in error.valid_methods or ():
-                try:
-                    rule, _ = adapter.match(method=candidate, return_rule=True)
-                except HTTPException:
-                    continue
-                if rule.endpoint in self._endpoints:
-                    return True
-        except HTTPException:
-            pass
+    def owns_method_miss(self, adapter, error):
+        """Classify only method misses; successful requests are never pre-matched."""
+        for candidate in error.valid_methods or ():
+            try:
+                rule, _ = adapter.match(method=candidate, return_rule=True)
+            except HTTPException:
+                continue
+            if rule.endpoint in self._endpoints:
+                return True
         return False
 
     def _get_controller_class(self, controller_name):
@@ -172,21 +168,28 @@ class RoutesExtension:
             if not hasattr(controller, caction):
                 raise ProgrammerError(f"Action not found for <{to}>")
             instance = controller()
-            flat_params = request.form.to_dict(False)
-            for key, values in request.files.lists():
-                if key.endswith("[]"):
-                    flat_params.setdefault(key, []).extend(values)
-                else:
-                    flat_params[key] = values
-            flat_params.update(request.args.to_dict(False))
-            flat_params.update(kwargs)
-            flat_params.pop("csrf_token", None)
-            params.update(_unflatten_params(flat_params))
+            pairs = request.environ.get(FORM_PAIRS)
+            if pairs is None:
+                pairs = [
+                    *request.form.items(multi=True),
+                    *request.files.items(multi=True),
+                ]
+            values = _unflatten_params(pairs)
+            values.update(_unflatten_params(request.args.to_dict(False)))
+            values.update(kwargs)
+            values.pop("csrf_token", None)
+            params.update(values)
             return getattr(instance, caction)()
 
+        explicit_endpoint = endpoint is not None or as_ is not None
         endpoint = endpoint or as_ or f"{caction}_{inflector.singularize(cname)}"
         if endpoint in self._app.view_functions:
-            raise ProgrammerError(f"Conflicting route endpoint <{endpoint}>.")
+            if explicit_endpoint or self._targets.get(endpoint) != to:
+                raise ProgrammerError(f"Conflicting route endpoint <{endpoint}>.")
+            for rule in self._app.url_map.iter_rules(endpoint):
+                if rule.rule == path and set(methods).intersection(rule.methods):
+                    raise ProgrammerError(f"Conflicting route endpoint <{endpoint}>.")
+            view_func = self._app.view_functions[endpoint]
         self._app.add_url_rule(
             path,
             endpoint=endpoint,
@@ -197,6 +200,7 @@ class RoutesExtension:
         )
         self._paths.add(path)
         self._endpoints.add(endpoint)
+        self._targets[endpoint] = to
         if as_:
             self._register_helper(
                 as_, RouteDescription(endpoint, tuple(_PARAMETER.findall(path)), path)
@@ -232,7 +236,9 @@ class _ResourceBuilder:
         singular_name = name if singular else inflector.singularize(name)
         controller_name = inflector.pluralize(name) if singular else name
         member_name = "_".join((*self.scope, singular_name))
-        collection_name = "_".join((*self.scope, name))
+        collection_name = "_".join(
+            (*self.scope, name if singular else collection_route_key(name))
+        )
         parameter = param or "int:id"
         collection_path = f"{self.prefix}/{name}"
         member_path = (
@@ -278,7 +284,7 @@ def _unflatten_params(flat_dict):
         is_last = len(keys) == 1
         if key == "":
             if not isinstance(container, list):
-                container = []
+                raise BadRequest("Conflicting parameter shapes.")
             if is_last:
                 container.append(value)
             else:
@@ -287,8 +293,8 @@ def _unflatten_params(flat_dict):
                 container[-1] = insert(container[-1], keys[1:], value, indexed=indexed)
             return container
         if isinstance(container, list):
-            if not indexed:
-                raise BadRequest("Conflicting transport parameter shapes.")
+            if not indexed or not key.isdecimal():
+                raise BadRequest("Conflicting parameter shapes.")
             index = int(key)
             while len(container) <= index:
                 container.append({})
@@ -302,18 +308,21 @@ def _unflatten_params(flat_dict):
         if is_last:
             container[key] = value
         else:
-            if key not in container or not isinstance(container[key], (dict, list)):
+            if key not in container or container[key] is None:
                 next_key = keys[1]
                 container[key] = (
                     []
                     if next_key == "" or (indexed and re.fullmatch(r"\d+", next_key))
                     else {}
                 )
+            elif not isinstance(container[key], (dict, list)):
+                raise BadRequest("Conflicting parameter shapes.")
             container[key] = insert(container[key], keys[1:], value, indexed=indexed)
         return container
 
     result = {}
-    for flat_key, value in flat_dict.items():
+    entries = flat_dict.items() if isinstance(flat_dict, dict) else flat_dict
+    for flat_key, value in entries:
         parts = re.findall(r"\w+|\[\]", flat_key)
         if not parts:
             continue

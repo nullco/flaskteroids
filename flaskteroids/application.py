@@ -6,6 +6,7 @@ from pathlib import Path
 
 from flask import Flask
 
+from flaskteroids._method_override import MethodOverrideMiddleware
 from flaskteroids.configuration import Configuration
 from flaskteroids.credentials import Credentials, CredentialsError
 from flaskteroids.database_configuration import load_database_configuration
@@ -63,6 +64,7 @@ class Application(Flask):
 
         from flaskteroids.app import finalize_app, initialize_app
 
+        self.wsgi_app = MethodOverrideMiddleware(self, self.wsgi_app)
         initialize_app(self)
         self._run_initializers()
         finalize_app(self)

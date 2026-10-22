@@ -187,19 +187,14 @@ errors and unrelated exceptions are not translated into 400 responses.
 
 Flaskteroids checks CSRF tokens on state-changing requests, meaning all methods
 except GET, HEAD, OPTIONS, and TRACE. `form_with` and `button_to` include the token
-for unsafe forms, never GET forms. POST method overrides are normalized before
-routing and this check; an overridden DELETE receives the same protection as an
-actual DELETE request. See [Routing](../controllers/routing.md#html-method-overrides).
+for unsafe forms, never GET forms. An overridden DELETE receives the same
+protection as an actual DELETE request.
+See [Routing](../controllers/routing.md#html-method-overrides).
 
-Tokens are signed, expire after one hour, and are bound to a random nonce stored in
-the browser session. A token from another session is rejected. Clearing the session
-invalidates its tokens; reload forms to obtain a new token. Token generation requires
-an active request context and a configured Flask secret key. AJAX requests can send
-the token in the `X-CSRF-TOKEN` header instead of the `csrf_token` form field.
-
-Do not store pages containing CSRF tokens in a shared cache. Tokens are specific to each session.
-Applications upgrading from the old session-independent tokens must reload existing
-forms.
+Tokens belong to the browser session and expire after one hour. Clearing the
+session invalidates its tokens; reload forms to obtain a new token. AJAX requests
+can send the token in the `X-CSRF-TOKEN` header instead of the `csrf_token` form
+field. Do not store pages containing CSRF tokens in a shared cache.
 
 Include the token yourself in manual forms:
 

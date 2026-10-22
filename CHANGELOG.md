@@ -15,12 +15,10 @@
   scope. `button_to` accepts URLs/records/sequences and a keyword-only `method`;
   defaults are POST for URLs/new records and PATCH for persisted records. Unsafe
   methods use browser-valid POST forms with hidden overrides; GET forms omit CSRF.
-- Normalize eligible POST method overrides before route matching and CSRF checks.
-  Form values take precedence over the header; query strings never override.
-  Unmatched framework operations return 404 rather than 405 and never retry
-  create. `_method` is retained in application parameters. Native Flask endpoints
-  retain their ordinary dispatch. See [adoption instructions](docs/other/routing-upgrade.md)
-  for changed URLs, helpers, defaults, parsing boundaries, and edited auth files.
+- POST method overrides apply to all routes, including native Flask endpoints.
+  Form `_method` takes precedence over the header; query parameters cannot change
+  the method. Routing and CSRF protection use the effective method. Unsupported
+  operations on framework routes return 404.
 
 - Standalone model saves, updates, creation, and destruction now commit before
   returning, including associated writes. Use `Model.transaction()` to group
@@ -52,6 +50,9 @@
 - Standard session-resource logout, generated scaffold deletion, and nested child
   model forms work with CSRF enabled without JavaScript or application-owned route
   workarounds. Generators and the getting-started guide use those workflows.
+- Uncountable resource collections use `_index` helpers consistently with model
+  form/button inference. Individually declared verbs can share a controller
+  action, and structured input cannot replace route bindings.
 
 ## 0.6.0 - 2026-10-15
 

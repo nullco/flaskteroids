@@ -60,3 +60,11 @@ class ShopsController(ProbesController):
 
 class CategoriesController(ProbesController):
     pass
+
+
+class FishController(ProbesController):
+    pass
+
+
+class EquipmentController(ProbesController):
+    pass

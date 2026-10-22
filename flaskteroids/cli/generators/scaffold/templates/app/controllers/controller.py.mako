@@ -1,7 +1,7 @@
 from http import HTTPStatus
 from flaskteroids import params, rules, redirect_to
 from flaskteroids.actions import before_action
-from flaskteroids.routes import ${plural}_path, ${singular}_path
+from flaskteroids.routes import ${collection}_path, ${singular}_path
 from flaskteroids.controller import render, head, respond
 from app.controllers.application_controller import ApplicationController
 from app.models.${model_ref} import ${model}
@@ -59,7 +59,7 @@ class ${controller}Controller(ApplicationController):
     def destroy(self):
         self.${model_ref}.destroy()
         return respond(
-            html=lambda: redirect_to(${plural}_path(), status=HTTPStatus.SEE_OTHER),
+            html=lambda: redirect_to(${collection}_path(), status=HTTPStatus.SEE_OTHER),
             json=lambda: head(HTTPStatus.NO_CONTENT)
         )
 

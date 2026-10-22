@@ -1,6 +1,7 @@
 import click
 import yaml
 
+from flaskteroids._routing import collection_route_key
 from flaskteroids.cli.artifacts import ArtifactsBuilder
 from flaskteroids.cli.generators.model import generator as model
 from flaskteroids.cli.generators.scaffold import cmd_parser
@@ -10,6 +11,7 @@ from flaskteroids.cli.generators.templates import template
 
 def generate(name: str, args: list[str]):
     params = cmd_parser.parse(name, args)["parsed"]
+    params["collection"] = collection_route_key(params["plural"])
     ab = ArtifactsBuilder(".", click.echo)
     plural = params["plural"]
     singular = params["singular"]

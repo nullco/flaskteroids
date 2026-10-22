@@ -163,6 +163,8 @@ def new(app_name, skip_install):
             "system",
         ):
             ab.file(f"test/{directory}/.keep")
+            if directory != "fixtures":
+                ab.file(f"test/{directory}/__init__.py")
         ab.file(
             ".github/workflows/test.yml",
             _template(path=".github/workflows/test.yml.mako"),

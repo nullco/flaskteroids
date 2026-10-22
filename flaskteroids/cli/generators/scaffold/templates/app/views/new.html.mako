@@ -12,6 +12,6 @@
 <br>
 
 <div>
-  <a href="{{ ${plural}_path() }}">Back to ${plural}</a>
+  <a href="{{ ${collection}_path() }}">Back to ${plural}</a>
 </div>
 {% endblock %}

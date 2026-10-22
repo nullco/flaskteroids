@@ -13,6 +13,6 @@
 
 <div>
   <a href="{{ ${singular}_path(${model_ref}) }}">Show this ${singular}</a>
-  <a href="{{ ${plural}_path() }}">Back to ${plural}</a>
+  <a href="{{ ${collection}_path() }}">Back to ${plural}</a>
 </div>
 {% endblock %}

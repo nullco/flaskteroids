@@ -86,6 +86,30 @@ def test_route_bindings_take_precedence_over_query_and_form(routing_app):
     assert response.json["params"] == {"id": 1, "query": "kept", "_method": "patch"}
 
 
+@pytest.mark.parametrize("source", ["query", "form"])
+@pytest.mark.parametrize("shape", ["id[x]=bad", "id[]=bad"])
+def test_structured_input_keeps_route_bindings_authoritative(
+    routing_app, source, shape
+):
+    response = routing_app.test_client().patch(
+        "/products/1?" + (shape if source == "query" else ""),
+        data=shape if source == "form" else None,
+        content_type="application/x-www-form-urlencoded",
+    )
+    assert response.json["params"] == {"id": 1}
+
+
+@pytest.mark.parametrize("source", ["query", "form"])
+def test_conflicting_binding_shapes_reject_dispatch(routing_app, source):
+    values = "id=999&id[x]=bad"
+    response = routing_app.test_client().patch(
+        "/products/1?" + (values if source == "query" else ""),
+        data=values if source == "form" else None,
+        content_type="application/x-www-form-urlencoded",
+    )
+    assert response.status_code == 400
+
+
 @pytest.mark.parametrize("transport", ["verb", "form"])
 def test_unroutable_resource_method_returns_not_found(make_routing_app, transport):
     app = make_routing_app(lambda route: route.resource("probe", only=["create"]))
@@ -97,30 +121,32 @@ def test_unroutable_resource_method_returns_not_found(make_routing_app, transpor
     assert response.status_code == 404
 
 
-def test_native_endpoints_retain_method_contracts_and_override_parameters(routing_app):
-    @routing_app.post("/native")
+def test_native_endpoints_receive_the_effective_method_and_form(routing_app):
+    @routing_app.route("/native", methods=["POST", "DELETE"])
     def native():
         return {"method": request.method, "override": request.form.get("_method")}
 
     client = routing_app.test_client()
     assert client.post("/native", data={"_method": "delete"}).json == {
-        "method": "POST",
+        "method": "DELETE",
         "override": "delete",
     }
-    assert client.delete("/native").status_code == 405
+    assert client.patch("/native").status_code == 405
 
 
-def test_native_post_at_a_shared_path_keeps_its_original_dispatch(make_routing_app):
+def test_effective_method_selects_framework_action_at_a_shared_path(make_routing_app):
     app = make_routing_app(lambda route: route.delete("/shared", to="probes#destroy"))
 
     @app.post("/shared")
     def native():
         return "native"
 
+    client = app.test_client()
+    assert client.post("/shared").text == "native"
     assert (
-        app.test_client().post("/shared", data={"_method": "delete"}).text == "native"
+        client.post("/shared", data={"_method": "delete"}).json["action"] == "destroy"
     )
-    assert app.test_client().delete("/shared").json["action"] == "destroy"
+    assert client.delete("/shared").json["action"] == "destroy"
 
 
 def test_overridden_multipart_retains_uploads_fields_and_token(routing_app):
