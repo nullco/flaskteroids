@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.7.0 - 2026-10-22
+
 ### Breaking changes
 
 - Replace `@rules(...)` with explicitly imported declarations called directly in
