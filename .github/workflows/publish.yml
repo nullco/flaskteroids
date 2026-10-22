@@ -89,3 +89,11 @@ jobs:
           name: release-dist
           path: dist/
       - uses: pypa/gh-action-pypi-publish@release/v1
+
+  docs:
+    needs: publish
+    uses: ./.github/workflows/docs.yml
+    permissions:
+      contents: write
+    with:
+      ref: ${{ github.event.release.tag_name }}

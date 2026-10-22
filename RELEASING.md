@@ -72,10 +72,28 @@ merging a release PR. These workflows do not bypass branch protection.
    and wheel, then installs the wheel into a fresh environment. The smoke test
    generates an app and scaffold, applies migrations, and requests the scaffold
    page. Only then are the same built artifacts uploaded to PyPI.
+   After a successful upload, it deploys GitHub Pages documentation from that
+   exact release tag. Documentation builds are also checked in pull-request CI.
 
 The `Unreleased` section remains ready for the next changes. Regular merges do
 not publish anything. You may edit a draft's announcement before publishing it;
 edit the release PR if the packaged changelog itself needs changes.
+
+## Manual documentation deployment
+
+Regular merges do not update GitHub Pages. To publish a documentation-only fix
+or retry a failed docs deployment without uploading to PyPI again:
+
+1. Open **Actions → Docs → Run workflow**.
+2. Select the workflow branch (normally `main`).
+3. Optionally enter a branch, tag, or commit SHA in **ref** to choose the docs
+   source. Leave it empty to deploy from the selected workflow branch.
+4. Run the workflow and check that it succeeds.
+
+This replaces the live documentation. Prefer the published release tag for
+retries; deploy from `main` only when its docs are appropriate for the current
+published package. Manual and release deployments share a concurrency group
+so they do not push to `gh-pages` simultaneously.
 
 ## Failures and retries
 
@@ -90,6 +108,9 @@ edit the release PR if the packaged changelog itself needs changes.
   packaging, or credentials fail before upload, resolve the problem and rerun
   the workflow. Workflow fixes require a new release if they are absent from
   the tagged commit.
+- If documentation deployment fails after PyPI publishing, the package is already
+  released. Use the manual documentation workflow above rather than repeating
+  the PyPI upload.
 - PyPI versions are immutable. Never overwrite or move a published version's
   tag. Fix a bad release with a new patch version; yank the bad version on PyPI
   if needed. If an upload partially succeeded, inspect PyPI before retrying:
