@@ -154,7 +154,9 @@ def test_json_none_uses_json_null_without_changing_storage_semantics(engine, ses
         ("float_value", "", None, None),
         ("decimal_value", "1.50", Decimal("1.50"), Decimal("1.50")),
         ("decimal_value", False, Decimal("0"), Decimal("0")),
+        ("boolean_value", None, None, None),
         ("boolean_value", "", None, None),
+        ("boolean_value", "1", True, True),
         ("boolean_value", "false", False, False),
         ("boolean_value", "FALSE", False, False),
         ("boolean_value", "f", False, False),
@@ -182,7 +184,13 @@ def test_model_casts_input_preserves_raw_values_and_serializes_for_database(
     field, raw, typed, stored
 ):
     entry = Entry.new(required_value="Required", **{field: raw})
-    assert getattr(entry, field) == typed
+    value = getattr(entry, field)
+    assert value == typed
+    if field == "boolean_value":
+        assert value is typed
     assert entry.read_attribute_before_type_cast(field) == raw
     assert entry.save()
-    assert getattr(entry.reload(), field) == stored
+    value = getattr(entry.reload(), field)
+    assert value == stored
+    if field == "boolean_value":
+        assert value is stored

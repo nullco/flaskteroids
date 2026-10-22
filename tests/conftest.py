@@ -8,8 +8,8 @@ import pytest
 from flaskteroids.application import Application
 from flaskteroids.testing import TestDeliveryMethod, TestQueueAdapter
 from tests.generated_application import generated_app_factory as generated_app_factory
+from tests.generated_application import generated_scaffolds as generated_scaffolds
 from tests.generated_application import generated_store as generated_store
-from tests.generated_application import generated_uncountables as generated_uncountables
 
 
 @pytest.fixture

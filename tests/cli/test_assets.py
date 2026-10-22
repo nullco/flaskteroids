@@ -84,11 +84,15 @@ def test_generated_layout_loads_stylesheet_from_outside_app_root(
     assert result.returncode == 0, result.stdout + result.stderr
 
 
-def test_generated_docker_compiles_after_copy_and_before_runtime_user(
+def test_generated_docker_installs_runtime_and_precompiles_before_runtime_user(
     generated_assets_app,
 ):
     root = generated_assets_app
     dockerfile = (root / "Dockerfile").read_text()
+    assert "uv sync --locked --no-dev --no-install-project" in dockerfile
+    assert "COPY --from=deps /app/.venv /app/.venv" in dockerfile
+    assert "pip" not in dockerfile
+    assert 'CMD ["gunicorn", "wsgi:app"' in dockerfile
     assert dockerfile.index("COPY . .") < dockerfile.index(
         "RUN bin/flask assets:precompile"
     )

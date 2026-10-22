@@ -152,23 +152,6 @@ def test_raw_input_and_numericality_survive_failed_submission(records, value):
         assert "Field age is not a number" in author.errors.full_messages()
 
 
-@pytest.mark.parametrize(
-    ("raw", "expected"),
-    [
-        ("", None),
-        ("0", False),
-        ("OFF", False),
-        ("false", False),
-        ("1", True),
-        (None, None),
-    ],
-)
-def test_model_casts_boolean_input(records, raw, expected):
-    author = records.Author.create(name="Ada", active=raw)
-    assert author.active is expected
-    assert author.reload().active is expected
-
-
 def test_reload_discards_pending_input_without_changing_identity(records):
     author = records.Author.create(name="Ada", age="12")
     author.name = ""

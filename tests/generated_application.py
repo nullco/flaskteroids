@@ -58,16 +58,21 @@ def generated_app_factory(tmp_path_factory):
 
 
 @pytest.fixture(scope="module")
-def generated_uncountables(generated_app_factory):
-    root, run = generated_app_factory("aquarium")
+def generated_scaffolds(generated_app_factory):
+    root, run = generated_app_factory("catalog")
+    scaffolds = {
+        "Post": ("title:string", "content:text"),
+        "Fish": ("name:string",),
+        "Equipment": ("name:string",),
+    }
     run("db:create")
-    for model in ("Fish", "Equipment"):
-        run("generate", "scaffold", model, "name:string")
+    for model, fields in scaffolds.items():
+        run("generate", "scaffold", model, *fields)
     run("db:prepare")
     try:
         yield root, run
     finally:
-        for _ in ("Fish", "Equipment"):
+        for _ in scaffolds:
             run("db:rollback")
 
 

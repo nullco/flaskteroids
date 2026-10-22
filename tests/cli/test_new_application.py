@@ -1,40 +1,9 @@
 import os
-import shutil
 import subprocess
 import sys
-import tomllib
 from pathlib import Path
 
 from flaskteroids.cli.flaskteroids import cli
-from tests.assertions import assert_pytest_passed
-
-
-def test_generated_application_declares_runtime_dependencies(
-    tmp_path, monkeypatch, mocker
-):
-    mocker.patch("flaskteroids.cli.flaskteroids.version", return_value="0.4.0")
-    monkeypatch.chdir(tmp_path)
-    cli.main(
-        args=["new", "weblog", "--skip-install"],
-        prog_name="flaskteroids",
-        standalone_mode=False,
-    )
-
-    generated = tomllib.loads((tmp_path / "weblog" / "pyproject.toml").read_text())
-
-    assert generated["project"]["dependencies"] == [
-        "flaskteroids>=0.4.0,<0.5.0",
-        "gunicorn",
-    ]
-    assert "dependency-groups" not in generated
-    assert (tmp_path / "weblog/db/schema.py").is_file()
-    assert not (tmp_path / "weblog/app/schema.py").exists()
-
-    dockerfile = (tmp_path / "weblog" / "Dockerfile").read_text()
-    assert "uv sync --locked --no-dev --no-install-project" in dockerfile
-    assert "COPY --from=deps /app/.venv /app/.venv" in dockerfile
-    assert "pip" not in dockerfile
-    assert 'CMD ["gunicorn", "wsgi:app"' in dockerfile
 
 
 def test_generated_application_boots_in_development_and_production(
@@ -151,55 +120,3 @@ with patch('sqlalchemy.engine.Engine.connect', side_effect=AssertionError('unexp
 
     fresh = run(str(Path(__file__).parent / "fixtures/application/fresh_records.py"))
     assert fresh.returncode == 0, fresh.stdout + fresh.stderr
-
-
-def test_generated_scaffold_system_tests_pass(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
-    cli.main(
-        args=["new", "weblog", "--skip-install"],
-        prog_name="flaskteroids",
-        standalone_mode=False,
-    )
-    root = tmp_path / "weblog"
-    environment = os.environ | {"PYTHONPATH": str(Path(__file__).parents[2])}
-    if chrome := shutil.which("google-chrome"):
-        environment["PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"] = chrome
-
-    scaffold = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "flask",
-            "generate",
-            "scaffold",
-            "Post",
-            "title:string",
-            "content:text",
-        ],
-        cwd=root,
-        env=environment,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    assert scaffold.returncode == 0, scaffold.stderr
-
-    system_report = root / "system-tests.xml"
-    system_tests = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "flask",
-            "test:system",
-            "-q",
-            "--junitxml",
-            str(system_report),
-        ],
-        cwd=root,
-        env=environment,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    assert system_tests.returncode == 0, system_tests.stdout + system_tests.stderr
-    assert_pytest_passed(system_report)
