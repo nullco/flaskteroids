@@ -926,19 +926,16 @@ Stop the server and generate a migration for the existing products table:
 bin/flask generate migration AddInventoryCountToProducts inventory_count:integer
 ```
 
-Open the new file under `db/migrate/versions/`. Keep its generated revision
-metadata and `downgrade()`, but replace `upgrade()` with:
+Open the new file under `db/migrate/versions/`. In `upgrade()`, change only the
+`inventory_count` column to add `nullable=False` and `server_default="0"`:
 
 ```python
-def upgrade():
-    op.add_column(
-        "products",
-        sa.Column("inventory_count", sa.Integer(), nullable=False, server_default="0"),
-    )
+sa.Column("inventory_count", sa.Integer(), nullable=False, server_default="0")
 ```
 
-The generated migration already imports `op` and `sqlalchemy as sa`. The default
-of zero gives existing products an inventory count as well as new ones.
+Keep the rest of the migration unchanged. The default gives existing and new
+products a count of zero; `nullable=False` prevents null values. These are
+inventory-specific choices, not defaults the generator can infer.
 
 Apply it:
 
