@@ -5,7 +5,7 @@ from .application_model import ApplicationModel
 
 class Product(ApplicationModel):
     validates("name", presence=True)
-    validates("quantity", numericality={"only_integer": True, "allow_nil": True})
+    validates("quantity", numericality={"only_integer": True, "allow_none": True})
 
 
 class Subscriber(ApplicationModel):

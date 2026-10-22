@@ -68,7 +68,7 @@ class LengthConfig(TypedDict):
 
 class NumericalityConfig(TypedDict, total=False):
     only_integer: bool
-    allow_nil: bool
+    allow_none: bool
     message: str
 
 
@@ -170,7 +170,7 @@ def _validate_numericality(*, instance, field, config):
         return []
     options = {} if config is True else config
     value = instance.read_attribute_before_type_cast(field)
-    if value is None and options.get("allow_nil"):
+    if value is None and options.get("allow_none"):
         return []
     valid = not isinstance(value, bool) and value is not None
     if options.get("only_integer"):

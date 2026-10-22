@@ -229,6 +229,8 @@ publishing input. Types/casting do not replace explicit user-facing validation.
 Model assignment casts supported scalar types and retains original input through
 `read_attribute_before_type_cast(name)` and `attributes_before_type_cast`.
 Numericality checks raw input rather than trusting a permissive numeric cast.
+Use `numericality={"allow_none": True}` for optional numbers; this skips `None`,
+not blank strings.
 Model-backed forms redisplay that input after failed validation; see
 [Fields](../other/fields.md) and [Forms](../other/forms.md).
 

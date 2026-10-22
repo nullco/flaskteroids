@@ -65,6 +65,52 @@ def test_length_allows_none(entry_model, length):
     assert entry.save() is True
 
 
+@pytest.mark.parametrize("only_integer", [False, True])
+@pytest.mark.parametrize("attributes", [{}, {"quantity": None}])
+def test_numericality_accepts_none_when_enabled(entry_model, only_integer, attributes):
+    Entry = entry_model(
+        (
+            "quantity",
+            {"numericality": {"only_integer": only_integer, "allow_none": True}},
+        )
+    )
+    entry = Entry.new(**attributes)
+    assert entry.save() is True
+    assert entry.reload().quantity is None
+
+
+@pytest.mark.parametrize("numericality", [True, {"allow_none": False}])
+def test_numericality_rejects_none_by_default_or_when_disabled(
+    entry_model, numericality
+):
+    entry = entry_model(("quantity", {"numericality": numericality})).new(quantity=None)
+    assert entry.save() is False
+    assert entry.errors
+
+
+@pytest.mark.parametrize(
+    "value,valid",
+    [
+        (0, True),
+        ("12", True),
+        ("", False),
+        (" ", False),
+        ("invalid", False),
+        (False, False),
+        ("12.5", False),
+    ],
+)
+def test_allow_none_preserves_integer_validation_for_other_input(
+    entry_model, value, valid
+):
+    Entry = entry_model(
+        ("quantity", {"numericality": {"only_integer": True, "allow_none": True}})
+    )
+    entry = Entry.new(quantity=value)
+    assert entry.save() is valid
+    assert bool(entry.errors) is (not valid)
+
+
 def test_validation_preserves_message_order_and_allows_retry(entry_model):
     Entry = entry_model(
         ("name", {"presence": True}),

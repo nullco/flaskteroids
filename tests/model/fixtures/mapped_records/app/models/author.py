@@ -14,7 +14,7 @@ from .application_model import ApplicationModel
 
 class Author(ApplicationModel, PasswordAuthenticator):
     validates("name", presence=True)
-    validates("age", numericality={"only_integer": True, "allow_nil": True})
+    validates("age", numericality={"only_integer": True, "allow_none": True})
     has_many("posts", dependent="destroy")
     has_secure_password()
     after_commit("_committed")
