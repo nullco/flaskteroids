@@ -1,7 +1,6 @@
 import pytest
 from flask import Flask
 
-from flaskteroids import redirect_to
 from flaskteroids.actions import after_action, before_action
 from flaskteroids.controller import ActionController, init
 from flaskteroids.exceptions import DoubleRenderError, ProgrammerError
@@ -121,7 +120,9 @@ def test_respond_to_records_native_response_values_without_an_action_return(
 
 def test_respond_to_records_redirects_without_an_action_return(response_client):
     def action(controller):
-        controller.respond_to(html=lambda: redirect_to("/destination", status=303))
+        controller.respond_to(
+            html=lambda: controller.redirect_to("/destination", status=303)
+        )
 
     response = response_client(action).get("/response/")
     assert response.status_code == 303

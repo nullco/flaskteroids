@@ -81,7 +81,7 @@ class PostsController(ActionController):
 
 The callback chain follows these rules:
 
-- Before callbacks run in declaration order. Rendering a response stops the chain,
+- Before callbacks run in declaration order. Preparing a response stops the chain,
   even without a return value. Returning a response also skips the action, around
   callbacks, and after callbacks.
 - Around callbacks enter in declaration order and unwind in reverse order.
@@ -96,7 +96,7 @@ The callback chain follows these rules:
   yield raises `ProgrammerError` and closes the generator.
 - Implicit rendering happens before around cleanup and after callbacks. After
   callbacks run in declaration order only after the action and cleanup succeed;
-  they can edit `self.response`, but cannot render a second response.
+  they can edit `self.response`, but cannot prepare a second response.
 
 A cleanup failure does not prevent other entered generators from unwinding. If
 an action or setup exception is already propagating, it remains the exception
@@ -110,9 +110,13 @@ cleanup failures are logged and added as notes to it.
 current action. Use `self.render(json=value, status=200)` for JSON. Status values
 can be integers or `HTTPStatus` members.
 
-Rendering sets `self.response` but does not stop execution. Use
-`return self.render(...)` when the action should exit immediately. A second render
-raises `DoubleRenderError` from `flaskteroids.exceptions`.
+`self.response` is available for headers and status before preparing a body;
+metadata changes do not set `self.performed`. Pending metadata carries into the
+response unless explicitly replaced.
+
+Rendering sets `self.performed` but does not stop execution. Use
+`return self.render(...)` when the action should exit immediately. Preparing a
+second response raises `DoubleRenderError` from `flaskteroids.exceptions`.
 
 Template/helper `render(...)` remains a partial renderer, not a controller response.
 
@@ -140,6 +144,16 @@ return self.render(json=post.errors, status=422)
 Generated scaffold create and update actions use this response for JSON
 validation failures. See [model serialization](../models/index.md#temporary-attributes-and-serialization)
 for column selection and authentication-field filtering.
+
+## Redirects and empty responses
+
+`self.redirect_to(product_path(product), notice="Saved")` prepares a redirect;
+use `status=303` or `alert=...` when needed. `self.head(204)` prepares an empty
+response and accepts a `headers` dictionary.
+
+Both participate in the same response tracking as `render` and `respond_to`.
+They do not stop action execution; return their result to exit early. In a before
+callback, preparing a response halts the chain without needing a return.
 
 ## Controller helpers
 

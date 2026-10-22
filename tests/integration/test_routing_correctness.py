@@ -42,6 +42,13 @@ def test_authentication_helpers_resume_sessions_on_public_pages(generated_store)
     run(script="authentication_helpers.py")
 
 
+def test_generated_login_reports_rate_limiting_with_its_controller_handler(
+    generated_store,
+):
+    _, run = generated_store
+    run(script="rate_limited_login.py")
+
+
 def test_password_reset_mail_uses_parameterized_inputs_outside_the_request(
     generated_store,
 ):

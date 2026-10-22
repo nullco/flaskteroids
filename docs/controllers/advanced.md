@@ -15,7 +15,8 @@ class MyController(ActionController):
 ```
 
 Limits count requests by client IP by default. Each application has separate
-counters.
+counters. By default, exceeding a limit returns 429. Pass
+`with_="_rate_limit_exceeded"` to use a controller method as the handler.
 
 ## Default cache
 

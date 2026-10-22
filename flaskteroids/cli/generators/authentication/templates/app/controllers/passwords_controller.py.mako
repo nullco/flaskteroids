@@ -1,5 +1,4 @@
 from flask import url_for
-from flaskteroids import redirect_to
 from flaskteroids.actions import skip_before_action, before_action
 from app.models.user import User
 from app.controllers.application_controller import ApplicationController
@@ -17,19 +16,19 @@ class PasswordsController(ApplicationController):
         if user := User.find_by(**self.params.expect('email_address')):
             PasswordsMailer.with_params(user=user).reset().deliver_later()
 
-        return redirect_to(url_for('new_session'), notice='Password reset instructions sent (If user with that email address exists).')
+        return self.redirect_to(url_for('new_session'), notice='Password reset instructions sent (If user with that email address exists).')
 
     def edit(self):
         pass
 
     def update(self):
         if self.user.update(**self.params.expect('password', 'password_confirmation')):
-            return redirect_to(url_for('new_session'), notice='Password has been reset')
+            return self.redirect_to(url_for('new_session'), notice='Password has been reset')
         else:
-            return redirect_to(url_for('edit_password', token=self.params["token"]), alert='Passwords did not match')
+            return self.redirect_to(url_for('edit_password', token=self.params["token"]), alert='Passwords did not match')
 
     def _set_user_by_token(self):
         try:
             self.user = User.find_by_password_reset_token(self.params['token'])
         except:
-            return redirect_to(url_for('new_password'), alert='Password reset link is invalid or has expired')
+            return self.redirect_to(url_for('new_password'), alert='Password reset link is invalid or has expired')

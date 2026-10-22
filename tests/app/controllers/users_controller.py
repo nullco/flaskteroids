@@ -1,6 +1,5 @@
 from http import HTTPStatus
 
-from flaskteroids import redirect_to
 from flaskteroids.actions import before_action
 from flaskteroids.controller import ActionController
 from flaskteroids.helpers import url_for
@@ -23,7 +22,7 @@ class UsersController(ActionController):
         self.user = User.create(**self._user_params())
         if self.user.save():
             return self.respond_to(
-                html=lambda: redirect_to(
+                html=lambda: self.redirect_to(
                     url_for("show_user", id=self.user.id),
                     notice="User was successfully created.",
                 ),
@@ -43,7 +42,7 @@ class UsersController(ActionController):
     def update(self):
         if self.user.update(**self._user_params()):
             return self.respond_to(
-                html=lambda: redirect_to(
+                html=lambda: self.redirect_to(
                     url_for("show_user", id=self.user.id),
                     notice="User was successfully updated.",
                 ),

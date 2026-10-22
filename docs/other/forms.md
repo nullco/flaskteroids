@@ -125,7 +125,6 @@ Use `self.params.expect` to select the attributes a controller may pass to a mod
 
 ```python
 # app/controllers/posts_controller.py
-from flaskteroids import redirect_to
 from flaskteroids.controller import ActionController
 from flaskteroids.routes import post_path
 from app.models.post import Post
@@ -136,13 +135,13 @@ class PostsController(ActionController):
     def create(self):
         self.post = Post.new(**self._post_params())
         if self.post.save():
-            return redirect_to(post_path(self.post))
+            return self.redirect_to(post_path(self.post))
         return self.render('new', status=422)
 
     def update(self):
         self.post = Post.find(self.params['id'])
         if self.post.update(**self._post_params()):
-            return redirect_to(post_path(self.post))
+            return self.redirect_to(post_path(self.post))
         return self.render('edit', status=422)
 
     def _post_params(self):

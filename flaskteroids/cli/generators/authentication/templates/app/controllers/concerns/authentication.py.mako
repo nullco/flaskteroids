@@ -1,5 +1,4 @@
 from flask import request, session, url_for
-from flaskteroids import redirect_to
 from flaskteroids.concern import Concern
 from flaskteroids.actions import before_action
 from flaskteroids.controller import helper_method
@@ -30,7 +29,7 @@ class Authentication(Concern):
 
     def _request_authentication(self):
         session['return_to_after_authenticating'] = request.url
-        return redirect_to(url_for('new_session'))
+        return self.redirect_to(url_for('new_session'))
 
     def _after_authentication_url(self):
         return session.pop('return_to_after_authenticating', None) or url_for('root')

@@ -504,10 +504,9 @@ for helper selection and inheritance.
 So far we have created products in the shell. A web form needs two actions:
 `new` displays it, and `create` processes its submission.
 
-Add these imports to the controller:
+Add this import to the controller:
 
 ```python
-from flaskteroids import redirect_to
 from flaskteroids.routes import product_path
 ```
 
@@ -520,7 +519,7 @@ Add these methods inside `ProductsController`, keeping `index` and `show`:
     def create(self):
         self.product = Product.new(**self._product_params())
         if self.product.save():
-            return redirect_to(product_path(self.product))
+            return self.redirect_to(product_path(self.product))
         return self.render("new", status=422)
 
     def _product_params(self):
@@ -599,7 +598,7 @@ its submission. Add these methods to `ProductsController`:
     def update(self):
         self.product = Product.find(self.params["id"])
         if self.product.update(**self._product_params()):
-            return redirect_to(product_path(self.product))
+            return self.redirect_to(product_path(self.product))
         return self.render("edit", status=422)
 ```
 
@@ -679,7 +678,7 @@ Replace `show`, `edit`, and `update` with these methods, and add `_set_product`:
 
     def update(self):
         if self.product.update(**self._product_params()):
-            return redirect_to(product_path(self.product))
+            return self.redirect_to(product_path(self.product))
         return self.render("edit", status=422)
 
     def _set_product(self):
@@ -708,7 +707,7 @@ Add this action:
 ```python
     def destroy(self):
         self.product.destroy()
-        return redirect_to(products_path(), status=303)
+        return self.redirect_to(products_path(), status=303)
 ```
 
 Update the existing `before_action` call inside `ProductsController` to include
@@ -1087,7 +1086,6 @@ Create `app/controllers/subscribers_controller.py`:
 ```python
 from app.controllers.application_controller import ApplicationController
 from app.models.product import Product
-from flaskteroids import redirect_to
 from flaskteroids.actions import skip_before_action
 from flaskteroids.routes import product_path
 
@@ -1102,7 +1100,7 @@ class SubscribersController(ApplicationController):
         ).first_or_create()
         if not self.subscriber.is_persisted():
             return self.render("new", status=422)
-        return redirect_to(
+        return self.redirect_to(
             product_path(self.product),
             notice="We will email you when it is back in stock.",
         )
@@ -1205,7 +1203,6 @@ Create `app/controllers/unsubscribes_controller.py`:
 ```python
 from app.controllers.application_controller import ApplicationController
 from app.models.subscriber import Subscriber
-from flaskteroids import redirect_to
 from flaskteroids.actions import skip_before_action
 
 
@@ -1215,13 +1212,13 @@ class UnsubscribesController(ApplicationController):
     def show(self):
         self.subscriber = Subscriber.find_by(unsubscribe_token=self.params["token"])
         if self.subscriber is None:
-            return redirect_to("/", notice="This subscription is no longer active.")
+            return self.redirect_to("/", notice="This subscription is no longer active.")
 
     def destroy(self):
         subscriber = Subscriber.find_by(unsubscribe_token=self.params["token"])
         if subscriber is not None:
             subscriber.destroy()
-        return redirect_to("/", notice="You are unsubscribed.")
+        return self.redirect_to("/", notice="You are unsubscribed.")
 ```
 
 Create `app/views/unsubscribes/show.html`:

@@ -2,7 +2,7 @@ import pytest
 from flask import Flask
 
 from flaskteroids.actions import after_action, around_action, before_action
-from flaskteroids.controller import ActionController, head, init
+from flaskteroids.controller import ActionController, init
 from flaskteroids.exceptions import ProgrammerError
 
 
@@ -35,7 +35,7 @@ def callback_request():
                 if before_error is not None:
                     raise before_error
                 if before_response:
-                    return head(401)
+                    return self.head(401)
 
             def _outer(self):
                 events.append("outer:before")
@@ -49,7 +49,7 @@ def callback_request():
                 if entry_error is not None:
                     raise entry_error
                 if halt is not None:
-                    return head(403) if halt == "response" else None
+                    return self.head(403) if halt == "response" else None
                 yield
                 events.append("inner:after")
                 if inner_cleanup_error is not None:
@@ -59,7 +59,7 @@ def callback_request():
                 events.append("action")
                 if action_error is not None:
                     raise action_error
-                return head(202)
+                return self.head(202)
 
             def _after_first(self):
                 events.append("after:first")
@@ -232,7 +232,7 @@ def test_multiple_around_yields_are_rejected_and_generator_is_closed():
                 events.append("closed")
 
         def show(self):
-            return head(200)
+            return self.head(200)
 
     init(InvalidController)
     app = Flask(__name__)

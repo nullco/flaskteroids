@@ -1,6 +1,15 @@
 from functools import wraps
 
-from flask import g, jsonify, make_response, render_template, request
+from flask import (
+    current_app,
+    g,
+    jsonify,
+    make_response,
+    redirect,
+    render_template,
+    request,
+)
+from werkzeug.wrappers import Response as BaseResponse
 
 from flaskteroids._view_helpers import controller_scope
 from flaskteroids._view_helpers import helper as helper
@@ -15,6 +24,7 @@ from flaskteroids.actions import (
 )
 from flaskteroids.declarations import actions_for
 from flaskteroids.exceptions import DoubleRenderError, ProgrammerError
+from flaskteroids.flash import flash
 from flaskteroids.inflector import inflector
 from flaskteroids.rules import bind_rules
 
@@ -44,31 +54,34 @@ def _decorate_action(cls, action):
     @wraps(action)
     def invoke(self, *args, **kwargs):
         result = original(self, *args, **kwargs)
-        if self.response is None and result is not None:
-            self._response = make_response(result)
-        if self.response is None and self._action_depth == 1:
+        if not self.performed and result is not None:
+            self._prepare_response(result)
+        if not self.performed and self._action_depth == 1:
             self.render()
-        return self.response
+        return self.response if self.performed else None
 
     action = decorate_action(
-        cls, invoke, performed=lambda controller: controller.response is not None
+        cls, invoke, performed=lambda controller: controller.performed
     )
 
     @wraps(action)
     def wrapper(self, *args, **kwargs):
-        outermost = getattr(self, "_action_depth", 0) == 0
+        depth = getattr(self, "_action_depth", None)
+        outermost = not depth
         if outermost:
+            if depth is not None or self.performed:
+                self._response = None
+            self._performed = False
             self._action_name = action.__name__
-            self._response = None
             self._action_depth = 0
         self._action_depth += 1
         try:
             result = action(self, *args, **kwargs)
-            if self.response is None and result is not None:
-                self._response = make_response(result)
-            if self.response is None and outermost:
+            if not self.performed and result is not None:
+                self._prepare_response(result)
+            if not self.performed and outermost:
                 self.render()
-            return self.response
+            return self.response if self.performed else None
         finally:
             self._action_depth -= 1
 
@@ -86,17 +99,11 @@ def _serialize_json(value):
     return value
 
 
-def head(status=200, headers=None):
-    res = make_response("", status)
-    if headers:
-        res.headers.update(headers)
-    return res
-
-
 class ActionController:
     __slots__ = (
         "_params",
         "_response",
+        "_performed",
         "_action_name",
         "_action_depth",
         "__dict__",
@@ -114,11 +121,62 @@ class ActionController:
 
     @property
     def response(self):
-        return getattr(self, "_response", None)
+        if getattr(self, "_response", None) is None:
+            self._response = current_app.response_class()
+            self._response.headers.pop("Content-Type", None)
+            self._response.headers.pop("Content-Length", None)
+        return self._response
+
+    @property
+    def performed(self) -> bool:
+        return getattr(self, "_performed", False)
+
+    def _ensure_response_available(self):
+        if self.performed:
+            raise DoubleRenderError("This controller has already prepared a response.")
+
+    def _prepare_response(self, response):
+        self._ensure_response_available()
+        response = (
+            make_response(response)
+            if isinstance(response, (BaseResponse, tuple))
+            else make_response(response, self.response.status_code)
+        )
+        supplied = {name.lower() for name in response.headers.keys()}
+        for name, value in self.response.headers:
+            if name.lower() not in supplied:
+                response.headers.add(name, value)
+        self._response = response
+        self._performed = True
+        return response
+
+    def redirect_to(self, target, *, status=302, notice=None, alert=None):
+        self._ensure_response_available()
+        if target is None:
+            raise ProgrammerError("redirect_to() requires a destination.")
+        response = redirect(target, code=status or 302)
+        response.set_data("")
+        response = self._prepare_response(response)
+        if notice is not None:
+            flash["notice"] = notice
+        if alert is not None:
+            flash["alert"] = alert
+        return response
+
+    def head(self, status=_UNSET, headers=None):
+        self._ensure_response_available()
+        status = self.response.status_code if status is _UNSET else status
+        response = make_response("", status)
+        if headers:
+            response.headers.update(headers)
+        response = self._prepare_response(response)
+        if 100 <= response.status_code < 200 or response.status_code in (204, 205, 304):
+            response.headers.pop("Content-Type", None)
+            response.headers.pop("Content-Length", None)
+        return response
 
     def respond_to(self, *, html=None, json=None):
-        if self.response is not None:
-            raise DoubleRenderError("This controller has already prepared a response.")
+        self._ensure_response_available()
         handlers = {
             mime: handler
             for mime, handler in (("text/html", html), ("application/json", json))
@@ -134,20 +192,20 @@ class ActionController:
             mime = "text/html"
         handler = handlers.get(mime)
         if handler is None:
-            self._response = make_response("406 Not Acceptable", 406)
+            self._prepare_response(make_response("406 Not Acceptable", 406))
         else:
             result = handler()
-            if self.response is None and result is not None:
-                self._response = make_response(result)
-            if self.response is None and mime == "application/json":
+            if not self.performed and result is not None:
+                self._prepare_response(result)
+            if not self.performed and mime == "application/json":
                 raise ProgrammerError(
                     "A JSON handler must render or return a response."
                 )
-        return self.response
+        return self.response if self.performed else None
 
-    def render(self, action=None, *, status=200, json=_UNSET):
-        if self.response is not None:
-            raise DoubleRenderError("This controller has already prepared a response.")
+    def render(self, action=None, *, status=_UNSET, json=_UNSET):
+        self._ensure_response_available()
+        status = self.response.status_code if status is _UNSET else status
         if json is not _UNSET:
             if action is not None:
                 raise ProgrammerError("Choose either a template or JSON to render.")
@@ -167,5 +225,4 @@ class ActionController:
                     f"{template}.html", **{**vars(self), "params": self.params}
                 )
             response = make_response(view, status)
-        self._response = response
-        return response
+        return self._prepare_response(response)

@@ -1,7 +1,7 @@
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _version
 
-from flask import current_app, redirect
+from flask import current_app
 from werkzeug.local import LocalProxy
 
 from flaskteroids.application import Application
@@ -18,21 +18,9 @@ except PackageNotFoundError:
     __version__ = None
 
 
-def redirect_to(target, **kwargs):
-    notice = kwargs.pop("notice", None)
-    if notice:
-        flash["notice"] = notice
-    alert = kwargs.pop("alert", None)
-    if alert:
-        flash["alert"] = alert
-    status = kwargs.get("status") or 302
-    return redirect(target, code=status)
-
-
 __all__ = [
     "Application",
     "application",
     "declaration",
     "flash",
-    "redirect_to",
 ]

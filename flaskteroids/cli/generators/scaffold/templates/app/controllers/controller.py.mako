@@ -1,8 +1,6 @@
 from http import HTTPStatus
-from flaskteroids import redirect_to
 from flaskteroids.actions import before_action
 from flaskteroids.routes import ${collection}_path, ${singular}_path
-from flaskteroids.controller import head
 from app.controllers.application_controller import ApplicationController
 from app.models.${model_ref} import ${model}
 
@@ -33,7 +31,7 @@ class ${controller}Controller(ApplicationController):
         self.${model_ref} = ${model}.new(**self._${model_ref}_params())
         if self.${model_ref}.save():
             return self.respond_to(
-                html=lambda: redirect_to(${singular}_path(self.${singular}), notice="${singular.title()} was successfully created."),
+                html=lambda: self.redirect_to(${singular}_path(self.${singular}), notice="${singular.title()} was successfully created."),
                 json=lambda: self.render(json=self.${model_ref})
             )
         else:
@@ -45,7 +43,7 @@ class ${controller}Controller(ApplicationController):
     def update(self):
         if self.${model_ref}.update(**self._${model_ref}_params()):
             return self.respond_to(
-                html=lambda: redirect_to(${singular}_path(self.${model_ref}), notice="${singular.title()} was successfully updated."),
+                html=lambda: self.redirect_to(${singular}_path(self.${model_ref}), notice="${singular.title()} was successfully updated."),
                 json=lambda: self.render(json=self.${model_ref})
             )
         else:
@@ -57,8 +55,8 @@ class ${controller}Controller(ApplicationController):
     def destroy(self):
         self.${model_ref}.destroy()
         return self.respond_to(
-            html=lambda: redirect_to(${collection}_path(), status=HTTPStatus.SEE_OTHER),
-            json=lambda: head(HTTPStatus.NO_CONTENT)
+            html=lambda: self.redirect_to(${collection}_path(), status=HTTPStatus.SEE_OTHER),
+            json=lambda: self.head(HTTPStatus.NO_CONTENT)
         )
 
     def _set_${model_ref}(self):
