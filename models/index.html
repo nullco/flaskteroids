@@ -1,0 +1,1809 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://nullco.github.io/flaskteroids/models/">
+      
+      
+        <link rel="prev" href="../testing/">
+      
+      
+        <link rel="next" href="../views/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/brand/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Overview - Flaskteroids</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:300,300i,400,400i,700,700i%7CJetBrains+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Lato";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/brand.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#models" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Flaskteroids" class="md-header__button md-logo" aria-label="Flaskteroids" data-md-component="logo">
+      
+  <img src="../assets/brand/icon-small.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Flaskteroids
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Overview
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/nullco/flaskteroids" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M202.1 328.7c0 20.9-10.9 55.1-36.7 55.1s-36.7-34.2-36.7-55.1 10.9-55.1 36.7-55.1 36.7 34.2 36.7 55.1M496 278.2c0 31.9-3.2 65.7-17.5 95-37.9 76.6-142.1 74.8-216.7 74.8-75.8 0-186.2 2.7-225.6-74.8-14.6-29-20.2-63.1-20.2-95 0-41.9 13.9-81.5 41.5-113.6-5.2-15.8-7.7-32.4-7.7-48.8 0-21.5 4.9-32.3 14.6-51.8 45.3 0 74.3 9 108.8 36 29-6.9 58.8-10 88.7-10 27 0 54.2 2.9 80.4 9.2 34-26.7 63-35.2 107.8-35.2 9.8 19.5 14.6 30.3 14.6 51.8 0 16.4-2.6 32.7-7.7 48.2 27.5 32.4 39 72.3 39 114.2m-64.3 50.5c0-43.9-26.7-82.6-73.5-82.6-18.9 0-37 3.4-56 6-14.9 2.3-29.8 3.2-45.1 3.2-15.2 0-30.1-.9-45.1-3.2-18.7-2.6-37-6-56-6-46.8 0-73.5 38.7-73.5 82.6 0 87.8 80.4 101.3 150.4 101.3h48.2c70.3 0 150.6-13.4 150.6-101.3m-82.6-55.1c-25.8 0-36.7 34.2-36.7 55.1s10.9 55.1 36.7 55.1 36.7-34.2 36.7-55.1-10.9-55.1-36.7-55.1"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Flaskteroids" class="md-nav__button md-logo" aria-label="Flaskteroids" data-md-component="logo">
+      
+  <img src="../assets/brand/icon-small.svg" alt="logo">
+
+    </a>
+    Flaskteroids
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/nullco/flaskteroids" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M202.1 328.7c0 20.9-10.9 55.1-36.7 55.1s-36.7-34.2-36.7-55.1 10.9-55.1 36.7-55.1 36.7 34.2 36.7 55.1M496 278.2c0 31.9-3.2 65.7-17.5 95-37.9 76.6-142.1 74.8-216.7 74.8-75.8 0-186.2 2.7-225.6-74.8-14.6-29-20.2-63.1-20.2-95 0-41.9 13.9-81.5 41.5-113.6-5.2-15.8-7.7-32.4-7.7-48.8 0-21.5 4.9-32.3 14.6-51.8 45.3 0 74.3 9 108.8 36 29-6.9 58.8-10 88.7-10 27 0 54.2 2.9 80.4 9.2 34-26.7 63-35.2 107.8-35.2 9.8 19.5 14.6 30.3 14.6 51.8 0 16.4-2.6 32.7-7.7 48.2 27.5 32.4 39 72.3 39 114.2m-64.3 50.5c0-43.9-26.7-82.6-73.5-82.6-18.9 0-37 3.4-56 6-14.9 2.3-29.8 3.2-45.1 3.2-15.2 0-30.1-.9-45.1-3.2-18.7-2.6-37-6-56-6-46.8 0-73.5 38.7-73.5 82.6 0 87.8 80.4 101.3 150.4 101.3h48.2c70.3 0 150.6-13.4 150.6-101.3m-82.6-55.1c-25.8 0-36.7 34.2-36.7 55.1s10.9 55.1 36.7 55.1 36.7-34.2 36.7-55.1-10.9-55.1-36.7-55.1"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting_started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../project_structure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project structure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Models
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Models
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#define-models-and-migrate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Define models and migrate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#class-body-declarations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Class-body declarations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lazy-mapping-and-normal-startup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lazy mapping and normal startup
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#queries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Queries
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#assignment-validation-and-persistence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Assignment, validation, and persistence
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Assignment, validation, and persistence">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#defaults" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Defaults
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#association-declarations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Association declarations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Association declarations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deletion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deletion
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#native-sqlalchemy-and-transactions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Native SQLAlchemy and transactions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#callbacks-and-authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Callbacks and authentication
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Callbacks and authentication">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#saved-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Saved changes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#temporary-attributes-and-serialization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Temporary attributes and serialization
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Views
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Views
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../views/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Controllers
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Controllers
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../controllers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../controllers/routing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Routing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../controllers/advanced/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Advanced topics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Other components
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Other components
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../other/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../other/fields/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fields
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../other/forms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forms
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../other/assets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Assets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../other/attachments/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Attachments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../other/jobs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Background jobs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../other/mailers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mailers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#define-models-and-migrate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Define models and migrate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#class-body-declarations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Class-body declarations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lazy-mapping-and-normal-startup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lazy mapping and normal startup
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#queries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Queries
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#assignment-validation-and-persistence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Assignment, validation, and persistence
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Assignment, validation, and persistence">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#defaults" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Defaults
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#association-declarations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Association declarations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Association declarations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deletion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deletion
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#native-sqlalchemy-and-transactions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Native SQLAlchemy and transactions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#callbacks-and-authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Callbacks and authentication
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Callbacks and authentication">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#saved-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Saved changes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#temporary-attributes-and-serialization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Temporary attributes and serialization
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="models">Models</h1>
+<p>Flaskteroids models are SQLAlchemy-mapped application objects with Rails-like
+querying, validation, and persistence methods. Columns come from a generated
+snapshot of the migrated database; behavior and association declarations stay in model
+files. There is no separate mapped row hidden behind a model.</p>
+<h2 id="define-models-and-migrate">Define models and migrate</h2>
+<p>All application models inherit an abstract application base:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># app/models/application_model.py</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">flaskteroids.model</span><span class="w"> </span><span class="kn">import</span> <span class="n">Model</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="k">class</span><span class="w"> </span><span class="nc">ApplicationModel</span><span class="p">(</span><span class="n">Model</span><span class="p">):</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">__abstract__</span> <span class="o">=</span> <span class="kc">True</span>
+</span></code></pre></div>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># app/models/author.py</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">app.models.application_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">ApplicationModel</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">flaskteroids.model</span><span class="w"> </span><span class="kn">import</span> <span class="n">has_many</span><span class="p">,</span> <span class="n">validates</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="k">class</span><span class="w"> </span><span class="nc">Author</span><span class="p">(</span><span class="n">ApplicationModel</span><span class="p">):</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="n">has_many</span><span class="p">(</span><span class="s2">"posts"</span><span class="p">,</span> <span class="n">dependent</span><span class="o">=</span><span class="s2">"destroy"</span><span class="p">)</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="n">validates</span><span class="p">(</span><span class="s2">"name"</span><span class="p">,</span> <span class="n">presence</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">greeting</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>        <span class="k">return</span> <span class="sa">f</span><span class="s2">"Hello, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">"</span>
+</span></code></pre></div>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># app/models/post.py</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">app.models.application_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">ApplicationModel</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">flaskteroids.model</span><span class="w"> </span><span class="kn">import</span> <span class="n">belongs_to</span><span class="p">,</span> <span class="n">validates</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="k">class</span><span class="w"> </span><span class="nc">Post</span><span class="p">(</span><span class="n">ApplicationModel</span><span class="p">):</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="n">belongs_to</span><span class="p">(</span><span class="s2">"author"</span><span class="p">)</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    <span class="n">validates</span><span class="p">(</span><span class="s2">"title"</span><span class="p">,</span> <span class="n">presence</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span></code></pre></div>
+<p>Create the tables through migrations:</p>
+<div class="language-sh highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>flask<span class="w"> </span>generate<span class="w"> </span>model<span class="w"> </span>Author<span class="w"> </span>name:string
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>flask<span class="w"> </span>generate<span class="w"> </span>model<span class="w"> </span>Post<span class="w"> </span>title:string<span class="w"> </span>author:references
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>flask<span class="w"> </span>db:prepare
+</span></code></pre></div>
+<p>Model/scaffold generators write migrations and behavioral model files. Successful
+<code>db:migrate</code>, <code>db:prepare</code>, and <code>db:rollback</code> regenerate <code>db/schema.py</code> from the
+selected database. Commit it, but <strong>do not edit it manually</strong>. Use
+<code>flask db:schema:dump</code> to refresh it independently. See <a href="../other/cli/">CLI</a>.</p>
+<p>The snapshot lives alongside migrations in <code>db/</code>, matching Rails conventions.
+For an existing app with <code>app/schema.py</code>, run <code>flask db:schema:dump</code>, remove the
+old snapshot, and restart servers and workers. No database changes are needed.</p>
+<p>The snapshot contains metadata for tables, columns, keys, constraints, indexes,
+and server defaults, including tables without a behavioral model. It contains no
+model behavior, validators, or relationship choices. <code>Post</code> conventionally maps
+to <code>posts</code>; a model may set <code>__table_name__ = "legacy_posts"</code> for another table.</p>
+<h2 id="class-body-declarations">Class-body declarations</h2>
+<p>Import declaration functions explicitly and call them inside the class body.
+Aliases and module-qualified imports work normally. Repeated declarations
+accumulate in source order: several <code>validates(...)</code> calls may validate the same
+attribute. Association names must remain unique.</p>
+<p>Declarations are collected, not bound immediately. Callbacks may name methods
+defined later in the class, and associations need not resolve during import.
+Abstract model bases, ordinary Python mixins, and <code>Concern</code> classes may contribute
+declarations. Each receiving class binds its own configuration; shared ancestors
+are visited once, base-first in left-to-right order, without mutating parents or
+siblings. Controllers and mailers use the same declaration mechanism.</p>
+<p>Call declarations directly in a class body. A class-body <code>for</code> loop is supported;
+comprehensions, module-level calls, ordinary helper functions, and runtime methods
+raise <code>ProgrammerError</code> rather than silently losing declarations. Every direct
+factory call registers, even if its return value is assigned or passed elsewhere.</p>
+<p>For a reusable declaration helper, use <code>@declaration</code>. Its factory returns a
+binding callable accepting the receiving class, and may compose other declaration
+factories without registering their inner calls separately:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">app.models.application_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">ApplicationModel</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">flaskteroids</span><span class="w"> </span><span class="kn">import</span> <span class="n">declaration</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">flaskteroids.model</span><span class="w"> </span><span class="kn">import</span> <span class="n">validates</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="nd">@declaration</span>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="k">def</span><span class="w"> </span><span class="nf">required</span><span class="p">(</span><span class="n">field</span><span class="p">):</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    <span class="k">return</span> <span class="n">validates</span><span class="p">(</span><span class="n">field</span><span class="p">,</span> <span class="n">presence</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>
+</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>
+</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="k">class</span><span class="w"> </span><span class="nc">Product</span><span class="p">(</span><span class="n">ApplicationModel</span><span class="p">):</span>
+</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>    <span class="n">required</span><span class="p">(</span><span class="s2">"name"</span><span class="p">)</span>
+</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>    <span class="n">required</span><span class="p">(</span><span class="s2">"sku"</span><span class="p">)</span>
+</span></code></pre></div>
+<h2 id="lazy-mapping-and-normal-startup">Lazy mapping and normal startup</h2>
+<p>Importing a model only collects its class-body declarations. It does not require
+a snapshot or connect to the database. Mapping happens when needed:
+constructing a record, using the query facade, or accessing a mapped expression
+such as <code>Post.title</code>.</p>
+<p>Consequently, ordinary application startup and migration commands work before a
+new model has a table in the snapshot. They use the same initialization path;
+initializers are not skipped. An initializer that actually uses an unavailable
+model still fails with migration guidance.</p>
+<p>The mapper reads the snapshot, not the live database. Restart servers and workers
+after migration. Do not reload schema files or alter published mappings in place.
+Abstract behavior bases need no table. Concrete model inheritance, duplicate model
+names within an application model set, and columns that shadow model APIs are
+rejected. Different model sets have isolated registries; matching schemas can use
+the same mapped classes with separate engines/sessions.</p>
+<h2 id="queries">Queries</h2>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">post</span> <span class="o">=</span> <span class="n">Post</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>                      <span class="c1"># Raises RecordNotFoundException if absent</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="n">post</span> <span class="o">=</span> <span class="n">Post</span><span class="o">.</span><span class="n">find_by</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">"First"</span><span class="p">)</span>       <span class="c1"># Returns None if absent</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="n">posts</span> <span class="o">=</span> <span class="n">Post</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>                      <span class="c1"># A lazy query</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="n">posts</span> <span class="o">=</span> <span class="n">Post</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">"First"</span><span class="p">)</span>       <span class="c1"># A filtered lazy query</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="n">records</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">posts</span><span class="p">)</span>                   <span class="c1"># Execute and obtain a list of Post objects</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="n">posts</span> <span class="o">=</span> <span class="n">Post</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Post</span><span class="o">.</span><span class="n">title</span><span class="o">.</span><span class="n">ilike</span><span class="p">(</span><span class="s2">"a%"</span><span class="p">))</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="n">page</span> <span class="o">=</span> <span class="n">posts</span><span class="o">.</span><span class="n">order</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">"asc"</span><span class="p">)</span><span class="o">.</span><span class="n">limit</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span><span class="o">.</span><span class="n">offset</span><span class="p">(</span><span class="mi">40</span><span class="p">)</span>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="n">count</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="n">first</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="n">last</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">last</span><span class="p">()</span>
+</span></code></pre></div>
+<p>Queries are lazy and <strong>immutable</strong>. Chain or assign the returned query; a call to
+<code>query.where(...)</code> does not change the original query. <code>all()</code> always returns a
+lazy query, including when called on an existing scope; it never executes SQL.
+Iterating a query loads its selected records. Use <code>list(query)</code> when you need a
+list. Queries are reusable; each iteration executes again rather than caching
+results. Default ordering is ascending primary key; <code>order()</code> also accepts native
+SQLAlchemy ordering expressions. Limits and offsets must be nonnegative or <code>None</code>.
+<code>count()</code> respects the selected scope/page. <code>first()</code> returns one record or <code>None</code>;
+<code>last()</code> materializes the selected scope to honor custom ordering and pagination.</p>
+<p>Use eager loading to avoid per-row relationship queries:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">posts</span> <span class="o">=</span> <span class="n">Post</span><span class="o">.</span><span class="n">includes</span><span class="p">(</span><span class="s2">"author"</span><span class="p">)</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="n">authors</span> <span class="o">=</span> <span class="n">Author</span><span class="o">.</span><span class="n">includes</span><span class="p">(</span><span class="s2">"posts.author"</span><span class="p">)</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="n">records</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">posts</span><span class="p">)</span>
+</span></code></pre></div>
+<p><code>includes()</code> accepts dotted relationship paths and uses native select-in loaders.
+Unknown relationships raise <code>AttributeError</code>; malformed paths raise <code>ValueError</code>.
+For complex queries, use <code>query.statement</code>, <code>query.options(...)</code>, or native SQLAlchemy.</p>
+<h2 id="assignment-validation-and-persistence">Assignment, validation, and persistence</h2>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">post</span> <span class="o">=</span> <span class="n">Post</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">"First"</span><span class="p">,</span> <span class="n">author</span><span class="o">=</span><span class="n">author</span><span class="p">)</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="k">if</span> <span class="n">post</span><span class="o">.</span><span class="n">save</span><span class="p">():</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    <span class="n">identifier</span> <span class="o">=</span> <span class="n">post</span><span class="o">.</span><span class="n">id</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="k">else</span><span class="p">:</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    <span class="n">messages</span> <span class="o">=</span> <span class="n">post</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">full_messages</span><span class="p">()</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="n">post</span> <span class="o">=</span> <span class="n">Post</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">""</span><span class="p">,</span> <span class="n">author</span><span class="o">=</span><span class="n">author</span><span class="p">)</span>  <span class="c1"># Returns the invalid, unsaved object</span>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="k">assert</span> <span class="n">post</span><span class="o">.</span><span class="n">errors</span>
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="k">assert</span> <span class="n">post</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">"Fixed"</span><span class="p">)</span>
+</span></code></pre></div>
+<p>Scalar assignments are staged on the mapped object. Reads expose entered values,
+but SQLAlchemy's published state is unchanged until a successful save. Invalid
+updates retain their input/errors without being flushed by another object's save
+or a later commit. This also applies to valid edits never explicitly
+saved, and to edits made after an earlier save.</p>
+<p>A standalone <code>save()</code> validates, flushes, and <strong>commits before returning</strong>.
+<code>create()</code> and <code>update()</code> use that same boundary. Associated rows persisted by the
+save share its transaction. Failure or a halted callback rolls back a standalone
+operation; earlier successful standalone saves remain committed.</p>
+<p>Use an explicit transaction to group operations:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="k">with</span> <span class="n">Author</span><span class="o">.</span><span class="n">transaction</span><span class="p">():</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    <span class="n">author</span> <span class="o">=</span> <span class="n">Author</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">"Ada"</span><span class="p">)</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    <span class="n">post</span> <span class="o">=</span> <span class="n">Post</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">"First"</span><span class="p">,</span> <span class="n">author</span><span class="o">=</span><span class="n">author</span><span class="p">)</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="k">if</span> <span class="n">post</span><span class="o">.</span><span class="n">errors</span><span class="p">:</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Post is invalid"</span><span class="p">)</span>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="c1"># Both writes commit here; an escaping exception rolls both back.</span>
+</span></code></pre></div>
+<p>Saves inside an explicit transaction join it without committing. A <code>False</code> return
+does not abort that outer transaction; raise an exception when the group must
+fail together. Nested <code>Model.transaction()</code> blocks also join by default. Use
+<code>Model.transaction(requires_new=True)</code> for a savepoint, catching failures outside
+that inner block if the outer operation should continue. After-commit callbacks
+wait for the outer commit, not savepoint release. Transactions are shared across
+models in the same application, not scoped to the class naming the block.</p>
+<p><code>save(validate=False)</code> explicitly bypasses validation. Database constraints remain
+authoritative: integrity errors propagate rather than becoming validation errors.
+Standalone failures clean up their transaction. If a database exception is caught
+inside an explicit block, recover/roll back that transaction before further writes.
+A preceding query does not turn a standalone save into an explicit transaction.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">app.models.application_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">ApplicationModel</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">flaskteroids.model</span><span class="w"> </span><span class="kn">import</span> <span class="n">validates</span>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="k">class</span><span class="w"> </span><span class="nc">Product</span><span class="p">(</span><span class="n">ApplicationModel</span><span class="p">):</span>
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    <span class="n">validates</span><span class="p">(</span><span class="s2">"title"</span><span class="p">,</span> <span class="n">presence</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">length</span><span class="o">=</span><span class="p">{</span><span class="s2">"minimum"</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">"maximum"</span><span class="p">:</span> <span class="mi">100</span><span class="p">})</span>
+</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>    <span class="n">validates</span><span class="p">(</span><span class="s2">"quantity"</span><span class="p">,</span> <span class="n">numericality</span><span class="o">=</span><span class="p">{</span><span class="s2">"only_integer"</span><span class="p">:</span> <span class="kc">True</span><span class="p">})</span>
+</span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>    <span class="n">validates</span><span class="p">(</span><span class="s2">"quantity"</span><span class="p">,</span> <span class="n">comparison</span><span class="o">=</span><span class="p">{</span><span class="s2">"greater_than_or_equal_to"</span><span class="p">:</span> <span class="mi">0</span><span class="p">})</span>
+</span><span id="__span-9-9"><a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>    <span class="n">validates</span><span class="p">(</span><span class="s2">"email"</span><span class="p">,</span> <span class="n">confirmation</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span></code></pre></div>
+<p><code>confirmation=True</code> makes a writable confirmation field available. Validators run
+in declaration order. <code>errors</code> is truthy when populated and exposes <code>count</code>,
+<code>full_messages()</code>, and JSON full-message lists. <code>is_valid()</code> runs validation without
+publishing input. Types/casting do not replace explicit user-facing validation.</p>
+<p>Model assignment casts supported scalar types and retains original input through
+<code>read_attribute_before_type_cast(name)</code> and <code>attributes_before_type_cast</code>.
+Numericality checks raw input rather than trusting a permissive numeric cast.
+Use <code>numericality={"allow_none": True}</code> for optional numbers; this skips <code>None</code>,
+not blank strings.
+Model-backed forms redisplay that input after failed validation; see
+<a href="../other/fields/">Fields</a> and <a href="../other/forms/">Forms</a>.</p>
+<p><code>reload()</code> refreshes published state and discards staged scalar input/errors.
+<code>discard_changes()</code> only discards staged scalars. Native refresh/expiration does
+not by itself clear the staging dictionary.</p>
+<h3 id="defaults">Defaults</h3>
+<p>Put persistent defaults in migrations. Simple SQL literal server defaults are
+available on new objects without querying the database. SQL functions, computed
+columns, and generated identities remain server-owned and populate on flush.
+Explicit <code>None</code> is not mistaken for a request to reuse a server default; JSON
+retains its native JSON-null behavior. As a framework convention, <code>save()</code> maintains
+declared <code>created_at</code>/<code>updated_at</code> attributes itself; native writes do not implicitly
+run that timestamp lifecycle.</p>
+<p>Python default functions are not recoverable from a database snapshot. Implement
+application-side defaults explicitly in behavior/callbacks, rather than writing
+<code>Column.default</code> definitions or editing the generated snapshot.</p>
+<h2 id="association-declarations">Association declarations</h2>
+<p>Call association declarations directly inside the model class:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">app.models.application_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">ApplicationModel</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">flaskteroids.model</span><span class="w"> </span><span class="kn">import</span> <span class="n">belongs_to</span><span class="p">,</span> <span class="n">has_many</span><span class="p">,</span> <span class="n">has_one</span>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="k">class</span><span class="w"> </span><span class="nc">Post</span><span class="p">(</span><span class="n">ApplicationModel</span><span class="p">):</span>
+</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    <span class="n">belongs_to</span><span class="p">(</span><span class="s2">"author"</span><span class="p">,</span> <span class="n">class_name</span><span class="o">=</span><span class="s2">"User"</span><span class="p">,</span> <span class="n">foreign_key</span><span class="o">=</span><span class="s2">"author_id"</span><span class="p">)</span>
+</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    <span class="n">has_many</span><span class="p">(</span><span class="s2">"comments"</span><span class="p">,</span> <span class="n">dependent</span><span class="o">=</span><span class="s2">"destroy"</span><span class="p">)</span>
+</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>    <span class="n">has_one</span><span class="p">(</span><span class="s2">"preview"</span><span class="p">,</span> <span class="n">class_name</span><span class="o">=</span><span class="s2">"Preview"</span><span class="p">,</span> <span class="n">foreign_key</span><span class="o">=</span><span class="s2">"post_id"</span><span class="p">)</span>
+</span></code></pre></div>
+<p>The helpers translate into SQLAlchemy relationships before mapping. Class names
+and foreign keys are inferred conventionally; the shown positional/keyword options
+remain available. <code>belongs_to()</code> requires its target by default; use
+<code>optional=True</code> when absence is allowed. <code>inverse_of="posts"</code> selects an explicit
+inverse when conventions would be ambiguous. The helpers require single-column
+primary keys; use native relationships for more complex joins.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="n">post</span><span class="o">.</span><span class="n">author</span> <span class="o">=</span> <span class="n">author</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="k">assert</span> <span class="n">post</span> <span class="ow">in</span> <span class="n">author</span><span class="o">.</span><span class="n">posts</span>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="n">post</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="n">post</span> <span class="o">=</span> <span class="n">Post</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">"Next"</span><span class="p">,</span> <span class="n">author</span><span class="o">=</span><span class="n">author</span><span class="p">)</span>
+</span></code></pre></div>
+<p>Declared <code>has_many</code> associations expose a collection API backed by SQLAlchemy's
+own collection storage and identity map. Assignment, append/remove, iteration,
+and native eager loaders still work. Scoped queries do not load the whole
+collection:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="n">post</span> <span class="o">=</span> <span class="n">author</span><span class="o">.</span><span class="n">posts</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">"Next"</span><span class="p">)</span>
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="n">post</span> <span class="o">=</span> <span class="n">author</span><span class="o">.</span><span class="n">posts</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">"Next"</span><span class="p">)</span><span class="o">.</span><span class="n">first_or_create</span><span class="p">()</span>
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="n">author</span><span class="o">.</span><span class="n">posts</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">"Next"</span><span class="p">)</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
+</span></code></pre></div>
+<p><code>create()</code> saves through the framework and returns the record, including errors
+and entered values on validation failure. <code>first_or_create()</code> returns the first
+matching record or creates one; keyword equality filters supply creation values.
+Additional creation attributes are used only when no record matches. SQL
+expressions filter queries but are not inferred as creation attributes. The
+association's parent is authoritative even if attributes contain another parent
+or foreign key. Creating through an association requires a saved parent;
+<code>author.posts.new(...)</code> can build an unsaved graph instead. <code>Post.create(author=author,
+...)</code> remains supported. Related new framework objects are validated before their
+staged scalars are published by a framework save.</p>
+<p>These find-then-create operations are not atomic uniqueness guarantees. Use a
+database unique constraint where concurrent duplicate creation must be rejected.
+Native <code>relationship()</code> declarations retain their native collection API.</p>
+<p>Relationship mutations are <strong>not scalar staging</strong>: they have native unit-of-work
+semantics. A failed scalar validation does not undo a prior collection edit. When
+abandoning an invalid transient child, remove it from the collection; do not leave
+an unpublished new object pending in the session. For coherent inverse updates,
+assign the relationship itself; raw foreign-key edits may require reloading cached
+relationships, just as with native SQLAlchemy.</p>
+<h3 id="deletion">Deletion</h3>
+<p><code>record.destroy()</code> runs framework destroy callbacks and commits a standalone
+deletion before returning. Like <code>save()</code>, it joins an explicit transaction when
+one is open. <code>dependent="destroy"</code> calls related records' framework <code>destroy()</code>
+methods, including their callbacks and attachment cleanup, in the same boundary.
+A halted standalone destruction returns <code>False</code> and rolls back earlier dependent
+deletions. Inside an explicit transaction, raise on rejection when the whole group
+must roll back.</p>
+<p>Native <code>session.delete()</code> and ORM/database cascades do not automatically run
+framework child <code>destroy()</code> callbacks. Native <code>relationship()</code> options are an
+escape hatch, but must not be confused with the helper's callback-aware contract.
+Database <code>ON DELETE</code> choices belong in migrations.</p>
+<h2 id="native-sqlalchemy-and-transactions">Native SQLAlchemy and transactions</h2>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">inspect</span><span class="p">,</span> <span class="n">select</span>
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.orm</span><span class="w"> </span><span class="kn">import</span> <span class="n">selectinload</span>
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">flaskteroids.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">session</span>
+</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>
+</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="n">Author</span><span class="o">.</span><span class="n">prepare</span><span class="p">()</span>  <span class="c1"># Explicit, database-free mapping for bare native class APIs</span>
+</span><span id="__span-13-6"><a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="n">mapper</span> <span class="o">=</span> <span class="n">inspect</span><span class="p">(</span><span class="n">Author</span><span class="p">)</span>
+</span><span id="__span-13-7"><a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a><span class="n">author</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">Author</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+</span><span id="__span-13-8"><a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a><span class="n">authors</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">scalars</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">Author</span><span class="p">)</span><span class="o">.</span><span class="n">options</span><span class="p">(</span><span class="n">selectinload</span><span class="p">(</span><span class="n">Author</span><span class="o">.</span><span class="n">posts</span><span class="p">)))</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+</span><span id="__span-13-9"><a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a><span class="k">assert</span> <span class="n">Author</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">author</span><span class="o">.</span><span class="n">id</span><span class="p">)</span> <span class="ow">is</span> <span class="n">author</span>
+</span></code></pre></div>
+<p>Facade and native queries return the same objects within a session. Mapped columns
+and relationships are real SQLAlchemy attributes. Staged scalar values are the
+intentional boundary: SQLAlchemy history and SQL predicates describe published
+state, not <code>record.changes</code>. <code>read_published_attribute(name)</code> bypasses staged input.</p>
+<p>Native callers can explicitly publish without validation or framework callbacks:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="n">post</span> <span class="o">=</span> <span class="n">Post</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">"Native"</span><span class="p">,</span> <span class="n">author</span><span class="o">=</span><span class="n">author</span><span class="p">)</span><span class="o">.</span><span class="n">apply_changes</span><span class="p">()</span>
+</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="n">session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">post</span><span class="p">)</span>
+</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="n">session</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+</span></code></pre></div>
+<p>Directly adding a new record with unpublished staged input is rejected at flush,
+rather than silently inserting null/default data. Native/bulk operations bypass
+framework validations and operation callbacks. In-place mutable values follow
+native SQLAlchemy tracking; use scalar reassignment when you want staged edits.</p>
+<p>Sessions are app-context-local, with autoflush disabled and committed attributes
+retained. There is <strong>no automatic request-wide transaction</strong>. An exception or HTTP
+error after a successful standalone save does not undo its commit. Context teardown
+rolls back unfinished work and closes the session; it never commits native writes.</p>
+<p><code>from flaskteroids.db import transaction</code> exposes the same transaction context as
+<code>Model.transaction()</code>. Native <code>with session.begin():</code> blocks are also respected;
+use the framework context when a previous read has already implicitly opened a
+SQLAlchemy transaction. Native writes require an explicit transaction or an
+explicit <code>session.commit()</code>. A framework save flushes the session's published
+work, including native pending changes, so use explicit boundaries when mixing
+the two APIs. Caller-created sessions are caller-owned.</p>
+<h2 id="callbacks-and-authentication">Callbacks and authentication</h2>
+<p>Call <code>before_validation(...)</code>, <code>before_save(...)</code>, and other callback declarations
+inside the model class.
+Supported operation callbacks include before/after validation; before/around/after
+save, create, update, and destroy; after initialize/find; and after commit/rollback.
+Around callbacks are generators that yield once. Before callbacks returning
+<code>False</code> halt their operation. Callback bodies can update staged scalar attributes.</p>
+<p>Load callbacks run when an object is actually hydrated, not on every query that
+returns an already-loaded identity. After-find runs before after-initialize on
+hydration. Commit/rollback callbacks are queued by successful framework operations
+and are transaction-scoped; after-commit runs only after the outer commit, not a
+flush/savepoint. Commit callbacks can query associations and use the ordinary
+framework persistence API in a new transaction, with the same session identity
+map. Exceptions propagate, but cannot undo the transaction already committed.
+Native and bulk writes do not imply these framework hooks.</p>
+<h3 id="saved-changes">Saved changes</h3>
+<p>After a successful framework save, <code>record.saved_changes</code> maps changed scalar
+attribute names to <code>(old_value, new_value)</code> tuples. Values are typed and include
+database-assigned IDs/defaults. <code>record.saved_change_to_attribute(name)</code> returns
+that tuple or <code>None</code>; <code>record.attribute_before_last_save(name)</code> returns the old
+value, or the published value when unchanged. These APIs are available in
+<code>after_save</code> and <code>after_commit</code> callbacks without inspecting SQLAlchemy history:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">Product</span><span class="p">(</span><span class="n">ApplicationModel</span><span class="p">):</span>
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>    <span class="n">after_commit</span><span class="p">(</span><span class="s2">"_notify_subscribers"</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="s2">"update"</span><span class="p">,</span> <span class="n">if_</span><span class="o">=</span><span class="s2">"_back_in_stock"</span><span class="p">)</span>
+</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>
+</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_back_in_stock</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="__span-15-5"><a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>        <span class="n">change</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">saved_change_to_attribute</span><span class="p">(</span><span class="s2">"inventory_count"</span><span class="p">)</span>
+</span><span id="__span-15-6"><a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>        <span class="k">return</span> <span class="n">change</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">change</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">change</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span>
+</span><span id="__span-15-7"><a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>
+</span><span id="__span-15-8"><a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_notify_subscribers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="__span-15-9"><a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>        <span class="k">for</span> <span class="n">subscriber</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">subscribers</span><span class="p">:</span>
+</span><span id="__span-15-10"><a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>            <span class="n">ProductMailer</span><span class="o">.</span><span class="n">with_params</span><span class="p">(</span>
+</span><span id="__span-15-11"><a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>                <span class="n">product</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">subscriber</span><span class="o">=</span><span class="n">subscriber</span>
+</span><span id="__span-15-12"><a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a>            <span class="p">)</span><span class="o">.</span><span class="n">in_stock</span><span class="p">()</span><span class="o">.</span><span class="n">deliver_later</span><span class="p">()</span>
+</span></code></pre></div>
+<p>Saved changes describe the latest successful save, not pending assignments or a
+transaction-wide diff. Failed validations preserve that history; a successful
+unchanged save replaces it. A rollback clears the rolled-back history, and
+<code>reload()</code> clears it too. When a record is saved repeatedly in one transaction,
+the commit callback sees its last successful save in that transaction. Rolled-back
+savepoints do not replace an outer save's commit history. Native publication and
+bulk writes do not produce framework saved-change history.</p>
+<p>Use <code>PasswordAuthenticator</code> and call <code>has_secure_password()</code> inside the model
+class for password behavior; a custom field name such as
+<code>has_secure_password("passcode")</code> is supported.
+Authentication/reset-token checks use published digests, so a failed staged password
+edit does not invalidate persisted credentials. Passwords, digests, confirmations,
+and reset tokens are excluded from default JSON/form data. Explicit raw-input APIs
+remain sensitive; do not log them. Attachments retain their post-commit upload and
+rollback semantics; see <a href="../other/attachments/">Attachments</a>.</p>
+<h2 id="temporary-attributes-and-serialization">Temporary attributes and serialization</h2>
+<p>Unknown public assignments raise <code>AttributeError</code>. Declare a class default or a
+property with a setter for transient values, or use a private cache name. Initialize
+mutable caches per instance. Transients are not automatically saved or serialized;
+ordinary identity-map lookups return the same instance and its transient state.
+Framework methods and metadata cannot be replaced through assignment.</p>
+<p>Default JSON contains mapped scalar attributes, including staged values, excluding
+authentication secrets and virtual fields. Override <code>__json__()</code> to define an
+application-specific response, or add names to <code>_serialization_exclude</code> as a set.
+Forms obtain values independently of that response representation. Dynamic mapped
+fields are not generally inferred by ordinary Python editors/type checkers.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
