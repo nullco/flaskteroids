@@ -480,6 +480,29 @@ for custom endpoint-based routing.
 **Try it:** refresh the catalog, click Cotton T-Shirt, and follow Back. You can
 now browse both the collection and an individual product without typing its ID.
 
+### Extract a presentation helper
+
+Move reusable presentation logic into `app/helpers/products_helper.py`. If the
+controller generator already created this file, replace its empty class:
+
+```python
+class ProductsHelper:
+    def product_link(self, product):
+        return self.link_to(product.name, self.product_path(product))
+```
+
+In `app/views/products/index.html`, the product list item can now be:
+
+```html
+<li>{{ product_link(product) }}</li>
+```
+
+Helper classes are loaded automatically: no controller import or callback is
+needed. Inside a helper, `self` provides the shared view context, including
+other helpers and route helpers. Ordinary strings are escaped; `link_to`
+returns safely constructed HTML. See [application helpers](views/index.md#application-helpers)
+for helper selection and inheritance.
+
 ### Create products in the browser
 
 So far we have created products in the shell. A web form needs two actions:

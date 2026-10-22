@@ -17,11 +17,11 @@ from flaskteroids.cli.attachments import install as attachments_install
 from flaskteroids.cli.db import commands as db_commands
 from flaskteroids.cli.db.snapshot import dump as schema_dump
 from flaskteroids.cli.generators import commands as generate_commands
-from flaskteroids.controller import _template_helpers
 from flaskteroids.csrf import CSRFToken
 from flaskteroids.db import session
 from flaskteroids.exceptions import InvalidParameter, MissingParameter
 from flaskteroids.extensions.db import SQLAlchemyExtension
+from flaskteroids.extensions.helpers import HelpersExtension
 from flaskteroids.extensions.jobs import JobsExtension
 from flaskteroids.extensions.mail import MailExtension
 from flaskteroids.extensions.routes import RoutesExtension
@@ -38,6 +38,7 @@ def initialize_app(app):
     _configure_orm(app)
     _prepare_shell_context(app)
     _prepare_template_contexts(app)
+    HelpersExtension(app)
     _register_error_handlers(app)
     _register_cli_commands(app)
     _setup_csrf(app)
@@ -130,7 +131,7 @@ def _prepare_template_contexts(app):
         return {
             "flash": flash.messages if has_request_context() else {},
             **db.models,
-            **_template_helpers(),
+            **app.extensions["flaskteroids.helpers"].template_context(),
         }
 
 

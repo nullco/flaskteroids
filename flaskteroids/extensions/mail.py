@@ -22,6 +22,7 @@ class MailExtension:
 
         for mailer_class in self._mailers.values():
             init(mailer_class)
+            app.extensions["flaskteroids.helpers"].register_mailer(mailer_class)
 
         self._app = app
         app.extensions["flaskteroids.mail"] = self

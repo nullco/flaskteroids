@@ -60,6 +60,7 @@ class Configuration(FlaskConfig):
                 "models": "app.models",
                 "views": "app/views",
                 "controllers": "app.controllers",
+                "helpers": "app.helpers",
                 "routes": "config.routes",
                 "jobs": "app.jobs",
                 "mailers": "app.mailers",
@@ -128,6 +129,7 @@ class Configuration(FlaskConfig):
         self.action_controller = Options(
             {
                 "perform_caching": False,
+                "include_all_helpers": True,
                 "allow_forgery_protection": True,
             }
         )

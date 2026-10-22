@@ -13,6 +13,8 @@ def assert_catalog(client, *, authenticated):
     response = client.get("/catalog")
     assert response.status_code == 200, response.text
     html = HTML(response.text)
+    assert ("Manage Store" if authenticated else "Browse Store") in html.text
+    assert html.has("a", href="/products")
     assert html.has("a", href="/session/new") is not authenticated
     assert any(form["fields"].get("_method") == "DELETE" for form in html.forms) is (
         authenticated

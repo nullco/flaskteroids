@@ -58,6 +58,7 @@ class RoutesExtension:
             *self._internal_controllers.values(),
         ]:
             init(controller)
+            app.extensions["flaskteroids.helpers"].validate_controller(controller)
 
     @property
     def helpers(self):

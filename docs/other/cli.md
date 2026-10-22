@@ -184,6 +184,10 @@ flask generate controller <ControllerName> [action1 action2 ...]
 flask generate controller Users index show
 ```
 
+This also creates `app/helpers/users_helper.py` with a `UsersHelper` class.
+Its public presentation methods are automatically available in templates; no
+controller registration is needed. See [application helpers](../views/index.md#application-helpers).
+
 ### Resource
 
 Generate a model, its migration, an empty controller, and a resource route entry. You write the controller actions and views.

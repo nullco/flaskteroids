@@ -1,2 +1,2 @@
 class ${name}Helper:
-    pass
+    """Presentation methods, automatically available in views."""

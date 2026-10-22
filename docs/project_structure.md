@@ -46,7 +46,7 @@ my_project/
 | `app/assets` | Source stylesheets/images, served automatically in development/test. |
 | `public/assets` | Fingerprinted production assets and manifest, created by precompilation. |
 | `app/controllers` | Request-handling actions. |
-| `app/helpers` | Template helpers. |
+| `app/helpers` | Automatically loaded presentation helper classes. |
 | `app/models` | Behavioral models, association decorators, validations, and callbacks. |
 | `db/schema.py` | Generated SQLAlchemy metadata from the migrated database; no handwritten model fields. |
 | `app/views` | Jinja templates. |

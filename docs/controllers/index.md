@@ -128,6 +128,11 @@ for column selection and authentication-field filtering.
 
 ## Controller helpers
 
+Presentation methods in `app/helpers/*_helper.py` are automatically available to
+views. Use [`helper(...)`](../views/index.md#restricting-automatic-inclusion) to
+include additional helper classes when automatic inclusion is restricted.
+These methods execute on the view context, not the controller.
+
 Use `helper_method` inside `@rules` to expose a private controller method as a
 callable in templates, layouts, and partials:
 
@@ -150,6 +155,10 @@ By default, the template name drops the method's leading underscore. Pass
 current controller instance, and remain private methods rather than routable
 actions. Unregistered private methods are not exposed. Return ordinary strings
 for text that should be HTML-escaped.
+
+Mailers support the same declaration via `flaskteroids.mailer.helper_method`;
+those helpers delegate to the mailer's own state, not a request controller.
+See [mailer helper methods](../other/mailers.md#mailer-helper-methods).
 
 The authentication generator uses this mechanism to expose `is_authenticated()`.
 The helper resumes the session on demand, so public pages can show login/logout

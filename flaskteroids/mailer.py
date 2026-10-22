@@ -5,6 +5,9 @@ from functools import wraps
 from flask import current_app, render_template
 from jinja2 import TemplateNotFound
 
+from flaskteroids._view_helpers import helper as helper
+from flaskteroids._view_helpers import helper_method as helper_method
+from flaskteroids._view_helpers import mailer_scope
 from flaskteroids.actions import (
     decorate_action,
     get_actions,
@@ -55,6 +58,10 @@ def _decorate_action(cls, action):
 
 class ActionMailer:
     def mail(self, *, from_=None, to, subject):
+        helpers = current_app.extensions.get("flaskteroids.helpers")
+        helper_owner = (
+            helpers.register_mailer(type(self)) if helpers is not None else None
+        )
         return MessageDelivery(
             MessageBuilder(
                 from_=from_,
@@ -62,6 +69,7 @@ class ActionMailer:
                 subject=subject,
                 template_path=inflector.underscore(self.__class__.__name__),
                 template_params=self.__dict__,
+                helper_owner=helper_owner,
             )
         )
 
@@ -76,6 +84,7 @@ class MessageBuilder:
         template_path=None,
         template_name=None,
         template_params=None,
+        helper_owner=None,
     ):
         defaults = current_app.config.action_mailer.default_options
         self.from_ = from_ or defaults.get("from_") or "no-reply@flaskteroids.me"
@@ -84,24 +93,33 @@ class MessageBuilder:
         self.template_path = template_path
         self.template_name = template_name
         self.template_params = template_params or {}
+        self.helper_owner = helper_owner
 
     def build(self):
         msg = EmailMessage()
         msg["Subject"] = self.subject
         msg["From"] = self.from_
         msg["To"] = self.to
-        txt = self._render_content(type_="txt")
-        html = self._render_content(type_="html")
+        helpers = current_app.extensions.get("flaskteroids.helpers")
+        owner = (
+            helpers.restore_mailer(self.helper_owner, self.template_params)
+            if helpers is not None
+            else None
+        )
+        assigns = vars(owner) if owner is not None else self.template_params
+        with mailer_scope(owner, assigns):
+            txt = self._render_content(type_="txt", assigns=assigns)
+            html = self._render_content(type_="html", assigns=assigns)
         if txt:
             msg.set_content(txt)
         if html:
             msg.add_alternative(html, subtype="html")
         return msg
 
-    def _render_content(self, type_: str):
+    def _render_content(self, type_: str, *, assigns):
         path = f"{self.template_path}/{self.template_name}.{type_}"
         try:
-            return render_template(path, **self.template_params)
+            return render_template(path, **assigns)
         except TemplateNotFound:
             _logger.debug(f"template at <{path}> not found")
             return None

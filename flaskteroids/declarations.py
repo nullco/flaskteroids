@@ -23,7 +23,6 @@ class ActionDefinition:
     around: dict[str, list[str]] = field(default_factory=dict)
     after: dict[str, list[str]] = field(default_factory=dict)
     originals: dict[str, Callable] = field(default_factory=dict)
-    helpers: dict[str, str] = field(default_factory=dict)
     prepared: bool = False
 
 

@@ -30,7 +30,9 @@ and migrate the database. A configured but unavailable database fails the tests.
 `test_routing_correctness.py` generates a catalog plus authentication and nested
 subscriptions. It exercises actual/form/header logout, CSRF rejection, child
 create/update and validation redisplay, and raw numeric input through generated
-controllers/templates. Shared generation/subprocess fixtures live in
+controllers/templates. It also covers automatically loaded presentation helpers,
+controller authentication delegates, and helper discovery after a process restart.
+Shared generation/subprocess fixtures live in
 `tests/generated_application.py`; executable scenarios and application edits are
 ordinary source files. No known-failure markers remain.
 

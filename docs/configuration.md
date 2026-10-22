@@ -21,6 +21,21 @@ class Application(FlaskteroidsApplication):
 
 `config.load_defaults()` selects the framework defaults for the given version. Updating Flaskteroids does not change that selection. Change the version passed to `load_defaults()` to adopt newer defaults.
 
+## Template helpers
+
+Application helpers are discovered in `app.helpers` and included in controller
+views by default:
+
+```python
+config.paths.helpers = "app.helpers"
+config.action_controller.include_all_helpers = True
+```
+
+Set `include_all_helpers = False` to include only `ApplicationHelper`,
+conventionally matching controller helpers, and explicit `helper(...)`
+selections. See [application helpers](views/index.md#application-helpers) for
+inheritance, naming, mailer boundaries, and development reloading.
+
 ## Request limits
 
 Set request limits in `configure`, rather than in request or controller callbacks:

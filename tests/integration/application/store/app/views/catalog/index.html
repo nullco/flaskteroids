@@ -1,4 +1,5 @@
 {% extends "layouts/application.html" %}
 {% block body %}
-  <h1>Public catalog</h1>
+  <h1>{{ catalog_heading() }}</h1>
+  {{ catalog_link() }}
 {% endblock %}

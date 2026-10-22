@@ -1,2 +1,2 @@
 class ApplicationHelper:
-    pass
+    """Shared presentation methods, automatically available in views."""
