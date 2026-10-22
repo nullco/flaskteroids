@@ -14,8 +14,8 @@ class PasswordsController(ApplicationController):
         pass
 
     def create(self):
-        if user := User.find_by(**params.expect(['email_address'])):
-            PasswordsMailer().reset(user).deliver_later()
+        if user := User.find_by(**params.expect('email_address')):
+            PasswordsMailer.with_params(user=user).reset().deliver_later()
 
         return redirect_to(url_for('new_session'), notice='Password reset instructions sent (If user with that email address exists).')
 
@@ -23,7 +23,7 @@ class PasswordsController(ApplicationController):
         pass
 
     def update(self):
-        if self.user.update(**params.expect(['password', 'password_confirmation'])):
+        if self.user.update(**params.expect('password', 'password_confirmation')):
             return redirect_to(url_for('new_session'), notice='Password has been reset')
         else:
             return redirect_to(url_for('edit_password', token=params["token"]), alert='Passwords did not match')

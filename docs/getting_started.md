@@ -1259,11 +1259,14 @@ Replace `app/mailers/product_mailer.py` with:
 ```python
 from app.mailers.application_mailer import ApplicationMailer
 from flask import url_for
+from flaskteroids import params
 from flaskteroids.routes import product_url
 
 
 class ProductMailer(ApplicationMailer):
-    def in_stock(self, product, subscriber):
+    def in_stock(self):
+        product = params["product"]
+        subscriber = params["subscriber"]
         self.product_name = product.name
         self.product_url = product_url(product)
         self.unsubscribe_url = url_for(
@@ -1274,10 +1277,9 @@ class ProductMailer(ApplicationMailer):
         )
 ```
 
-The caller passes the product and subscriber; the mailer owns the email's
-recipient, subject, and presentation data. Mail actions expose instance variables
-to templates, just like controllers. Here we capture only strings, not model
-objects, so the message can also be queued.
+`with_params(...)` supplies the mailer's `params`, using the same API as
+controllers without an HTTP request. Instance variables expose template values.
+We capture strings rather than models so the message can be queued.
 
 Email links need absolute URLs: `product_url` is the absolute counterpart of
 `product_path`. The custom unsubscribe endpoint still uses `url_for` with
@@ -1344,15 +1346,15 @@ from app.mailers.product_mailer import ProductMailer
 
 subscriber = Subscriber.find_by(email="reader@example.org")
 product = subscriber.product
-ProductMailer().in_stock(product, subscriber).deliver_now()
+ProductMailer.with_params(
+    product=product, subscriber=subscriber
+).in_stock().deliver_now()
 ```
 
 You should see a readable message preview in the shell, with a subject ending
 in "is back in stock", a product link, and an unsubscribe link. Exit the shell.
-The mailer accepts models but captures ordinary strings for queuing. Unlike
-Rails' deferred mailer actions, Flaskteroids runs `in_stock()` immediately;
-`deliver_later()` queues its captured state rather than rerunning the action or
-reloading those models in the worker.
+The action runs immediately; `deliver_later()` queues its captured template
+assigns, not its input params. See [Mailers](other/mailers.md) for delivery details.
 
 ### Trigger notifications after a restock
 
@@ -1387,7 +1389,9 @@ class Product(ApplicationModel):
 
     def _notify_subscribers(self):
         for subscriber in self.subscribers:
-            ProductMailer().in_stock(self, subscriber).deliver_later()
+            ProductMailer.with_params(
+                product=self, subscriber=subscriber
+            ).in_stock().deliver_later()
 ```
 
 `saved_change_to_attribute()` returns the old and new typed values from the
@@ -1614,9 +1618,9 @@ class ProductMailerTest(MailerTest):
         subscriber = self.subscribers("reader")
 
         with self.assert_emails(1):
-            ProductMailer().in_stock(
-                product.name, product.id, subscriber.email, subscriber.unsubscribe_token
-            ).deliver_now()
+            ProductMailer.with_params(
+                product=product, subscriber=subscriber
+            ).in_stock().deliver_now()
 
         message = self.deliveries[0]
         assert message["To"] == subscriber.email

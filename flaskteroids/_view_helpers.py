@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
 
+from flaskteroids.actions import _params_scope
 from flaskteroids.exceptions import ProgrammerError
 from flaskteroids.rules import declaration
 
@@ -18,7 +19,8 @@ def mailer_scope(owner, assigns):
     token = render_scope.set(("mailer", owner))
     assigns_token = render_assigns.set(assigns)
     try:
-        yield
+        with _params_scope({}):
+            yield
     finally:
         render_assigns.reset(assigns_token)
         render_scope.reset(token)

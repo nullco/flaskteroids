@@ -4,11 +4,13 @@ Mailers inherit from `ActionMailer`. Each action sets template variables and cal
 
 ```python
 # app/mailers/user_mailer.py
+from flaskteroids import params
 from flaskteroids.mailer import ActionMailer
 
 class UserMailer(ActionMailer):
-    def welcome_email(self, user):
-        self.user = user
+    def welcome_email(self):
+        user = params["user"]
+        self.name = user.name
         return self.mail(to=user.email, subject="Welcome to My App!")
 ```
 
@@ -16,11 +18,21 @@ Call `deliver_now` to send the email immediately, or `deliver_later` to enqueue 
 
 ```python
 # Deliver now
-UserMailer().welcome_email(user).deliver_now()
+UserMailer.with_params(user=user).welcome_email().deliver_now()
 
 # Deliver later using a background job
-UserMailer().welcome_email(user).deliver_later()
+UserMailer.with_params(user=user).welcome_email().deliver_later()
 ```
+
+## Parameterized mailers
+
+`with_params(...)` supplies action and callback inputs through the same `params`
+proxy used by controllers, without requiring an HTTP request. Each action call
+gets a fresh mailer and a shallow parameter copy. Action arguments remain supported.
+
+Input params are not template assigns or queued state. Assign values needed by
+templates and delivery-time helpers explicitly, as with `self.name` above, and
+keep queued assigns serializable; model identities are not serialized automatically.
 
 ## Mailer helper methods
 
@@ -56,10 +68,6 @@ in the view context, whose methods can call `self.greeting()`. Mailers select
 those classes explicitly rather than inheriting request-controller helpers.
 See [application helpers](../views/index.md#mailers-and-rendering-outside-requests).
 
-Both `deliver_now()` and `deliver_later()` use the mailer's captured assigns.
-Flaskteroids restores one delivery-time mailer instance without rerunning its
-constructor, action, or callbacks; text and HTML parts share that instance.
-Separate deliveries have separate instances, and helper failures restore the
-previous rendering scope. Queued state must be serializable by the selected
-queue adapter. This follows Flaskteroids' existing captured-state mail pipeline,
-rather than Rails' action-reexecution model for queued mail.
+Actions and callbacks run immediately. Both delivery methods render their captured
+assigns, restoring one mailer instance shared by the text and HTML parts. Unlike
+Rails, queued delivery does not rerun the action.

@@ -1,5 +1,7 @@
 import logging
 from collections import UserDict
+from contextlib import contextmanager
+from contextvars import ContextVar
 from functools import wraps
 from typing import Any, Literal
 
@@ -268,7 +270,24 @@ class ActionParameters(UserDict):
         return expected
 
 
-def _get_params() -> ActionParameters:
+_action_params: ContextVar[dict[str, Any] | None] = ContextVar(
+    "flaskteroids.action_params", default=None
+)
+
+
+@contextmanager
+def _params_scope(parameters):
+    token = _action_params.set(parameters)
+    try:
+        yield
+    finally:
+        _action_params.reset(token)
+
+
+def _get_params() -> ActionParameters | dict[str, Any]:
+    parameters = _action_params.get()
+    if parameters is not None:
+        return parameters
     if "params" not in g:
         g.params = ActionParameters()
     return g.params

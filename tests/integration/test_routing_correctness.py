@@ -42,6 +42,13 @@ def test_authentication_helpers_resume_sessions_on_public_pages(generated_store)
     run(script="authentication_helpers.py")
 
 
+def test_password_reset_mail_uses_parameterized_inputs_outside_the_request(
+    generated_store,
+):
+    _, run = generated_store
+    run(script="parameterized_password_reset.py")
+
+
 def test_queued_mail_helpers_load_in_a_fresh_worker_process(generated_store, tmp_path):
     _, run = generated_store
     payload = str(tmp_path / "mail-job.json")

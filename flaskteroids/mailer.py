@@ -9,6 +9,7 @@ from flaskteroids._view_helpers import helper as helper
 from flaskteroids._view_helpers import helper_method as helper_method
 from flaskteroids._view_helpers import mailer_scope
 from flaskteroids.actions import (
+    _params_scope,
     decorate_action,
     get_actions,
     mark_action_wrapper,
@@ -46,17 +47,48 @@ def _decorate_action(cls, action):
 
     @wraps(action)
     def wrapper(*args, **kwargs):
-        message_delivery = action(*args, **kwargs)
+        mailer = args[0]
+        if not hasattr(mailer, "_params"):
+            mailer._params = {}
+        with _params_scope(mailer._params):
+            message_delivery = action(*args, **kwargs)
         assert message_delivery, "Actions must return a MessageDelivery object"
         builder = message_delivery.builder
         if not builder.template_name:
             builder.template_name = action.__name__
+        builder.template_params = builder.template_params.copy()
         return message_delivery
 
     return mark_action_wrapper(wrapper, original)
 
 
+class _ParameterizedMailer:
+    def __init__(self, mailer_class, params):
+        self._mailer_class = mailer_class
+        self._params = params.copy()
+
+    def __getattr__(self, name):
+        cls = init(self._mailer_class)
+        if name not in get_actions(cls):
+            raise AttributeError(f"{cls.__name__} has no mailer action {name!r}")
+
+        @wraps(original_action(cls, name))
+        def action(*args, **kwargs):
+            mailer = cls()
+            mailer._params = self._params.copy()
+            return getattr(mailer, name)(*args, **kwargs)
+
+        return action
+
+
 class ActionMailer:
+    # Input parameters are not template assigns or serialized delivery state.
+    __slots__ = ("_params", "__dict__", "__weakref__")
+
+    @classmethod
+    def with_params(cls, **params):
+        return _ParameterizedMailer(cls, params)
+
     def mail(self, *, from_=None, to, subject):
         helpers = current_app.extensions.get("flaskteroids.helpers")
         helper_owner = (
