@@ -1,10 +1,12 @@
 import logging
+from contextlib import contextmanager
 from email.message import EmailMessage
 from functools import wraps
 
-from flask import current_app, render_template
+from flask import current_app, g, render_template
 from jinja2 import TemplateNotFound
 
+from flaskteroids._mail_serialization import deserialize, serialize
 from flaskteroids._view_helpers import helper as helper
 from flaskteroids._view_helpers import helper_method as helper_method
 from flaskteroids._view_helpers import mailer_scope
@@ -157,27 +159,47 @@ class MessageBuilder:
             return None
 
     def to_dict(self):
-        return self.__dict__
+        return {**vars(self), "template_params": serialize(self.template_params)}
 
     @classmethod
     def from_dict(cls, d):
-        return cls(**d)
+        return cls(**{**d, "template_params": deserialize(d["template_params"])})
+
+
+def _deliver(message_builder):
+    msg = message_builder.build()
+    if not msg:
+        _logger.debug("Nothing to send, ignoring...")
+        return
+    _logger.debug("message to be sent")
+    _logger.debug(msg)
+    cfg = current_app.config.action_mailer
+    if not cfg.perform_deliveries:
+        _logger.debug("sending mail is disabled, ignoring...")
+        return
+    current_app.extensions["flaskteroids.mail"].deliver(msg)
+
+
+@contextmanager
+def _delivery_session():
+    previous = g.pop("db_session", None)
+    try:
+        yield
+    finally:
+        delivery = g.pop("db_session", None)
+        try:
+            if delivery is not None:
+                delivery.close()
+        finally:
+            if previous is not None:
+                g.db_session = previous
 
 
 class MessageDeliveryJob(Job):
     def perform(self, *args, **kwargs):
-        message_builder = MessageBuilder.from_dict(kwargs["message_builder"])
-        msg = message_builder.build()
-        if not msg:
-            _logger.debug("Nothing to send, ignoring...")
-            return
-        _logger.debug("message to be sent")
-        _logger.debug(msg)
-        cfg = current_app.config.action_mailer
-        if not cfg.perform_deliveries:
-            _logger.debug("sending mail is disabled, ignoring...")
-            return
-        current_app.extensions["flaskteroids.mail"].deliver(msg)
+        # Match a worker's fresh identity map without another app lifecycle.
+        with _delivery_session():
+            _deliver(MessageBuilder.from_dict(kwargs["message_builder"]))
 
 
 class MessageDelivery:
@@ -185,9 +207,7 @@ class MessageDelivery:
         self.builder = builder
 
     def deliver_now(self, *args, **kwargs):
-        MessageDeliveryJob().perform(
-            *args, message_builder=self.builder.to_dict(), **kwargs
-        )
+        _deliver(self.builder)
 
     def deliver_later(self, *args, **kwargs):
         MessageDeliveryJob().perform_later(

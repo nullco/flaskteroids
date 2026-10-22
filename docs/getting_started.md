@@ -1258,28 +1258,22 @@ Replace `app/mailers/product_mailer.py` with:
 
 ```python
 from app.mailers.application_mailer import ApplicationMailer
-from flask import url_for
 from flaskteroids import params
-from flaskteroids.routes import product_url
 
 
 class ProductMailer(ApplicationMailer):
     def in_stock(self):
-        product = params["product"]
-        subscriber = params["subscriber"]
-        self.product_name = product.name
-        self.product_url = product_url(product)
-        self.unsubscribe_url = url_for(
-            "unsubscribe", token=subscriber.unsubscribe_token, _external=True
-        )
+        self.product = params["product"]
+        self.subscriber = params["subscriber"]
         return self.mail(
-            to=subscriber.email, subject=f"{product.name} is back in stock"
+            to=self.subscriber.email,
+            subject=f"{self.product.name} is back in stock",
         )
 ```
 
 `with_params(...)` supplies the mailer's `params`, using the same API as
-controllers without an HTTP request. Instance variables expose template values.
-We capture strings rather than models so the message can be queued.
+controllers without an HTTP request. Instance variables expose the product and
+subscriber to templates; queued delivery reloads these saved records.
 
 Email links need absolute URLs: `product_url` is the absolute counterpart of
 `product_path`. The custom unsubscribe endpoint still uses `url_for` with
@@ -1289,17 +1283,17 @@ Replace `app/views/product_mailer/in_stock.html` with:
 
 ```html
 <h1>Good news!</h1>
-<p>{{ link_to(product_name, product_url) }} is back in stock.</p>
-<p>{{ link_to("Unsubscribe", unsubscribe_url) }}</p>
+<p>{{ link_to(product.name, product_url(product)) }} is back in stock.</p>
+<p>{{ link_to("Unsubscribe", url_for("unsubscribe", token=subscriber.unsubscribe_token, _external=True)) }}</p>
 ```
 
 Replace `app/views/product_mailer/in_stock.txt` with:
 
 ```text
-Good news! {{ product_name }} is back in stock.
-{{ product_url }}
+Good news! {{ product.name }} is back in stock.
+{{ product_url(product) }}
 
-Unsubscribe: {{ unsubscribe_url }}
+Unsubscribe: {{ url_for("unsubscribe", token=subscriber.unsubscribe_token, _external=True) }}
 ```
 
 ### Preview delivery locally
@@ -1401,9 +1395,9 @@ description edit or a change from 5 to 6 does not send a new batch.
 
 `after_commit` runs only after the outer transaction commits, so a rollback never
 enqueues these notifications. The callback can query subscribers normally; the
-mailer captures each message's recipients and links when called. The queued
-payload contains scalar template data, not model objects. If an explicit
-transaction saves the same product more than once, the condition describes its
+mailer captures each message's recipient and subject when called, while queued
+template models reload at delivery. If an explicit transaction saves the same
+product more than once, the condition describes its
 last successful save, not every intermediate transition. See
 [Models](models/index.md) for callbacks, saved changes, and transactions.
 

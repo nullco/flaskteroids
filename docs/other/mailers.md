@@ -9,9 +9,8 @@ from flaskteroids.mailer import ActionMailer
 
 class UserMailer(ActionMailer):
     def welcome_email(self):
-        user = params["user"]
-        self.name = user.name
-        return self.mail(to=user.email, subject="Welcome to My App!")
+        self.user = params["user"]
+        return self.mail(to=self.user.email, subject="Welcome to My App!")
 ```
 
 Call `deliver_now` to send the email immediately, or `deliver_later` to enqueue a background job:
@@ -30,9 +29,8 @@ UserMailer.with_params(user=user).welcome_email().deliver_later()
 proxy used by controllers, without requiring an HTTP request. Each action call
 gets a fresh mailer and a shallow parameter copy. Action arguments remain supported.
 
-Input params are not template assigns or queued state. Assign values needed by
-templates and delivery-time helpers explicitly, as with `self.name` above, and
-keep queued assigns serializable; model identities are not serialized automatically.
+Input params are not automatically template assigns. Expose values needed by
+templates and delivery-time helpers explicitly, as with `self.user` above.
 
 ## Mailer helper methods
 
@@ -68,6 +66,19 @@ in the view context, whose methods can call `self.greeting()`. Mailers select
 those classes explicitly rather than inheriting request-controller helpers.
 See [application helpers](../views/index.md#mailers-and-rendering-outside-requests).
 
-Actions and callbacks run immediately. Both delivery methods render their captured
-assigns, restoring one mailer instance shared by the text and HTML parts. Unlike
-Rails, queued delivery does not rerun the action.
+## Delivery
+
+Actions and callbacks run immediately, capturing the recipient and subject.
+`deliver_now()` renders the supplied objects. `deliver_later()` stores saved model
+assigns as references and reloads them at delivery, including models nested in
+lists, tuples, and dictionaries. Other queued assigns must be serializable by the
+queue adapter.
+
+Unsaved model assigns raise `SerializationError` on enqueue; records missing at
+delivery raise `DeserializationError` (both in `flaskteroids.exceptions`). Queued
+rendering ignores unsaved edits without altering the caller's objects. Enqueue
+after commit so records are visible to the worker.
+
+Text and HTML parts share one delivery-time mailer. Unlike Rails, queued delivery
+does not rerun the action, so model-backed template values can change while the
+captured headers remain fixed.

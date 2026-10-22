@@ -1,4 +1,4 @@
-Good news! {{ product_name }} is back in stock.
-{{ product_url }}
+Good news! {{ product.name }} is back in stock.
+{{ product_url(product) }}
 
-Unsubscribe: {{ unsubscribe_url }}
+Unsubscribe: {{ url_for("unsubscribe", token=subscriber.unsubscribe_token, _external=True) }}

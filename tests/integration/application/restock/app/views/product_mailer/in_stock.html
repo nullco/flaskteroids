@@ -1,3 +1,3 @@
 <h1>Good news!</h1>
-<p>{{ link_to(product_name, product_url) }} is back in stock.</p>
-<p>{{ link_to("Unsubscribe", unsubscribe_url) }}</p>
+<p>{{ link_to(product.name, product_url(product)) }} is back in stock.</p>
+<p>{{ link_to("Unsubscribe", url_for("unsubscribe", token=subscriber.unsubscribe_token, _external=True)) }}</p>

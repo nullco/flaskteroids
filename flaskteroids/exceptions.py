@@ -12,6 +12,14 @@ class RecordNotFoundException(Exception):
     pass
 
 
+class SerializationError(ProgrammerError):
+    pass
+
+
+class DeserializationError(Exception):
+    pass
+
+
 class InvalidParameter(UserError):
     pass
 

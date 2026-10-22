@@ -70,6 +70,7 @@ try:
         )
         assert message["Subject"] == "T-Shirt is back in stock"
         text = message.get_body(preferencelist=("plain",)).get_content()
+        assert "Renamed T-Shirt is back in stock" in text
         assert f"http://localhost{product_path}" in text
         unsubscribe_url = next(
             line.removeprefix("Unsubscribe: ")

@@ -4,6 +4,7 @@ from flaskteroids.testing import TestDeliveryMethod, TestQueueAdapter
 def configure(config):
     config.enable_reloading = False
     config.eager_load = False
+    config["SERVER_NAME"] = "localhost"
     config.action_controller.perform_caching = False
     config.action_controller.allow_forgery_protection = False
     config.active_job.queue_adapter = TestQueueAdapter
