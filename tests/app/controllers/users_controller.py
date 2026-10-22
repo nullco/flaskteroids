@@ -2,7 +2,7 @@ from http import HTTPStatus
 
 from flaskteroids import redirect_to
 from flaskteroids.actions import before_action
-from flaskteroids.controller import ActionController, respond
+from flaskteroids.controller import ActionController
 from flaskteroids.helpers import url_for
 from tests.app.models.user import User
 
@@ -22,7 +22,7 @@ class UsersController(ActionController):
     def create(self):
         self.user = User.create(**self._user_params())
         if self.user.save():
-            return respond(
+            return self.respond_to(
                 html=lambda: redirect_to(
                     url_for("show_user", id=self.user.id),
                     notice="User was successfully created.",
@@ -30,7 +30,7 @@ class UsersController(ActionController):
                 json=lambda: self.render(json=self.user),
             )
         else:
-            return respond(
+            return self.respond_to(
                 html=lambda: self.render("new", status=HTTPStatus.UNPROCESSABLE_ENTITY),
                 json=lambda: self.render(
                     json=self.user.errors, status=HTTPStatus.UNPROCESSABLE_ENTITY
@@ -42,7 +42,7 @@ class UsersController(ActionController):
 
     def update(self):
         if self.user.update(**self._user_params()):
-            return respond(
+            return self.respond_to(
                 html=lambda: redirect_to(
                     url_for("show_user", id=self.user.id),
                     notice="User was successfully updated.",
@@ -50,7 +50,7 @@ class UsersController(ActionController):
                 json=lambda: self.render(json=self.user),
             )
         else:
-            return respond(
+            return self.respond_to(
                 html=lambda: self.render(
                     "edit", status=HTTPStatus.UNPROCESSABLE_ENTITY
                 ),

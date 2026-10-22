@@ -75,25 +75,6 @@ def _decorate_action(cls, action):
     return mark_action_wrapper(wrapper, original)
 
 
-class FormatResponder:
-    def __init__(self, *, html=None, json=None):
-        self._handlers = {"text/html": html, "application/json": json}
-
-    def _get_accepts(self):
-        if request.path.rstrip("/").endswith(".json"):
-            return "application/json"
-        accept_mimetypes = request.accept_mimetypes
-        accepts = accept_mimetypes.best_match(self._handlers.keys()) or "text/html"
-        return accepts
-
-    def handle(self):
-        handler = self._handlers.get(self._get_accepts())
-        if handler:
-            return handler()
-        else:
-            return "406 Not Acceptable", 406
-
-
 def _serialize_json(value):
     serializer = getattr(value, "__json__", None)
     if callable(serializer):
@@ -110,11 +91,6 @@ def head(status=200, headers=None):
     if headers:
         res.headers.update(headers)
     return res
-
-
-def respond(**kwargs):
-    formatter = FormatResponder(**kwargs)
-    return formatter.handle()
 
 
 class ActionController:
@@ -139,6 +115,35 @@ class ActionController:
     @property
     def response(self):
         return getattr(self, "_response", None)
+
+    def respond_to(self, *, html=None, json=None):
+        if self.response is not None:
+            raise DoubleRenderError("This controller has already prepared a response.")
+        handlers = {
+            mime: handler
+            for mime, handler in (("text/html", html), ("application/json", json))
+            if handler is not None
+        }
+        if any(not callable(handler) for handler in handlers.values()):
+            raise ProgrammerError("respond_to() handlers must be callable.")
+        if request.path.rstrip("/").endswith(".json"):
+            mime = "application/json"
+        elif request.headers.get("Accept"):
+            mime = request.accept_mimetypes.best_match(handlers)
+        else:
+            mime = "text/html"
+        handler = handlers.get(mime)
+        if handler is None:
+            self._response = make_response("406 Not Acceptable", 406)
+        else:
+            result = handler()
+            if self.response is None and result is not None:
+                self._response = make_response(result)
+            if self.response is None and mime == "application/json":
+                raise ProgrammerError(
+                    "A JSON handler must render or return a response."
+                )
+        return self.response
 
     def render(self, action=None, *, status=200, json=_UNSET):
         if self.response is not None:

@@ -5,30 +5,9 @@ from http import HTTPStatus
 from uuid import UUID
 
 import pytest
-from flask import Flask
 
-from flaskteroids.controller import ActionController, init
 from flaskteroids.exceptions import DoubleRenderError
 from flaskteroids.model import Errors
-
-
-@pytest.fixture(scope="module")
-def response_client():
-    controllers = []
-
-    def build(action):
-        class ResponsesController(ActionController):
-            def show(self):
-                return action(self)
-
-        init(ResponsesController)
-        controllers.append(ResponsesController)
-        app = Flask(__name__)
-        app.testing = True
-        app.add_url_rule("/response/", view_func=lambda: ResponsesController().show())
-        return app.test_client()
-
-    return build
 
 
 @pytest.mark.parametrize(

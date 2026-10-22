@@ -183,16 +183,21 @@ does not require login; `_require_authentication` enforces access control.
 
 ## Content negotiation
 
-Use `respond` to return HTML or JSON from the same action. It selects a handler based on the request's `Accept` header or a `.json` URL suffix:
+`self.respond_to(...)` selects an offered HTML or JSON handler using the `Accept`
+header (HTML when absent); a `.json` URL suffix takes precedence. Unsupported
+formats produce 406.
+Selected responses are recorded on the controller, so returning the result is optional.
+HTML handlers may leave template rendering implicit; JSON handlers must render or
+return a response.
 
 ```python
-from flaskteroids.controller import ActionController, respond
+from flaskteroids.controller import ActionController
 from app.models.post import Post
 
 class PostsController(ActionController):
     def index(self):
         self.posts = Post.all()
-        return respond(
+        self.respond_to(
             html=lambda: self.render('index'),
             json=lambda: self.render(json=self.posts)
         )

@@ -2,7 +2,7 @@ from http import HTTPStatus
 from flaskteroids import redirect_to
 from flaskteroids.actions import before_action
 from flaskteroids.routes import ${collection}_path, ${singular}_path
-from flaskteroids.controller import head, respond
+from flaskteroids.controller import head
 from app.controllers.application_controller import ApplicationController
 from app.models.${model_ref} import ${model}
 
@@ -12,13 +12,13 @@ class ${controller}Controller(ApplicationController):
 
     def index(self):
         self.${models_ref} = ${model}.all()
-        return respond(
+        return self.respond_to(
             html=lambda: self.render('index'),
             json=lambda: self.render(json=self.${models_ref})
         )
 
     def show(self):
-        return respond(
+        return self.respond_to(
             html=lambda: self.render('show'),
             json=lambda: self.render(json=self.${model_ref})
         )
@@ -32,31 +32,31 @@ class ${controller}Controller(ApplicationController):
     def create(self):
         self.${model_ref} = ${model}.new(**self._${model_ref}_params())
         if self.${model_ref}.save():
-            return respond(
+            return self.respond_to(
                 html=lambda: redirect_to(${singular}_path(self.${singular}), notice="${singular.title()} was successfully created."),
                 json=lambda: self.render(json=self.${model_ref})
             )
         else:
-            return respond(
+            return self.respond_to(
                 html=lambda: self.render('new', status=HTTPStatus.UNPROCESSABLE_ENTITY),
                 json=lambda: self.render(json=self.${model_ref}.errors, status=HTTPStatus.UNPROCESSABLE_ENTITY)
             )
 
     def update(self):
         if self.${model_ref}.update(**self._${model_ref}_params()):
-            return respond(
+            return self.respond_to(
                 html=lambda: redirect_to(${singular}_path(self.${model_ref}), notice="${singular.title()} was successfully updated."),
                 json=lambda: self.render(json=self.${model_ref})
             )
         else:
-            return respond(
+            return self.respond_to(
                 html=lambda: self.render('edit', status=HTTPStatus.UNPROCESSABLE_ENTITY),
                 json=lambda: self.render(json=self.${model_ref}.errors, status=HTTPStatus.UNPROCESSABLE_ENTITY)
             )
 
     def destroy(self):
         self.${model_ref}.destroy()
-        return respond(
+        return self.respond_to(
             html=lambda: redirect_to(${collection}_path(), status=HTTPStatus.SEE_OTHER),
             json=lambda: head(HTTPStatus.NO_CONTENT)
         )

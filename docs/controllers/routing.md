@@ -183,7 +183,7 @@ product_path(product, format="json") # /products/1.json
 ```
 
 CRUD actions dispatch to the same controller actions as their HTML paths. A
-controller's `respond` selects JSON from a `.json` suffix or the Accept header.
+controller's `self.respond_to(...)` selects JSON from a `.json` suffix or the Accept header.
 Only JSON format generation is currently supported.
 
 ## HTML method overrides
