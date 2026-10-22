@@ -8,22 +8,20 @@ from flaskteroids.model import (
     has_secure_password,
     validates,
 )
-from flaskteroids.rules import rules
 
 from .application_model import ApplicationModel
 
 
-@rules(
-    validates("name", presence=True),
-    validates("age", numericality={"only_integer": True, "allow_nil": True}),
-    has_many("posts", dependent="destroy"),
-    has_secure_password(),
-    after_commit("_committed"),
-    before_save("before_persist"),
-    after_save("after_persist"),
-    after_rollback("rolled_back"),
-)
 class Author(ApplicationModel, PasswordAuthenticator):
+    validates("name", presence=True)
+    validates("age", numericality={"only_integer": True, "allow_nil": True})
+    has_many("posts", dependent="destroy")
+    has_secure_password()
+    after_commit("_committed")
+    before_save("before_persist")
+    after_save("after_persist")
+    after_rollback("rolled_back")
+
     def before_persist(self):
         from flask import current_app
 

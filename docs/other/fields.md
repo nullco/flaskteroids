@@ -20,10 +20,10 @@ flask db:prepare
 ```
 
 `!` makes a database column non-nullable. `author:references` (or
-`author:belongs_to`) adds a required foreign key and a `belongs_to` rule in a
-generated model. Database constraints do not replace user-facing validation;
-add `validates(...)` when invalid input should return errors rather than a
-native constraint exception.
+`author:belongs_to`) adds a required foreign key and a `belongs_to(...)`
+declaration inside the generated model class. Database constraints do not replace
+user-facing validation; add `validates(...)` inside the model class when invalid
+input should return errors rather than a native constraint exception.
 
 Generators use SQLAlchemy type factories. They do not maintain a second input
 casting API. Migrations define the database; the generated `db/schema.py`

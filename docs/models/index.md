@@ -2,7 +2,7 @@
 
 Flaskteroids models are SQLAlchemy-mapped application objects with Rails-like
 querying, validation, and persistence methods. Columns come from a generated
-snapshot of the migrated database; behavior and association rules stay in model
+snapshot of the migrated database; behavior and association declarations stay in model
 files. There is no separate mapped row hidden behind a model.
 
 ## Define models and migrate
@@ -21,10 +21,12 @@ class ApplicationModel(Model):
 # app/models/author.py
 from app.models.application_model import ApplicationModel
 from flaskteroids.model import has_many, validates
-from flaskteroids.rules import rules
 
-@rules(has_many("posts", dependent="destroy"), validates("name", presence=True))
+
 class Author(ApplicationModel):
+    has_many("posts", dependent="destroy")
+    validates("name", presence=True)
+
     def greeting(self):
         return f"Hello, {self.name}"
 ```
@@ -33,11 +35,11 @@ class Author(ApplicationModel):
 # app/models/post.py
 from app.models.application_model import ApplicationModel
 from flaskteroids.model import belongs_to, validates
-from flaskteroids.rules import rules
 
-@rules(belongs_to("author"), validates("title", presence=True))
+
 class Post(ApplicationModel):
-    pass
+    belongs_to("author")
+    validates("title", presence=True)
 ```
 
 Create the tables through migrations:
@@ -62,10 +64,49 @@ and server defaults, including tables without a behavioral model. It contains no
 model behavior, validators, or relationship choices. `Post` conventionally maps
 to `posts`; a model may set `__table_name__ = "legacy_posts"` for another table.
 
+## Class-body declarations
+
+Import declaration functions explicitly and call them inside the class body.
+Aliases and module-qualified imports work normally. Repeated declarations
+accumulate in source order: several `validates(...)` calls may validate the same
+attribute. Association names must remain unique.
+
+Declarations are collected, not bound immediately. Callbacks may name methods
+defined later in the class, and associations need not resolve during import.
+Abstract model bases, ordinary Python mixins, and `Concern` classes may contribute
+declarations. Each receiving class binds its own configuration; shared ancestors
+are visited once, base-first in left-to-right order, without mutating parents or
+siblings. Controllers and mailers use the same declaration mechanism.
+
+Call declarations directly in a class body. A class-body `for` loop is supported;
+comprehensions, module-level calls, ordinary helper functions, and runtime methods
+raise `ProgrammerError` rather than silently losing declarations. Every direct
+factory call registers, even if its return value is assigned or passed elsewhere.
+
+For a reusable declaration helper, use `@declaration`. Its factory returns a
+binding callable accepting the receiving class, and may compose other declaration
+factories without registering their inner calls separately:
+
+```python
+from app.models.application_model import ApplicationModel
+from flaskteroids import declaration
+from flaskteroids.model import validates
+
+
+@declaration
+def required(field):
+    return validates(field, presence=True)
+
+
+class Product(ApplicationModel):
+    required("name")
+    required("sku")
+```
+
 ## Lazy mapping and normal startup
 
-Importing a model only declares its behavior and collects its `@rules`. It does
-not require a snapshot or connect to the database. Mapping happens when needed:
+Importing a model only collects its class-body declarations. It does not require
+a snapshot or connect to the database. Mapping happens when needed:
 constructing a record, using the query facade, or accessing a mapped expression
 such as `Post.title`.
 
@@ -169,14 +210,15 @@ inside an explicit block, recover/roll back that transaction before further writ
 A preceding query does not turn a standalone save into an explicit transaction.
 
 ```python
-@rules(
-    validates("title", presence=True, length={"minimum": 3, "maximum": 100}),
-    validates("quantity", numericality={"only_integer": True}),
-    validates("quantity", comparison={"greater_than_or_equal_to": 0}),
-    validates("email", confirmation=True),
-)
+from app.models.application_model import ApplicationModel
+from flaskteroids.model import validates
+
+
 class Product(ApplicationModel):
-    pass
+    validates("title", presence=True, length={"minimum": 3, "maximum": 100})
+    validates("quantity", numericality={"only_integer": True})
+    validates("quantity", comparison={"greater_than_or_equal_to": 0})
+    validates("email", confirmation=True)
 ```
 
 `confirmation=True` makes a writable confirmation field available. Validators run
@@ -208,18 +250,19 @@ Python default functions are not recoverable from a database snapshot. Implement
 application-side defaults explicitly in behavior/callbacks, rather than writing
 `Column.default` definitions or editing the generated snapshot.
 
-## Association decorators
+## Association declarations
 
-Keep association declarations inside `@rules`:
+Call association declarations directly inside the model class:
 
 ```python
-@rules(
-    belongs_to("author", class_name="User", foreign_key="author_id"),
-    has_many("comments", dependent="destroy"),
-    has_one("preview", class_name="Preview", foreign_key="post_id"),
-)
+from app.models.application_model import ApplicationModel
+from flaskteroids.model import belongs_to, has_many, has_one
+
+
 class Post(ApplicationModel):
-    pass
+    belongs_to("author", class_name="User", foreign_key="author_id")
+    has_many("comments", dependent="destroy")
+    has_one("preview", class_name="Preview", foreign_key="post_id")
 ```
 
 The helpers translate into SQLAlchemy relationships before mapping. Class names
@@ -312,7 +355,8 @@ the two APIs. Caller-created sessions are caller-owned.
 
 ## Callbacks and authentication
 
-Declare callbacks through `@rules(before_validation(...), before_save(...), ...)`.
+Call `before_validation(...)`, `before_save(...)`, and other callback declarations
+inside the model class.
 Supported operation callbacks include before/after validation; before/around/after
 save, create, update, and destroy; after initialize/find; and after commit/rollback.
 Around callbacks are generators that yield once. Before callbacks returning
@@ -324,8 +368,9 @@ hydration. Commit/rollback callbacks are queued by successful framework operatio
 and are transaction-scoped; after-commit runs only after the outer commit, not a
 flush/savepoint. Native and bulk writes do not imply these framework hooks.
 
-Use `PasswordAuthenticator` and `@rules(has_secure_password())` for password
-behavior; a custom field name such as `has_secure_password("passcode")` is supported.
+Use `PasswordAuthenticator` and call `has_secure_password()` inside the model
+class for password behavior; a custom field name such as
+`has_secure_password("passcode")` is supported.
 Authentication/reset-token checks use published digests, so a failed staged password
 edit does not invalidate persisted credentials. Passwords, digests, confirmations,
 and reset tokens are excluded from default JSON/form data. Explicit raw-input APIs

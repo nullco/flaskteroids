@@ -9,21 +9,19 @@ from flaskteroids.model import (
     has_one_attached,
     has_secure_password,
 )
-from flaskteroids.rules import rules
 from tests.isolation.models.application_model import ApplicationModel
 
 
-@rules(
-    has_secure_password("passcode"),
+class Author(ApplicationModel, PasswordAuthenticator):
+    has_secure_password("passcode")
     has_many(
         "stories", class_name="Story", foreign_key="author_id", dependent="destroy"
-    ),
-    has_many("edited_stories", class_name="Story", foreign_key="editor_id"),
-    has_one_attached("avatar"),
-    after_commit("_committed"),
-    after_rollback("_rolled_back"),
-)
-class Author(ApplicationModel, PasswordAuthenticator):
+    )
+    has_many("edited_stories", class_name="Story", foreign_key="editor_id")
+    has_one_attached("avatar")
+    after_commit("_committed")
+    after_rollback("_rolled_back")
+
     def _committed(self):
         current_app.config["EVENTS"].append(("commit", self.name))
 
@@ -31,9 +29,6 @@ class Author(ApplicationModel, PasswordAuthenticator):
         current_app.config["EVENTS"].append(("rollback", self.name))
 
 
-@rules(
-    belongs_to("author", optional=True),
-    belongs_to("editor", class_name="Author", foreign_key="editor_id", optional=True),
-)
 class Story(ApplicationModel):
-    pass
+    belongs_to("author", optional=True)
+    belongs_to("editor", class_name="Author", foreign_key="editor_id", optional=True)

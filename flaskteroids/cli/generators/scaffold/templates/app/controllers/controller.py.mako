@@ -1,5 +1,5 @@
 from http import HTTPStatus
-from flaskteroids import params, rules, redirect_to
+from flaskteroids import params, redirect_to
 from flaskteroids.actions import before_action
 from flaskteroids.routes import ${collection}_path, ${singular}_path
 from flaskteroids.controller import render, head, respond
@@ -7,10 +7,8 @@ from app.controllers.application_controller import ApplicationController
 from app.models.${model_ref} import ${model}
 
 
-@rules(
-    before_action('_set_${singular}', only=['show', 'edit', 'update', 'destroy'])
-)
 class ${controller}Controller(ApplicationController):
+    before_action('_set_${singular}', only=['show', 'edit', 'update', 'destroy'])
 
     def index(self):
         self.${models_ref} = ${model}.all()

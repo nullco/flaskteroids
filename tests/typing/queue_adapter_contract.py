@@ -1,10 +1,12 @@
 """Static-only probes; these adapters need not inherit a runtime base class."""
 
+from collections.abc import Callable
 from typing import Any, assert_type
 
 from celery.result import AsyncResult
 from flask import Flask
 
+from flaskteroids import declaration
 from flaskteroids.configuration import Options
 from flaskteroids.declarations import (
     ActionDefinition,
@@ -46,6 +48,20 @@ def adapter_contract(application: Flask, config: Options, job_class: type[Job]) 
     assert_type(celery.enqueue(job_class, (), {}), AsyncResult)
     assert_type(test.enqueue(job_class, (), {}), EnqueuedJob)
     assert_type(custom.enqueue(job_class, (), {}), str)
+
+
+@declaration
+def custom_declaration(value: str, *, enabled: bool = True) -> Callable[[type], None]:
+    def bind(cls: type) -> None:
+        pass
+
+    return bind
+
+
+class Declared:
+    assert_type(custom_declaration("example", enabled=True), Callable[[type], None])
+    custom_declaration(123)  # type: ignore[arg-type]
+    custom_declaration("example", unknown=True)  # type: ignore[call-arg]
 
 
 def declaration_contract(cls: type) -> None:

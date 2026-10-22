@@ -4,6 +4,11 @@
 
 ### Breaking changes
 
+- Replace `@rules(...)` with explicitly imported declarations called directly in
+  model, controller, mailer, or mixin class bodies. Repeated declarations preserve
+  source order and binding remains deferred. Custom factories use `@declaration`;
+  calls in unsupported scopes raise `ProgrammerError` rather than being discarded.
+
 - Resource helpers generate slashless canonical paths and `.json` suffixes, with
   direct optional-trailing-slash recognition (no redirects or body replay).
   Nested routes preserve the parent's member parameter and bind separate ancestor
@@ -26,7 +31,7 @@
   savepoint. Context teardown no longer commits unfinished native writes. Attachment
   uploads and commit hooks follow the actual operation/outer transaction boundary.
 - Replace reflected row-wrapper models with lazy native mappings of application
-  classes. Keep the existing `@rules` association syntax and staged scalar edits;
+  classes. Association declarations and staged scalar edits remain model-owned;
   native/facade queries now share session identity. Native collections replace
   custom `Relation` wrappers; create children through their model's `create()`.
 - Migrations own schema changes. Successful migration, preparation, and rollback

@@ -2,7 +2,6 @@ import pytest
 from flask import render_template, render_template_string
 from jinja2 import DictLoader, TemplateNotFound, UndefinedError
 
-from flaskteroids import rules
 from flaskteroids.concern import Concern
 from flaskteroids.controller import ActionController, helper, helper_method, init
 from flaskteroids.exceptions import ProgrammerError
@@ -149,18 +148,16 @@ def test_helper_classes_compose_with_super_and_preserve_module_deduplication(
         def choice(self):
             return "extra:" + super().choice()
 
-    @rules(helper(ExtraHelper, ChosenHelper))
     class CustomController(PostsController):
-        pass
+        helper(ExtraHelper, ChosenHelper)
 
     init(CustomController)
     app = view_app_factory(include_all=False)
     app.jinja_loader = DictLoader({"probe.html": "{{ choice() }}|{{ chosen() }}"})
     app.add_url_rule("/custom", view_func=lambda: CustomController().show())
 
-    @rules(helper(ChosenHelper, ExtraHelper, ChosenHelper))
     class ReversedController(PostsController):
-        pass
+        helper(ChosenHelper, ExtraHelper, ChosenHelper)
 
     init(ReversedController)
     app.add_url_rule(
@@ -174,8 +171,10 @@ def test_helper_classes_compose_with_super_and_preserve_module_deduplication(
 def test_child_helper_inclusions_can_override_inherited_controller_helpers(
     view_app_factory,
 ):
-    @rules(helper_method("_choice", name="choice"), helper(ChosenHelper))
     class ParentController(ActionController):
+        helper_method("_choice", name="choice")
+        helper(ChosenHelper)
+
         def show(self):
             return render_template("probe.html")
 
@@ -186,9 +185,8 @@ def test_child_helper_inclusions_can_override_inherited_controller_helpers(
         def choice(self):
             return "child"
 
-    @rules(helper(ChildHelper))
     class ChildController(ParentController):
-        pass
+        helper(ChildHelper)
 
     init(ParentController)
     init(ChildController)
@@ -218,9 +216,8 @@ def test_application_helpers_can_override_framework_helpers(view_app_factory):
         def link_to(self, name, path):
             return f"{name} at {path}"
 
-    @rules(helper(LinksHelper))
     class CustomController(PostsController):
-        pass
+        helper(LinksHelper)
 
     init(CustomController)
     app = view_app_factory(include_all=False)
@@ -369,9 +366,8 @@ def test_helpers_are_isolated_between_applications(view_app_factory):
 def test_explicit_helper_names_resolve_conventions(
     view_app_factory, spec, expression, expected
 ):
-    @rules(helper(spec))
     class CustomController(PostsController):
-        pass
+        helper(spec)
 
     init(CustomController)
     app = view_app_factory(include_all=False)
@@ -382,13 +378,15 @@ def test_explicit_helper_names_resolve_conventions(
 
 
 def test_concern_helper_methods_override_same_owner_helper_modules(view_app_factory):
-    @rules(helper_method("_choice", name="choice"))
     class Choice(Concern):
+        helper_method("_choice", name="choice")
+
         def _choice(self):
             return "controller"
 
-    @rules(helper(ChosenHelper))
     class CustomController(ActionController, Choice):
+        helper(ChosenHelper)
+
         def show(self):
             return render_template("probe.html")
 
@@ -401,9 +399,8 @@ def test_concern_helper_methods_override_same_owner_helper_modules(view_app_fact
 
 
 def test_explicit_missing_helpers_raise_diagnostic_errors(view_app_factory):
-    @rules(helper("missing_helper"))
     class CustomController(PostsController):
-        pass
+        helper("missing_helper")
 
     init(CustomController)
     app = view_app_factory()
@@ -430,4 +427,6 @@ def test_helpers_extension_initialization_preserves_application_isolation(
 @pytest.mark.parametrize("values", [(), (None,), (123,), ("",)])
 def test_explicit_helper_declarations_reject_invalid_inputs(values):
     with pytest.raises(ProgrammerError, match="helper classes"):
-        helper(*values)
+
+        class InvalidController(ActionController):
+            helper(*values)

@@ -1,5 +1,5 @@
 from flask import request, session, url_for
-from flaskteroids import redirect_to, rules
+from flaskteroids import redirect_to
 from flaskteroids.concern import Concern
 from flaskteroids.actions import before_action
 from flaskteroids.controller import helper_method
@@ -7,11 +7,9 @@ from flaskteroids.current import current
 from app.models.session import Session
 
 
-@rules(
-    before_action('_require_authentication'),
-    helper_method('_is_authenticated')
-)
 class Authentication(Concern):
+    before_action('_require_authentication')
+    helper_method('_is_authenticated')
 
     def _is_authenticated(self):
         return bool(self._resume_session())

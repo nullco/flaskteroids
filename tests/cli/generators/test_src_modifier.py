@@ -1,10 +1,12 @@
 import ast
 
+import pytest
+
 from flaskteroids.cli.generators.src_modifier import (
     add_base_cls,
+    add_declarations,
     add_imports,
     add_routes,
-    add_rules,
 )
 
 
@@ -131,82 +133,45 @@ def func():
         assert len(new_tree.body) == 2
 
 
-class TestAddRules:
-    """Tests for add_rules function."""
+class TestAddDeclarations:
+    @pytest.mark.parametrize(
+        "body",
+        [
+            "    pass",
+            "    belongs_to('user')",
+            "    belongs_to('user')\n    def title(self): pass",
+        ],
+    )
+    def test_add_declarations_extends_class_body_before_methods(self, body):
+        tree = ast.parse("class Post(Model):\n" + body)
+        transformer = add_declarations(
+            ["has_many('comments')", "validates('title', presence=True)"]
+        )()
+        node = transformer.visit(tree).body[0]
+        calls = [
+            stmt.value.func.id
+            for stmt in node.body
+            if isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Call)
+        ]
+        expected = ["belongs_to"] if "belongs_to" in body else []
+        assert calls == [*expected, "has_many", "validates"]
+        assert not any(isinstance(stmt, ast.Pass) for stmt in node.body)
+        if "def title" in body:
+            assert isinstance(node.body[-1], ast.FunctionDef)
 
-    def test_add_rules_extends_existing_rules_decorator(self):
-        """Test adding rules to a class decorated with @rules."""
-        source = """
-@rules(
-    belongs_to('user'),
-    validates('title', presence=True)
-)
-class Post(Model):
-    pass
-"""
-        tree = ast.parse(source)
-        rules = ["has_many('comments')", "validates('content', presence=True)"]
-        transformer = add_rules(rules)()
-        new_tree = transformer.visit(tree)
-        ast.fix_missing_locations(new_tree)
-
-        # Verify rules decorator has additional arguments
-        class_def = new_tree.body[0]
-        rules_decorator = class_def.decorator_list[0]
-        assert len(rules_decorator.args) == 4  # original 2 + 2 new
-
-    def test_add_rules_creates_rules_decorator(self):
-        """Test adding rules when class has no @rules decorator."""
-        source = """
-class Post(Model):
-    pass
-"""
-        tree = ast.parse(source)
-        rules = ["belongs_to('user')"]
-        transformer = add_rules(rules)()
-        new_tree = transformer.visit(tree)
-
-        # Should remain unchanged
-        class_def = new_tree.body[0]
-        assert len(class_def.decorator_list) == 0
-
-    def test_add_rules_preserves_other_decorators(self):
-        """Test adding rules when class has multiple decorators."""
-        source = """
-@other_decorator
-@rules(belongs_to('user'))
-class Post(Model):
-    pass
-"""
-        tree = ast.parse(source)
-        rules = ["has_many('comments')"]
-        transformer = add_rules(rules)()
-        new_tree = transformer.visit(tree)
-        ast.fix_missing_locations(new_tree)
-
-        # Verify only the @rules decorator is modified
-        class_def = new_tree.body[0]
-        assert len(class_def.decorator_list) == 2
-        rules_decorator = next(
-            d for d in class_def.decorator_list if isinstance(d, ast.Call)
+    def test_add_declarations_preserves_docstrings_and_decorators(self):
+        tree = ast.parse(
+            '@other_decorator\nclass Post(Model):\n    """A post."""\n    pass\n'
         )
-        assert len(rules_decorator.args) == 2  # original 1 + 1 new
+        node = add_declarations(["belongs_to('user')"])().visit(tree).body[0]
+        assert ast.get_docstring(node) == "A post."
+        assert node.decorator_list[0].id == "other_decorator"
+        assert node.body[1].value.func.id == "belongs_to"
 
-    def test_add_rules_preserves_class_for_empty_input(self):
-        """Test adding empty rules list."""
-        source = """
-@rules(belongs_to('user'))
-class Post(Model):
-    pass
-"""
-        tree = ast.parse(source)
-        transformer = add_rules([])()
-        new_tree = transformer.visit(tree)
-
-        # Should remain unchanged
-        class_def = new_tree.body[0]
-        rules_decorator = class_def.decorator_list[0]
-        assert len(rules_decorator.args) == 1
+    def test_add_declarations_preserves_class_for_empty_input(self):
+        tree = ast.parse("class Post(Model):\n    pass\n")
+        expected = ast.dump(tree)
+        assert ast.dump(add_declarations([])().visit(tree)) == expected
 
 
 class TestAddBaseCls:

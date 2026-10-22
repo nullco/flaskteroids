@@ -30,15 +30,11 @@ To add attachments to an existing model without a generator, declare them with
 ```python
 from app.models.application_model import ApplicationModel
 from flaskteroids.model import has_one_attached, has_many_attached
-from flaskteroids.rules import rules
 
 
-@rules(
-    has_one_attached("avatar"),
-    has_many_attached("documents"),
-)
 class User(ApplicationModel):
-    pass
+    has_one_attached('avatar')
+    has_many_attached('documents')
 ```
 
 Pass an uploaded file to `attach`, or include it in `create` or `update`:
@@ -101,14 +97,22 @@ list explicitly rather than omitting the field.
 
 ## Validation and limits
 
-Add size and content-type checks to a declaration:
+Replace the existing avatar declaration inside `User` with one that includes
+size and content-type checks. Keep its other declarations and methods:
 
 ```python
-has_one_attached(
-    "avatar",
-    max_size=2 * 1024 * 1024,
-    content_types=["image/png", "image/jpeg"],
-)
+from app.models.application_model import ApplicationModel
+from flaskteroids.model import has_one_attached
+
+
+class User(ApplicationModel):
+    has_one_attached(
+        "avatar",
+        max_size=2 * 1024 * 1024,
+        content_types=["image/png", "image/jpeg"],
+    )
+
+    # Keep other declarations and methods here.
 ```
 
 Failed checks add messages to the model's `errors` and prevent saving.

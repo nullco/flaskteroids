@@ -5,7 +5,6 @@ from sqlalchemy import Column, DateTime, Integer, String
 from sqlalchemy.orm import declarative_base
 
 from flaskteroids.model import validates
-from flaskteroids.rules import rules
 from tests.model.schema_support import model_base
 
 
@@ -41,11 +40,8 @@ class ProductBase(Base):
     expires_at = Column(DateTime())
 
 
-@rules(
-    validates("username", presence=True),
-)
 class User(model_base(Base)):
-    pass
+    validates("username", presence=True)
 
 
 class TestModelCRUD:
@@ -223,11 +219,8 @@ class TestModelValidations:
     def test_comparison_validation_accepts_matching_values_and_rejects_violations(
         self, init_models, field, comparison, valid_value, invalid_value
     ):
-        @rules(
-            validates(field, comparison=comparison),
-        )
         class Product(model_base(Base)):
-            pass
+            validates(field, comparison=comparison)
 
         init_models(
             Base,

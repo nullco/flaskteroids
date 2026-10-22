@@ -11,7 +11,6 @@ from flaskteroids.model import (
     has_secure_password,
     validates,
 )
-from flaskteroids.rules import rules
 from tests.assertions import HTML
 from tests.model.schema_support import model_base
 
@@ -35,14 +34,14 @@ class PasscodeAccountTable(Base):
     passcode_digest = Column(String)
 
 
-@rules(has_secure_password(), validates("name", confirmation=True))
 class Account(model_base(Base), PasswordAuthenticator):
-    pass
+    has_secure_password()
+    validates("name", confirmation=True)
 
 
-@rules(has_secure_password("passcode"), validates("name", confirmation=True))
 class PasscodeAccount(model_base(Base), PasswordAuthenticator):
-    pass
+    has_secure_password("passcode")
+    validates("name", confirmation=True)
 
 
 @pytest.fixture(params=["password", "passcode"])

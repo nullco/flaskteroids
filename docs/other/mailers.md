@@ -27,11 +27,12 @@ UserMailer().welcome_email(user).deliver_later()
 Use `helper_method` to expose a private mailer method to its templates:
 
 ```python
-from flaskteroids import rules
 from flaskteroids.mailer import ActionMailer, helper_method
 
-@rules(helper_method("_greeting"))
+
 class NoticesMailer(ActionMailer):
+    helper_method("_greeting")
+
     def welcome(self, name, email):
         self.name = name
         return self.mail(to=email, subject="Welcome")

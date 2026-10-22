@@ -4,7 +4,6 @@ from flask import Flask
 from flaskteroids.actions import after_action, around_action, before_action
 from flaskteroids.controller import ActionController, init
 from flaskteroids.exceptions import ProgrammerError
-from flaskteroids.rules import rules
 
 
 @pytest.fixture
@@ -20,8 +19,10 @@ def test_hooks_apply_selection_filters_and_preserve_registration_order(hook, sel
     events = []
     method = "_around" if hook is around_action else "_callback"
 
-    @rules(hook(method, only=selection), hook(method, only=selection))
     class Example(ActionController):
+        hook(method, only=selection)
+        hook(method, only=selection)
+
         def _callback(self):
             events.append("callback")
 
@@ -62,8 +63,9 @@ def test_hooks_apply_selection_filters_and_preserve_registration_order(hook, sel
     "method,error", [("public", ProgrammerError), ("_missing", AttributeError)]
 )
 def test_hooks_reject_invalid_names_and_missing_methods(hook, method, error):
-    @rules(hook(method))
     class Example(ActionController):
+        hook(method)
+
         def index(self):
             return "response"
 

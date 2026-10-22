@@ -31,18 +31,14 @@ class ApplicationModel(Model):
 AUTHOR = """\
 from .application_model import ApplicationModel
 from flaskteroids.model import has_many
-from flaskteroids.rules import rules
-@rules(has_many("posts", dependent="destroy"))
 class Author(ApplicationModel):
-    pass
+    has_many("posts", dependent="destroy")
 """
 POST = """\
 from .application_model import ApplicationModel
 from flaskteroids.model import belongs_to
-from flaskteroids.rules import rules
-@rules(belongs_to("author"))
 class Post(ApplicationModel):
-    pass
+    belongs_to('author')
 """
 
 
@@ -216,9 +212,8 @@ def test_abstract_behavior_bases_skip_lookup(model_package):
         author="""
     from .application_model import ApplicationModel
     from flaskteroids.model import has_many
-    from flaskteroids.rules import rules
-    @rules(has_many("posts"))
     class NamedModel(ApplicationModel):
+        has_many('posts')
         __abstract__ = True
         def display_name(self):
             return self.name
@@ -264,11 +259,7 @@ def test_mapping_rejects_snapshot_columns_conflicting_with_model_api(
 
 def test_mapping_rejects_properties_conflicting_with_snapshot_columns(model_package):
     models = load_models(
-        model_package(
-            author=AUTHOR.replace(
-                "    pass", "    name = property(lambda self: 'override')"
-            )
-        )
+        model_package(author=AUTHOR + "    name = property(lambda self: 'override')\n")
     )
     with pytest.raises(ProgrammerError, match="Author.name.*conflicts"):
         models["Author"].prepare()
@@ -350,14 +341,13 @@ def test_separate_applications_with_same_names_have_isolated_registries(
         "has_many('posts', dependent='delete')",
     ],
 )
-def test_bad_decorator_options_fail_clearly(model_package, declaration):
+def test_association_declarations_reject_invalid_options(model_package, declaration):
     package = model_package(
         author=f"""
     from .application_model import ApplicationModel
     from flaskteroids.model import belongs_to, has_many
-    from flaskteroids.rules import rules
-    @rules({declaration})
-    class Author(ApplicationModel): pass
+    class Author(ApplicationModel):
+        {declaration}
     """
     )
     with pytest.raises(ProgrammerError):
@@ -423,15 +413,14 @@ def test_has_one_preserves_inverse_and_staged_primary_key(
         + '\nsnapshot.create_table("profiles", sa.Column("id", sa.Integer(), primary_key=True), sa.Column("author_id", sa.Integer(), sa.ForeignKey("authors.id")))\n',
         author=AUTHOR.replace("import has_many", "import has_many, has_one").replace(
             'has_many("posts", dependent="destroy")',
-            'has_many("posts", dependent="destroy"), has_one("profile")',
+            'has_many("posts", dependent="destroy")\n    has_one("profile")',
         ),
         extra_files={
             "app/models/profile.py": (
                 "from .application_model import ApplicationModel\n"
                 "from flaskteroids.model import belongs_to\n"
-                "from flaskteroids.rules import rules\n"
-                "@rules(belongs_to('author'))\n"
-                "class Profile(ApplicationModel): pass\n"
+                "class Profile(ApplicationModel):\n"
+                "    belongs_to('author')\n"
             )
         },
     )

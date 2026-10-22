@@ -4,12 +4,12 @@ from flaskteroids import redirect_to
 from flaskteroids.actions import before_action, params
 from flaskteroids.controller import ActionController, render, respond
 from flaskteroids.helpers import url_for
-from flaskteroids.rules import rules
 from tests.app.models.user import User
 
 
-@rules(before_action("_set_user", only=["show", "edit", "update", "destroy"]))
 class UsersController(ActionController):
+    before_action("_set_user", only=["show", "edit", "update", "destroy"])
+
     def index(self):
         self.users = User.all()
 

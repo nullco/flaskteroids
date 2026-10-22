@@ -3,7 +3,6 @@ from sqlalchemy import Column, DateTime, Integer, String
 from sqlalchemy.orm import declarative_base
 
 from flaskteroids.model import Error, Errors, validates
-from flaskteroids.rules import rules
 from tests.model.schema_support import model_base
 
 Base = declarative_base()
@@ -21,10 +20,11 @@ class EntryTable(Base):
 
 @pytest.fixture
 def entry_model(init_models):
-    def prepare(*declarations):
-        @rules(*declarations)
+    def prepare(*validations):
         class Entry(model_base(Base)):
             threshold = 10
+            for field, options in validations:
+                validates(field, **options)
 
         init_models(Base, [(EntryTable, Entry)])
         return Entry
@@ -54,21 +54,22 @@ def test_errors_collect_messages_and_support_public_container_operations():
 
 @pytest.mark.parametrize("presence", [None, False, {}])
 def test_presence_validation_accepts_values_when_disabled(entry_model, presence):
-    entry = entry_model(validates("name", presence=presence)).new(name="   ")
+    entry = entry_model(("name", {"presence": presence})).new(name="   ")
     assert entry.save() is True
     assert not entry.errors
 
 
 @pytest.mark.parametrize("length", [None, {}, {"minimum": 0, "maximum": 3}])
 def test_length_allows_none(entry_model, length):
-    entry = entry_model(validates("name", length=length)).new()
+    entry = entry_model(("name", {"length": length})).new()
     assert entry.save() is True
 
 
 def test_validation_preserves_message_order_and_allows_retry(entry_model):
     Entry = entry_model(
-        validates("name", presence=True, length={"minimum": 2}),
-        validates("quantity", comparison={"greater_than": 10, "equal_to": 20}),
+        ("name", {"presence": True}),
+        ("name", {"length": {"minimum": 2}}),
+        ("quantity", {"comparison": {"greater_than": 10, "equal_to": 20}}),
     )
     entry = Entry.new(name="", quantity=5)
     assert entry.save() is False
@@ -84,7 +85,7 @@ def test_validation_preserves_message_order_and_allows_retry(entry_model):
 
 @pytest.mark.parametrize("attributes", [{}, {"name": None}])
 def test_presence_rejects_omitted_and_explicit_null_attributes(entry_model, attributes):
-    Entry = entry_model(validates("name", presence=True))
+    Entry = entry_model(("name", {"presence": True}))
     entry = Entry.new(**attributes)
 
     assert entry.name is None
@@ -95,7 +96,7 @@ def test_presence_rejects_omitted_and_explicit_null_attributes(entry_model, attr
 
 @pytest.mark.parametrize("name", ["", "   ", "\t\n\r", "\u00a0", "\u2003\u3000"])
 def test_presence_rejects_blank_strings(entry_model, name):
-    Entry = entry_model(validates("name", presence=True))
+    Entry = entry_model(("name", {"presence": True}))
     entry = Entry.new(name=name)
 
     assert entry.save() is False
@@ -108,7 +109,7 @@ def test_presence_rejects_blank_strings(entry_model, name):
     "name", ["hello", " hello ", "\t hello\n", "\u00a0hello\u3000"]
 )
 def test_presence_preserves_nonblank_strings(entry_model, name):
-    Entry = entry_model(validates("name", presence=True))
+    Entry = entry_model(("name", {"presence": True}))
     entry = Entry.new(name=name)
 
     assert entry.save() is True
@@ -117,7 +118,7 @@ def test_presence_preserves_nonblank_strings(entry_model, name):
 
 
 def test_presence_accepts_zero(entry_model):
-    entry = entry_model(validates("quantity", presence=True)).new(quantity=0)
+    entry = entry_model(("quantity", {"presence": True})).new(quantity=0)
 
     assert entry.save() is True
     assert not entry.errors
@@ -128,7 +129,7 @@ def test_presence_accepts_zero(entry_model):
 def test_presence_rejects_blank_update_without_changing_persisted_value(
     entry_model, name
 ):
-    Entry = entry_model(validates("name", presence=True))
+    Entry = entry_model(("name", {"presence": True}))
     entry = Entry.create(name="Existing")
 
     assert entry.update(quantity=1) is True
@@ -140,7 +141,7 @@ def test_presence_rejects_blank_update_without_changing_persisted_value(
 
 
 def test_presence_validation_uses_custom_message(entry_model):
-    entry = entry_model(validates("name", presence={"message": "required"})).new()
+    entry = entry_model(("name", {"presence": {"message": "required"}})).new()
     assert entry.save() is False
     assert entry.errors.full_messages() == ["required"]
 
@@ -149,7 +150,7 @@ def test_presence_validation_uses_custom_message(entry_model):
 def test_confirmation_validation_supports_virtual_field_and_disabled_option(
     entry_model, confirmation
 ):
-    Entry = entry_model(validates("name", confirmation=confirmation))
+    Entry = entry_model(("name", {"confirmation": confirmation}))
     entry = Entry.new(name="first", name_confirmation="different")
     assert entry.save() is (not confirmation)
     assert bool(entry.errors) is confirmation
@@ -158,16 +159,16 @@ def test_confirmation_validation_supports_virtual_field_and_disabled_option(
 
 @pytest.mark.parametrize("operand", [10, "threshold", lambda: 10])
 def test_comparison_validation_resolves_supported_operands(entry_model, operand):
-    entry = entry_model(
-        validates("quantity", comparison={"greater_than": operand})
-    ).new(quantity=5)
+    entry = entry_model(("quantity", {"comparison": {"greater_than": operand}})).new(
+        quantity=5
+    )
     assert entry.save() is False
     assert entry.errors
     assert entry.update(quantity=15) is True
 
 
 def test_incompatible_comparison_is_validation_error(entry_model):
-    entry = entry_model(validates("quantity", comparison={"greater_than": list})).new(
+    entry = entry_model(("quantity", {"comparison": {"greater_than": list}})).new(
         quantity=5
     )
     assert entry.save() is False
@@ -180,5 +181,5 @@ def test_incompatible_comparison_is_validation_error(entry_model):
 def test_comparison_validation_skips_disabled_and_unresolved_operands(
     entry_model, comparison
 ):
-    entry = entry_model(validates("quantity", comparison=comparison)).new(quantity=5)
+    entry = entry_model(("quantity", {"comparison": comparison})).new(quantity=5)
     assert entry.save() is True

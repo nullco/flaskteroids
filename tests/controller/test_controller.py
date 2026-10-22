@@ -3,21 +3,19 @@ import pytest
 from flaskteroids import params
 from flaskteroids.actions import after_action, around_action, before_action
 from flaskteroids.controller import ActionController, init
-from flaskteroids.rules import rules
 
 
 @pytest.fixture()
 def my_controller():
 
-    @rules(
-        before_action("_before_first"),
-        before_action("_before_second"),
-        around_action("_around_first"),
-        around_action("_around_second"),
-        after_action("_after_first"),
-        after_action("_after_second"),
-    )
     class TestController(ActionController):
+        before_action("_before_first")
+        before_action("_before_second")
+        around_action("_around_first")
+        around_action("_around_second")
+        after_action("_after_first")
+        after_action("_after_second")
+
         def _before_first(self):
             self.calls = ["before_first"]
 

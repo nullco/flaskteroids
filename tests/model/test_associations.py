@@ -3,7 +3,6 @@ from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.orm import declarative_base
 
 from flaskteroids.model import validates
-from flaskteroids.rules import rules
 from tests.model.schema_support import model_base
 
 
@@ -45,9 +44,8 @@ ApplicationModel = model_base(
 )
 
 
-@rules(validates("username"))
 class User(ApplicationModel):
-    pass
+    validates("username")
 
 
 class Group(ApplicationModel):

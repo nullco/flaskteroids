@@ -13,34 +13,71 @@ from flaskteroids.controller import ActionController
 from flaskteroids.controller import init as init_controller
 from flaskteroids.mailer import ActionMailer
 from flaskteroids.mailer import init as init_mailer
-from flaskteroids.rules import bind_rules, rules
+from flaskteroids.rules import bind_rules, declaration
 
 
 def test_rules_collect_local_declarations_once_through_diamond():
     events = []
 
-    def record(cls):
-        events.append(cls.__name__)
+    @declaration
+    def record():
+        def bind(cls):
+            events.append(cls.__name__)
 
-    @rules(record)
+        return bind
+
     class Root:
-        pass
+        record()
 
-    @rules(record)
     class Left(Root):
-        pass
+        record()
 
     class Right(Root):
         pass
 
-    @rules(record, record)
     class Child(Left, Right):
-        pass
+        record()
+        record()
 
     bind_rules(Root)
     bind_rules(Child)
     bind_rules(Child)
     assert events == ["Root", "Child", "Child", "Child", "Child"]
+
+
+@pytest.mark.parametrize(
+    "base,prepare", [(ActionController, init_controller), (ActionMailer, init_mailer)]
+)
+def test_plain_mixin_diamonds_contribute_action_callbacks(base, prepare):
+    events = []
+
+    class Shared:
+        before_action("_shared")
+
+        def _shared(self):
+            events.append("shared")
+
+    class Left(Shared):
+        pass
+
+    class Right(Shared):
+        pass
+
+    class Example(Left, Right, base):
+        def index(self):
+            events.append("action")
+            return (
+                "response"
+                if base is ActionController
+                else self.mail(to="a@example.com", subject="hello")
+            )
+
+    prepare(Example)
+    app = Flask(__name__)
+    app.config.action_mailer = type("MailConfig", (), {"default_options": {}})()
+    with app.app_context():
+        Example().index()
+    assert events == ["shared", "action"]
 
 
 @pytest.mark.parametrize(
@@ -59,8 +96,10 @@ def test_inherited_actions_prepare_once_and_preserve_application_decorators(
 
         return decorated
 
-    @rules(before_action("_before"), after_action("_after"))
     class Parent(base):
+        before_action("_before")
+        after_action("_after")
+
         def _before(self):
             events.append("before")
 
@@ -78,11 +117,10 @@ def test_inherited_actions_prepare_once_and_preserve_application_decorators(
 
     prepare(Parent)
 
-    @rules(
-        skip_before_action("_before", only=["index"]),
-        before_action("_child", only=["index"]),
-    )
     class Child(Parent):
+        skip_before_action("_before", only=["index"])
+        before_action("_child", only=["index"])
+
         def _child(self):
             events.append("child")
 
@@ -103,8 +141,9 @@ def test_inherited_actions_prepare_once_and_preserve_application_decorators(
 def test_explicit_super_action_runs_parent_chain(base, prepare):
     events = []
 
-    @rules(before_action("_before"))
     class Parent(base):
+        before_action("_before")
+
         def _before(self):
             events.append("before")
 
@@ -138,8 +177,11 @@ def test_explicit_super_action_runs_parent_chain(base, prepare):
 def test_diamond_action_chains_apply_to_new_actions_and_overrides(base, prepare):
     events = []
 
-    @rules(before_action("_all"), around_action("_around"), after_action("_after"))
     class Root(base):
+        before_action("_all")
+        around_action("_around")
+        after_action("_after")
+
         def _all(self):
             events.append("all")
 
@@ -157,25 +199,26 @@ def test_diamond_action_chains_apply_to_new_actions_and_overrides(base, prepare)
 
     prepare(Root)
 
-    @rules(before_action("_left"))
     class Left(Root):
+        before_action("_left")
+
         def _left(self):
             events.append("left")
 
-    @rules(before_action("_right"))
     class Right(Root):
+        before_action("_right")
+
         def _right(self):
             events.append("right")
 
     prepare(Left)
     prepare(Right)
 
-    @rules(
-        skip_before_action("_left", only=["index"]),
-        before_action("_local"),
-        before_action("_local"),
-    )
     class Child(Left, Right):
+        skip_before_action("_left", only=["index"])
+        before_action("_local")
+        before_action("_local")
+
         def _local(self):
             events.append("local")
 

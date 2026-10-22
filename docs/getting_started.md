@@ -285,17 +285,15 @@ then replace `app/models/product.py` with:
 ```python
 from app.models.application_model import ApplicationModel
 from flaskteroids.model import validates
-from flaskteroids.rules import rules
 
 
-@rules(validates("name", presence=True))
 class Product(ApplicationModel):
-    pass
+    validates("name", presence=True)
 ```
 
-`@rules` collects declarations such as validations, associations, and callbacks.
-This rule requires a nonblank name. It changes behavior, not database structure,
-so there is no migration to run.
+Declarations such as validations, associations, and callbacks go directly inside
+the class body, with explicit imports. This validation requires a nonblank name.
+It changes behavior, not database structure, so there is no migration to run.
 
 Open a new `bin/flask shell` to load the edited model:
 
@@ -657,17 +655,20 @@ just like the creation form. Correct the name before continuing.
 `show`, `edit`, and `update` all start with the same product lookup. A
 `before_action` lets us run it once before any of those actions.
 
-Add these controller imports:
+In `app/controllers/products_controller.py`, add this import alongside the
+existing imports:
 
 ```python
 from flaskteroids.actions import before_action
-from flaskteroids.rules import rules
 ```
 
-Place this decorator directly above `class ProductsController(...)`:
+Add the declaration **inside** `ProductsController`, before its existing methods:
 
 ```python
-@rules(before_action("_set_product", only=["show", "edit", "update"]))
+class ProductsController(ApplicationController):
+    before_action("_set_product", only=["show", "edit", "update"])
+
+    # Keep the existing actions and private methods here.
 ```
 
 Replace `show`, `edit`, and `update` with these methods, and add `_set_product`:
@@ -713,10 +714,11 @@ Add this action:
         return redirect_to(products_path(), status=303)
 ```
 
-Include `destroy` in the callback's action list:
+Update the existing `before_action` call inside `ProductsController` to include
+`destroy`. Replace the call rather than adding a second one:
 
 ```python
-@rules(before_action("_set_product", only=["show", "edit", "update", "destroy"]))
+    before_action("_set_product", only=["show", "edit", "update", "destroy"])
 ```
 
 After the Edit link in `app/views/products/show.html`, add a deletion button:
@@ -795,13 +797,12 @@ existing actions import:
 from flaskteroids.actions import before_action, skip_before_action
 ```
 
-Replace the controller's `@rules(...)` declaration with:
+Replace the existing callback declaration inside `ProductsController` with
+these two class-body calls, keeping its methods unchanged:
 
 ```python
-@rules(
-    skip_before_action("_require_authentication", only=["index", "show"]),
-    before_action("_set_product", only=["show", "edit", "update", "destroy"]),
-)
+    skip_before_action("_require_authentication", only=["index", "show"])
+    before_action("_set_product", only=["show", "edit", "update", "destroy"])
 ```
 
 The generated `Authentication` concern provides the `is_authenticated()` template
@@ -863,17 +864,15 @@ bin/flask db:migrate
 Stop and restart the server after this migration, as with other schema changes.
 
 In `app/models/product.py`, import `has_one_attached` alongside `validates`, then
-replace the model's rule declaration with:
+update the declarations inside `Product` to:
 
 ```python
-@rules(
-    validates("name", presence=True),
+    validates("name", presence=True)
     has_one_attached(
         "featured_image",
         max_size=2 * 1024 * 1024,
         content_types=["image/png", "image/jpeg"],
-    ),
-)
+    )
 ```
 
 The attachment is not an extra column on `products`: the attachment tables keep
@@ -951,30 +950,29 @@ Apply it:
 bin/flask db:migrate
 ```
 
-Replace `app/models/product.py` with the following, preserving the image rule
-we added earlier:
+Replace `app/models/product.py` with the following, preserving the attachment
+declaration we added earlier:
 
 ```python
 from app.models.application_model import ApplicationModel
 from flaskteroids.model import has_one_attached, validates
-from flaskteroids.rules import rules
 
 
-@rules(
-    validates("name", presence=True),
-    validates("inventory_count", numericality={"only_integer": True}),
-    validates("inventory_count", comparison={"greater_than_or_equal_to": 0}),
+class Product(ApplicationModel):
+    validates("name", presence=True)
+    validates("inventory_count", numericality={"only_integer": True})
+    validates("inventory_count", comparison={"greater_than_or_equal_to": 0})
     has_one_attached(
         "featured_image",
         max_size=2 * 1024 * 1024,
         content_types=["image/png", "image/jpeg"],
-    ),
-)
-class Product(ApplicationModel):
-    pass
+    )
 ```
 
 The database supplies the default; validations explain invalid user input.
+Both `inventory_count` declarations apply: repeated `validates` calls add checks
+rather than replacing earlier ones.
+
 Add this field before the submit button in `app/views/products/_form.html`:
 
 ```html
@@ -1050,15 +1048,13 @@ from secrets import token_urlsafe
 
 from app.models.application_model import ApplicationModel
 from flaskteroids.model import before_create, belongs_to, validates
-from flaskteroids.rules import rules
 
 
-@rules(
-    belongs_to("product"),
-    validates("email", presence=True),
-    before_create("_assign_unsubscribe_token"),
-)
 class Subscriber(ApplicationModel):
+    belongs_to("product")
+    validates("email", presence=True)
+    before_create("_assign_unsubscribe_token")
+
     def _assign_unsubscribe_token(self):
         self.unsubscribe_token = token_urlsafe(32)
 ```
@@ -1068,7 +1064,7 @@ saved. That token will let someone unsubscribe without an account. Treat it
 like a credential: do not expose a subscriber list or log the tokens.
 
 In `app/models/product.py`, add `has_many` to the existing model import and add
-`has_many("subscribers", dependent="destroy")` inside `@rules(...)`.
+`has_many("subscribers", dependent="destroy")` inside the model class.
 Deleting a product will now delete its subscriptions too.
 
 Restart the server, then open `bin/flask shell`:
@@ -1099,11 +1095,11 @@ from flaskteroids import params, redirect_to
 from flaskteroids.actions import skip_before_action
 from flaskteroids.controller import render
 from flaskteroids.routes import product_path
-from flaskteroids.rules import rules
 
 
-@rules(skip_before_action("_require_authentication"))
 class SubscribersController(ApplicationController):
+    skip_before_action("_require_authentication")
+
     def create(self):
         self.product = Product.find(params["product_id"])
         attributes = params.expect(subscriber=["email"])
@@ -1113,7 +1109,8 @@ class SubscribersController(ApplicationController):
             if not self.subscriber.save():
                 return render("new", status=422)
         return redirect_to(
-            product_path(self.product), notice="We will email you when it is back in stock."
+            product_path(self.product),
+            notice="We will email you when it is back in stock.",
         )
 ```
 
@@ -1212,11 +1209,11 @@ from app.controllers.application_controller import ApplicationController
 from app.models.subscriber import Subscriber
 from flaskteroids import params, redirect_to
 from flaskteroids.actions import skip_before_action
-from flaskteroids.rules import rules
 
 
-@rules(skip_before_action("_require_authentication"))
 class UnsubscribesController(ApplicationController):
+    skip_before_action("_require_authentication")
+
     def show(self):
         self.subscriber = Subscriber.find_by(unsubscribe_token=params["token"])
         if self.subscriber is None:
@@ -1363,24 +1360,22 @@ from flaskteroids.model import (
     has_one_attached,
     validates,
 )
-from flaskteroids.rules import rules
 
 
-@rules(
-    validates("name", presence=True),
-    validates("inventory_count", numericality={"only_integer": True}),
-    validates("inventory_count", comparison={"greater_than_or_equal_to": 0}),
+class Product(ApplicationModel):
+    validates("name", presence=True)
+    validates("inventory_count", numericality={"only_integer": True})
+    validates("inventory_count", comparison={"greater_than_or_equal_to": 0})
     has_one_attached(
         "featured_image",
         max_size=2 * 1024 * 1024,
         content_types=["image/png", "image/jpeg"],
-    ),
-    has_many("subscribers", dependent="destroy"),
-    before_update("_prepare_restock_emails"),
-    after_commit("_deliver_restock_emails", on="update"),
-    after_rollback("_clear_restock_emails"),
-)
-class Product(ApplicationModel):
+    )
+    has_many("subscribers", dependent="destroy")
+    before_update("_prepare_restock_emails")
+    after_commit("_deliver_restock_emails", on="update")
+    after_rollback("_clear_restock_emails")
+
     def _prepare_restock_emails(self):
         if self.inventory_count == 0:
             self._clear_restock_emails()

@@ -1,13 +1,11 @@
-from flaskteroids import rules
 from flaskteroids.mailer import ActionMailer, helper, helper_method
 
 
-@rules(
-    helper("letters"),
-    helper_method("_greeting"),
-    helper_method("_next_number", name="delivery_number"),
-)
 class LettersMailer(ActionMailer):
+    helper("letters")
+    helper_method("_greeting")
+    helper_method("_next_number", name="delivery_number")
+
     def __init__(self, recipient):
         self.recipient = recipient
         self._number = 0

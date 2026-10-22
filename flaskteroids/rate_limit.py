@@ -4,6 +4,7 @@ from flask import abort, request
 
 from flaskteroids import cache
 from flaskteroids.actions import before_action
+from flaskteroids.rules import declaration
 
 
 def _keygen():
@@ -14,7 +15,10 @@ def _with():
     abort(HTTPStatus.TOO_MANY_REQUESTS)
 
 
+@declaration
 def rate_limit(*, to, within=None, only=None, by=None, with_=None):
+    callback = before_action("_rate_limit", only=only)
+
     def bind(cls):
         def _rate_limit(self):
             rate_limit_handler = with_ or _with
@@ -25,6 +29,6 @@ def rate_limit(*, to, within=None, only=None, by=None, with_=None):
                 return rate_limit_handler()
 
         cls._rate_limit = _rate_limit
-        before_action("_rate_limit", only=only)(cls)
+        callback(cls)
 
     return bind

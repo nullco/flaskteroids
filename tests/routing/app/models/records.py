@@ -1,20 +1,15 @@
 from flaskteroids.model import validates
-from flaskteroids.rules import rules
 
 from .application_model import ApplicationModel
 
 
-@rules(
-    validates("name", presence=True),
-    validates("quantity", numericality={"only_integer": True, "allow_nil": True}),
-)
 class Product(ApplicationModel):
-    pass
+    validates("name", presence=True)
+    validates("quantity", numericality={"only_integer": True, "allow_nil": True})
 
 
-@rules(validates("email", presence=True))
 class Subscriber(ApplicationModel):
-    pass
+    validates("email", presence=True)
 
 
 class Fish(ApplicationModel):

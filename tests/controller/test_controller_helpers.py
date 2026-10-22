@@ -6,7 +6,6 @@ from flaskteroids.actions import get_actions
 from flaskteroids.concern import Concern
 from flaskteroids.controller import ActionController, helper_method, init, render
 from flaskteroids.exceptions import ProgrammerError
-from flaskteroids.rules import rules
 
 
 @pytest.fixture
@@ -29,8 +28,9 @@ def helper_app(app, mocker, render_template):
 
 @pytest.fixture
 def helpers_controller():
-    @rules(helper_method("_label", name="label"))
     class Labels(Concern):
+        helper_method("_label", name="label")
+
         def _label(self, value):
             return f"{self.prefix}:{value}"
 
@@ -93,8 +93,9 @@ def test_helpers_are_scoped_to_the_current_controller(helper_app, helpers_contro
 
 
 def test_inherited_helpers_use_child_overrides_without_affecting_siblings(helper_app):
-    @rules(helper_method("_label"))
     class ParentController(ActionController):
+        helper_method("_label")
+
         def show(self):
             return render_template("helpers/_label.html")
 
@@ -129,18 +130,22 @@ def test_inherited_helpers_use_child_overrides_without_affecting_siblings(helper
 @pytest.mark.parametrize("method_name", ["label", "__label"])
 def test_helpers_require_private_controller_methods(method_name):
     with pytest.raises(ProgrammerError, match="private methods"):
-        helper_method(method_name)
+
+        class InvalidController(ActionController):
+            helper_method(method_name)
 
 
 @pytest.mark.parametrize("name", ["", "_label", "invalid-name"])
 def test_helpers_require_public_template_names(name):
     with pytest.raises(ProgrammerError, match="public identifiers"):
-        helper_method("_label", name=name)
+
+        class InvalidController(ActionController):
+            helper_method("_label", name=name)
 
 
 def test_helpers_require_callable_methods():
-    @rules(helper_method("_label"))
     class InvalidController(ActionController):
+        helper_method("_label")
         _label = "not callable"
 
     with pytest.raises(ProgrammerError, match="must be callable"):

@@ -8,7 +8,6 @@ from flaskteroids.model import (
     RecordNotFoundException,
     has_secure_password,
 )
-from flaskteroids.rules import rules
 from tests.model.schema_support import model_base
 
 
@@ -28,9 +27,8 @@ class UserBase(Base):
     password_digest = Column(String(), nullable=False)
 
 
-@rules(has_secure_password())
 class User(model_base(Base), PasswordAuthenticator):
-    pass
+    has_secure_password()
 
 
 @pytest.fixture
@@ -259,9 +257,8 @@ def test_password_reset_lookup_raises_for_deleted_user(existing_user):
 
 
 def test_password_reset_token_is_scoped_to_model(existing_user, init_models):
-    @rules(has_secure_password())
     class User(model_base(Base), PasswordAuthenticator):
-        pass
+        has_secure_password()
 
     OtherUser = User
     token = existing_user.password_reset_token
@@ -281,9 +278,8 @@ def test_custom_password_field_supports_reset_token_lifecycle(init_models):
         id = Column(Integer(), primary_key=True, autoincrement=True)
         passcode_digest = Column(String(), nullable=False)
 
-    @rules(has_secure_password("passcode"))
     class PasscodeUser(model_base(Base), PasswordAuthenticator):
-        pass
+        has_secure_password("passcode")
 
     init_models(Base, [(PasscodeUserBase, PasscodeUser)])
     user = PasscodeUser.create(passcode="Abcde12345$")

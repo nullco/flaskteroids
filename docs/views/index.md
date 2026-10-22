@@ -88,17 +88,16 @@ For example, `ProductsController` receives `ApplicationHelper` and
 and add their own matching helper. Namespaced controllers match namespaced
 helper paths.
 
-Add other helper classes explicitly inside `@rules`:
+Include other helper classes explicitly inside the controller class:
 
 ```python
 from app.controllers.application_controller import ApplicationController
 from app.helpers.formatting_helper import FormattingHelper
-from flaskteroids import rules
 from flaskteroids.controller import helper
 
-@rules(helper(FormattingHelper, "admin/money"))
+
 class ProductsController(ApplicationController):
-    pass
+    helper(FormattingHelper, "admin/money")
 ```
 
 Names such as `"formatting"`, `"FormattingHelper"`, and `"admin/money"` resolve
@@ -131,13 +130,12 @@ need explicitly:
 
 ```python
 from app.mailers.application_mailer import ApplicationMailer
-from flaskteroids import rules
 from flaskteroids.mailer import helper
 
-@rules(helper("application", "formatting"))
+
 class NoticesMailer(ApplicationMailer):
+    helper("application", "formatting")
     # Mailer actions go here.
-    pass
 ```
 
 A conventionally matching `NoticesMailerHelper`, if defined in

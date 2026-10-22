@@ -1,4 +1,4 @@
-"""Decorator declarations translated to native relationships before mapping."""
+"""Class-body declarations translated to native relationships before mapping."""
 
 from sqlalchemy import inspect
 from sqlalchemy.orm import relationship
@@ -8,6 +8,7 @@ from flaskteroids.db import session
 from flaskteroids.declarations import AssociationDefinition, model_for
 from flaskteroids.exceptions import ProgrammerError
 from flaskteroids.inflector import inflector
+from flaskteroids.rules import declaration
 
 
 def _declare(name, kind, class_name, foreign_key, dependent, inverse_of, optional):
@@ -47,6 +48,7 @@ def _declare(name, kind, class_name, foreign_key, dependent, inverse_of, optiona
     return bind
 
 
+@declaration
 def belongs_to(
     name, class_name=None, foreign_key=None, *, inverse_of=None, optional=False
 ):
@@ -55,6 +57,7 @@ def belongs_to(
     )
 
 
+@declaration
 def has_many(
     name, class_name=None, foreign_key=None, dependent=None, *, inverse_of=None
 ):
@@ -63,6 +66,7 @@ def has_many(
     )
 
 
+@declaration
 def has_one(
     name, class_name=None, foreign_key=None, dependent=None, *, inverse_of=None
 ):

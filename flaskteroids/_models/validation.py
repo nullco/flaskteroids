@@ -7,6 +7,7 @@ from functools import partial
 from typing import TYPE_CHECKING, Any, NotRequired, TypedDict
 
 from flaskteroids.declarations import model_for
+from flaskteroids.rules import declaration
 
 if TYPE_CHECKING:
     from flaskteroids.model import Model
@@ -80,6 +81,7 @@ class ComparisonConfig(TypedDict):
     other_than: NotRequired[Any]
 
 
+@declaration
 def validates(
     field: str,
     *,

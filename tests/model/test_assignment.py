@@ -10,7 +10,6 @@ from flaskteroids.model import (
     has_secure_password,
     validates,
 )
-from flaskteroids.rules import rules
 from tests.model.schema_support import model_base
 
 Base = declarative_base()
@@ -67,12 +66,10 @@ class Customization:
         self.name = value.strip()
 
 
-@rules(
-    validates("group", presence=True),
-    has_secure_password(),
-    after_initialize("_prepare"),
-)
 class User(Customization, ApplicationModel, PasswordAuthenticator):
+    validates("group", presence=True)
+    has_secure_password()
+    after_initialize("_prepare")
     category = "ordinary"
     annotation_only: str
 
@@ -96,9 +93,8 @@ class User(Customization, ApplicationModel, PasswordAuthenticator):
         return "hello"
 
 
-@rules(validates("name", presence=True))
 class Group(ApplicationModel):
-    pass
+    validates("name", presence=True)
 
 
 @pytest.fixture(autouse=True)

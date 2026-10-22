@@ -5,6 +5,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 
 from flaskteroids.exceptions import ProgrammerError
+from flaskteroids.rules import declaration
 
 # None means ordinary Flask rendering; mailers explicitly select their own scope.
 render_scope = ContextVar("flaskteroids.helper_scope", default=None)
@@ -43,6 +44,7 @@ class IncludeHelpers:
         pass
 
 
+@declaration
 def helper_method(method_name: str, *, name: str | None = None):
     """Expose a private controller or mailer method as a template helper."""
     helper_name = name if name is not None else method_name.lstrip("_")
@@ -55,6 +57,7 @@ def helper_method(method_name: str, *, name: str | None = None):
     return HelperMethod(method_name, helper_name)
 
 
+@declaration
 def helper(*helpers: type | str):
     """Include helper classes or conventional names in this owner's views."""
     if not helpers or any(

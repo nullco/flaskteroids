@@ -22,19 +22,22 @@ class PostsController(ActionController):
 
 ## Controller callbacks
 
-Declare `before_action` inside `@rules` to run code before an action. Use it to load records shared by several actions or check authentication:
+Import declaration functions explicitly. They follow the same
+[class-body declaration contracts](../models/index.md#class-body-declarations)
+as models and mailers, including inheritance through ordinary mixins.
+
+Call `before_action` inside the controller class to run code before an action. Use it to load records shared by several actions or check authentication:
 
 ```python
 from flaskteroids import params
 from flaskteroids.actions import before_action
-from flaskteroids.rules import rules
 from flaskteroids.controller import ActionController
 from app.models.post import Post
 
-@rules(
-    before_action('_set_post', only=['show', 'edit', 'update', 'destroy'])
-)
+
 class PostsController(ActionController):
+    before_action("_set_post", only=["show", "edit", "update", "destroy"])
+
     def show(self):
         # self.post is already set by the callback
         pass
@@ -45,7 +48,7 @@ class PostsController(ActionController):
 
 ### Inherited actions
 
-Children inherit actions and callback rules. Callbacks without `only` also cover
+Children inherit actions and callback declarations. Callbacks without `only` also cover
 actions the child adds. Calling `super().action()` runs the parent action and its
 callbacks. The same rules apply to mailers.
 
@@ -59,8 +62,10 @@ from time import monotonic
 from flask import current_app
 from flaskteroids.actions import around_action
 
-@rules(around_action('_log_duration'))
+
 class PostsController(ActionController):
+    around_action("_log_duration")
+
     def index(self):
         self.posts = Post.all()
 
@@ -123,7 +128,7 @@ return render(json=post.errors, status=422)
 ```
 
 Generated scaffold create and update actions use this response for JSON
-validation failures. See [model serialization](../models/index.md#json-serialization)
+validation failures. See [model serialization](../models/index.md#temporary-attributes-and-serialization)
 for column selection and authentication-field filtering.
 
 ## Controller helpers
@@ -133,15 +138,16 @@ views. Use [`helper(...)`](../views/index.md#restricting-automatic-inclusion) to
 include additional helper classes when automatic inclusion is restricted.
 These methods execute on the view context, not the controller.
 
-Use `helper_method` inside `@rules` to expose a private controller method as a
+Call `helper_method` inside the controller class to expose a private method as a
 callable in templates, layouts, and partials:
 
 ```python
-from flaskteroids import rules
 from flaskteroids.controller import helper_method
 
-@rules(helper_method("_display_name"))
+
 class PostsController(ApplicationController):
+    helper_method("_display_name")
+
     def _display_name(self, post):
         return post.title or "Untitled"
 ```

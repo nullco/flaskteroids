@@ -4,7 +4,6 @@ from flask import Flask
 from flaskteroids.actions import after_action, around_action, before_action
 from flaskteroids.controller import ActionController, head, init
 from flaskteroids.exceptions import ProgrammerError
-from flaskteroids.rules import rules
 
 
 @pytest.fixture(scope="module")
@@ -24,14 +23,13 @@ def callback_request():
     ):
         events = []
 
-        @rules(
-            before_action("_before"),
-            around_action("_outer"),
-            around_action("_inner"),
-            after_action("_after_first"),
-            after_action("_after_second"),
-        )
         class CallbacksController(ActionController):
+            before_action("_before")
+            around_action("_outer")
+            around_action("_inner")
+            after_action("_after_first")
+            after_action("_after_second")
+
             def _before(self):
                 events.append("before")
                 if before_error is not None:
@@ -223,8 +221,9 @@ def test_after_failure_occurs_after_around_cleanup(callback_request):
 def test_multiple_around_yields_are_rejected_and_generator_is_closed():
     events = []
 
-    @rules(around_action("_around"))
     class InvalidController(ActionController):
+        around_action("_around")
+
         def _around(self):
             try:
                 yield

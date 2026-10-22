@@ -10,7 +10,6 @@ from flaskteroids.model import (
     init,
     validates,
 )
-from flaskteroids.rules import rules
 from tests.model.schema_support import model_base
 
 Base = declarative_base()
@@ -56,12 +55,11 @@ def family(init_models):
     class Parent(ApplicationModel):
         pass
 
-    @rules(
-        validates("name", presence=True),
-        after_initialize("_initialized"),
-        after_find("_found"),
-    )
     class Child(ApplicationModel):
+        validates("name", presence=True)
+        after_initialize("_initialized")
+        after_find("_found")
+
         def __init__(self, **kwargs):
             events.append("constructor")
             super().__init__(**kwargs)

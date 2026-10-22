@@ -1,9 +1,10 @@
 from flaskteroids.concern import Concern
-from flaskteroids.rules import bind_rules, rules
+from flaskteroids.rules import bind_rules, declaration
 
 registered_rules = []
 
 
+@declaration
 def rule(name):
     def _(_):
         registered_rules.append(name)
@@ -11,8 +12,9 @@ def rule(name):
     return _
 
 
-@rules(rule("a"))
 class ConcernA(Concern):
+    rule("a")
+
     def do_a(self):
         self.done.append("a")
 
@@ -21,8 +23,9 @@ class ConcernA(Concern):
         return "A"
 
 
-@rules(rule("b"))
 class ConcernB(Concern):
+    rule("b")
+
     def do_b(self):
         self.done.append("b")
 
@@ -31,8 +34,9 @@ class ConcernB(Concern):
         return "B"
 
 
-@rules(rule("c"))
 class MyClass(ConcernA, ConcernB):
+    rule("c")
+
     def __init__(self) -> None:
         self.done = []
 

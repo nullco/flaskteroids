@@ -167,8 +167,8 @@ flask db:migrate
 ### Model
 
 Generate a behavioral model, its database migration, and tests. References add
-`belongs_to(...)` declarations inside `@rules`. Columns appear in the generated
-snapshot only after migration:
+`belongs_to(...)` declarations inside the model class. Columns appear in the
+generated snapshot only after migration:
 
 ```sh
 flask generate model <ModelName> [field1:type ...]
@@ -231,7 +231,7 @@ Generate user and session models, login pages, and password management:
 
 Run `flask db:migrate`, then create an account in the shell; no public sign-up
 form is generated. Use `skip_before_action("_require_authentication", only=[...])`
-in a controller's `@rules` to allow public actions. Templates can call
+inside a controller class to allow public actions. Templates can call
 `is_authenticated()` on both public and protected pages without an extra callback.
 See [the authentication walkthrough](../getting_started.md#8-require-login-to-change-products).
 

@@ -52,8 +52,12 @@ description: Use when building or modifying a Flaskteroids application.
 
 - Use models and enqueue jobs inside an application context. Requests and jobs
   already have one. Keep records, queries, and files in the app that created them.
-- Custom rules set class attributes. Put database queries and work that needs an
-  application in actions, callbacks, or initializers.
+- Import declaration functions explicitly and call them directly inside model,
+  controller, mailer, or mixin class bodies. Repeated calls accumulate in order;
+  ordinary helpers/comprehensions cannot silently register declarations. Custom
+  factories use `@declaration` and return a binding callable for the receiving
+  class. Put database queries and work that needs an application in actions,
+  callbacks, or initializers.
 - Standalone model `save()`/`create()`/`update()`/`destroy()` commit before returning,
   including in `bin/flask shell`. Use `with Model.transaction():` to group operations;
   saves join that block without committing. False results do not abort an explicit
@@ -61,7 +65,7 @@ description: Use when building or modifying a Flaskteroids application.
   requests a savepoint. Context exit rolls back unfinished work, never commits it.
   Native writes require explicit commit/transaction handling. Use `discard_changes()`
   or `reload()` to discard staged input; rollback cannot undo prior standalone commits.
-- Run `bin/flask db:prepare` to apply migrations and regenerate `app/schema.py`,
+- Run `bin/flask db:prepare` to apply migrations and regenerate `db/schema.py`,
   then restart. Commit the snapshot, never edit it by hand. `db:schema:dump` refreshes
   it independently. Model declarations import without it; construction, queries,
   and mapped fields need it. All commands use normal application initialization.
@@ -97,7 +101,7 @@ requirement, not merely a stylistic preference: do not bypass the framework with
 dependency internals or introduce a parallel implementation of a supported feature.
 
 - Use the application's abstract `ApplicationModel` base, Rails-like queries,
-  and `@rules(belongs_to(...), has_many(...), ...)` declarations for routine work.
+  and class-body `belongs_to(...)` / `has_many(...)` declarations for routine work.
   Models themselves are native SQLAlchemy-mapped objects, prepared lazily from
   the generated snapshot. Native statements/options are supported on those same
   objects for complex queries; `Model.prepare()` explicitly prepares bare native
@@ -124,8 +128,8 @@ dependency internals or introduce a parallel implementation of a supported featu
   nested attributes. Keep fixed allowlists for partial updates, including uploads;
   omitted attributes remain unchanged. Use model validations for required fields.
   Missing/null/empty roots and blank required scalars are rejected.
-- Declare controller callbacks through `before_action`, `around_action`, and
-  `after_action`. Around callbacks are generators that yield once and unwind in
+- Declare controller callbacks inside the class body with `before_action`,
+  `around_action`, and `after_action`. Around callbacks are generators that yield once and unwind in
   reverse order, including on failures. Cleanup resumes them normally rather than
   throwing the action exception into them. After callbacks require successful
   action execution and cleanup. Do not use after callbacks for failure cleanup.

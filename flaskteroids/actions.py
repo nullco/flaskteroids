@@ -10,6 +10,7 @@ from werkzeug.local import LocalProxy
 from flaskteroids.declarations import actions_for
 from flaskteroids.discovery import discover_methods
 from flaskteroids.exceptions import InvalidParameter, MissingParameter, ProgrammerError
+from flaskteroids.rules import declaration
 
 _logger = logging.getLogger(__name__)
 
@@ -128,6 +129,7 @@ def _register_action(
         chain.setdefault(action_name, []).append(method_name)
 
 
+@declaration
 def before_action(method_name: str, *, only=None):
     def bind(cls):
         _register_action(cls, method_name, only=only, kind="before")
@@ -135,6 +137,7 @@ def before_action(method_name: str, *, only=None):
     return bind
 
 
+@declaration
 def around_action(method_name: str, *, only=None):
     def bind(cls):
         _register_action(cls, method_name, only=only, kind="around")
@@ -142,6 +145,7 @@ def around_action(method_name: str, *, only=None):
     return bind
 
 
+@declaration
 def after_action(method_name: str, *, only=None):
     def bind(cls):
         _register_action(cls, method_name, only=only, kind="after")
@@ -149,6 +153,7 @@ def after_action(method_name: str, *, only=None):
     return bind
 
 
+@declaration
 def skip_before_action(method_name: str, *, only=None):
     def bind(cls):
         definition = actions_for(cls)

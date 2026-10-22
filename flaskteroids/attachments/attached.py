@@ -15,6 +15,7 @@ from flaskteroids.attachments.transactions import after_commit, defer_uploads
 from flaskteroids.db import session, transactional
 from flaskteroids.declarations import model_for
 from flaskteroids.exceptions import ProgrammerError
+from flaskteroids.rules import declaration
 
 
 @dataclass(frozen=True)
@@ -27,12 +28,14 @@ class Definition:
     content_types: tuple
 
 
+@declaration
 def has_one_attached(
     name, *, service=None, dependent="purge_later", max_size=None, content_types=()
 ):
     return _declare(name, False, service, dependent, max_size, content_types)
 
 
+@declaration
 def has_many_attached(
     name, *, service=None, dependent="purge_later", max_size=None, content_types=()
 ):

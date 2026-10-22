@@ -11,6 +11,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from flaskteroids._models.validation import validates
 from flaskteroids.declarations import model_for
 from flaskteroids.exceptions import ProgrammerError
+from flaskteroids.rules import declaration
 
 if TYPE_CHECKING:
     from flaskteroids.model import Model
@@ -78,7 +79,11 @@ class PasswordAuthenticator:
         return bool(password_digest) and check_password_hash(password_digest, password)
 
 
+@declaration
 def has_secure_password(pwname: str = "password") -> Callable[[type[Model]], None]:
+    length = validates(pwname, length={"minimum": 1, "maximum": 72})
+    confirmation = validates(pwname, confirmation=True)
+
     def bind(cls: type[Model]) -> None:
         definition = model_for(cls)
         definition.password_field = pwname
@@ -104,7 +109,7 @@ def has_secure_password(pwname: str = "password") -> Callable[[type[Model]], Non
             "set_fn": _set_password_reset_token,
         }
 
-        validates(pwname, length={"minimum": 1, "maximum": 72})(cls)
-        validates(pwname, confirmation=True)(cls)
+        length(cls)
+        confirmation(cls)
 
     return bind

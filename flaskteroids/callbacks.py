@@ -8,6 +8,7 @@ from werkzeug.local import LocalProxy
 
 from flaskteroids.declarations import model_for
 from flaskteroids.exceptions import ProgrammerError
+from flaskteroids.rules import declaration
 
 _logger = logging.getLogger(__name__)
 
@@ -126,7 +127,7 @@ def _make_callback(name):
         return bind
 
     decorator.__name__ = name
-    return decorator
+    return declaration(decorator)
 
 
 before_validation = _make_callback("before_validation")

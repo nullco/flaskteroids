@@ -1,16 +1,14 @@
 from flask import url_for
-from flaskteroids import params, rules, redirect_to
+from flaskteroids import params, redirect_to
 from flaskteroids.actions import skip_before_action
 from flaskteroids.rate_limit import rate_limit
 from app.models.user import User
 from app.controllers.application_controller import ApplicationController
 
 
-@rules(
-    skip_before_action('_require_authentication', only=['new', 'create']),
-    rate_limit(to=10, within=3*60, only=['create'], with_=lambda: redirect_to(url_for('new_session', alert='Try again later')))
-)
 class SessionsController(ApplicationController):
+    skip_before_action('_require_authentication', only=['new', 'create'])
+    rate_limit(to=10, within=3*60, only=['create'], with_=lambda: redirect_to(url_for('new_session', alert='Try again later')))
 
     def new(self):
         pass

@@ -5,7 +5,6 @@ from flaskteroids.cache import MISSING
 from flaskteroids.cache.factory import get_cache
 from flaskteroids.controller import ActionController, init
 from flaskteroids.rate_limit import rate_limit
-from flaskteroids.rules import rules
 
 
 @pytest.mark.parametrize("order", [("a", "b"), ("b", "a")])
@@ -35,8 +34,9 @@ def test_cache_values_counters_and_expiry_are_app_local(make_app, mocker, order)
 
 
 def test_rate_limits_are_app_local(make_app):
-    @rules(rate_limit(to=2, within=60))
     class LimitedController(ActionController):
+        rate_limit(to=2, within=60)
+
         def index(self):
             return "ok"
 

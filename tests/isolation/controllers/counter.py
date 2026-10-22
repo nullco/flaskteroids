@@ -2,11 +2,11 @@ from flask import current_app
 
 from flaskteroids.actions import before_action
 from flaskteroids.controller import ActionController
-from flaskteroids.rules import rules
 
 
-@rules(before_action("_record"))
 class CounterController(ActionController):
+    before_action("_record")
+
     def _record(self):
         current_app.config["EVENTS"].append("before")
 

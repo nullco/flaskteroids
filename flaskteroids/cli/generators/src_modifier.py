@@ -31,21 +31,29 @@ def add_imports(imports):
     return AddImports
 
 
-def add_rules(rules):
-    class AddRules(ast.NodeTransformer):
+def add_declarations(declarations):
+    class AddDeclarations(ast.NodeTransformer):
         def visit_ClassDef(self, node):
-            for decorator in node.decorator_list:
-                if (
-                    isinstance(decorator, ast.Call)
-                    and isinstance(decorator.func, ast.Name)
-                    and decorator.func.id == "rules"
-                ):
-                    for rule in rules:
-                        rule_node = ast.parse(rule, mode="eval").body
-                        decorator.args.append(rule_node)
+            if not declarations:
+                return node
+            node.body = [stmt for stmt in node.body if not isinstance(stmt, ast.Pass)]
+            insert_at = next(
+                (
+                    i
+                    for i, stmt in enumerate(node.body)
+                    if isinstance(
+                        stmt, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+                    )
+                ),
+                len(node.body),
+            )
+            node.body[insert_at:insert_at] = [
+                ast.Expr(value=ast.parse(value, mode="eval").body)
+                for value in declarations
+            ]
             return node
 
-    return AddRules
+    return AddDeclarations
 
 
 def add_base_cls(base_cls):

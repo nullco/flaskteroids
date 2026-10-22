@@ -5,7 +5,6 @@ from werkzeug.exceptions import HTTPException
 
 from flaskteroids.controller import ActionController, init
 from flaskteroids.rate_limit import rate_limit
-from flaskteroids.rules import rules
 
 
 @pytest.fixture(autouse=True)
@@ -19,10 +18,9 @@ def req(mocker):
 @pytest.fixture()
 def rate_limited_controller():
 
-    @rules(
-        rate_limit(to=5, within=60),
-    )
     class TestController(ActionController):
+        rate_limit(to=5, within=60)
+
         def index(self):
             pass
 

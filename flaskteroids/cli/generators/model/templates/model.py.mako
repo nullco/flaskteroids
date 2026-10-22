@@ -5,20 +5,15 @@ from flaskteroids.model import belongs_to
 % if attachments:
 from flaskteroids.model import has_one_attached, has_many_attached
 % endif
-% if attachments or references:
-from flaskteroids.rules import rules
-% endif
 
 
-% if attachments or references:
-@rules(
+class ${name}(ApplicationModel):
 % for reference in references:
-    belongs_to('${reference}'),
+    belongs_to('${reference}')
 % endfor
 % for attachment in attachments:
-    has_${attachment["cardinality"]}_attached('${attachment["name"]}'),
+    has_${attachment["cardinality"]}_attached('${attachment["name"]}')
 % endfor
-)
-% endif
-class ${name}(ApplicationModel):
+% if not attachments and not references:
     pass
+% endif

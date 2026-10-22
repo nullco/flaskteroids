@@ -7,7 +7,7 @@ from werkzeug.local import LocalProxy
 from flaskteroids.actions import params
 from flaskteroids.application import Application
 from flaskteroids.flash import flash
-from flaskteroids.rules import rules
+from flaskteroids.rules import declaration
 
 application = LocalProxy(lambda: current_app)
 
@@ -33,8 +33,8 @@ def redirect_to(target, **kwargs):
 __all__ = [
     "Application",
     "application",
+    "declaration",
     "flash",
     "params",
     "redirect_to",
-    "rules",
 ]
