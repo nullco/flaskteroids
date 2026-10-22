@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.8.0 - 2026-10-22
+
 ### Breaking changes
 
 - Replace standalone `params` imports with instance-owned `self.params` in
