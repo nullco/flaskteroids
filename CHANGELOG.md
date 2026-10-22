@@ -2,6 +2,49 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- Replace standalone `params` imports with instance-owned `self.params` in
+  controllers and mailers. Controller templates retain `params`.
+- Replace imported `render`, `respond`, `redirect_to`, and `head` with
+  `self.render(...)`, `self.respond_to(...)`, `self.redirect_to(...)`, and
+  `self.head(...)`.
+- Responses are tracked without requiring a return value. Preparing a response
+  in a before callback halts the chain; preparing a second raises
+  `DoubleRenderError`. Implicit rendering precedes around cleanup and after
+  callbacks. Response metadata is always available; use `self.performed` to
+  distinguish a prepared response from header/status changes.
+- Rename numericality's `allow_nil` option to `allow_none`; validation behavior
+  is unchanged and the old name is removed.
+- Declared `has_many` collections now expose an association API over SQLAlchemy's
+  collection storage. Native `relationship()` collections remain unchanged.
+
+### Added
+
+- Parameterized mailers: `Mailer.with_params(...).action()` supplies isolated
+  action and callback inputs through `self.params`.
+- Queued mailer assigns support saved models, including nested lists, tuples,
+  and dictionaries. Models reload at delivery; unsaved assigns raise
+  `SerializationError`, and missing records raise `DeserializationError`.
+  Actions still run immediately, capturing recipients and subjects.
+- Association-scoped `new()`, `create()`, and `where(...).first_or_create()`;
+  scoped queries also support creation from keyword equality filters.
+- Saved-change inspection through `saved_changes`, `saved_change_to_attribute()`,
+  and `attribute_before_last_save()`, including commit callbacks.
+- Named controller methods as `rate_limit(..., with_="_handler")` handlers.
+
+### Fixed
+
+- Commit callbacks can query associations and save records after the transaction
+  closes. Rolled-back savepoints preserve the outer save's commit history.
+- Content negotiation considers only offered formats and returns 406 when none
+  are acceptable, rather than falling back to HTML.
+- Generated authentication uses instance-bound response helpers and rate-limit
+  handlers. Password-reset mail queues serializable assigns with absolute links;
+  generated test settings provide `localhost` for absolute URL generation.
+- Simplify the getting-started restock workflow and clarify that inventory
+  defaults require editing only the generated column, not replacing `upgrade()`.
+
 ## 0.7.0 - 2026-10-22
 
 ### Breaking changes
