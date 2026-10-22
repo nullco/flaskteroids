@@ -15,7 +15,6 @@ from flaskteroids._view_helpers import (
     render_assigns,
     render_scope,
 )
-from flaskteroids.actions import params
 from flaskteroids.declarations import rules_for
 from flaskteroids.exceptions import ProgrammerError
 from flaskteroids.inflector import inflector
@@ -72,8 +71,12 @@ class _ViewContext:
             raise AttributeError(name)
         if name in self._flaskteroids_assigns:
             return self._flaskteroids_assigns[name]
-        if name == "params" and self._flaskteroids_scope[0] == "controller":
-            return params
+        if (
+            name == "params"
+            and self._flaskteroids_scope[0] == "controller"
+            and self._flaskteroids_owner is not None
+        ):
+            return self._flaskteroids_owner.params
         globals_ = self._flaskteroids_app.jinja_env.globals
         if name in globals_:
             return globals_[name]
@@ -263,4 +266,7 @@ class HelpersExtension:
             view = self._context_class(owner_class, scope[0])(
                 self._app, scope, owner, assigns
             )
-        return view._flaskteroids_exports()
+        context = view._flaskteroids_exports()
+        if scope[0] == "controller" and owner is not None:
+            context["params"] = owner.params
+        return context

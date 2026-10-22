@@ -431,13 +431,11 @@ remove them. Keep the existing controller actions as you add each new one.
 
 ### Show a product
 
-In `app/controllers/products_controller.py`, import `params` and add a `show`
-action. The controller now looks like this:
+In `app/controllers/products_controller.py`, add a `show` action:
 
 ```python
 from app.controllers.application_controller import ApplicationController
 from app.models.product import Product
-from flaskteroids import params
 
 
 class ProductsController(ApplicationController):
@@ -445,7 +443,7 @@ class ProductsController(ApplicationController):
         self.products = Product.all()
 
     def show(self):
-        self.product = Product.find(params["id"])
+        self.product = Product.find(self.params["id"])
 ```
 
 The resource route captures the ID from `/products/<int:id>`. The `show` action
@@ -506,10 +504,10 @@ for helper selection and inheritance.
 So far we have created products in the shell. A web form needs two actions:
 `new` displays it, and `create` processes its submission.
 
-In the controller, expand the `flaskteroids` import and add these imports:
+Add these imports to the controller:
 
 ```python
-from flaskteroids import params, redirect_to
+from flaskteroids import redirect_to
 from flaskteroids.controller import render
 from flaskteroids.routes import product_path
 ```
@@ -527,7 +525,7 @@ Add these methods inside `ProductsController`, keeping `index` and `show`:
         return render("new", status=422)
 
     def _product_params(self):
-        return params.expect(product=["name", "description"])
+        return self.params.expect(product=["name", "description"])
 ```
 
 Create `app/views/products/new.html`:
@@ -564,7 +562,7 @@ Create `app/views/products/new.html`:
 fills its inputs from the model. The generated field names put the submission
 inside a `product` object.
 
-Our `_product_params()` method uses `params.expect()` to require that outer
+Our `_product_params()` method uses `self.params.expect()` to require that outer
 object and select only `name` and `description`. It does not require every
 listed field to be present. Never pass unfiltered request data to a model:
 visitors can submit attributes that your HTML form does not expose.
@@ -597,10 +595,10 @@ its submission. Add these methods to `ProductsController`:
 
 ```python
     def edit(self):
-        self.product = Product.find(params["id"])
+        self.product = Product.find(self.params["id"])
 
     def update(self):
-        self.product = Product.find(params["id"])
+        self.product = Product.find(self.params["id"])
         if self.product.update(**self._product_params()):
             return redirect_to(product_path(self.product))
         return render("edit", status=422)
@@ -686,7 +684,7 @@ Replace `show`, `edit`, and `update` with these methods, and add `_set_product`:
         return render("edit", status=422)
 
     def _set_product(self):
-        self.product = Product.find(params["id"])
+        self.product = Product.find(self.params["id"])
 ```
 
 Keep `index`, `new`, `create`, and `_product_params` unchanged. Empty `show` and
@@ -893,7 +891,7 @@ by replacing `_product_params()` in `ProductsController` with:
 
 ```python
     def _product_params(self):
-        return params.expect(product=["name", "description", "featured_image"])
+        return self.params.expect(product=["name", "description", "featured_image"])
 ```
 
 In the `body` block of `app/views/products/show.html`, add:
@@ -986,7 +984,7 @@ Replace `_product_params()` in `ProductsController` so edits can include stock:
 
 ```python
     def _product_params(self):
-        return params.expect(
+        return self.params.expect(
             product=["name", "description", "featured_image", "inventory_count"]
         )
 ```
@@ -1090,7 +1088,7 @@ Create `app/controllers/subscribers_controller.py`:
 ```python
 from app.controllers.application_controller import ApplicationController
 from app.models.product import Product
-from flaskteroids import params, redirect_to
+from flaskteroids import redirect_to
 from flaskteroids.actions import skip_before_action
 from flaskteroids.controller import render
 from flaskteroids.routes import product_path
@@ -1100,9 +1098,9 @@ class SubscribersController(ApplicationController):
     skip_before_action("_require_authentication")
 
     def create(self):
-        self.product = Product.find(params["product_id"])
+        self.product = Product.find(self.params["product_id"])
         self.subscriber = self.product.subscribers.where(
-            **params.expect(subscriber=["email"])
+            **self.params.expect(subscriber=["email"])
         ).first_or_create()
         if not self.subscriber.is_persisted():
             return render("new", status=422)
@@ -1154,7 +1152,7 @@ Replace `app/views/products/_inventory.html` with:
 The final model determines field scope and values, so the email is named
 `subscriber[email]` automatically. The parent supplies the nested URL binding;
 it does not become the field prefix or enable nested-attribute persistence.
-The controller filters the child with `params.expect(subscriber=["email"])`.
+The controller filters the child with `self.params.expect(subscriber=["email"])`.
 
 Create `app/views/subscribers/new.html` for invalid submissions:
 
@@ -1209,7 +1207,7 @@ Create `app/controllers/unsubscribes_controller.py`:
 ```python
 from app.controllers.application_controller import ApplicationController
 from app.models.subscriber import Subscriber
-from flaskteroids import params, redirect_to
+from flaskteroids import redirect_to
 from flaskteroids.actions import skip_before_action
 
 
@@ -1217,12 +1215,12 @@ class UnsubscribesController(ApplicationController):
     skip_before_action("_require_authentication")
 
     def show(self):
-        self.subscriber = Subscriber.find_by(unsubscribe_token=params["token"])
+        self.subscriber = Subscriber.find_by(unsubscribe_token=self.params["token"])
         if self.subscriber is None:
             return redirect_to("/", notice="This subscription is no longer active.")
 
     def destroy(self):
-        subscriber = Subscriber.find_by(unsubscribe_token=params["token"])
+        subscriber = Subscriber.find_by(unsubscribe_token=self.params["token"])
         if subscriber is not None:
             subscriber.destroy()
         return redirect_to("/", notice="You are unsubscribed.")
@@ -1258,20 +1256,19 @@ Replace `app/mailers/product_mailer.py` with:
 
 ```python
 from app.mailers.application_mailer import ApplicationMailer
-from flaskteroids import params
 
 
 class ProductMailer(ApplicationMailer):
     def in_stock(self):
-        self.product = params["product"]
-        self.subscriber = params["subscriber"]
+        self.product = self.params["product"]
+        self.subscriber = self.params["subscriber"]
         return self.mail(
             to=self.subscriber.email,
             subject=f"{self.product.name} is back in stock",
         )
 ```
 
-`with_params(...)` supplies the mailer's `params`, using the same API as
+`with_params(...)` supplies the mailer's `self.params`, using the same API as
 controllers without an HTTP request. Instance variables expose the product and
 subscriber to templates; queued delivery reloads these saved records.
 
@@ -1348,7 +1345,7 @@ ProductMailer.with_params(
 You should see a readable message preview in the shell, with a subject ending
 in "is back in stock", a product link, and an unsubscribe link. Exit the shell.
 The action runs immediately; `deliver_later()` queues its captured template
-assigns, not its input params. See [Mailers](other/mailers.md) for delivery details.
+assigns, not `self.params`. See [Mailers](other/mailers.md) for delivery details.
 
 ### Trigger notifications after a restock
 
@@ -1751,7 +1748,7 @@ configuration.
 
 Keep these boundaries in mind:
 
-- Use `params.expect()` allowlists, even when the browser form looks harmless.
+- Use `self.params.expect()` allowlists, even when the browser form looks harmless.
 - Protect write actions on the server, not just their links in templates.
 - Keep CSRF protection enabled; form helpers include the required tokens.
 - Let Jinja and helpers escape user input. Never mark product descriptions safe

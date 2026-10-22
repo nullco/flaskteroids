@@ -5,7 +5,6 @@ from importlib import import_module
 from flask import request
 from werkzeug.exceptions import BadRequest, HTTPException
 
-from flaskteroids import params
 from flaskteroids._method_override import FORM_PAIRS
 from flaskteroids._routing import RouteDescription, collection_route_key
 from flaskteroids.controller import ActionController, init
@@ -179,7 +178,7 @@ class RoutesExtension:
             values.update(_unflatten_params(request.args.to_dict(False)))
             values.update(kwargs)
             values.pop("csrf_token", None)
-            params.update(values)
+            instance.params.update(values)
             return getattr(instance, caction)()
 
         explicit_endpoint = endpoint is not None or as_ is not None

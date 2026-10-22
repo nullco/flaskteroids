@@ -11,7 +11,6 @@ from flaskteroids._view_helpers import helper as helper
 from flaskteroids._view_helpers import helper_method as helper_method
 from flaskteroids._view_helpers import mailer_scope
 from flaskteroids.actions import (
-    _params_scope,
     decorate_action,
     get_actions,
     mark_action_wrapper,
@@ -49,11 +48,7 @@ def _decorate_action(cls, action):
 
     @wraps(action)
     def wrapper(*args, **kwargs):
-        mailer = args[0]
-        if not hasattr(mailer, "_params"):
-            mailer._params = {}
-        with _params_scope(mailer._params):
-            message_delivery = action(*args, **kwargs)
+        message_delivery = action(*args, **kwargs)
         assert message_delivery, "Actions must return a MessageDelivery object"
         builder = message_delivery.builder
         if not builder.template_name:
@@ -90,6 +85,12 @@ class ActionMailer:
     @classmethod
     def with_params(cls, **params):
         return _ParameterizedMailer(cls, params)
+
+    @property
+    def params(self) -> dict:
+        if not hasattr(self, "_params"):
+            self._params = {}
+        return self._params
 
     def mail(self, *, from_=None, to, subject):
         helpers = current_app.extensions.get("flaskteroids.helpers")

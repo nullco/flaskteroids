@@ -1,7 +1,6 @@
 from flask import request
 from werkzeug.datastructures import FileStorage
 
-from flaskteroids import params
 from flaskteroids.controller import ActionController
 
 
@@ -15,35 +14,35 @@ def describe(value):
     return value
 
 
-def response(action):
+def response(action, parameters):
     return {
         "action": action,
         "method": request.method,
-        "params": describe(dict(params)),
+        "params": describe(dict(parameters)),
     }
 
 
 class ProbesController(ActionController):
     def index(self):
-        return response("index")
+        return response("index", self.params)
 
     def new(self):
-        return response("new")
+        return response("new", self.params)
 
     def create(self):
-        return response("create")
+        return response("create", self.params)
 
     def show(self):
-        return response("show")
+        return response("show", self.params)
 
     def edit(self):
-        return response("edit")
+        return response("edit", self.params)
 
     def update(self):
-        return response("update")
+        return response("update", self.params)
 
     def destroy(self):
-        return response("destroy")
+        return response("destroy", self.params)
 
 
 class ProductsController(ProbesController):

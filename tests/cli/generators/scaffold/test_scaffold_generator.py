@@ -36,7 +36,7 @@ class TestScaffoldGenerator:
 
         assert "permitted.append('avatar')" in controller
         assert "permitted.append(('documents', []))" in controller
-        assert "in params.get(" not in controller
+        assert "self.params.expect(user=permitted)" in controller
 
     def test_generate_creates_view_files(self, artifacts_builder, mocker):
         generate("User", ["name:str"])

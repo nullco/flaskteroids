@@ -5,11 +5,11 @@ from flask import g, jsonify, make_response, render_template, request
 from flaskteroids._view_helpers import helper as helper
 from flaskteroids._view_helpers import helper_method as helper_method
 from flaskteroids.actions import (
+    ActionParameters,
     decorate_action,
     get_actions,
     mark_action_wrapper,
     original_action,
-    params,
     register_actions,
 )
 from flaskteroids.declarations import actions_for
@@ -73,7 +73,8 @@ def render(action=None, *, status=200, json=None):
             g.controller.__class__.__name__.replace("Controller", "")
         )
         view = render_template(
-            f"{cname}/{action}.html", **{**g.controller.__dict__, "params": params}
+            f"{cname}/{action}.html",
+            **{**g.controller.__dict__, "params": g.controller.params},
         )
         return make_response(view, status)
     else:
@@ -104,5 +105,13 @@ def respond(**kwargs):
 
 
 class ActionController:
+    __slots__ = ("_params", "__dict__", "__weakref__")
+
     def __init__(self, *args, **kwargs) -> None:
         g.controller = self
+
+    @property
+    def params(self) -> ActionParameters:
+        if not hasattr(self, "_params"):
+            self._params = ActionParameters()
+        return self._params

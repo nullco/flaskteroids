@@ -4,7 +4,6 @@ import pytest
 from flask import current_app
 from jinja2 import DictLoader
 
-from flaskteroids import params
 from flaskteroids.actions import before_action
 from flaskteroids.exceptions import DeserializationError, SerializationError
 from flaskteroids.mailer import ActionMailer, MessageDeliveryJob, helper_method
@@ -22,8 +21,8 @@ class RecordsMailer(ActionMailer):
         )
 
     def notice(self):
-        self.record = params["record"]
-        self.context = params.get("context", {})
+        self.record = self.params["record"]
+        self.context = self.params.get("context", {})
         return self.mail(
             to="reader@example.org", subject=f"About {self.record.username}"
         )

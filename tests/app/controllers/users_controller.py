@@ -1,7 +1,7 @@
 from http import HTTPStatus
 
 from flaskteroids import redirect_to
-from flaskteroids.actions import before_action, params
+from flaskteroids.actions import before_action
 from flaskteroids.controller import ActionController, render, respond
 from flaskteroids.helpers import url_for
 from tests.app.models.user import User
@@ -61,7 +61,7 @@ class UsersController(ActionController):
         self.user.destroy()
 
     def _set_user(self):
-        self.user = User.find(params["id"])
+        self.user = User.find(self.params["id"])
 
     def _user_params(self):
-        return params.expect(user=["username"])
+        return self.params.expect(user=["username"])

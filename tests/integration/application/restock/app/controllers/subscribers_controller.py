@@ -1,7 +1,7 @@
 from app.controllers.application_controller import ApplicationController
 from app.models.product import Product
 
-from flaskteroids import params, redirect_to
+from flaskteroids import redirect_to
 from flaskteroids.actions import skip_before_action
 from flaskteroids.controller import render
 from flaskteroids.routes import product_path
@@ -11,9 +11,9 @@ class SubscribersController(ApplicationController):
     skip_before_action("_require_authentication")
 
     def create(self):
-        self.product = Product.find(params["product_id"])
+        self.product = Product.find(self.params["product_id"])
         self.subscriber = self.product.subscribers.where(
-            **params.expect(subscriber=["email"])
+            **self.params.expect(subscriber=["email"])
         ).first_or_create()
         if not self.subscriber.is_persisted():
             return render("new", status=422)

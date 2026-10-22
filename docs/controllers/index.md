@@ -4,7 +4,6 @@ Controllers handle HTTP requests. Each action is a method on a controller class.
 
 ```python
 # app/controllers/posts_controller.py
-from flaskteroids import params
 from flaskteroids.controller import ActionController
 from app.models.post import Post
 
@@ -15,10 +14,13 @@ class PostsController(ActionController):
         # makes self.posts available in the template.
 
     def show(self):
-        self.post = Post.find(params["id"])
+        self.post = Post.find(self.params["id"])
         # Implicitly renders app/views/posts/show.html and
         # makes self.post available in the template.
 ```
+
+Read request input from `self.params`; templates access the same mapping as
+`params`. Use `self.params.expect(...)` to allowlist model attributes.
 
 ## Controller callbacks
 
@@ -29,7 +31,6 @@ as models and mailers, including inheritance through ordinary mixins.
 Call `before_action` inside the controller class to run code before an action. Use it to load records shared by several actions or check authentication:
 
 ```python
-from flaskteroids import params
 from flaskteroids.actions import before_action
 from flaskteroids.controller import ActionController
 from app.models.post import Post
@@ -43,7 +44,7 @@ class PostsController(ActionController):
         pass
 
     def _set_post(self):
-        self.post = Post.find(params["id"])
+        self.post = Post.find(self.params["id"])
 ```
 
 ### Inherited actions

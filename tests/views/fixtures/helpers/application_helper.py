@@ -17,3 +17,6 @@ class ApplicationHelper:
 
     def caption(self):
         return self.title
+
+    def input_value(self):
+        return self.params.get("value")

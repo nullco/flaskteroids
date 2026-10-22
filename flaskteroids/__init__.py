@@ -4,7 +4,6 @@ from importlib.metadata import version as _version
 from flask import current_app, redirect
 from werkzeug.local import LocalProxy
 
-from flaskteroids.actions import params
 from flaskteroids.application import Application
 from flaskteroids.flash import flash
 from flaskteroids.rules import declaration
@@ -35,6 +34,5 @@ __all__ = [
     "application",
     "declaration",
     "flash",
-    "params",
     "redirect_to",
 ]

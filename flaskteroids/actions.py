@@ -1,13 +1,9 @@
 import logging
 from collections import UserDict
-from contextlib import contextmanager
-from contextvars import ContextVar
 from functools import wraps
 from typing import Any, Literal
 
-from flask import g
 from werkzeug.datastructures import FileStorage
-from werkzeug.local import LocalProxy
 
 from flaskteroids.declarations import actions_for
 from flaskteroids.discovery import discover_methods
@@ -268,29 +264,3 @@ class ActionParameters(UserDict):
                     raise InvalidParameter(key, k, "Invalid parameter type. Not a dict")
                 expected[k] = self._expect(f"{key}.{k}", value[k], v)
         return expected
-
-
-_action_params: ContextVar[dict[str, Any] | None] = ContextVar(
-    "flaskteroids.action_params", default=None
-)
-
-
-@contextmanager
-def _params_scope(parameters):
-    token = _action_params.set(parameters)
-    try:
-        yield
-    finally:
-        _action_params.reset(token)
-
-
-def _get_params() -> ActionParameters | dict[str, Any]:
-    parameters = _action_params.get()
-    if parameters is not None:
-        return parameters
-    if "params" not in g:
-        g.params = ActionParameters()
-    return g.params
-
-
-params = LocalProxy(_get_params)

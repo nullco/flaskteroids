@@ -1,5 +1,5 @@
 from flask import url_for
-from flaskteroids import params, redirect_to
+from flaskteroids import redirect_to
 from flaskteroids.actions import skip_before_action
 from flaskteroids.rate_limit import rate_limit
 from app.models.user import User
@@ -14,7 +14,7 @@ class SessionsController(ApplicationController):
         pass
 
     def create(self):
-        if user := User.authenticate_by(**params.expect('email_address', 'password')):
+        if user := User.authenticate_by(**self.params.expect('email_address', 'password')):
             self._start_new_session_for(user)
             return redirect_to(self._after_authentication_url())
         else:

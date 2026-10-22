@@ -1,6 +1,5 @@
 import pytest
 
-from flaskteroids import params
 from flaskteroids.actions import after_action, around_action, before_action
 from flaskteroids.controller import ActionController, init
 
@@ -48,7 +47,8 @@ def my_controller():
 def test_controller_runs_callbacks_in_order_and_renders_action(
     my_controller, render_template
 ):
-    my_controller().action()
+    controller = my_controller()
+    controller.action()
     calls = [
         "before_first",
         "before_second",
@@ -60,4 +60,6 @@ def test_controller_runs_callbacks_in_order_and_renders_action(
         "after_first",
         "after_second",
     ]
-    render_template.assert_called_with("test/action.html", calls=calls, params=params)
+    render_template.assert_called_with(
+        "test/action.html", calls=calls, params=controller.params
+    )

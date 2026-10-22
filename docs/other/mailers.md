@@ -4,12 +4,11 @@ Mailers inherit from `ActionMailer`. Each action sets template variables and cal
 
 ```python
 # app/mailers/user_mailer.py
-from flaskteroids import params
 from flaskteroids.mailer import ActionMailer
 
 class UserMailer(ActionMailer):
     def welcome_email(self):
-        self.user = params["user"]
+        self.user = self.params["user"]
         return self.mail(to=self.user.email, subject="Welcome to My App!")
 ```
 
@@ -25,9 +24,9 @@ UserMailer.with_params(user=user).welcome_email().deliver_later()
 
 ## Parameterized mailers
 
-`with_params(...)` supplies action and callback inputs through the same `params`
-proxy used by controllers, without requiring an HTTP request. Each action call
-gets a fresh mailer and a shallow parameter copy. Action arguments remain supported.
+`with_params(...)` supplies action and callback inputs through `self.params`,
+an instance-owned dictionary that needs no HTTP request. Each action call gets a
+fresh mailer and a shallow parameter copy. Action arguments remain supported.
 
 Input params are not automatically template assigns. Expose values needed by
 templates and delivery-time helpers explicitly, as with `self.user` above.

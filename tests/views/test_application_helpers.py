@@ -41,6 +41,16 @@ def test_automatic_helpers_share_controller_and_framework_helpers(
     assert "&lt;Posts&gt;" in response.text
 
 
+def test_controller_templates_and_helpers_share_instance_params(view_app_factory):
+    app = view_app_factory()
+    app.jinja_loader = DictLoader(
+        {"probe.html": "{{ input_value() }}|{{ params.value }}"}
+    )
+    client = app.test_client()
+    assert client.get("/?value=First").text == "First|First"
+    assert client.get("/?value=Second").text == "Second|Second"
+
+
 def test_helper_state_is_shared_by_layout_and_partial_but_resets_per_render(
     view_app_factory,
 ):

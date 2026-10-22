@@ -1,6 +1,6 @@
 # Forms
 
-Use `form_with` to build model-backed forms and `params.expect` to filter submitted attributes.
+Use `form_with` to build model-backed forms and `self.params.expect` to filter submitted attributes.
 
 ## Building forms
 
@@ -119,13 +119,13 @@ from user input.
 
 ## Strong parameters
 
-Use `params.expect` to select the attributes a controller may pass to a model. Do not pass unfiltered request data to `create` or `update`. Otherwise, users could change attributes you did not intend to expose, such as an admin flag.
+Use `self.params.expect` to select the attributes a controller may pass to a model. Do not pass unfiltered request data to `create` or `update`. Otherwise, users could change attributes you did not intend to expose, such as an admin flag.
 
 `expect` checks the expected structure, including nested objects and lists. For a post form:
 
 ```python
 # app/controllers/posts_controller.py
-from flaskteroids import params, redirect_to
+from flaskteroids import redirect_to
 from flaskteroids.controller import ActionController, render
 from flaskteroids.routes import post_path
 from app.models.post import Post
@@ -140,7 +140,7 @@ class PostsController(ActionController):
         return render('new', status=422)
 
     def update(self):
-        self.post = Post.find(params['id'])
+        self.post = Post.find(self.params['id'])
         if self.post.update(**self._post_params()):
             return redirect_to(post_path(self.post))
         return render('edit', status=422)
@@ -149,17 +149,17 @@ class PostsController(ActionController):
         # Assumes form data is sent as:
         # post[title]=...
         # post[content]=...
-        return params.expect(post=['title', 'content'])
+        return self.params.expect(post=['title', 'content'])
 ```
 
-`params.expect(post=['title', 'content'])` requires a top-level `post` dictionary,
+`self.params.expect(post=['title', 'content'])` requires a top-level `post` dictionary,
 but its nested fields are permitted, not required. It returns only submitted,
 permitted attributes and discards other attributes. The same allowlist works for
 both creation and partial updates:
 
 ```python
 # Submitted: post[content]=Updated
-attributes = params.expect(post=['title', 'content'])
+attributes = self.params.expect(post=['title', 'content'])
 # attributes == {'content': 'Updated'}
 post.update(**attributes)  # The existing title is unchanged.
 ```
@@ -171,7 +171,7 @@ allowlist as validation.
 
 Missing, null, or empty roots raise `MissingParameter`, including dictionaries
 with no permitted attributes after filtering. Required scalar roots, such as
-`params.expect('password')`, reject blank strings but accept `False` and numeric
+`self.params.expect('password')`, reject blank strings but accept `False` and numeric
 zero. Incorrect supplied types raise `InvalidParameter`; making fields optional
 does not relax the expected structure.
 

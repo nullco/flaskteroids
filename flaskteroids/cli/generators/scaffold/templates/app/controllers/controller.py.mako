@@ -1,5 +1,5 @@
 from http import HTTPStatus
-from flaskteroids import params, redirect_to
+from flaskteroids import redirect_to
 from flaskteroids.actions import before_action
 from flaskteroids.routes import ${collection}_path, ${singular}_path
 from flaskteroids.controller import render, head, respond
@@ -62,11 +62,11 @@ class ${controller}Controller(ApplicationController):
         )
 
     def _set_${model_ref}(self):
-        self.${model_ref} = ${model}.find(id=params['id'])
+        self.${model_ref} = ${model}.find(id=self.params['id'])
 
     def _${model_ref}_params(self):
         permitted = [${', '.join("'" + field['name'] + "'" for field in fields)}]
 % for attachment in attachments:
         permitted.append(${"('" + attachment['name'] + "', [])" if attachment['type'] == 'attachments' else "'" + attachment['name'] + "'"})
 % endfor
-        return params.expect(${model_ref}=permitted)
+        return self.params.expect(${model_ref}=permitted)
