@@ -1,4 +1,4 @@
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from typing import ClassVar
 from urllib.parse import urlsplit
 
@@ -188,22 +188,25 @@ class SystemTest(IntegrationTest):
         from playwright.sync_api import sync_playwright
         from werkzeug.serving import make_server
 
-        self._server = make_server("127.0.0.1", 0, application)
-        self._server_thread = Thread(target=self._server.serve_forever, daemon=True)
-        self._server_thread.start()
-        self._base_url = f"http://127.0.0.1:{self._server.server_port}"
-        self._playwright = sync_playwright().start()
-        executable_path = os.environ.get("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH")
-        self._browser = self._playwright.chromium.launch(
-            headless=True, executable_path=executable_path
-        )
-        self.page = self._browser.new_page()
+        with ExitStack() as resources:
+            server = resources.enter_context(make_server("127.0.0.1", 0, application))
+            server_thread = Thread(target=server.serve_forever, daemon=True)
+            server_thread.start()
+            resources.callback(server_thread.join)
+            resources.callback(server.shutdown)
+            self._base_url = f"http://127.0.0.1:{server.server_port}"
+            playwright = resources.enter_context(sync_playwright())
+            executable_path = os.environ.get("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH")
+            browser = resources.enter_context(
+                playwright.chromium.launch(
+                    headless=True, executable_path=executable_path
+                )
+            )
+            self.page = browser.new_page()
+            self._system_resources = resources.pop_all()
 
     def _after_test(self):
-        self._browser.close()
-        self._playwright.stop()
-        self._server.shutdown()
-        self._server_thread.join()
+        self._system_resources.close()
 
     def visit(self, location):
         if str(location).startswith(("http://", "https://")):

@@ -58,6 +58,20 @@ def generated_app_factory(tmp_path_factory):
 
 
 @pytest.fixture(scope="module")
+def generated_uncountables(generated_app_factory):
+    root, run = generated_app_factory("aquarium")
+    run("db:create")
+    for model in ("Fish", "Equipment"):
+        run("generate", "scaffold", model, "name:string")
+    run("db:prepare")
+    try:
+        yield root, run
+    finally:
+        for _ in ("Fish", "Equipment"):
+            run("db:rollback")
+
+
+@pytest.fixture(scope="module")
 def generated_store(generated_app_factory):
     root, run = generated_app_factory("store")
     run("db:create")
