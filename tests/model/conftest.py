@@ -1,4 +1,5 @@
 from contextlib import ExitStack
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -53,3 +54,43 @@ def init_models(engine, mocker):
             contexts.enter_context(app.app_context())
 
         yield initialize
+
+
+@pytest.fixture
+def mapped_app(discovery_package, tmp_path):
+    source = Path(__file__).parent / "fixtures/mapped_records"
+    package = discovery_package(
+        {
+            "__init__.py": "",
+            "app/models/__init__.py": "",
+            **{
+                str(path.relative_to(source)): path.read_text()
+                for path in source.rglob("*.py")
+            },
+        }
+    )
+    app = Flask(__name__)
+    app.secret_key = "test"
+    app.add_url_rule("/authors/", endpoint="create_author", view_func=lambda: "")
+    app.add_url_rule(
+        "/authors/<int:id>/", endpoint="update_author", view_func=lambda id: ""
+    )
+    app.database_url = f"sqlite:///{tmp_path / 'mapped.sqlite'}"
+    app.config.paths = SimpleNamespace(models=f"{package}.app.models")
+    db = SQLAlchemyExtension(app)
+    db.metadata.create_all(db.engine)
+    yield app
+    db.engine.dispose()
+
+
+@pytest.fixture
+def records(mapped_app):
+    with mapped_app.app_context():
+        db = mapped_app.extensions["flaskteroids.db"]
+        yield SimpleNamespace(
+            app=mapped_app,
+            db=db,
+            session=db_session,
+            Author=db.models["Author"],
+            Post=db.models["Post"],
+        )

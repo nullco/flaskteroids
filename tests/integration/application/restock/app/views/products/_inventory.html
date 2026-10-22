@@ -1,0 +1,10 @@
+{% if product.inventory_count > 0 %}
+  <p>{{ product.inventory_count }} in stock</p>
+{% else %}
+  <p>Out of stock</p>
+  <p>Email me when it is available:</p>
+  {% call(form) form_with(model=[product, Subscriber.new()]) %}
+    {{ form.email_field("email", required=True, placeholder="you@example.org") }}
+    {{ form.submit("Notify me") }}
+  {% endcall %}
+{% endif %}

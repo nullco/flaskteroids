@@ -1,0 +1,15 @@
+{% extends "layouts/application.html" %}
+
+{% block body %}
+  <h1>Follow {{ product.name }}</h1>
+  <ul class="errors">
+    {% for message in subscriber.errors.full_messages() %}
+      <li>{{ message }}</li>
+    {% endfor %}
+  </ul>
+  {% call(form) form_with(model=[product, subscriber]) %}
+    {{ form.email_field("email", required=True) }}
+    {{ form.submit("Notify me") }}
+  {% endcall %}
+  {{ link_to("Back", product_path(product)) }}
+{% endblock %}

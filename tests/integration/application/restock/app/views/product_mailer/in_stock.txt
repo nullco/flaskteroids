@@ -1,0 +1,4 @@
+Good news! {{ product_name }} is back in stock.
+{{ product_url }}
+
+Unsubscribe: {{ unsubscribe_url }}

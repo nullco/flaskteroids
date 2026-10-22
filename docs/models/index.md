@@ -280,11 +280,31 @@ post.save()
 post = Post.create(title="Next", author=author)
 ```
 
-Collections are native SQLAlchemy collections, not custom `Relation` wrappers.
-They support assignment, append/remove, iteration, and native loader behavior.
-Create a record with `Post.create(author=author, ...)`, not `author.posts.create()`.
-Related new framework objects are validated before their staged scalars are
-published by a framework save.
+Declared `has_many` associations expose a collection API backed by SQLAlchemy's
+own collection storage and identity map. Assignment, append/remove, iteration,
+and native eager loaders still work. Scoped queries do not load the whole
+collection:
+
+```python
+post = author.posts.create(title="Next")
+post = author.posts.where(title="Next").first_or_create()
+author.posts.where(title="Next").count()
+```
+
+`create()` saves through the framework and returns the record, including errors
+and entered values on validation failure. `first_or_create()` returns the first
+matching record or creates one; keyword equality filters supply creation values.
+Additional creation attributes are used only when no record matches. SQL
+expressions filter queries but are not inferred as creation attributes. The
+association's parent is authoritative even if attributes contain another parent
+or foreign key. Creating through an association requires a saved parent;
+`author.posts.new(...)` can build an unsaved graph instead. `Post.create(author=author,
+...)` remains supported. Related new framework objects are validated before their
+staged scalars are published by a framework save.
+
+These find-then-create operations are not atomic uniqueness guarantees. Use a
+database unique constraint where concurrent duplicate creation must be rejected.
+Native `relationship()` declarations retain their native collection API.
 
 Relationship mutations are **not scalar staging**: they have native unit-of-work
 semantics. A failed scalar validation does not undo a prior collection edit. When
@@ -366,7 +386,40 @@ Load callbacks run when an object is actually hydrated, not on every query that
 returns an already-loaded identity. After-find runs before after-initialize on
 hydration. Commit/rollback callbacks are queued by successful framework operations
 and are transaction-scoped; after-commit runs only after the outer commit, not a
-flush/savepoint. Native and bulk writes do not imply these framework hooks.
+flush/savepoint. Commit callbacks can query associations and use the ordinary
+framework persistence API in a new transaction, with the same session identity
+map. Exceptions propagate, but cannot undo the transaction already committed.
+Native and bulk writes do not imply these framework hooks.
+
+### Saved changes
+
+After a successful framework save, `record.saved_changes` maps changed scalar
+attribute names to `(old_value, new_value)` tuples. Values are typed and include
+database-assigned IDs/defaults. `record.saved_change_to_attribute(name)` returns
+that tuple or `None`; `record.attribute_before_last_save(name)` returns the old
+value, or the published value when unchanged. These APIs are available in
+`after_save` and `after_commit` callbacks without inspecting SQLAlchemy history:
+
+```python
+class Product(ApplicationModel):
+    after_commit("_notify_subscribers", on="update", if_="_back_in_stock")
+
+    def _back_in_stock(self):
+        change = self.saved_change_to_attribute("inventory_count")
+        return change is not None and change[0] == 0 and change[1] > 0
+
+    def _notify_subscribers(self):
+        for subscriber in self.subscribers:
+            ProductMailer().in_stock(self, subscriber).deliver_later()
+```
+
+Saved changes describe the latest successful save, not pending assignments or a
+transaction-wide diff. Failed validations preserve that history; a successful
+unchanged save replaces it. A rollback clears the rolled-back history, and
+`reload()` clears it too. When a record is saved repeatedly in one transaction,
+the commit callback sees its last successful save in that transaction. Rolled-back
+savepoints do not replace an outer save's commit history. Native publication and
+bulk writes do not produce framework saved-change history.
 
 Use `PasswordAuthenticator` and call `has_secure_password()` inside the model
 class for password behavior; a custom field name such as

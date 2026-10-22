@@ -23,6 +23,7 @@ class ModelQuery[QueryModel: "Model"]:
         self.statement = select(model_cls).order_by(*inspect(model_cls).primary_key)
         self._ordered = False
         self._limit = None
+        self._creation_attributes = {}
 
     def _with(self, statement):
         result = copy(self)
@@ -34,7 +35,21 @@ class ModelQuery[QueryModel: "Model"]:
         return session
 
     def where(self, *expressions, **filters) -> Self:
-        return self._with(self.statement.where(*expressions).filter_by(**filters))
+        result = self._with(self.statement.where(*expressions).filter_by(**filters))
+        result._creation_attributes = self._creation_attributes | filters
+        return result
+
+    def new(self, **attributes) -> QueryModel:
+        return self._model_cls.new(**(self._creation_attributes | attributes))
+
+    def create(self, **attributes) -> QueryModel:
+        record = self.new(**attributes)
+        record.save()
+        return record
+
+    def first_or_create(self, **attributes) -> QueryModel:
+        record = self.first()
+        return record if record is not None else self.create(**attributes)
 
     def includes(self, *paths: str) -> Self:
         options = []

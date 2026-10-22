@@ -1,14 +1,99 @@
 """Class-body declarations translated to native relationships before mapping."""
 
-from sqlalchemy import inspect
-from sqlalchemy.orm import relationship
+from collections.abc import MutableSequence
+
+from sqlalchemy import false, inspect
+from sqlalchemy.orm import relationship, with_parent
 from sqlalchemy.orm.attributes import NO_VALUE
 
+from flaskteroids._models.query import ModelQuery
 from flaskteroids.db import session
 from flaskteroids.declarations import AssociationDefinition, model_for
 from flaskteroids.exceptions import ProgrammerError
 from flaskteroids.inflector import inflector
 from flaskteroids.rules import declaration
+
+
+class AssociationQuery(ModelQuery):
+    def __init__(self, owner, name):
+        self.owner = owner
+        self.name = name
+        self.relationship = inspect(type(owner)).relationships[name]
+        super().__init__(self.relationship.mapper.class_)
+        self.statement = self.statement.where(
+            false()
+            if owner.is_new_record()
+            else with_parent(owner, getattr(type(owner), name))
+        )
+
+    def new(self, **attributes):
+        record = super().new(**attributes)
+        for local, remote in self.relationship.local_remote_pairs:
+            setattr(record, remote.key, getattr(self.owner, local.key))
+        if inverse := self.relationship.back_populates:
+            setattr(record, inverse, self.owner)
+        return record
+
+    def create(self, **attributes):
+        if not self.owner.is_persisted():
+            raise ProgrammerError("Save the parent before creating associated records.")
+        record = super().create(**attributes)
+        if record.is_persisted():
+            loaded = inspect(self.owner).attrs[self.name].loaded_value
+            if loaded is not NO_VALUE and record not in loaded:
+                loaded.append(record)
+        return record
+
+
+class AssociationCollection(MutableSequence):
+    """Application API over SQLAlchemy's collection, without a second cache."""
+
+    def __init__(self, owner, name):
+        self.owner = owner
+        self.name = name
+
+    def _collection(self):
+        # Bypass the application-facing getter, not SQLAlchemy instrumentation.
+        return object.__getattribute__(self.owner, self.name)
+
+    def all(self):
+        return AssociationQuery(self.owner, self.name)
+
+    def where(self, *expressions, **filters):
+        return self.all().where(*expressions, **filters)
+
+    def new(self, **attributes):
+        return self.all().new(**attributes)
+
+    def create(self, **attributes):
+        return self.all().create(**attributes)
+
+    def first_or_create(self, **attributes):
+        return self.all().first_or_create(**attributes)
+
+    def __len__(self):
+        return len(self._collection())
+
+    def __iter__(self):
+        return iter(self._collection())
+
+    def __getitem__(self, index):
+        return self._collection()[index]
+
+    def __setitem__(self, index, value):
+        self._collection()[index] = value
+
+    def __delitem__(self, index):
+        del self._collection()[index]
+
+    def insert(self, index, value):
+        self._collection().insert(index, value)
+
+    def __eq__(self, other):
+        return self._collection() == other
+
+    def __repr__(self):
+        return repr(self._collection())
 
 
 def _declare(name, kind, class_name, foreign_key, dependent, inverse_of, optional):

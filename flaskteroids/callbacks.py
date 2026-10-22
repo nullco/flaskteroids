@@ -14,6 +14,7 @@ _logger = logging.getLogger(__name__)
 
 # Sentinel returned by run_callbacks when the chain is halted.
 _HALTED = object()
+_COMMIT_CALLBACKS = "flaskteroids.commit_callbacks"
 
 # Callback names that accept the <on> option, and the values each accepts.
 # Mirroring Rails, <on> is only meaningful for callbacks that fire in more than
@@ -218,7 +219,7 @@ def _finalize_around(generators):
 # --- after_commit / after_rollback transaction hooks ---
 
 _pending = WeakKeyDictionary()
-_nested_commits = WeakKeyDictionary()
+_committed_transactions = WeakKeyDictionary()
 
 
 def _resolve_session(session_obj):
@@ -228,15 +229,12 @@ def _resolve_session(session_obj):
 
 
 def queue_after_commit(instance, operation, session_obj):
-    chains = model_for(instance.__class__).callbacks
-    if not (chains.get("after_commit") or chains.get("after_rollback")):
-        return
     sess = _resolve_session(session_obj)
     # One entry per record per transaction (latest operation wins), so saving
     # the same record multiple times in one transaction fires once, like Rails.
     transaction = sess.get_nested_transaction() or sess.get_transaction()
     entries = _pending.setdefault(sess, {}).setdefault(transaction, {})
-    entries[id(instance)] = (instance, operation)
+    entries[id(instance)] = (instance, operation, instance.saved_changes)
 
 
 @sa_event.listens_for(_SQLASession, "before_commit")
@@ -244,7 +242,7 @@ def _prepare_commit(session_obj):
     if session_obj.get_nested_transaction() is not None:
         return
     transaction = session_obj.get_transaction()
-    for instance, operation in (
+    for instance, operation, _ in (
         _pending.get(session_obj, {}).get(transaction, {}).values()
     ):
         if operation != "destroy":
@@ -253,29 +251,47 @@ def _prepare_commit(session_obj):
 
 @sa_event.listens_for(_SQLASession, "after_commit")
 def _on_session_commit(session_obj):
-    nested = session_obj.get_nested_transaction()
-    if nested is not None:
-        _nested_commits.setdefault(session_obj, set()).add(nested)
-        return
-    transaction = session_obj.get_transaction()
-    entries = _pending.get(session_obj, {}).pop(transaction, {})
-    for instance, operation in entries.values():
-        run_callbacks(instance, "commit", operation, lambda: None)
+    transaction = session_obj.get_nested_transaction() or session_obj.get_transaction()
+    _committed_transactions.setdefault(session_obj, set()).add(transaction)
 
 
 @sa_event.listens_for(_SQLASession, "after_rollback")
 def _on_session_rollback(session_obj):
     transaction = session_obj.get_nested_transaction() or session_obj.get_transaction()
     entries = _pending.get(session_obj, {}).pop(transaction, {})
-    for instance, operation in entries.values():
+    for instance, operation, _ in entries.values():
+        instance._saved_changes = {}
         run_callbacks(instance, "rollback", operation, lambda: None)
 
 
 @sa_event.listens_for(_SQLASession, "after_transaction_end")
 def _on_transaction_end(session_obj, transaction):
     entries = _pending.get(session_obj, {}).pop(transaction, {})
-    committed = _nested_commits.get(session_obj, set())
-    if transaction.nested and transaction in committed:
-        committed.remove(transaction)
+    committed = _committed_transactions.get(session_obj, set())
+    if transaction not in committed:
+        return
+    committed.remove(transaction)
+    if transaction.nested:
         parent = _pending.setdefault(session_obj, {}).setdefault(transaction.parent, {})
         parent.update(entries)
+        return
+    for instance, _, changes in entries.values():
+        instance._saved_changes = changes
+
+    # SQLAlchemy closes the transaction before this event, but a `with begin()`
+    # context still points at that closed boundary until __exit__ returns. Suspend
+    # only that context guard so callbacks can use the same session/identity map.
+    context = session_obj._trans_context_manager
+    if context is not None and not context.is_active:
+        session_obj._trans_context_manager = None
+    previous = session_obj.info.get(_COMMIT_CALLBACKS, False)
+    session_obj.info[_COMMIT_CALLBACKS] = True
+    try:
+        for instance, operation, _ in entries.values():
+            run_callbacks(instance, "commit", operation, lambda: None)
+    finally:
+        if previous:
+            session_obj.info[_COMMIT_CALLBACKS] = previous
+        else:
+            session_obj.info.pop(_COMMIT_CALLBACKS, None)
+        session_obj._trans_context_manager = context

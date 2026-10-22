@@ -67,9 +67,11 @@ def transaction(*, requires_new=False):
             yield boundary
     finally:
         try:
-            boundary.close()
+            if db_session.get_transaction() is boundary:
+                boundary.close()
         finally:
-            db_session.info.pop(_BOUNDARY, None)
+            if db_session.info.get(_BOUNDARY) is boundary:
+                db_session.info.pop(_BOUNDARY, None)
 
 
 def transactional(operation=None, *, rollback_on_false=False):

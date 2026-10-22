@@ -104,6 +104,7 @@ class Model(StagedAttributes, SchemaModel):
 
     def _initialize(self):
         self._changes = {}
+        self._saved_changes = {}
         self._raw_attributes = {}
         self._virtual_fields = {}
         self._errors = Errors()
@@ -281,6 +282,7 @@ class Model(StagedAttributes, SchemaModel):
         current_app.extensions["flaskteroids.db"].require_model(type(self))
         session.refresh(self)
         self.discard_changes()
+        self._saved_changes = {}
         self._errors = Errors()
         self._attachment_changes.clear()
         self._attachment_cache.clear()
@@ -347,7 +349,9 @@ class Model(StagedAttributes, SchemaModel):
                 if relationship.back_populates:
                     for related in value if relationship.uselist else [value]:
                         if related is not None:
-                            getattr(related, relationship.back_populates)
+                            object.__getattribute__(
+                                related, relationship.back_populates
+                            )
                 setattr(self, relationship.key, [] if relationship.uselist else None)
                 setattr(self, relationship.key, value)
         return result
@@ -367,6 +371,13 @@ class Model(StagedAttributes, SchemaModel):
                 return False
 
         def persist():
+            previous = {
+                id(record): {
+                    name: record.read_published_attribute(name)
+                    for name in record.column_names
+                }
+                for record in graph
+            }
             now = datetime.now(UTC)
             for record in graph:
                 if (
@@ -380,6 +391,12 @@ class Model(StagedAttributes, SchemaModel):
                 record.apply_changes()
             session.add(self)
             session.flush()
+            for record in graph:
+                record._saved_changes = {
+                    name: (old, new)
+                    for name, old in previous[id(record)].items()
+                    if old != (new := record.read_published_attribute(name))
+                }
             attached_storage.persist(self)
 
         result = run_callbacks(

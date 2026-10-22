@@ -1,0 +1,8 @@
+{% extends "layouts/application.html" %}
+
+{% block body %}
+  <h1>Stop following {{ subscriber.product.name }}?</h1>
+  {% call(form) form_with(url=url_for("cancel_subscription", token=subscriber.unsubscribe_token)) %}
+    {{ form.submit("Unsubscribe") }}
+  {% endcall %}
+{% endblock %}

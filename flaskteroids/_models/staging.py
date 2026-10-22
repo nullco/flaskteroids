@@ -3,7 +3,9 @@
 from sqlalchemy import inspect
 from sqlalchemy.orm import MANYTOONE
 
+from flaskteroids._models.associations import AssociationCollection
 from flaskteroids._models.attributes import cast_input, database_value
+from flaskteroids.declarations import model_for
 
 
 class StagedAttributes:
@@ -12,6 +14,9 @@ class StagedAttributes:
             pending = object.__getattribute__(self, "__dict__").get("_changes", {})
             if name in pending:
                 return pending[name]
+            association = model_for(type(self)).associations.get(name)
+            if association is not None and association.kind == "has_many":
+                return AssociationCollection(self, name)
         return super().__getattribute__(name)
 
     def __setattr__(self, name, value):
@@ -50,6 +55,18 @@ class StagedAttributes:
     def changes(self):
         """Pending typed scalar values, not SQLAlchemy's published history."""
         return dict(self.__dict__.get("_changes", {}))
+
+    @property
+    def saved_changes(self):
+        """Typed changes from the latest successful framework save."""
+        return dict(self._saved_changes)
+
+    def saved_change_to_attribute(self, name):
+        return self._saved_changes.get(name)
+
+    def attribute_before_last_save(self, name):
+        change = self.saved_change_to_attribute(name)
+        return change[0] if change is not None else self.read_published_attribute(name)
 
     def read_published_attribute(self, name):
         """Read SQLAlchemy-managed scalar state without staged input overrides."""

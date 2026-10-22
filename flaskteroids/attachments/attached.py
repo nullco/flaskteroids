@@ -12,6 +12,7 @@ from flaskteroids.attachments.operations import purge_blob_after_commit, upload_
 from flaskteroids.attachments.schema import attachments
 from flaskteroids.attachments.services import StorageError
 from flaskteroids.attachments.transactions import after_commit, defer_uploads
+from flaskteroids.callbacks import _COMMIT_CALLBACKS
 from flaskteroids.db import session, transactional
 from flaskteroids.declarations import model_for
 from flaskteroids.exceptions import ProgrammerError
@@ -249,9 +250,8 @@ class AttachedMany:
         if self.record.is_new_record():
             return []
         if (
-            not session.is_active
-            and self.definition.name in self.record._attachment_cache
-        ):
+            not session.is_active or session.info.get(_COMMIT_CALLBACKS)
+        ) and self.definition.name in self.record._attachment_cache:
             return self.record._attachment_cache[self.definition.name]
         query = (
             select(attachments)

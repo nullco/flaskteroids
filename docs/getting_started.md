@@ -1090,7 +1090,6 @@ Create `app/controllers/subscribers_controller.py`:
 ```python
 from app.controllers.application_controller import ApplicationController
 from app.models.product import Product
-from app.models.subscriber import Subscriber
 from flaskteroids import params, redirect_to
 from flaskteroids.actions import skip_before_action
 from flaskteroids.controller import render
@@ -1102,12 +1101,11 @@ class SubscribersController(ApplicationController):
 
     def create(self):
         self.product = Product.find(params["product_id"])
-        attributes = params.expect(subscriber=["email"])
-        self.subscriber = Subscriber.find_by(product_id=self.product.id, **attributes)
-        if self.subscriber is None:
-            self.subscriber = Subscriber.new(product=self.product, **attributes)
-            if not self.subscriber.save():
-                return render("new", status=422)
+        self.subscriber = self.product.subscribers.where(
+            **params.expect(subscriber=["email"])
+        ).first_or_create()
+        if not self.subscriber.is_persisted():
+            return render("new", status=422)
         return redirect_to(
             product_path(self.product),
             notice="We will email you when it is back in stock.",
@@ -1116,8 +1114,12 @@ class SubscribersController(ApplicationController):
 
 Subscriptions are public, unlike editing stock. The email is allowlisted, and
 the product comes from the URL rather than an editable form field. Looking up
-an existing subscription avoids adding another during ordinary repeat visits;
-a production signup service also needs confirmation and abuse controls.
+an existing subscription through the product's association avoids adding another
+during ordinary repeat visits. `first_or_create()` returns the existing record or
+attempts to save a new one using the scope's email and parent. A rejected save
+returns its errors and entered values for redisplay. This lookup is not an atomic
+uniqueness guarantee; a production signup service also needs database constraints,
+confirmation, and abuse controls.
 
 In `config/routes.py`, replace the existing `route.resources("products")`
 declaration with the nested resource, keeping your other routes:
@@ -1261,16 +1263,22 @@ from flaskteroids.routes import product_url
 
 
 class ProductMailer(ApplicationMailer):
-    def in_stock(self, product_name, product_id, recipient, unsubscribe_token):
-        self.product_name = product_name
-        self.product_url = product_url(product_id)
+    def in_stock(self, product, subscriber):
+        self.product_name = product.name
+        self.product_url = product_url(product)
         self.unsubscribe_url = url_for(
-            "unsubscribe", token=unsubscribe_token, _external=True
+            "unsubscribe", token=subscriber.unsubscribe_token, _external=True
         )
-        return self.mail(to=recipient, subject=f"{product_name} is back in stock")
+        return self.mail(
+            to=subscriber.email, subject=f"{product.name} is back in stock"
+        )
 ```
 
-Mail actions expose instance variables to templates, just like controllers.
+The caller passes the product and subscriber; the mailer owns the email's
+recipient, subject, and presentation data. Mail actions expose instance variables
+to templates, just like controllers. Here we capture only strings, not model
+objects, so the message can also be queued.
+
 Email links need absolute URLs: `product_url` is the absolute counterpart of
 `product_path`. The custom unsubscribe endpoint still uses `url_for` with
 `_external=True`.
@@ -1336,14 +1344,15 @@ from app.mailers.product_mailer import ProductMailer
 
 subscriber = Subscriber.find_by(email="reader@example.org")
 product = subscriber.product
-ProductMailer().in_stock(
-    product.name, product.id, subscriber.email, subscriber.unsubscribe_token
-).deliver_now()
+ProductMailer().in_stock(product, subscriber).deliver_now()
 ```
 
 You should see a readable message preview in the shell, with a subject ending
 in "is back in stock", a product link, and an unsubscribe link. Exit the shell.
-The data passed to the mailer is ordinary strings and an ID, ready for queuing.
+The mailer accepts models but captures ordinary strings for queuing. Unlike
+Rails' deferred mailer actions, Flaskteroids runs `in_stock()` immediately;
+`deliver_later()` queues its captured state rather than rerunning the action or
+reloading those models in the worker.
 
 ### Trigger notifications after a restock
 
@@ -1354,8 +1363,6 @@ from app.mailers.product_mailer import ProductMailer
 from app.models.application_model import ApplicationModel
 from flaskteroids.model import (
     after_commit,
-    after_rollback,
-    before_update,
     has_many,
     has_one_attached,
     validates,
@@ -1372,40 +1379,29 @@ class Product(ApplicationModel):
         content_types=["image/png", "image/jpeg"],
     )
     has_many("subscribers", dependent="destroy")
-    before_update("_prepare_restock_emails")
-    after_commit("_deliver_restock_emails", on="update")
-    after_rollback("_clear_restock_emails")
+    after_commit("_notify_subscribers", on="update", if_="_back_in_stock")
 
-    def _prepare_restock_emails(self):
-        if self.inventory_count == 0:
-            self._clear_restock_emails()
-        elif self.read_published_attribute("inventory_count") == 0:
-            self._restock_emails = [
-                ProductMailer().in_stock(
-                    self.name, self.id, subscriber.email, subscriber.unsubscribe_token
-                )
-                for subscriber in self.subscribers
-            ]
+    def _back_in_stock(self):
+        change = self.saved_change_to_attribute("inventory_count")
+        return change is not None and change[0] == 0 and change[1] > 0
 
-    def _deliver_restock_emails(self):
-        messages = getattr(self, "_restock_emails", [])
-        self._clear_restock_emails()
-        for message in messages:
-            message.deliver_later()
-
-    def _clear_restock_emails(self):
-        self._restock_emails = []
+    def _notify_subscribers(self):
+        for subscriber in self.subscribers:
+            ProductMailer().in_stock(self, subscriber).deliver_later()
 ```
 
-Before an update, we compare the entered inventory count with its previously
-saved value using `read_published_attribute()`. A change from zero to a positive
-count prepares one email per subscriber. An ordinary description edit or a
-change from 5 to 6 does not prepare a new batch.
+`saved_change_to_attribute()` returns the old and new typed values from the
+latest successful save, or `None` when that attribute did not change. A change
+from zero to a positive count triggers one email per subscriber. An ordinary
+description edit or a change from 5 to 6 does not send a new batch.
 
-Preparing messages captures their recipients and links. `after_commit` enqueues
-them only after the product's update succeeds; a rollback clears the pending
-messages. The queued payload contains scalar template data, not model objects.
-See [Models](models/index.md) for more about callbacks and transactions.
+`after_commit` runs only after the outer transaction commits, so a rollback never
+enqueues these notifications. The callback can query subscribers normally; the
+mailer captures each message's recipients and links when called. The queued
+payload contains scalar template data, not model objects. If an explicit
+transaction saves the same product more than once, the condition describes its
+last successful save, not every intermediate transition. See
+[Models](models/index.md) for callbacks, saved changes, and transactions.
 
 ### Watch the complete feature work
 
