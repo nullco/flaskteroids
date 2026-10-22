@@ -126,6 +126,36 @@ Generated scaffold create and update actions use this response for JSON
 validation failures. See [model serialization](../models/index.md#json-serialization)
 for column selection and authentication-field filtering.
 
+## Controller helpers
+
+Use `helper_method` inside `@rules` to expose a private controller method as a
+callable in templates, layouts, and partials:
+
+```python
+from flaskteroids import rules
+from flaskteroids.controller import helper_method
+
+@rules(helper_method("_display_name"))
+class PostsController(ApplicationController):
+    def _display_name(self, post):
+        return post.title or "Untitled"
+```
+
+```html
+{{ display_name(post) }}
+```
+
+By default, the template name drops the method's leading underscore. Pass
+`name="another_name"` to choose a different name. Helpers are inherited, use the
+current controller instance, and remain private methods rather than routable
+actions. Unregistered private methods are not exposed. Return ordinary strings
+for text that should be HTML-escaped.
+
+The authentication generator uses this mechanism to expose `is_authenticated()`.
+The helper resumes the session on demand, so public pages can show login/logout
+controls without a separate authentication-status callback. Calling the helper
+does not require login; `_require_authentication` enforces access control.
+
 ## Content negotiation
 
 Use `respond` to return HTML or JSON from the same action. It selects a handler based on the request's `Accept` header or a `.json` URL suffix:

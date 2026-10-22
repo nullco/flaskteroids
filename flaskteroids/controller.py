@@ -1,6 +1,13 @@
 from functools import wraps
 
-from flask import g, jsonify, make_response, render_template, request
+from flask import (
+    g,
+    has_request_context,
+    jsonify,
+    make_response,
+    render_template,
+    request,
+)
 
 from flaskteroids.actions import (
     decorate_action,
@@ -11,6 +18,7 @@ from flaskteroids.actions import (
     register_actions,
 )
 from flaskteroids.declarations import actions_for
+from flaskteroids.exceptions import ProgrammerError
 from flaskteroids.inflector import inflector
 from flaskteroids.rules import bind_rules
 
@@ -44,6 +52,34 @@ def _decorate_action(cls, action):
         return render(action.__name__)
 
     return mark_action_wrapper(wrapper, original)
+
+
+def helper_method(method_name: str, *, name: str | None = None):
+    """Expose a private controller method as a callable template helper."""
+    helper_name = name if name is not None else method_name.lstrip("_")
+    if not method_name.startswith("_") or method_name.startswith("__"):
+        raise ProgrammerError(
+            "Helper methods should follow conventions for private methods"
+        )
+    if not helper_name.isidentifier() or helper_name.startswith("_"):
+        raise ProgrammerError("Template helper names must be public identifiers")
+
+    def bind(cls):
+        if not callable(getattr(cls, method_name)):
+            raise ProgrammerError(f"Helper method <{method_name}> must be callable")
+        actions_for(cls).helpers[helper_name] = method_name
+
+    return bind
+
+
+def _template_helpers():
+    controller = getattr(g, "controller", None) if has_request_context() else None
+    if controller is None:
+        return {}
+    return {
+        name: getattr(controller, method_name)
+        for name, method_name in actions_for(type(controller)).helpers.items()
+    }
 
 
 class FormatResponder:

@@ -35,6 +35,11 @@ def test_session_logout_requires_a_valid_csrf_token(logout_result, transport, cs
     }
 
 
+def test_authentication_helpers_resume_sessions_on_public_pages(generated_store):
+    _, run = generated_store
+    run(script="authentication_helpers.py")
+
+
 def test_nested_model_forms_create_redisplay_and_update_subscriptions(generated_store):
     _, run = generated_store
     run(script="nested_subscriptions.py")

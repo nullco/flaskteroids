@@ -217,11 +217,19 @@ flask generate authentication
 
 Generate user and session models, login pages, and password management:
 
-- A `User` model with `email` and `password_digest`.
+- A `User` model with `email_address` and `password_digest`.
 - A `Session` model with `user_id`, `ip_address`, and `user_agent`.
 - Controllers and views for login and password changes.
 - Views and mailers for password resets.
 - Routes for session and password management.
+- An `Authentication` concern added to `ApplicationController`, requiring login
+  by default and exposing the `is_authenticated()` template helper.
+
+Run `flask db:migrate`, then create an account in the shell; no public sign-up
+form is generated. Use `skip_before_action("_require_authentication", only=[...])`
+in a controller's `@rules` to allow public actions. Templates can call
+`is_authenticated()` on both public and protected pages without an extra callback.
+See [the authentication walkthrough](../getting_started.md#8-require-login-to-change-products).
 
 ## Attachments
 

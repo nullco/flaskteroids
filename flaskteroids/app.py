@@ -17,6 +17,7 @@ from flaskteroids.cli.attachments import install as attachments_install
 from flaskteroids.cli.db import commands as db_commands
 from flaskteroids.cli.db.snapshot import dump as schema_dump
 from flaskteroids.cli.generators import commands as generate_commands
+from flaskteroids.controller import _template_helpers
 from flaskteroids.csrf import CSRFToken
 from flaskteroids.db import session
 from flaskteroids.exceptions import InvalidParameter, MissingParameter
@@ -126,7 +127,11 @@ def _prepare_template_contexts(app):
 
     @app.context_processor
     def _():
-        return {"flash": flash.messages if has_request_context() else {}, **db.models}
+        return {
+            "flash": flash.messages if has_request_context() else {},
+            **db.models,
+            **_template_helpers(),
+        }
 
 
 def _setup_csrf(app):

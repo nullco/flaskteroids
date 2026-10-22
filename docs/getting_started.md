@@ -777,21 +777,14 @@ Replace the controller's `@rules(...)` declaration with:
 ```python
 @rules(
     skip_before_action("_require_authentication", only=["index", "show"]),
-    before_action("_set_authentication_status"),
     before_action("_set_product", only=["show", "edit", "update", "destroy"]),
 )
 ```
 
-Add this method inside `ProductsController`:
-
-```python
-    def _set_authentication_status(self):
-        self.authenticated = self._is_authenticated()
-```
-
-`_require_authentication` and `_is_authenticated` are methods in the
-application's generated authentication concern. The new callback exposes an
-`authenticated` variable to our product templates, including public pages.
+The generated `Authentication` concern provides the `is_authenticated()` template
+helper. It resumes the session when needed, including on public pages where
+`_require_authentication` is skipped. No extra callback or controller variable
+is needed.
 
 ### Show login and logout controls
 
@@ -803,7 +796,7 @@ logout endpoint or JavaScript is needed.
 In `app/views/products/index.html`, replace the New product link with:
 
 ```html
-{% if authenticated %}
+{% if is_authenticated() %}
   {{ link_to("New product", new_product_path()) }}
   {{ button_to("Log out", session_path(), method="DELETE") }}
 {% else %}
@@ -814,7 +807,7 @@ In `app/views/products/index.html`, replace the New product link with:
 In `app/views/products/show.html`, wrap the Edit and Delete controls:
 
 ```html
-{% if authenticated %}
+{% if is_authenticated() %}
   {{ link_to("Edit", edit_product_path(product)) }}
   {{ button_to("Delete", product, method="DELETE") }}
 {% endif %}

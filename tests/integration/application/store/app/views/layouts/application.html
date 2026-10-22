@@ -15,7 +15,11 @@
           {{ link_to("Edit subscription", edit_product_subscriber_path(product, child)) }}
         {% endfor %}
       {% endif %}
-      {{ button_to("Log out", session_path(), method="DELETE") }}
+      {% if is_authenticated() %}
+        {{ button_to("Log out", session_path(), method="DELETE") }}
+      {% else %}
+        {{ link_to("Log in", new_session_path()) }}
+      {% endif %}
     </nav>
     {% block body %}{% endblock %}
   </body>
