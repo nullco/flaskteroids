@@ -48,14 +48,14 @@ def test_unavailable_version_rejected_before_writing(tmp_path, mocker):
 @pytest.mark.parametrize(
     ("version", "constraint"),
     [
-        ("0.4.0", ">=0.4.0,<0.5.0"),
-        ("0.4.9", ">=0.4.9,<0.5.0"),
-        ("0.5.0", ">=0.5.0,<0.6.0"),
-        ("1.2.3", ">=1.2.3,<1.3.0"),
+        ("0.4.0", ">=0.4.0"),
+        ("0.4.9", ">=0.4.9"),
+        ("0.5.0", ">=0.5.0"),
+        ("1.2.3", ">=1.2.3"),
         ("0.5.0rc1", "==0.5.0rc1"),
         ("0.5.0.dev1", "==0.5.0.dev1"),
         ("0.4.1+candidate", "==0.4.1+candidate"),
-        ("1!0.4.1", ">=1!0.4.1,<1!0.5.0"),
+        ("1!0.4.1", ">=1!0.4.1"),
     ],
 )
 def test_new_pins_installed_generator_version_constraint(

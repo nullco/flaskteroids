@@ -11,6 +11,11 @@ dependencies = [
 
 [tool.uv]
 package = false
+% if framework_path_toml:
+
+[tool.uv.sources]
+flaskteroids = { path = ${framework_path_toml}, editable = true }
+% endif
 
 [tool.pytest.ini_options]
 testpaths = ["test"]

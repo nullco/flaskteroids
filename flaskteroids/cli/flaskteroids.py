@@ -2,8 +2,10 @@ import json
 import os
 import re
 import secrets
-from importlib.metadata import PackageNotFoundError, version
+from importlib.metadata import PackageNotFoundError, distribution, version
 from pathlib import Path
+from urllib.parse import urlsplit
+from urllib.request import url2pathname
 
 import click
 import yaml
@@ -61,21 +63,24 @@ def new(app_name, skip_install):
         )
     try:
         installed = Version(version("flaskteroids"))
+        editable_path = _editable_framework_path()
     except (PackageNotFoundError, InvalidVersion) as error:
         raise click.ClickException(
             f"Cannot determine installed Flaskteroids version: {error}"
         ) from error
-    # The app owns its resolution/lock. Unpublished generators need an explicit source.
-    epoch = f"{installed.epoch}!" if installed.epoch else ""
+    # The app owns its resolution/lock, preserving editable generators as local sources.
     constraint = (
         f"=={installed}"
         if installed.is_prerelease or installed.is_devrelease or installed.local
-        else f">={installed},<{epoch}{installed.major}.{installed.minor + 1}.0"
+        else f">={installed}"
     )
     params = {
         "project_title": project_name.replace("_", " ").title(),
         "project_name_toml": json.dumps(project_name),
         "framework_dependency_toml": json.dumps(f"flaskteroids{constraint}"),
+        "framework_path_toml": json.dumps(str(editable_path))
+        if editable_path
+        else None,
     }
     ab = ArtifactsBuilder(base_path, click.echo)
     try:
@@ -179,6 +184,11 @@ def new(app_name, skip_install):
             raise click.ClickException(
                 "Git is required to create an application; install Git and retry."
             ) from error
+        if editable_path:
+            click.echo(
+                f"Using editable Flaskteroids checkout: {editable_path}. "
+                "The generated uv source requires this local path."
+            )
         if not skip_install:
             # Relative argv uses the builder's app cwd, including destinations with spaces.
             ab.run("bin/setup")
@@ -195,6 +205,29 @@ def new(app_name, skip_install):
             "Application ready. Run bin/flask run, bin/flask test, and bin/flask test:system."
         )
     click.echo(f"Next: cd {app_name!r}")
+
+
+def _editable_framework_path():
+    raw = distribution("flaskteroids").read_text("direct_url.json")
+    if raw is None:
+        return None
+    try:
+        direct_url = json.loads(raw)
+        if not direct_url.get("dir_info", {}).get("editable", False):
+            return None
+        source = urlsplit(direct_url["url"])
+        path = Path(url2pathname(source.path))
+        if (
+            source.scheme != "file"
+            or source.netloc not in ("", "localhost")
+            or not path.is_absolute()
+        ):
+            raise ValueError("editable source must be an absolute local file URL")
+    except (ValueError, KeyError, TypeError, AttributeError) as error:
+        raise click.ClickException(
+            f"Cannot read editable Flaskteroids source from direct_url.json: {error}"
+        ) from error
+    return path
 
 
 def _template(*, path, params=None):
