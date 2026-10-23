@@ -1,15 +1,17 @@
 # Attachments
 
-Attach uploaded files to models using disk or S3-compatible storage.
+Use attachments to give a model one file, such as an avatar, or a collection of
+files, such as documents. File bytes live on disk or in S3-compatible storage;
+the database keeps attachment records and metadata.
 
 ## Set up
 
 To generate a resource with file uploads, run these commands inside your application:
 
 ```sh
-flask generate scaffold User name:string avatar:attachment documents:attachments
-flask attachments:install
-flask db:migrate
+bin/flask generate scaffold User name:string avatar:attachment documents:attachments
+bin/flask attachments:install
+bin/flask db:migrate
 ```
 
 Model, resource, and scaffold generators accept `name:attachment` for one file and
@@ -17,15 +19,14 @@ Model, resource, and scaffold generators accept `name:attachment` for one file a
 names, not database columns. The scaffold generates the model declarations, upload
 inputs, controller parameters, and file links.
 
-`flask attachments:install` creates an attachment migration and adds
-`config/storage.yml` if it is missing. `flask db:migrate` applies the model and
-attachment migrations.
+`bin/flask attachments:install` creates an attachment migration and adds
+`config/storage.yml` if missing. `bin/flask db:migrate` applies the migrations.
 
 ## Add attachments to a model
 
 To add attachments to an existing model without a generator, declare them with
-`has_one_attached` or `has_many_attached`. Run `flask attachments:install` and
-`flask db:migrate` if attachments have not been set up yet.
+`has_one_attached` or `has_many_attached`. Run `bin/flask attachments:install` and
+`bin/flask db:migrate` if attachments have not been set up yet.
 
 ```python
 from app.models.application_model import ApplicationModel
@@ -33,8 +34,8 @@ from flaskteroids.model import has_one_attached, has_many_attached
 
 
 class User(ApplicationModel):
-    has_one_attached('avatar')
-    has_many_attached('documents')
+    has_one_attached("avatar")
+    has_many_attached("documents")
 ```
 
 Pass an uploaded file to `attach`, or include it in `create` or `update`:
@@ -45,8 +46,9 @@ user.update(avatar=another_upload)
 user.documents.attach(first_upload, second_upload)
 ```
 
-`attach` appends to a collection. `user.update(documents=[upload])` replaces it.
-For new records or records with unsaved changes, call `save()` after attaching.
+For multiple files, `attach` **adds** to the collection;
+`user.update(documents=[upload])` **replaces** it. For a new record or one with
+unsaved changes, call `save()` after attaching.
 
 You can also attach an open file:
 
@@ -56,11 +58,19 @@ with open("avatar.png", "rb") as stream:
 ```
 
 Use `user.avatar.attached()` to check for a file and `user.avatar.filename` to
-read its name. Files become available after commit: standalone saves and attaches
-to clean persisted records commit before returning; operations in an explicit
-`Model.transaction()` wait for that block to commit. In model callbacks, read new
-uploads in `after_commit`, not `after_save`. Standalone blob creation and explicit
-attachment removals also own a transaction unless joining an explicit block.
+read its name.
+
+### When files become available
+
+Uploads become available **after commit**:
+
+- A standalone save commits before returning.
+- Attaching to a saved record with no pending changes also commits before returning.
+- Inside `Model.transaction()`, uploads wait for the block to commit.
+- In model callbacks, read new uploads in `after_commit`, not `after_save`.
+
+Standalone blob creation and explicit attachment removal also commit their own
+transaction unless they join an explicit block.
 
 ## Upload forms
 
@@ -86,7 +96,7 @@ the existing attachment.
 Permit uploads in your controller:
 
 ```python
-attributes = params.expect(user=["avatar", ("documents", [])])
+attributes = self.params.expect(user=["avatar", ("documents", [])])
 user.update(**attributes)
 ```
 
@@ -186,11 +196,12 @@ also available from `flaskteroids.attachments` in Python. Use
 `blob_path(user.avatar, disposition="attachment")` to force a download, or pass
 `expires_in=3600` for a link that expires after an hour.
 
-Application links are permanent by default. `user.avatar.url()` returns a direct
-storage URL that normally expires after five minutes.
+Application links are permanent by default. `user.avatar.url()` instead returns
+a direct storage URL that normally expires after five minutes.
 
-Anyone with a signed link can download the file by default. Only expose signed
-links and IDs to users allowed to access the file.
+**Anyone holding a signed link can download the file by default.** A signature
+prevents tampering; it does not check who is using the link. Share links and signed
+IDs only with authorized users, or add the permission check below.
 
 ## Private files
 
@@ -206,9 +217,10 @@ current_app.config.attachments.authorize = can_download
 current_app.config.attachments.resolve_model_to_route = "proxy"
 ```
 
-The callback can inspect `blob.attachments` to check ownership. Check the browser
-session in the callback; these routes do not run controller authentication
-callbacks. Denied downloads return 404.
+The callback receives a blob (the stored file record). It can inspect
+`blob.attachments` to check ownership and the browser session to identify the user.
+**Download routes do not run controller authentication callbacks.** Denied
+downloads return 404.
 
 Use `blob_path` or `blob_url` for private files. Direct storage URLs bypass the
 permission check, so avoid `user.avatar.url()` and public storage for those files.
@@ -230,11 +242,13 @@ does not restore the deleted file.
 
 ## Unattached uploads
 
-Schedule a job calling `Blob.purge_unattached()` to enqueue purging of blobs
-that are unattached and older than two days. Use a positive
-`older_than=timedelta(...)` to change the grace period. This includes abandoned
-rich-text uploads and all other unattached blobs. Jobs recheck attachments
-before deleting files. Cleanup is not scheduled automatically.
+A blob is a stored file record; it can exist without an attachment, for example
+after someone abandons an upload form. Cleanup is not scheduled automatically.
+
+Schedule a job that calls `Blob.purge_unattached()` to enqueue deletion of
+unattached blobs older than two days. Use a positive `older_than=timedelta(...)`
+to choose another grace period. This covers all unattached blobs, including
+rich-text uploads. Purge jobs recheck attachments before deleting files.
 
 ## Tests
 

@@ -1,8 +1,15 @@
 # Command-line interface
 
-Run commands from your project directory with `bin/flask`—no environment
-activation needed. Use `bin/flask --help` to explore, or add `--help` to any command.
-You can also use `flask` in an activated environment, or `uv run flask`.
+Run commands from your application directory with `bin/flask`; no environment
+activation is needed. You can also use `flask` in an activated environment or
+`uv run flask`.
+
+Use `bin/flask --help` to list commands, or add `--help` to a specific command:
+
+```sh
+bin/flask generate --help
+bin/flask db:migrate --help
+```
 
 ## Generation and setup
 
@@ -10,78 +17,79 @@ You can also use `flask` in an activated environment, or `uv run flask`.
 flaskteroids new my_app
 cd my_app
 bin/flask run
-bin/flask test
-bin/flask test:system
 ```
 
-Your new app comes with its dependencies installed and development database ready.
-For a fresh checkout, run `bin/setup` before starting work.
+A new app has its dependencies installed and development database prepared. For
+a fresh checkout, run `bin/setup` first.
 
-Want to create the files first and install later? Use `--skip-install`, then run
-`bin/setup` when you're ready. Commit `uv.lock` so your team shares the same
-dependency versions.
-
-## Asset precompilation
-
-```sh
-bin/flask assets:precompile
-flaskteroids assets:precompile --root /path/to/app
-```
-
-Build assets for production. See [Assets](assets.md) for the full workflow.
+To generate files without installing, use `flaskteroids new my_app --skip-install`
+and run `bin/setup` later. Commit `uv.lock` so the team shares dependency versions.
 
 ## Database preparation
 
-As your models grow, migrations describe how their tables should change. Run
-`db:prepare` to create the database if needed and apply those migrations:
+Migrations describe changes to database tables. To create a database if necessary
+and apply pending migrations:
 
 ```sh
 bin/flask db:prepare
 ```
 
-To prepare another environment, choose it with `FLASKTEROIDS_ENV`:
+Select another environment with `FLASKTEROIDS_ENV`:
 
 ```sh
 FLASKTEROIDS_ENV=test bin/flask db:prepare
 FLASKTEROIDS_ENV=production bin/flask db:prepare
 ```
 
-Preparation doesn't reset the database or seed records. After successful migration,
-Flaskteroids regenerates `db/schema.py` from the selected database. Commit this
-read-only snapshot; do not duplicate column changes there by hand. Review migrations
-and the resulting snapshot before deploying: changes and rollbacks can delete data.
-Restart servers/workers afterward; published mappings are not modified in place.
+Preparation does not reset the database or seed records.
 
 | Command | When to use it |
 | --- | --- |
-| `db:prepare` | Get a database ready, or bring it up to date. |
-| `db:create` | Create the database without applying migrations. |
-| `db:migrate` | Apply pending migrations to an existing database. |
-| `db:rollback` | Undo the most recent migration. |
-| `db:init` | Add migration files to an app that doesn't have them yet. |
-| `db:schema:dump` | Refresh `db/schema.py` from the selected database without changing data. |
+| `db:prepare` | Create a database if needed and bring it up to date |
+| `db:create` | Create a database without applying migrations |
+| `db:migrate` | Apply pending migrations to an existing database |
+| `db:rollback` | Undo the most recent migration |
+| `db:init` | Add migration setup to an app that does not have it |
+| `db:schema:dump` | Refresh `db/schema.py` without changing database data |
 
-New apps already include migration files. If preparation fails, fix the reported
-problem and try again; the database is left in place for you to inspect. If migrations
-succeed but snapshot publication fails, fix the file/access problem and run
-`bin/flask db:schema:dump`; a failed file write does not undo applied migrations.
+New applications already include migration setup.
 
-Commands use normal application initialization, including initializers. New model
-declarations can be imported before their snapshot tables exist. An initializer
-that actually constructs or queries an unavailable model still fails normally;
-there is no migration-only startup mode.
+### After a migration
+
+Successful migrations regenerate `db/schema.py` from the selected database.
+Commit this generated snapshot, but do not edit its columns by hand. Restart
+servers and workers afterward so they load the new schema.
+
+**Review migrations and rollbacks before running them in production:** either can
+delete data. If a command fails, fix the reported problem and retry; the database
+is left available for inspection. If migrations succeed but writing the snapshot
+fails, fix the file/access problem and run `bin/flask db:schema:dump`. A failed
+snapshot write does not undo database changes.
+
+### Startup and connection requirements
+
+Database commands use normal application startup, including initializers. New
+models can be imported before their tables appear in the snapshot, but an
+initializer that constructs or queries an unavailable model still fails. There
+is no separate migration-only startup mode.
 
 For PostgreSQL or MySQL, start the server and
-[configure its connection](../configuration.md#database-configuration) first.
-For SQLite, use a database file rather than `:memory:` and make sure its parent
-directory exists.
+[configure the connection](../configuration.md#database-configuration) first.
+For SQLite, use a file rather than `:memory:` and ensure its parent directory
+exists.
 
 ## Shell
 
-`flask shell` provides your models and `session`:
+Open an application-aware Python shell:
+
+```sh
+bin/flask shell
+```
+
+Your models and `session` are available:
 
 ```python
-user = User.create(name="Alice")  # Commits before returning
+user = User.create(name="Alice")  # Commits before returning.
 with User.transaction():
     user.update(name="Alicia")
     User.create(name="Bob")
@@ -89,151 +97,135 @@ with User.transaction():
 ```
 
 Standalone `save()`, `create()`, `update()`, and `destroy()` commit immediately.
-Use `Model.transaction()` to group changes; saves join that explicit transaction,
-and an exception escaping the block rolls the group back. A `False` save result
-does not itself abort an explicit block. Shell exit rolls back unfinished work;
-it does not undo earlier standalone commits. Native writes require explicit
-commit/transaction handling. Use `record.discard_changes()` or `record.reload()`
-to discard staged input.
+Inside `Model.transaction()`, they join the block's transaction. An exception
+escaping the block rolls the group back; a `False` save result does not.
+
+Shell exit rolls back unfinished work, not earlier standalone commits. Native
+SQLAlchemy writes need explicit commit/transaction handling. To discard pending
+model input, use `record.discard_changes()` or `record.reload()`.
+See [model transactions](../models/index.md#transactions).
 
 ## Credentials
 
-Edit or inspect shared encrypted credentials:
-
 ```sh
-flask credentials:edit
-flask credentials:show
+bin/flask credentials:edit
+bin/flask credentials:show
+bin/flask credentials:edit --environment production
 ```
 
-Use `--environment` for environment-specific credentials:
-
-```sh
-flask credentials:edit --environment production
-```
-
-See [Configuration](../configuration.md) for encryption keys and credential precedence.
+`edit` opens encrypted YAML for editing. `show` prints decrypted secrets: do not
+copy its output into logs. Environment-specific credentials replace shared ones;
+they do not merge with them. See
+[encrypted credentials](../configuration.md#encrypted-credentials) for key setup.
 
 ## Generators
 
-Use `flask generate` to create application components. Field arguments use `name:type` syntax. See [Fields](fields.md) for supported types.
+Use `bin/flask generate` to create application components. Fields use `name:type`,
+such as `title:string`. See [Fields](fields.md) for supported types and modifiers.
+The examples below use concrete names; replace them with your application's names.
 
 ### Migration
 
-Generate a migration to create/drop a table or add/remove columns. New tables
-include an auto-incrementing `id`, `created_at`, and `updated_at`. Standalone
-migration generation does not edit the snapshot; applying the migration does.
+Generate a migration, review it, then apply it with `bin/flask db:migrate`.
+Generating the file alone does not change the database or schema snapshot.
 
 #### Create a table
 
 ```sh
-flask generate migration <CreateXXX> [field1:type ...]
+bin/flask generate migration CreateProducts name:string!
 ```
 
-For example:
-
-```sh
-flask generate migration CreateProducts name:string!
-```
-
-Use the plural table name after `Create`, without a `Table` suffix.
+Use the plural table name after `Create`, without a `Table` suffix. New tables
+include an auto-incrementing `id`, `created_at`, and `updated_at`.
 
 #### Add columns
 
 ```sh
-flask generate migration <AddXXXToXXX> [field1:type ...]
-flask generate migration AddPriceToProducts price:float
+bin/flask generate migration AddPriceToProducts price:float
 ```
 
 #### Remove columns
 
 ```sh
-flask generate migration <RemoveXXXFromXXX> [field1 ...]
-flask generate migration RemovePriceFromProducts price
+bin/flask generate migration RemovePriceFromProducts price
 ```
 
 #### Drop a table
 
 ```sh
-flask generate migration <DropXXXX> [field1 ...]
-flask generate migration DropProducts
-```
-
-Apply pending migrations with:
-
-```sh
-flask db:migrate
+bin/flask generate migration DropProducts
 ```
 
 ### Model
 
-Generate a behavioral model, its database migration, and tests. References add
-`belongs_to(...)` declarations inside the model class. Columns appear in the
-generated snapshot only after migration:
-
 ```sh
-flask generate model <ModelName> [field1:type ...]
-flask generate model User name:string email:string
+bin/flask generate model Post title:string author:references
 ```
+
+Creates a model class, migration, and tests. References add `belongs_to(...)`
+declarations. Columns become available in the schema snapshot after migration.
 
 ### Controller
 
-Generate a controller with the specified actions, a view for each action, and individual route entries:
-
 ```sh
-flask generate controller <ControllerName> [action1 action2 ...]
-flask generate controller Users index show
+bin/flask generate controller Users index show
 ```
 
-This also creates `app/helpers/users_helper.py` with a `UsersHelper` class.
-Its public presentation methods are automatically available in templates; no
-controller registration is needed. See [application helpers](../views/index.md#application-helpers).
+Creates a controller with the named actions, a view for each, and individual
+routes. It also creates `app/helpers/users_helper.py` with a `UsersHelper` class.
+Its public methods are available in templates without controller registration.
+See [application helpers](../views/index.md#application-helpers).
 
 ### Resource
 
-Generate a model, its migration, an empty controller, and a resource route entry. You write the controller actions and views.
-
 ```sh
-flask generate resource <ResourceName> [field1:type ...]
+bin/flask generate resource Product name:string price:float
 ```
+
+Creates a model, migration, empty controller, and resource route. You write the
+controller actions and views.
 
 ### Scaffold
 
-Generate a model, its migration, a CRUD controller, views, and a resource route entry. The controller includes `index`, `show`, `new`, `edit`, `create`, `update`, and `destroy` actions.
-
 ```sh
-flask generate scaffold <scaffold_name> [field1:type ...]
+bin/flask generate scaffold Product name:string price:float
 ```
+
+Creates a model, migration, resource route, controller, and views for the standard
+`index`, `show`, `new`, `edit`, `create`, `update`, and `destroy` actions. Apply the
+migration and restart the server before visiting the resource.
 
 ### Mailer
 
-Generate a mailer with the specified actions:
-
 ```sh
-flask generate mailer <MailerName> [action1 action2 ...]
-flask generate mailer UserMailer welcome_email
+bin/flask generate mailer User welcome_email
 ```
+
+Creates `UserMailer`, text and HTML templates, and a test. Supply the base name
+`User`, not `UserMailer`. See [Mailers](mailers.md) to configure delivery.
 
 ### Authentication
 
 ```sh
-flask generate authentication
+bin/flask generate authentication
+bin/flask db:migrate
 ```
 
-Generate user and session models, login pages, and password management:
+Creates a login and password-management workflow:
 
-- A `User` model with `email_address` and `password_digest`.
-- A `Session` model with `user_id`, `ip_address`, and `user_agent`.
+- `User` with `email_address` and `password_digest`.
+- `Session` with `user_id`, `ip_address`, and `user_agent`.
 - Controllers and views for login and password changes.
-- Views and mailers for password resets.
+- Password-reset views and mailers.
 - Routes for session and password management.
 - An `Authentication` concern added to `ApplicationController`, requiring login
   by default and exposing the `is_authenticated()` template helper.
 
-Run `flask db:migrate`, then create an account in the shell; no public sign-up
-form is generated. Use `skip_before_action("_require_authentication", only=[...])`
-inside a controller class to allow public actions. Templates can call
-`is_authenticated()` on both public and protected pages without an extra callback.
-See [the authentication walkthrough](../getting_started.md#8-require-login-to-change-products).
+Create an account in the shell; no public sign-up form is generated. To allow a
+public action, declare `skip_before_action("_require_authentication", only=[...])`
+inside its controller class. Templates can call `is_authenticated()` on public
+and protected pages without an extra callback. See
+[the authentication walkthrough](../getting_started.md#8-require-login-to-change-products).
 
 ## Attribute encryption
 
@@ -242,11 +234,12 @@ bin/flask db:encryption:init
 bin/flask credentials:edit
 ```
 
-Prints dedicated primary and deterministic encryption keys under the `encryption`
-credentials section, without modifying existing credentials. Do not commit or log
-this plaintext output. These keys serve `encrypts(...)` on models,
-`has_rich_text(..., encrypted=True)`, and direct use of `flaskteroids.encryption`.
-See [Attribute encryption](../models/encryption.md).
+The first command prints dedicated primary and deterministic keys. Copy its
+`encryption` YAML into the credentials editor; it does not save keys itself.
+Do not commit or log the plaintext output.
+
+These keys serve model `encrypts(...)`, encrypted rich text, and direct use of
+`flaskteroids.encryption`. See [Attribute encryption](../models/encryption.md).
 
 ## Rich text
 
@@ -256,25 +249,44 @@ bin/flask db:migrate
 ```
 
 Installs local Trix assets, adds the asset helper to the application layout, and
-creates shared rich-text and attachment storage migrations as needed. Repeated
-runs preserve existing files and avoid duplicate migrations. Use `--force` to
-refresh application-owned editor assets after reviewing local customizations.
-Model, resource, and scaffold generators accept `content:rich_text`.
-See [Rich text](rich_text.md).
+creates rich-text and attachment migrations as needed. Repeated runs preserve
+existing files and avoid duplicate migrations.
+
+Use `--force` to refresh installed editor assets, **after reviewing local
+customizations**. Model, resource, and scaffold generators accept
+`content:rich_text`. See [Rich text](rich_text.md).
 
 ## Attachments
 
-Set up file attachments:
-
 ```sh
-flask attachments:install
-flask db:migrate
+bin/flask attachments:install
+bin/flask db:migrate
 ```
 
-The install command preserves existing storage configuration and does not create
-duplicate migrations. Models, resources, and scaffolds accept `avatar:attachment`
-and `documents:attachments`. See [Attachments](attachments.md).
+Creates attachment migrations and storage configuration without replacing
+existing configuration or duplicating migrations. Generators accept
+`avatar:attachment` for one file and `documents:attachments` for several.
+See [Attachments](attachments.md).
+
+## Asset precompilation
+
+```sh
+bin/flask assets:precompile
+flaskteroids assets:precompile --root /path/to/app
+```
+
+Builds fingerprinted assets for production. Both commands work without application
+startup or database access. Generated Docker builds already precompile assets.
+See [Assets](assets.md).
 
 ## Tests
 
-Run model, integration, job, and mailer tests with `flask test`. Run browser tests with `flask test:system`. Both commands accept pytest arguments. See [Testing](../testing.md) for setup and examples.
+```sh
+bin/flask test
+bin/flask test:system
+bin/flask test test/models/post_test.py
+```
+
+`test` runs model, integration, job, and mailer tests. `test:system` runs browser
+tests. Both accept pytest arguments. See [Testing](../testing.md) for fixtures,
+assertions, and browser installation.

@@ -1,21 +1,35 @@
 # Models
 
-Flaskteroids models are SQLAlchemy-mapped application objects with built-in
-querying, validation, and persistence methods. Columns come from a generated
-snapshot of the migrated database; behavior and association declarations stay in model
-files. There is no separate mapped row hidden behind a model.
+Models represent your application's data and the rules for working with it.
+Use them to query records, validate input, manage associations, and save changes.
+
+Define columns in database migrations and behavior in model classes. Flaskteroids
+reads column definitions from the generated `db/schema.py`; you do not repeat
+them in your models. SQLAlchemy is available for advanced queries and integration,
+but ordinary model work does not require managing a session.
 
 ## Define models and migrate
 
-All application models inherit an abstract application base:
+Application models inherit from the generated abstract base:
 
 ```python
 # app/models/application_model.py
 from flaskteroids.model import Model
 
+
 class ApplicationModel(Model):
     __abstract__ = True
 ```
+
+Generate models and their migrations from your application directory:
+
+```sh
+bin/flask generate model Author name:string
+bin/flask generate model Post title:string author:references
+bin/flask db:prepare
+```
+
+Add behavior to the generated classes:
 
 ```python
 # app/models/author.py
@@ -42,58 +56,394 @@ class Post(ApplicationModel):
     validates("title", presence=True)
 ```
 
-Create the tables through migrations:
+`Post` uses the `posts` table by convention. Set
+`__table_name__ = "legacy_posts"` to use a different table.
 
-```sh
-flask generate model Author name:string
-flask generate model Post title:string author:references
-flask db:prepare
+### The schema snapshot
+
+Successful `db:migrate`, `db:prepare`, and `db:rollback` commands regenerate
+`db/schema.py` from the selected database. **Commit the snapshot, but do not edit
+it by hand.** To refresh it without migrating, run `bin/flask db:schema:dump`.
+Restart servers and workers after migrations so they load the new definitions.
+See [database commands](../other/cli.md#database-preparation).
+
+The snapshot describes tables, columns, keys, constraints, indexes, and server
+defaults, including tables with no model class. It does not contain validations,
+associations, or other model behavior.
+
+If an older application has `app/schema.py`, dump the snapshot to `db/schema.py`,
+remove the old file, and restart. This move does not require database changes.
+
+## Queries
+
+```python
+post = Post.find(1)                     # Raises RecordNotFoundException if absent
+post = Post.find_by(title="First")      # Returns None if absent
+posts = Post.all()                      # A query, not a list
+posts = Post.where(title="First")
+records = list(posts)                   # Load the selected records
+posts = Post.where(Post.title.ilike("a%"))
+page = posts.order(title="asc").limit(20).offset(40)
+count = page.count()
+first = page.first()
+last = page.last()
 ```
 
-Model/scaffold generators write migrations and behavioral model files. Successful
-`db:migrate`, `db:prepare`, and `db:rollback` regenerate `db/schema.py` from the
-selected database. Commit it, but **do not edit it manually**. Use
-`flask db:schema:dump` to refresh it independently. See [CLI](../other/cli.md).
+Queries are **lazy**: building a query does not load records. Iteration and methods
+such as `first()` or `count()` execute it. `all()` also returns a lazy query, even
+when called on an existing query.
 
-The snapshot lives alongside migrations in `db/`.
-For an existing app with `app/schema.py`, run `flask db:schema:dump`, remove the
-old snapshot, and restart servers and workers. No database changes are needed.
+Queries are **immutable**: keep the returned query when adding filters or ordering.
+Calling `posts.where(...)` alone does not change `posts`.
 
-The snapshot contains metadata for tables, columns, keys, constraints, indexes,
-and server defaults, including tables without a behavioral model. It contains no
-model behavior, validators, or relationship choices. `Post` conventionally maps
-to `posts`; a model may set `__table_name__ = "legacy_posts"` for another table.
+Other query behavior to keep in mind:
+
+- Each iteration executes the query again; results are not cached.
+- Default ordering is ascending primary key. `order()` also accepts SQLAlchemy
+  ordering expressions.
+- Limits and offsets must be nonnegative or `None`.
+- `count()` counts the selected scope, including its limit and offset.
+- `first()` returns a record or `None`. `last()` loads the selected scope to
+  respect custom ordering and pagination.
+
+### Load associations together
+
+Use `includes()` to avoid a separate association query for each record:
+
+```python
+posts = Post.includes("author")
+authors = Author.includes("posts.author")
+records = list(posts)
+```
+
+Dotted paths load nested associations using SQLAlchemy select-in loaders.
+Unknown relationships raise `AttributeError`; malformed paths raise `ValueError`.
+For more complex queries, use `query.statement`, `query.options(...)`, or native
+SQLAlchemy.
+
+## Assignment, validation, and persistence
+
+Build a record, then check the result of saving it:
+
+```python
+post = Post.new(title="First", author=author)
+if post.save():
+    identifier = post.id
+else:
+    messages = post.errors.full_messages()
+```
+
+`create()` builds and saves in one call. It returns the record even if validation
+fails. `update()` assigns attributes and returns whether saving succeeded:
+
+```python
+post = Post.create(title="", author=author)
+assert post.errors
+assert post.update(title="Fixed")
+```
+
+### Unsaved changes
+
+Assigning a scalar attribute changes what you read on that object, but does not
+publish it for database writes until a successful save. This is called **staging**.
+Invalid input and its errors remain available for correction and form redisplay.
+Another object's save or a later commit does not accidentally save these edits.
+This also applies to valid edits you have not explicitly saved.
+
+- `reload()` loads saved state and discards pending scalar input and errors.
+- `discard_changes()` discards pending scalar input without refreshing saved state.
+- Native SQLAlchemy refresh/expiration does not clear staged input by itself.
+
+### Transactions
+
+A standalone `save()`, `create()`, or `update()` **commits before returning**.
+Associated rows saved by the operation share its transaction. A failure or halted
+callback rolls back that operation, not earlier successful standalone saves.
+
+Use an explicit transaction when several operations must succeed together:
+
+```python
+with Author.transaction():
+    author = Author.create(name="Ada")
+    post = Post.create(title="First", author=author)
+    if post.errors:
+        raise ValueError("Post is invalid")
+# Both writes commit here; an exception escaping the block rolls both back.
+```
+
+Saves inside the block join its transaction without committing individually.
+**A `False` save result does not abort the block**; raise an exception when the
+whole group should roll back. Transactions cover all models in the application,
+not just the class used to open the block.
+
+Nested `Model.transaction()` blocks join the outer transaction by default. Use
+`requires_new=True` for a savepoint. Catch a failure outside the inner block if
+the outer operation should continue. After-commit callbacks wait for the outer
+commit, not savepoint release.
+
+`save(validate=False)` skips validation, not database constraints. Integrity
+errors propagate as exceptions rather than model errors. Standalone failures
+clean up their transaction. After a database error inside an explicit transaction,
+roll back/recover that transaction before further writes. An earlier query does
+not turn a later standalone save into an explicit transaction.
+
+### Validations
+
+Declare user-facing rules in the model class:
+
+```python
+from app.models.application_model import ApplicationModel
+from flaskteroids.model import validates
+
+
+class Product(ApplicationModel):
+    validates("title", presence=True, length={"minimum": 3, "maximum": 100})
+    validates("quantity", numericality={"only_integer": True})
+    validates("quantity", comparison={"greater_than_or_equal_to": 0})
+    validates("email", confirmation=True)
+```
+
+Validators run in declaration order. `confirmation=True` adds a writable
+confirmation field. `is_valid()` checks the rules without publishing input.
+`errors` is truthy when populated; use `errors.count` and
+`errors.full_messages()` to inspect it. Its JSON representation is a list of
+full messages.
+
+Assignment converts supported scalar types, but casting is not validation.
+Numericality checks the original input, so a permissive numeric conversion does
+not make malformed input valid. `numericality={"allow_none": True}` permits
+`None`, not blank strings.
+
+Use `read_attribute_before_type_cast(name)` or `attributes_before_type_cast` to
+inspect original input. Model-backed forms use it when redisplaying failed
+submissions. See [Fields](../other/fields.md) and [Forms](../other/forms.md).
+
+### Defaults
+
+Put persistent defaults in migrations. Simple literal database defaults are
+available on new objects without a query. Database functions, computed columns,
+and generated IDs populate on flush. Explicit `None` does not request a default;
+JSON retains its native JSON-null behavior.
+
+`save()` maintains declared `created_at` and `updated_at` attributes. Native
+writes do not run this timestamp behavior automatically.
+
+Python default functions cannot be recovered from the database snapshot. Use
+assignment or initialization callbacks for application-side defaults, rather
+than `Column.default` definitions or edits to `db/schema.py`.
+
+## Association declarations
+
+Declare relationships inside the model class:
+
+```python
+from app.models.application_model import ApplicationModel
+from flaskteroids.model import belongs_to, has_many, has_one
+
+
+class Post(ApplicationModel):
+    belongs_to("author", class_name="User", foreign_key="author_id")
+    has_many("comments", dependent="destroy")
+    has_one("preview", class_name="Preview", foreign_key="post_id")
+```
+
+Names and foreign keys are inferred by convention. Supply `class_name` or
+`foreign_key` when your schema differs. `belongs_to()` requires a target by
+default; use `optional=True` to allow its absence. Use `inverse_of="posts"` when
+Flaskteroids cannot infer the inverse association unambiguously.
+
+These declarations require single-column primary keys. Use native SQLAlchemy
+relationships for more complex joins.
+
+```python
+post.author = author
+assert post in author.posts
+post.save()
+
+post = Post.create(title="Next", author=author)
+```
+
+### Work through a collection
+
+A `has_many` collection supports assignment, append/remove, iteration, and native
+eager loading. You can query it without loading the entire collection:
+
+```python
+post = author.posts.create(title="Next")
+post = author.posts.where(title="Next").first_or_create()
+author.posts.where(title="Next").count()
+```
+
+- `create()` saves the record and returns it, including input and errors if invalid.
+- `first_or_create()` finds the first match or creates a record. Keyword equality
+  filters supply creation values; SQL expressions do not. Additional creation
+  attributes are used only when no match exists.
+- The collection's parent wins over a conflicting parent or foreign key in input.
+- Creating through a collection requires a saved parent. Use
+  `author.posts.new(...)` to build an unsaved graph. `Post.create(author=author,
+  ...)` is also supported. Framework saves validate related new objects before
+  publishing their staged scalar values.
+
+Find-then-create is not an atomic uniqueness guarantee. Add a database unique
+constraint when concurrent duplicates must be rejected.
+
+### Association changes and validation failures
+
+Association edits are **not staged like scalar attributes**. A failed validation
+does not undo an earlier append or removal. If you abandon an invalid new child,
+remove it from the collection rather than leaving it pending in the session.
+
+Assign relationships (`post.author = author`) to keep both sides consistent.
+Editing a raw foreign key may require reloading cached relationships. Collections
+use SQLAlchemy's own storage and identity map; native `relationship()`
+declarations keep their native collection API.
+
+### Deletion
+
+`record.destroy()` runs destroy callbacks and commits before returning, unless
+it is inside an explicit transaction. `dependent="destroy"` calls related
+records' framework `destroy()` methods in the same transaction, including their
+callbacks and attachment cleanup.
+
+A halted standalone destruction returns `False` and rolls back earlier dependent
+deletions. Inside an explicit transaction, raise an exception if rejection should
+roll back the whole group.
+
+Native `session.delete()` and ORM/database cascades do not automatically run
+framework child destroy callbacks. Configure database `ON DELETE` behavior in
+migrations; it is not a replacement for callback-aware destruction.
+
+## Callbacks and authentication
+
+Callbacks run at points in a record's lifecycle. Import declarations explicitly
+and call them inside the model class, such as `before_save("_normalize_name")`.
+
+Supported callbacks include:
+
+- Before/after validation.
+- Before/around/after save, create, update, and destroy.
+- After initialize/find.
+- After commit/rollback.
+
+Before callbacks can return `False` to halt an operation. Around callbacks are
+generators that yield once. Callback methods can change staged scalar attributes.
+
+### Callback timing
+
+After-find runs before after-initialize when a record is loaded from the database.
+These load callbacks do not rerun when a query returns an already-loaded object.
+
+Successful framework operations queue commit/rollback callbacks for their
+transaction. After-commit runs only after the outer commit, not a flush or
+savepoint. It can query associations and save records in a new transaction using
+the same session identity map. An exception there propagates, but cannot undo
+the completed commit. Native and bulk writes do not trigger these framework hooks.
+
+### Saved changes
+
+After a successful save, inspect changes without using SQLAlchemy attribute history:
+
+| API | Result |
+| --- | --- |
+| `record.saved_changes` | Changed scalar names mapped to `(old_value, new_value)` tuples |
+| `record.saved_change_to_attribute(name)` | That attribute's tuple, or `None` |
+| `record.attribute_before_last_save(name)` | Its old value, or its published value if unchanged |
+
+Values are typed and include database-assigned IDs and defaults. These APIs are
+available in `after_save` and `after_commit`:
+
+```python
+from app.mailers.product_mailer import ProductMailer
+from app.models.application_model import ApplicationModel
+from flaskteroids.model import after_commit
+
+
+class Product(ApplicationModel):
+    after_commit("_notify_subscribers", on="update", if_="_back_in_stock")
+
+    def _back_in_stock(self):
+        change = self.saved_change_to_attribute("inventory_count")
+        return change is not None and change[0] == 0 and change[1] > 0
+
+    def _notify_subscribers(self):
+        for subscriber in self.subscribers:
+            ProductMailer.with_(
+                product=self, subscriber=subscriber
+            ).in_stock().deliver_later()
+```
+
+Saved changes describe the latest successful save, not pending input or every
+change in a transaction. Failed validation preserves the history; a successful
+unchanged save replaces it. Rollback and `reload()` clear it. After repeated saves
+in one transaction, the commit callback sees the last successful save. A rolled-back
+savepoint does not replace an outer save's commit history. Native publication and
+bulk writes do not produce this history.
+
+### Passwords
+
+Use `PasswordAuthenticator` with `has_secure_password()` for password behavior.
+A custom field such as `has_secure_password("passcode")` is supported. For the
+complete login workflow, use the
+[authentication generator](../other/cli.md#authentication).
+
+Authentication and reset-token checks use saved digests, so an invalid password
+edit does not invalidate existing credentials. Passwords, digests, confirmations,
+and reset tokens are excluded from default JSON and forms. Raw-input APIs remain
+sensitive: do not log them.
+
+Attachment uploads happen after commit; see [Attachments](../other/attachments.md)
+for upload and rollback behavior.
 
 ## Encrypted attributes
 
-Use `encrypts("notes")` for randomized string/text encryption, or
-`encrypts("email", deterministic=True, downcase=True)` for equality lookups.
-Assignment, validation, forms, and saves work with plaintext; storage uses
-ciphertext. Rich-text encryption shares the same service and dedicated keys.
-See [Attribute encryption](encryption.md) for setup, queries, rotation, and limits.
+Use `encrypts("notes")` for randomized string/text encryption. Use
+`encrypts("email", deterministic=True, downcase=True)` when equality lookups are
+needed. Assignment, validations, and forms still work with plaintext; database
+storage uses ciphertext.
+
+Rich-text encryption uses the same service and dedicated keys. See
+[Attribute encryption](encryption.md) for setup, queries, key rotation, and limits.
+
+## Temporary attributes and serialization
+
+For a value that should not be saved, declare a class default, a property with a
+setter, or a private cache name. Initialize mutable caches per instance. Unknown
+public assignments raise `AttributeError`, and framework methods/metadata cannot
+be replaced through assignment.
+
+Temporary values are not automatically saved or serialized. Repeated lookups in
+one session return the same object, including its temporary state.
+
+Default JSON includes mapped scalar attributes and staged values, but excludes
+authentication secrets and virtual fields. Override `__json__()` for a custom
+response, or add names to the `_serialization_exclude` set. Form values are
+independent of JSON serialization. Ordinary editors/type checkers generally
+cannot infer dynamically mapped fields.
 
 ## Class-body declarations
 
-Import declaration functions explicitly and call them inside the class body.
-Aliases and module-qualified imports work normally. Repeated declarations
-accumulate in source order: several `validates(...)` calls may validate the same
-attribute. Association names must remain unique.
+This section explains advanced declaration reuse; ordinary models can use the
+examples above.
 
-Declarations are collected, not bound immediately. Callbacks may name methods
-defined later in the class, and associations need not resolve during import.
-Abstract model bases, ordinary Python mixins, and `Concern` classes may contribute
-declarations. Each receiving class binds its own configuration; shared ancestors
-are visited once, base-first in left-to-right order, without mutating parents or
-siblings. Controllers and mailers use the same declaration mechanism.
+Import declaration functions and call them directly in a class body. Aliases and
+module-qualified imports work. Repeated declarations accumulate in source order;
+several `validates(...)` calls may apply to one attribute. Association names must
+be unique.
 
-Call declarations directly in a class body. A class-body `for` loop is supported;
-comprehensions, module-level calls, ordinary helper functions, and runtime methods
-raise `ProgrammerError` rather than silently losing declarations. Every direct
-factory call registers, even if its return value is assigned or passed elsewhere.
+Declarations are collected before they are bound, so callbacks can name methods
+defined later and associations need not resolve during import. Abstract bases,
+ordinary mixins, and `Concern` classes can contribute declarations. Each receiving
+class gets its own configuration without changing parents or siblings. Shared
+ancestors are visited once, base-first and left-to-right. Controllers and mailers
+use the same mechanism.
+
+Class-body `for` loops work. Calls from comprehensions, module scope, ordinary
+helper functions, or runtime methods raise `ProgrammerError`. Every direct factory
+call registers, even if you assign or pass along its return value.
 
 For a reusable declaration helper, use `@declaration`. Its factory returns a
-binding callable accepting the receiving class, and may compose other declaration
-factories without registering their inner calls separately:
+callable that accepts the receiving class. It may compose other factories without
+registering the inner calls separately:
 
 ```python
 from app.models.application_model import ApplicationModel
@@ -113,251 +463,44 @@ class Product(ApplicationModel):
 
 ## Lazy mapping and normal startup
 
-Importing a model only collects its class-body declarations. It does not require
-a snapshot or connect to the database. Mapping happens when needed:
-constructing a record, using the query facade, or accessing a mapped expression
-such as `Post.title`.
+Importing a model collects declarations without connecting to a database or
+requiring a schema snapshot. Mapping happens when you construct a record, query
+it, or access an expression such as `Post.title`.
 
-Consequently, ordinary application startup and migration commands work before a
-new model has a table in the snapshot. They use the same initialization path;
-initializers are not skipped. An initializer that actually uses an unavailable
-model still fails with migration guidance.
+This lets startup and migration commands import new models before their tables
+exist in the snapshot. Initializers still run normally; an initializer that uses
+an unavailable model fails with migration guidance.
 
-The mapper reads the snapshot, not the live database. Restart servers and workers
-after migration. Do not reload schema files or alter published mappings in place.
-Abstract behavior bases need no table. Concrete model inheritance, duplicate model
-names within an application model set, and columns that shadow model APIs are
-rejected. Different model sets have isolated registries; matching schemas can use
-the same mapped classes with separate engines/sessions.
-
-## Queries
-
-```python
-post = Post.find(1)                      # Raises RecordNotFoundException if absent
-post = Post.find_by(title="First")       # Returns None if absent
-posts = Post.all()                      # A lazy query
-posts = Post.where(title="First")       # A filtered lazy query
-records = list(posts)                   # Execute and obtain a list of Post objects
-posts = Post.where(Post.title.ilike("a%"))
-page = posts.order(title="asc").limit(20).offset(40)
-count = page.count()
-first = page.first()
-last = page.last()
-```
-
-Queries are lazy and **immutable**. Chain or assign the returned query; a call to
-`query.where(...)` does not change the original query. `all()` always returns a
-lazy query, including when called on an existing scope; it never executes SQL.
-Iterating a query loads its selected records. Use `list(query)` when you need a
-list. Queries are reusable; each iteration executes again rather than caching
-results. Default ordering is ascending primary key; `order()` also accepts native
-SQLAlchemy ordering expressions. Limits and offsets must be nonnegative or `None`.
-`count()` respects the selected scope/page. `first()` returns one record or `None`;
-`last()` materializes the selected scope to honor custom ordering and pagination.
-
-Use eager loading to avoid per-row relationship queries:
-
-```python
-posts = Post.includes("author")
-authors = Author.includes("posts.author")
-records = list(posts)
-```
-
-`includes()` accepts dotted relationship paths and uses native select-in loaders.
-Unknown relationships raise `AttributeError`; malformed paths raise `ValueError`.
-For complex queries, use `query.statement`, `query.options(...)`, or native SQLAlchemy.
-
-## Assignment, validation, and persistence
-
-```python
-post = Post.new(title="First", author=author)
-if post.save():
-    identifier = post.id
-else:
-    messages = post.errors.full_messages()
-
-post = Post.create(title="", author=author)  # Returns the invalid, unsaved object
-assert post.errors
-assert post.update(title="Fixed")
-```
-
-Scalar assignments are staged on the mapped object. Reads expose entered values,
-but SQLAlchemy's published state is unchanged until a successful save. Invalid
-updates retain their input/errors without being flushed by another object's save
-or a later commit. This also applies to valid edits never explicitly
-saved, and to edits made after an earlier save.
-
-A standalone `save()` validates, flushes, and **commits before returning**.
-`create()` and `update()` use that same boundary. Associated rows persisted by the
-save share its transaction. Failure or a halted callback rolls back a standalone
-operation; earlier successful standalone saves remain committed.
-
-Use an explicit transaction to group operations:
-
-```python
-with Author.transaction():
-    author = Author.create(name="Ada")
-    post = Post.create(title="First", author=author)
-    if post.errors:
-        raise ValueError("Post is invalid")
-# Both writes commit here; an escaping exception rolls both back.
-```
-
-Saves inside an explicit transaction join it without committing. A `False` return
-does not abort that outer transaction; raise an exception when the group must
-fail together. Nested `Model.transaction()` blocks also join by default. Use
-`Model.transaction(requires_new=True)` for a savepoint, catching failures outside
-that inner block if the outer operation should continue. After-commit callbacks
-wait for the outer commit, not savepoint release. Transactions are shared across
-models in the same application, not scoped to the class naming the block.
-
-`save(validate=False)` explicitly bypasses validation. Database constraints remain
-authoritative: integrity errors propagate rather than becoming validation errors.
-Standalone failures clean up their transaction. If a database exception is caught
-inside an explicit block, recover/roll back that transaction before further writes.
-A preceding query does not turn a standalone save into an explicit transaction.
-
-```python
-from app.models.application_model import ApplicationModel
-from flaskteroids.model import validates
-
-
-class Product(ApplicationModel):
-    validates("title", presence=True, length={"minimum": 3, "maximum": 100})
-    validates("quantity", numericality={"only_integer": True})
-    validates("quantity", comparison={"greater_than_or_equal_to": 0})
-    validates("email", confirmation=True)
-```
-
-`confirmation=True` makes a writable confirmation field available. Validators run
-in declaration order. `errors` is truthy when populated and exposes `count`,
-`full_messages()`, and JSON full-message lists. `is_valid()` runs validation without
-publishing input. Types/casting do not replace explicit user-facing validation.
-
-Model assignment casts supported scalar types and retains original input through
-`read_attribute_before_type_cast(name)` and `attributes_before_type_cast`.
-Numericality checks raw input rather than trusting a permissive numeric cast.
-Use `numericality={"allow_none": True}` for optional numbers; this skips `None`,
-not blank strings.
-Model-backed forms redisplay that input after failed validation; see
-[Fields](../other/fields.md) and [Forms](../other/forms.md).
-
-`reload()` refreshes published state and discards staged scalar input/errors.
-`discard_changes()` only discards staged scalars. Native refresh/expiration does
-not by itself clear the staging dictionary.
-
-### Defaults
-
-Put persistent defaults in migrations. Simple SQL literal server defaults are
-available on new objects without querying the database. SQL functions, computed
-columns, and generated identities remain server-owned and populate on flush.
-Explicit `None` is not mistaken for a request to reuse a server default; JSON
-retains its native JSON-null behavior. As a framework convention, `save()` maintains
-declared `created_at`/`updated_at` attributes itself; native writes do not implicitly
-run that timestamp lifecycle.
-
-Python default functions are not recoverable from a database snapshot. Implement
-application-side defaults explicitly in behavior/callbacks, rather than writing
-`Column.default` definitions or editing the generated snapshot.
-
-## Association declarations
-
-Call association declarations directly inside the model class:
-
-```python
-from app.models.application_model import ApplicationModel
-from flaskteroids.model import belongs_to, has_many, has_one
-
-
-class Post(ApplicationModel):
-    belongs_to("author", class_name="User", foreign_key="author_id")
-    has_many("comments", dependent="destroy")
-    has_one("preview", class_name="Preview", foreign_key="post_id")
-```
-
-The helpers translate into SQLAlchemy relationships before mapping. Class names
-and foreign keys are inferred conventionally; the shown positional/keyword options
-remain available. `belongs_to()` requires its target by default; use
-`optional=True` when absence is allowed. `inverse_of="posts"` selects an explicit
-inverse when conventions would be ambiguous. The helpers require single-column
-primary keys; use native relationships for more complex joins.
-
-```python
-post.author = author
-assert post in author.posts
-post.save()
-
-post = Post.create(title="Next", author=author)
-```
-
-Declared `has_many` associations expose a collection API backed by SQLAlchemy's
-own collection storage and identity map. Assignment, append/remove, iteration,
-and native eager loaders still work. Scoped queries do not load the whole
-collection:
-
-```python
-post = author.posts.create(title="Next")
-post = author.posts.where(title="Next").first_or_create()
-author.posts.where(title="Next").count()
-```
-
-`create()` saves through the framework and returns the record, including errors
-and entered values on validation failure. `first_or_create()` returns the first
-matching record or creates one; keyword equality filters supply creation values.
-Additional creation attributes are used only when no record matches. SQL
-expressions filter queries but are not inferred as creation attributes. The
-association's parent is authoritative even if attributes contain another parent
-or foreign key. Creating through an association requires a saved parent;
-`author.posts.new(...)` can build an unsaved graph instead. `Post.create(author=author,
-...)` remains supported. Related new framework objects are validated before their
-staged scalars are published by a framework save.
-
-These find-then-create operations are not atomic uniqueness guarantees. Use a
-database unique constraint where concurrent duplicate creation must be rejected.
-Native `relationship()` declarations retain their native collection API.
-
-Relationship mutations are **not scalar staging**: they have native unit-of-work
-semantics. A failed scalar validation does not undo a prior collection edit. When
-abandoning an invalid transient child, remove it from the collection; do not leave
-an unpublished new object pending in the session. For coherent inverse updates,
-assign the relationship itself; raw foreign-key edits may require reloading cached
-relationships, just as with native SQLAlchemy.
-
-### Deletion
-
-`record.destroy()` runs framework destroy callbacks and commits a standalone
-deletion before returning. Like `save()`, it joins an explicit transaction when
-one is open. `dependent="destroy"` calls related records' framework `destroy()`
-methods, including their callbacks and attachment cleanup, in the same boundary.
-A halted standalone destruction returns `False` and rolls back earlier dependent
-deletions. Inside an explicit transaction, raise on rejection when the whole group
-must roll back.
-
-Native `session.delete()` and ORM/database cascades do not automatically run
-framework child `destroy()` callbacks. Native `relationship()` options are an
-escape hatch, but must not be confused with the helper's callback-aware contract.
-Database `ON DELETE` choices belong in migrations.
+Mapping reads the snapshot, not the live database. Restart servers and workers
+after migrations; do not reload schema files or change active mappings in place.
+Abstract bases need no table. Concrete model inheritance, duplicate model names
+in one application model set, and columns that shadow model APIs are rejected.
+Model sets have isolated registries; matching schemas can use the same mapped
+classes with separate engines and sessions.
 
 ## Native SQLAlchemy and transactions
+
+Use native SQLAlchemy when you need more control. Framework and native queries
+return the same mapped objects within a session:
 
 ```python
 from sqlalchemy import inspect, select
 from sqlalchemy.orm import selectinload
 from flaskteroids.db import session
 
-Author.prepare()  # Explicit, database-free mapping for bare native class APIs
+Author.prepare()  # Map without database access before using bare native APIs.
 mapper = inspect(Author)
 author = session.get(Author, 1)
 authors = session.scalars(select(Author).options(selectinload(Author.posts))).all()
 assert Author.find(author.id) is author
 ```
 
-Facade and native queries return the same objects within a session. Mapped columns
-and relationships are real SQLAlchemy attributes. Staged scalar values are the
-intentional boundary: SQLAlchemy history and SQL predicates describe published
-state, not `record.changes`. `read_published_attribute(name)` bypasses staged input.
+Mapped columns and relationships are real SQLAlchemy attributes. The important
+boundary is staged scalar input: SQL predicates and SQLAlchemy history describe
+**published state**, not pending `record.changes`. Use
+`read_published_attribute(name)` to read that state directly.
 
-Native callers can explicitly publish without validation or framework callbacks:
+To publish input without validation or framework callbacks:
 
 ```python
 post = Post(title="Native", author=author).apply_changes()
@@ -365,93 +508,26 @@ session.add(post)
 session.flush()
 ```
 
-Directly adding a new record with unpublished staged input is rejected at flush,
-rather than silently inserting null/default data. Native/bulk operations bypass
-framework validations and operation callbacks. In-place mutable values follow
-native SQLAlchemy tracking; use scalar reassignment when you want staged edits.
+Adding a new record with unpublished staged input is rejected at flush instead
+of silently inserting null/default values. Native/bulk operations bypass
+framework validations and operation callbacks. In-place mutable edits use native
+SQLAlchemy tracking; reassign a scalar when you want staged edits.
 
-Sessions are app-context-local, with autoflush disabled and committed attributes
-retained. There is **no automatic request-wide transaction**. An exception or HTTP
-error after a successful standalone save does not undo its commit. Context teardown
-rolls back unfinished work and closes the session; it never commits native writes.
+### Session ownership
 
-`from flaskteroids.db import transaction` exposes the same transaction context as
-`Model.transaction()`. Native `with session.begin():` blocks are also respected;
-use the framework context when a previous read has already implicitly opened a
-SQLAlchemy transaction. Native writes require an explicit transaction or an
-explicit `session.commit()`. A framework save flushes the session's published
-work, including native pending changes, so use explicit boundaries when mixing
-the two APIs. Caller-created sessions are caller-owned.
+- Sessions belong to application contexts. Autoflush is disabled and committed
+  attributes are retained.
+- There is **no automatic request-wide transaction**. An HTTP error after a
+  successful standalone save does not undo its commit.
+- Context exit rolls back unfinished work and closes the session. It never commits
+  native writes.
+- Native writes need an explicit transaction or `session.commit()`.
 
-## Callbacks and authentication
+`flaskteroids.db.transaction` is the same context manager as
+`Model.transaction()`. Native `with session.begin():` blocks are respected too;
+prefer the framework context if an earlier read already opened an implicit
+SQLAlchemy transaction.
 
-Call `before_validation(...)`, `before_save(...)`, and other callback declarations
-inside the model class.
-Supported operation callbacks include before/after validation; before/around/after
-save, create, update, and destroy; after initialize/find; and after commit/rollback.
-Around callbacks are generators that yield once. Before callbacks returning
-`False` halt their operation. Callback bodies can update staged scalar attributes.
-
-Load callbacks run when an object is actually hydrated, not on every query that
-returns an already-loaded identity. After-find runs before after-initialize on
-hydration. Commit/rollback callbacks are queued by successful framework operations
-and are transaction-scoped; after-commit runs only after the outer commit, not a
-flush/savepoint. Commit callbacks can query associations and use the ordinary
-framework persistence API in a new transaction, with the same session identity
-map. Exceptions propagate, but cannot undo the transaction already committed.
-Native and bulk writes do not imply these framework hooks.
-
-### Saved changes
-
-After a successful framework save, `record.saved_changes` maps changed scalar
-attribute names to `(old_value, new_value)` tuples. Values are typed and include
-database-assigned IDs/defaults. `record.saved_change_to_attribute(name)` returns
-that tuple or `None`; `record.attribute_before_last_save(name)` returns the old
-value, or the published value when unchanged. These APIs are available in
-`after_save` and `after_commit` callbacks without inspecting SQLAlchemy history:
-
-```python
-class Product(ApplicationModel):
-    after_commit("_notify_subscribers", on="update", if_="_back_in_stock")
-
-    def _back_in_stock(self):
-        change = self.saved_change_to_attribute("inventory_count")
-        return change is not None and change[0] == 0 and change[1] > 0
-
-    def _notify_subscribers(self):
-        for subscriber in self.subscribers:
-            ProductMailer.with_(
-                product=self, subscriber=subscriber
-            ).in_stock().deliver_later()
-```
-
-Saved changes describe the latest successful save, not pending assignments or a
-transaction-wide diff. Failed validations preserve that history; a successful
-unchanged save replaces it. A rollback clears the rolled-back history, and
-`reload()` clears it too. When a record is saved repeatedly in one transaction,
-the commit callback sees its last successful save in that transaction. Rolled-back
-savepoints do not replace an outer save's commit history. Native publication and
-bulk writes do not produce framework saved-change history.
-
-Use `PasswordAuthenticator` and call `has_secure_password()` inside the model
-class for password behavior; a custom field name such as
-`has_secure_password("passcode")` is supported.
-Authentication/reset-token checks use published digests, so a failed staged password
-edit does not invalidate persisted credentials. Passwords, digests, confirmations,
-and reset tokens are excluded from default JSON/form data. Explicit raw-input APIs
-remain sensitive; do not log them. Attachments retain their post-commit upload and
-rollback semantics; see [Attachments](../other/attachments.md).
-
-## Temporary attributes and serialization
-
-Unknown public assignments raise `AttributeError`. Declare a class default or a
-property with a setter for transient values, or use a private cache name. Initialize
-mutable caches per instance. Transients are not automatically saved or serialized;
-ordinary identity-map lookups return the same instance and its transient state.
-Framework methods and metadata cannot be replaced through assignment.
-
-Default JSON contains mapped scalar attributes, including staged values, excluding
-authentication secrets and virtual fields. Override `__json__()` to define an
-application-specific response, or add names to `_serialization_exclude` as a set.
-Forms obtain values independently of that response representation. Dynamic mapped
-fields are not generally inferred by ordinary Python editors/type checkers.
+A framework save flushes published session work, including native pending changes.
+Use explicit boundaries when mixing the two APIs. Caller-created sessions remain
+the caller's responsibility.

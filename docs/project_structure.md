@@ -1,6 +1,10 @@
 # Project structure
 
-`flaskteroids new` generates this application layout. The tree shows the main directories and configuration files:
+Most application work happens in three places: `app/` for behavior and templates,
+`config/` for settings and routes, and `db/` for database changes.
+`flaskteroids new` creates the layout below.
+
+## Directory layout
 
 ```text
 my_project/
@@ -41,14 +45,16 @@ my_project/
 └── wsgi.py
 ```
 
+## Where to make changes
+
 | Path | Contents |
 | --- | --- |
 | `app/assets` | Source stylesheets/images, served automatically in development/test. |
 | `public/assets` | Fingerprinted production assets and manifest, created by precompilation. |
 | `app/controllers` | Request-handling actions. |
 | `app/helpers` | Automatically loaded presentation helper classes. |
-| `app/models` | Behavioral models with class-body associations, validations, and callbacks. |
-| `db/schema.py` | Generated SQLAlchemy metadata from the migrated database; no handwritten model fields. |
+| `app/models` | Data rules and behavior: associations, validations, and callbacks. |
+| `db/schema.py` | Generated column/table definitions. Commit this file; change the database through migrations, not by editing it. |
 | `app/views` | Jinja templates. |
 | `app/mailers` | Email actions. |
 | `app/jobs` | Background jobs. |
@@ -69,9 +75,15 @@ my_project/
 | `Procfile` | Example web and worker process commands. |
 | `test` | Tests and YAML fixtures. |
 
+## Set up an existing checkout
+
 A new app is ready to run. When you check out an existing project—or create one
 with `--skip-install`—run `bin/setup` to install its dependencies and prepare the
-database.
+database:
+
+```sh
+bin/setup
+```
 
 Next, explore [Configuration](configuration.md) to choose settings for each
 environment, or [Assets](other/assets.md) to add styles and images.

@@ -1,8 +1,10 @@
 # Routing
 
-Define routes in `config/routes.py`. Its `register` function receives a router.
-Actions use `"controller#action"`: `products#show` calls
-`ProductsController.show` from `app/controllers`.
+Routes connect URLs and HTTP methods to controller actions. Define them in
+`config/routes.py`, inside its `register(route)` function.
+
+A destination such as `"products#show"` means: call `show` on
+`ProductsController` in `app/controllers/products_controller.py`.
 
 ## Individual routes
 
@@ -16,11 +18,15 @@ def register(route):
     route.delete("/products/<int:id>", to="products#destroy")
 ```
 
-Use Flask/Werkzeug converter syntax for typed bindings. A root route is optional;
-without one, Flaskteroids displays its welcome page. Explicit individual paths
-keep the slash spelling you declare.
+`<int:id>` captures an integer from the URL and makes it available as
+`self.params["id"]`. Other bindings use Flask/Werkzeug's converter syntax.
+
+The root route controls `/`. If you omit it, Flaskteroids shows its welcome page.
+Individual routes keep the trailing-slash spelling you declare.
 
 ## Resources
+
+Use `resources` for the standard create, read, update, and delete actions:
 
 ```python
 def register(route):
@@ -37,10 +43,12 @@ def register(route):
 | PUT/PATCH | `/products/<int:id>` | update | `product_path(product)` |
 | DELETE | `/products/<int:id>` | destroy | `product_path(product)` |
 
-Collection and member helpers name destinations, not individual actions. HTTP
-methods distinguish create from index, and update/destroy from show. Resource
-paths are generated **without trailing slashes**. Requests with or without a
-trailing slash reach the same action, including `.json/` requests.
+A **collection** URL addresses all products; a **member** URL addresses one.
+Several actions share a path: the HTTP method selects which action runs. For
+example, GET `/products` lists products, while POST `/products` creates one.
+
+Resource helpers generate paths **without trailing slashes**. Requests with or
+without a trailing slash reach the same action, including `.json/` requests.
 
 Limit actions with `only`; an empty list generates no resource actions:
 
@@ -48,8 +56,9 @@ Limit actions with `only`; an empty list generates no resource actions:
 route.resources("products", only=["create", "update", "destroy"])
 ```
 
-The collection/member helpers remain available without index/show. Unsupported
-operations on framework routes return 404; they do not fall back to another verb.
+Collection and member helpers remain available even if you exclude index/show.
+Unsupported HTTP methods on framework routes return 404; they do not run another
+action as a fallback.
 
 ### Uncountable resources
 
@@ -80,6 +89,9 @@ show, edit, and PUT/PATCH update, but never index.
 
 ### Nested resources
 
+Nest a resource when its URL should include a parent, such as a product's
+subscribers:
+
 ```python
 route.resources(
     "products",
@@ -101,8 +113,8 @@ edit_product_subscriber_path(product, subscriber)
 # /products/1/subscribers/2/edit
 ```
 
-Multiple levels retain each ancestor's identity. To declare siblings, concatenate
-or unpack the returned route lists:
+Deeper nesting keeps every ancestor's identifier. To declare several child
+resources, unpack their returned route lists:
 
 ```python
 route.resources("products", nested=lambda child: [
@@ -123,8 +135,8 @@ route.resources(
 The parent receives `slug`; the child receives `product_slug` plus its own `id`.
 `param="int:sku"` instead supplies integer `sku` and `product_sku` bindings.
 Path bindings take precedence over query parameters and form fields.
-Changing a route parameter does not guess an attribute on a model. Pass explicit
-identifiers or intentionally override the model's public `to_param()`:
+Setting `param="slug"` changes the URL parameter name; it does not tell helpers
+to read `product.slug`. Pass the slug explicitly, or override `to_param()`:
 
 ```python
 product_path("cotton-shirt")
@@ -155,11 +167,14 @@ The same helpers are available directly in Jinja:
 {{ link_to(product.name, product_path(product)) }}
 ```
 
-Every `_path` helper has an absolute `_url` counterpart. Helpers resolve against
-the active application, including its script prefix; they do not query records
-or obtain missing bindings from the current request. Missing bindings raise
-`ValueError`; extra positional or duplicate bindings raise `TypeError`. Ambiguous
-route/helper declarations and template-global collisions are configuration errors.
+Every `_path` helper has a `_url` counterpart that includes the scheme and host.
+Helpers use the active application's routes and deployment prefix. They do not
+query records or fill missing parameters from the current request.
+
+- Missing parameters raise `ValueError`.
+- Extra positional arguments or duplicate parameters raise `TypeError`.
+- Ambiguous route/helper names or collisions with template globals are
+  configuration errors.
 
 Outside a request, use an application context and configure Flask's `SERVER_NAME`
 and, where needed, `APPLICATION_ROOT` and `PREFERRED_URL_SCHEME`. Explicit callers
@@ -182,9 +197,10 @@ products_path(format="json")        # /products.json
 product_path(product, format="json") # /products/1.json
 ```
 
-CRUD actions dispatch to the same controller actions as their HTML paths. A
-controller's `self.respond_to(...)` selects JSON from a `.json` suffix or the Accept header.
-Only JSON format generation is currently supported.
+These URLs call the same actions as the HTML paths. Use
+[`self.respond_to(...)`](index.md#content-negotiation) in the controller to choose
+an HTML or JSON response. It recognizes `.json` and the `Accept` header.
+Only JSON suffix generation is currently supported.
 
 ## HTML method overrides
 
@@ -200,6 +216,9 @@ DELETE has the same routing and CSRF protection as an actual DELETE request.
 Overrides apply to all routes in the application, including native Flask routes;
 `request.method` reports the effective method.
 
-For manual requests, only POST can be overridden. The `_method` form field takes
-precedence over `X-HTTP-Method-Override`; query parameters cannot change the method.
-Unsupported values leave the request as POST.
+For manual requests:
+
+- Only POST can be overridden.
+- The `_method` form field takes precedence over `X-HTTP-Method-Override`.
+- Query parameters cannot change the method.
+- An unsupported override leaves the request as POST.

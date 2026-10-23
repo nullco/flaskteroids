@@ -26,9 +26,13 @@
 
 ---
 
-Flask handles HTTP requests, SQLAlchemy and Alembic handle the database, and Celery runs background jobs.
+Build web applications with a consistent layout and tools that work together.
+Flaskteroids provides models, controllers, templates, forms, jobs, and email, with
+generators to create the starting code.
 
-Models, controllers, and templates live in conventional directories. The framework discovers them without manual registration. Flask APIs and extensions remain available when you need them.
+Flask handles HTTP requests, SQLAlchemy and Alembic handle the database, and
+Celery runs background jobs. You can use their native APIs when you need more
+control, without giving up the framework's everyday workflows.
 
 ## What's included
 
@@ -57,21 +61,21 @@ Create an application. Git, Bash, and [uv](https://docs.astral.sh/uv/getting-sta
 ```sh
 flaskteroids new my_app
 cd my_app
-source .venv/bin/activate
 ```
 
 Generation installs dependencies and prepares your development database.
+Run application commands with `bin/flask`; no environment activation is needed.
 Start the server:
 
 ```sh
-flask run
+bin/flask run
 ```
 
 Open <http://127.0.0.1:5000> to see the welcome page.
 
 ```sh
-flask test
-flask test:system
+bin/flask test
+bin/flask test:system
 ```
 
 The app includes a health test. An empty system suite succeeds without a browser.
@@ -81,13 +85,13 @@ The app includes a health test. An empty system suite succeeds without a browser
 Stop the server and run these commands inside `my_app`:
 
 ```sh
-flask generate scaffold Post title:string content:text
-flask db:prepare
-flask run
+bin/flask generate scaffold Post title:string content:text
+bin/flask db:prepare
+bin/flask run
 ```
 
 The scaffold generates a model, migration, controller, views, and routes. Visit
-`http://127.0.0.1:5000/posts/` to create, view, edit, and delete posts.
+`http://127.0.0.1:5000/posts` to create, view, edit, and delete posts.
 
 ## Next steps
 
@@ -100,7 +104,8 @@ uploads, email, and testing.
 - See [Testing](https://nullco.github.io/flaskteroids/testing/) for browser setup and [Configuration](https://nullco.github.io/flaskteroids/configuration/) for environments and secrets.
 - Your generated `deploy/README.md` explains Docker and deployment.
 
-See the [documentation](https://nullco.github.io/flaskteroids/) for the API guides.
+Use the [guide index](https://nullco.github.io/flaskteroids/#find-a-guide) to find
+help with models, routes, forms, encryption, background jobs, and other tasks.
 
 ## Agent skills
 

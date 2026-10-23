@@ -1,6 +1,18 @@
 # Configuration
 
-Configure application-wide settings in `config/application.py` and override them in `config/environments/`. Database settings live in `config/database.yml`. Store secrets in encrypted credentials and use initializers to configure external libraries during boot.
+Start with the generated defaults and change settings as your application needs
+them. Run the commands in this guide from your application directory.
+
+| What you want to configure | Where to put it |
+| --- | --- |
+| Settings shared by every environment | `config/application.py` |
+| Development, test, or production overrides | `config/environments/` |
+| Database connections | `config/database.yml` |
+| API keys and other secrets | Encrypted credentials |
+| External library setup | `config/initializers/` |
+
+Environment settings are applied after application-wide settings, so they can
+override the shared defaults.
 
 ## Application settings
 
@@ -15,11 +27,13 @@ class Application(FlaskteroidsApplication):
     root = ROOT
 
     def configure(self, config):
-        config.load_defaults('0.1')
-        config.x.payments.provider = 'stripe'
+        config.load_defaults("0.1")
+        config.x.payments.provider = "stripe"
 ```
 
-`config.load_defaults()` selects the framework defaults for the given version. Updating Flaskteroids does not change that selection. Change the version passed to `load_defaults()` to adopt newer defaults.
+`config.load_defaults()` selects the framework defaults for a version. Updating
+Flaskteroids does not change this choice automatically. To adopt newer defaults,
+change the version passed to `load_defaults()`.
 
 ## Template helpers
 
@@ -54,6 +68,8 @@ Requests and jobs run inside an application context. In scripts, open one before
 using models or enqueueing jobs:
 
 ```python
+from app.jobs.my_job import MyJob
+from app.models.user import User
 from config.environment import application
 
 with application.app_context():
@@ -61,11 +77,13 @@ with application.app_context():
     MyJob().perform_later(user_id=user.id)
 ```
 
-Each context has its own database session, but is not itself a transaction.
-Standalone model persistence commits before returning. Use `with Model.transaction():`
-to group operations; an escaping exception rolls that group back. Context exit
-rolls back unfinished work and closes the session, without undoing earlier
-standalone commits. Native writes require explicit commit/transaction handling.
+An application context provides configuration and a database session; **it is not
+a transaction**. A standalone model save commits before returning. To group writes,
+use `with Model.transaction():`; an exception escaping the block rolls them back.
+
+When the context ends, it closes the session and rolls back unfinished work. It
+does not undo earlier standalone commits. Native SQLAlchemy writes require an
+explicit commit or transaction.
 See [Models](models/index.md#assignment-validation-and-persistence).
 
 ## Environments
@@ -77,7 +95,7 @@ Flaskteroids selects the environment in this order:
 3. `development`.
 
 `FLASKTEROIDS_ENV` selects Flaskteroids configuration, not Flask's debugger.
-Use `flask run --debug` to enable the debugger.
+Use `bin/flask run --debug` to enable the debugger.
 
 Framework-provided environment variables use the `FLASKTEROIDS_` prefix, including
 `FLASKTEROIDS_DATABASE_URL`, `FLASKTEROIDS_SECRET_KEY_BASE`,
@@ -88,7 +106,7 @@ and credential names such as `secret_key_base` and `encryption`, remain unprefix
 Dependency-owned variables such as Flask's `FLASK_APP` and Celery's
 `CELERY_BROKER_URL` retain their native names.
 
-Flaskteroids applies the selected file under `config/environments/` after application-wide configuration:
+Put environment-specific overrides in the matching file. For example:
 
 ```python
 # config/environments/production.py
@@ -101,7 +119,7 @@ def configure(config):
     config.require_master_key = True
     config.action_mailer.perform_deliveries = True
     config.jobs.broker_url = os.environ.get(
-        'CELERY_BROKER_URL', config.jobs.broker_url
+        "CELERY_BROKER_URL", config.jobs.broker_url
     )
 ```
 
@@ -154,8 +172,8 @@ uv add 'PyMySQL[rsa]'
 export FLASKTEROIDS_DATABASE_URL='mysql+pymysql://app:password@localhost/my_app'
 ```
 
-YAML values can reference environment variables with `${NAME}` or
-`${NAME:-default}`. Connection settings are chosen in this order:
+Use `${NAME}` in YAML to read an environment variable, or `${NAME:-default}` to
+supply a fallback. Connection settings are chosen in this order:
 
 1. An explicit `url` in `database.yml`.
 2. `FLASKTEROIDS_DATABASE_URL`.
@@ -187,51 +205,85 @@ that setup.
 
 ## Encrypted credentials
 
-Shared credentials live in `config/credentials.yml.enc`. Flaskteroids stores the local encryption key in `config/master.key`. Generated Git and container ignore files exclude the key.
+Credentials let you keep API keys and other secrets in an encrypted YAML file.
+The shared file is `config/credentials.yml.enc`; its local key is
+`config/master.key`. Encryption uses AES-256-GCM.
 
-Edit or display credentials with:
+**Commit the encrypted file, never the key.** Generated Git and container ignore
+files already exclude the key. In production, supply it through
+`FLASKTEROIDS_MASTER_KEY` rather than putting it in your image.
+
+Open the editor to add secrets:
 
 ```sh
-flask credentials:edit
-flask credentials:show
+bin/flask credentials:edit
 ```
 
-Environment-specific credentials use the `--environment` option:
+For example, add this YAML in the editor:
+
+```yaml
+payments:
+  api_key: your-secret-key
+```
+
+To inspect decrypted values, run `bin/flask credentials:show`. Its output is
+plaintext: do not copy it into logs or issue reports.
+
+### Separate credentials for each environment
+
+Use `--environment` to edit or inspect an environment-specific file:
 
 ```sh
-flask credentials:edit --environment production
-flask credentials:show --environment production
+bin/flask credentials:edit --environment production
+bin/flask credentials:show --environment production
 ```
 
-These commands create:
+The edit command creates these files if needed:
 
 ```text
 config/credentials/production.yml.enc
 config/credentials/production.key
 ```
 
-When environment-specific credentials exist, they replace the shared credentials for that environment. Flaskteroids reads the encryption key from `FLASKTEROIDS_MASTER_KEY` first, then from the corresponding key file.
+Environment-specific credentials **replace**, rather than merge with, shared
+credentials. Include every secret that environment needs. The key is read from
+`FLASKTEROIDS_MASTER_KEY` first, then the corresponding key file.
+
+### Read credentials in Python
 
 Credentials are available through the application:
 
 ```python
 application.credentials.secret_key_base
 application.credentials.payments.api_key
-application.credentials['payments']['api_key']
+application.credentials["payments"]["api_key"]
 ```
 
-`secret_key_base` signs sessions, CSRF tokens, and password-reset tokens. Production should set `config.require_master_key = True` so boot fails when credentials cannot be decrypted.
+In production, set `config.require_master_key = True` so startup fails if
+credentials cannot be decrypted.
+
+The keys have different purposes:
+
+| Key | Purpose |
+| --- | --- |
+| Credentials master key | Decrypt the credentials file |
+| `secret_key_base` | Sign sessions, CSRF tokens, and password-reset tokens |
+| `encryption.primary_key` / `encryption.deterministic_key` | Encrypt model attributes and rich-text bodies |
+
+Do not reuse the master or signing key for model data. See
+[Attribute encryption](models/encryption.md) to set up encrypted attributes.
 
 ## Initializers
 
-Put startup configuration for external libraries in `config/initializers/`:
+Use initializers for setup that should run once during application startup,
+such as creating an external service client:
 
 ```python
 # config/initializers/payments.py
 from flaskteroids import application
 from payments import Client
 
-application.extensions['payments'] = Client(
+application.extensions["payments"] = Client(
     api_key=application.credentials.payments.api_key
 )
 ```

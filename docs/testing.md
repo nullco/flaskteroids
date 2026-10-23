@@ -15,16 +15,18 @@ Use browser tests to check the journey a person takes through your app:
 bin/flask test:system
 ```
 
-Both commands use pytest, so you can focus on one file or run tests in parallel:
+## Run a focused test
+
+Both commands use pytest, so you can select a file or run tests in parallel:
 
 ```sh
 bin/flask test -n auto
 bin/flask test test/controllers/posts_controller_test.py
 ```
 
-The commands use your `test` environment and apply pending migrations. Tests that
-inherit from Flaskteroids test classes roll back their database changes, keeping
-each test independent.
+The commands select the `test` environment and apply pending migrations. Tests
+that inherit from the framework's test classes roll back database changes after
+each test, so records from one test do not affect the next.
 
 For upload tests, put example files in `test/fixtures/files` and use
 `fixture_file_upload('avatar.png')`. Uploads use temporary storage, leaving your
@@ -32,17 +34,19 @@ real files untouched. See [Attachments](other/attachments.md#tests) for examples
 
 ## Test types
 
-```python
-from test.test_helper import (
-    IntegrationTest,
-    JobTest,
-    MailerTest,
-    ModelTest,
-    SystemTest,
-)
-```
+Import the base class you need from `test.test_helper`:
 
-Generated tests use files ending in `_test.py` and classes ending in `Test`.
+| Base class | What to test |
+| --- | --- |
+| `ModelTest` | Validations, queries, and model behavior |
+| `IntegrationTest` | HTTP requests and responses |
+| `JobTest` | Background work and enqueueing |
+| `MailerTest` | Email content and delivery |
+| `SystemTest` | User journeys in a real browser |
+
+Generated files end in `_test.py`, and test classes end in `Test`. Each base class
+provides an application context, fixture access, and the framework's assertions.
+Use ordinary pytest assertions alongside them.
 
 ## Fixtures
 
@@ -62,17 +66,26 @@ two:
 Declare and access them from a test:
 
 ```python
+from test.test_helper import ModelTest
+
+
 class PostTest(ModelTest):
     fixtures = ["posts"]
 
     def setup(self):
         self.post = self.posts("one")
+
+    def test_fixture_has_a_title(self):
+        assert self.post.title == "First post"
 ```
 
 Each test gets its declared fixtures, and its changes are rolled back afterward.
 Use fixture labels rather than hard-coded IDs; generated IDs may have gaps.
 
 ## Integration tests
+
+Make requests without starting a web server, then check the response or the
+resulting database change:
 
 ```python
 from test.test_helper import IntegrationTest, get, post
@@ -83,11 +96,11 @@ from flaskteroids.routes import post_url, posts_url
 class PostsControllerTest(IntegrationTest):
     fixtures = ["posts"]
 
-    def test_should_get_index(self):
+    def test_index_returns_success(self):
         get(posts_url())
         self.assert_response("success")
 
-    def test_should_create_post(self):
+    def test_create_saves_post(self):
         with self.assert_difference(Post.count):
             post(
                 posts_url(),
@@ -101,28 +114,35 @@ Available request functions are `get`, `post`, `patch`, `put`, and `delete`.
 
 ## Jobs and mail
 
-The test environment uses in-memory job and mail adapters:
+The test environment keeps queued jobs and delivered email in memory. Inside a
+test method, use these helpers with your job and mailer classes:
 
 ```python
-with self.assert_enqueued_with(job=PublishPostJob, args=[post]):
-    PublishPostJob.perform_later(post)
+with self.assert_enqueued_with(job=PublishPostJob, kwargs={"post_id": post.id}):
+    PublishPostJob().perform_later(post_id=post.id)
 
 with self.perform_enqueued_jobs():
-    PublishPostJob.perform_later(post)
+    PublishPostJob().perform_later(post_id=post.id)
 
 with self.assert_emails(1):
     PostsMailer.published(post).deliver_now()
 ```
 
-No broker or SMTP server is required.
+`assert_enqueued_with` checks that a job was scheduled. `perform_enqueued_jobs`
+runs jobs enqueued inside its block. `assert_emails` checks how many messages were
+delivered. No broker or SMTP server is required.
 
 ## System tests
 
 System tests use Playwright through helpers such as `visit` and `assert_selector`:
 
 ```python
+from test.test_helper import SystemTest
+from flaskteroids.routes import posts_path
+
+
 class PostsTest(SystemTest):
-    def test_visiting_posts(self):
+    def test_index_shows_posts_heading(self):
         self.visit(posts_path())
         self.assert_selector("h1", text="Posts")
 ```
@@ -131,7 +151,10 @@ Use `self.fill_in_rich_text_area("Content", with_="<div>Hello</div>")` to fill a
 Trix editor by its label. The value is HTML, loaded through the editor API. See
 [Rich text](other/rich_text.md) for setup and model fixtures.
 
-Flaskteroids includes the Playwright Python package, but not its browser binaries. Install Chromium before your first system test run:
+### Install the browser
+
+Flaskteroids includes the Playwright Python package, but not the browser itself.
+Install Chromium before running your first system test:
 
 ```sh
 .venv/bin/playwright install chromium

@@ -1,35 +1,45 @@
 # Forms
 
-Use `form_with` to build model-backed forms and `self.params.expect` to filter submitted attributes.
+A form has two parts: the template that builds inputs, and the controller that
+accepts their values. Use `form_with` to build the form and `self.params.expect`
+to choose which submitted attributes may reach your model.
 
 ## Building forms
 
-`form_with(model=post)` chooses the form's action and HTTP method from the model and includes a CSRF token. Inside the template block, it exposes a `Form` object for generating labels and inputs:
+Pass a model to `form_with`. It chooses the destination and HTTP method, supplies
+field values, and includes a CSRF token. Inside the block, use `form` to create
+labels and inputs:
 
 ```html
 <!-- app/views/posts/_form.html -->
 {% call(form) form_with(model=post) %}
   <div>
-    {{ form.label('title') }}
-    {{ form.text_field('title') }}
+    {{ form.label("title") }}
+    {{ form.text_field("title") }}
   </div>
 
   <div>
-    {{ form.label('content') }}
-    {{ form.text_area('content') }}
+    {{ form.label("content") }}
+    {{ form.text_area("content") }}
   </div>
 
   <div>
-    {{ form.submit('Save') }}
+    {{ form.submit("Save") }}
   </div>
 {% endcall %}
 ```
 
 ### Destinations and HTTP methods
 
-New records infer their collection URL and POST. Persisted records infer their
-member URL and **PATCH**, rendered as POST with a hidden `_method`. An explicit
-method always wins; `method="PUT"` remains supported for an update.
+For a conventional `Post` resource:
+
+| Model state | Destination | Method |
+| --- | --- | --- |
+| New record | `/posts` | POST |
+| Saved record | `/posts/<id>` | PATCH |
+
+Browsers submit PATCH as POST with a hidden `_method` field. Set `method` to
+override the default; `method="PUT"` also works for updates.
 
 An explicit URL changes only the destination. The model still supplies values,
 errors, and default method inference:
@@ -58,8 +68,10 @@ A new child submits to `product_subscribers_path(product)` with POST; a persiste
 child submits to `product_subscriber_path(product, subscriber)` with PATCH.
 Fields use the child prefix (`subscriber[email]`) and child values, including
 rejected input. `scope="signup"` overrides that prefix without changing the
-value/error-owning model. Missing ancestor identities fail diagnostically.
-Nested URLs do **not** enable nested-attribute mass assignment or persistence.
+model that supplies values and errors. A missing parent identifier raises an
+error. Nested URLs do **not** automatically save nested model attributes.
+
+### Choose a field helper
 
 Field helpers include `text_field`, `text_area`, `password_field`, and `checkbox`.
 Use `file_field('avatar')` or `file_field('documents', multiple=True)` for uploads.
@@ -94,14 +106,16 @@ Button attributes and form attributes are separate:
 
 Labels and attributes are escaped; trusted `Markup` is permitted for labels,
 not unescaped attributes. Unsupported/executable destination schemes are rejected.
-Action omission, arbitrary extra hidden button parameters, and remote/Turbo
-options are not part of this bounded button API.
+`button_to` does not support omitting the action, adding arbitrary extra hidden
+parameters, or remote/Turbo options.
 
 ## Form values and escaping
 
-Model-backed forms use before-type-cast scalar input and assigned writable virtual
-fields, falling back to published mapped values. Failed validation therefore keeps
-the original submission available even when a cast would lose information.
+Forms show the original submitted scalar input before type conversion, plus
+assigned writable virtual fields. If there is no pending input, they use saved
+values. A failed validation therefore redisplays what the user entered, even if
+type conversion would otherwise lose information.
+
 Authentication secrets, digests, confirmations, and reset tokens are excluded by
 default. Forms do not use JSON response serialization or evaluate read-only virtual
 fields such as reset tokens. Re-enter passwords after an unsuccessful submission.
@@ -123,15 +137,20 @@ from user input.
 
 ## Strong parameters
 
-Use `self.params.expect` to select the attributes a controller may pass to a model. Do not pass unfiltered request data to `create` or `update`. Otherwise, users could change attributes you did not intend to expose, such as an admin flag.
+Strong parameters are an allowlist of attributes a controller may pass to a
+model. Use `self.params.expect` for this filtering. **Do not pass unfiltered request
+data to `create` or `update`**: users could change fields you did not intend to
+expose, such as an admin flag.
 
-`expect` checks the expected structure, including nested objects and lists. For a post form:
+`expect` also checks the input's structure, including nested objects and lists.
+For a post form:
 
 ```python
 # app/controllers/posts_controller.py
+from app.models.post import Post
 from flaskteroids.controller import ActionController
 from flaskteroids.routes import post_path
-from app.models.post import Post
+
 
 class PostsController(ActionController):
     # ...
@@ -140,30 +159,30 @@ class PostsController(ActionController):
         self.post = Post.new(**self._post_params())
         if self.post.save():
             return self.redirect_to(post_path(self.post))
-        return self.render('new', status=422)
+        return self.render("new", status=422)
 
     def update(self):
-        self.post = Post.find(self.params['id'])
+        self.post = Post.find(self.params["id"])
         if self.post.update(**self._post_params()):
             return self.redirect_to(post_path(self.post))
-        return self.render('edit', status=422)
+        return self.render("edit", status=422)
 
     def _post_params(self):
         # Assumes form data is sent as:
         # post[title]=...
         # post[content]=...
-        return self.params.expect(post=['title', 'content'])
+        return self.params.expect(post=["title", "content"])
 ```
 
-`self.params.expect(post=['title', 'content'])` requires a top-level `post` dictionary,
-but its nested fields are permitted, not required. It returns only submitted,
+`self.params.expect(post=["title", "content"])` requires a top-level `post`
+dictionary, but its nested fields are permitted, not required. It returns only submitted,
 permitted attributes and discards other attributes. The same allowlist works for
 both creation and partial updates:
 
 ```python
 # Submitted: post[content]=Updated
-attributes = self.params.expect(post=['title', 'content'])
-# attributes == {'content': 'Updated'}
+attributes = self.params.expect(post=["title", "content"])
+# attributes == {"content": "Updated"}
 post.update(**attributes)  # The existing title is unchanged.
 ```
 
@@ -172,11 +191,14 @@ Omitted fields are not filled with defaults; an explicitly submitted `None` scal
 is retained. Use model validations to require attributes, rather than treating the
 allowlist as validation.
 
-Missing, null, or empty roots raise `MissingParameter`, including dictionaries
-with no permitted attributes after filtering. Required scalar roots, such as
-`self.params.expect('password')`, reject blank strings but accept `False` and numeric
-zero. Incorrect supplied types raise `InvalidParameter`; making fields optional
-does not relax the expected structure.
+### Missing or malformed input
+
+- A missing, null, or empty root raises `MissingParameter`. This includes a
+  dictionary with no permitted attributes left after filtering.
+- A required scalar root such as `self.params.expect("password")` rejects blank
+  strings, but accepts `False` and numeric zero.
+- An incorrect type raises `InvalidParameter`. Optional fields must still have
+  the expected structure when submitted.
 
 During HTTP requests, Flaskteroids automatically translates `MissingParameter`
 and `InvalidParameter` into **400 Bad Request** responses; controllers do not
@@ -187,6 +209,10 @@ Direct calls outside request dispatch still raise these exceptions. Programmer
 errors and unrelated exceptions are not translated into 400 responses.
 
 ## CSRF protection
+
+Cross-site request forgery (CSRF) is an attempt to make someone's browser submit
+an unwanted request while they are logged in. A session-bound token helps the
+server verify that a form came from your application.
 
 Flaskteroids checks CSRF tokens on state-changing requests, meaning all methods
 except GET, HEAD, OPTIONS, and TRACE. `form_with` and `button_to` include the token

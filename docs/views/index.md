@@ -1,8 +1,13 @@
 # Views
 
-Views are Jinja2 templates in `app/views`. By default, a controller action renders the template matching its controller and action name. For example, `PostsController.index` renders `app/views/posts/index.html`.
+Views are Jinja templates in `app/views`. They turn the data prepared by a
+controller into HTML.
 
-Controller instance variables become template variables. If the action sets `self.posts`, the template can use `posts`:
+By default, the controller and action names choose the template:
+`PostsController.index` renders `app/views/posts/index.html`. An action's instance
+variables become template variables, so `self.posts` is available as `posts`:
+
+## Render a page
 
 ```html
 <!-- app/views/posts/index.html -->
@@ -45,6 +50,9 @@ views. No import, callback, or `helper_method` declaration is needed.
 
 ### Discovery and the view context
 
+A helper runs on a **view context**: the object that holds the current render's
+variables and helper methods. You do not need to construct this object yourself.
+
 `config.paths.helpers` defaults to the Python package `"app.helpers"`. Each
 `*_helper.py` file must define its matching class: `products_helper.py` defines
 `ProductsHelper`, and `admin/money_helper.py` defines `MoneyHelper`. Nested
@@ -55,11 +63,12 @@ Only these conventional files are automatically imported. Private paths
 errors, missing dependencies, and incorrectly named classes in existing helper
 files stop application startup.
 
-Helper classes act as mixins on a shared view context, not separately constructed
-objects. Do not define `__init__`; initialize any render-local state lazily.
-Public methods become callable template helpers. Private `_methods` remain
-available to other helper methods through `self`, but are not exported to
-templates.
+Helper classes share this context rather than getting separate instances:
+
+- Public methods are callable from templates.
+- Private `_methods` can be called by other helpers through `self`, but are not
+  exported to templates.
+- Do not define `__init__`. Initialize render-local state when it is needed.
 
 Within a helper, `self` can access:
 - Other included helper methods.
@@ -69,10 +78,10 @@ Within a helper, `self` can access:
 - Controller or mailer instance variables, such as `self.product`. Controller
   views can also use request facilities such as `self.params` and `self.request`.
 
-Pass template-local values as arguments. Helpers do not become controller
-methods or actions. Helper instance state is shared across the current view,
-layout, and calls to `render(...)`, but does not survive a separate render or
-request. Use `self.render(...)` to render a partial from another helper.
+Pass template-local values as arguments. Helpers are not controller methods or
+actions. Their state is shared by the current view, layout, and partials, but not
+by separate renders or requests. Use `self.render(...)` to render a partial from
+a helper.
 
 ### Restricting automatic inclusion
 
@@ -110,17 +119,18 @@ delegates a particular method to the current controller or delivery-time mailer.
 
 ### Method precedence
 
-Conventional helpers are included before explicit declarations at each
-controller level. Automatic inclusion of all helpers happens at the root
-controller level in sorted helper-path order, with `ApplicationHelper` included
-first. Later includes take precedence, but including an already-included class
-does not move it.
+Prefer unique method names unless you intend to override another helper. When
+names overlap, these rules apply:
 
-A controller or mailer's `helper_method` declarations override helper mixins
-included at that same level. A child's helper layer can override inherited
-methods. Ordinary Python `super()` works between helper mixins. Application
-helpers can override framework helpers; prefer unique names unless an override
-is intentional.
+1. At each controller level, conventional helpers come before explicit includes.
+2. With automatic inclusion enabled, the root controller includes
+   `ApplicationHelper` first, then the others in sorted helper-path order.
+3. Later includes win. Including the same class again does not change its order.
+4. `helper_method` wins over helper mixins at the same level.
+5. A child's helper layer can override inherited methods.
+
+Ordinary Python `super()` works between helper mixins. Application helpers can
+also override framework helpers.
 
 ### Mailers and rendering outside requests
 
@@ -146,14 +156,17 @@ queued delivery. Mailers can also expose their own private methods with
 inherited, honor overridden methods, and accept arguments just like controller
 helper methods. They delegate to the mailer, never to a request controller.
 
-The existing mail pipeline captures assigns rather than rerunning mailer actions
-at delivery. One mailer instance is restored from those assigns per message,
-without rerunning its constructor, actions, or callbacks. Its helper methods
-share that instance across text and HTML parts. Queued assigns must satisfy the
-queue adapter's serialization requirements. See [mailer helpers](../other/mailers.md#mailer-helper-methods).
+Mail delivery captures the instance variables set by the action. At delivery,
+one mailer instance is restored from those values and shared by the text and HTML
+parts. Its constructor, actions, and callbacks do not run again. Queued values
+must meet the queue adapter's serialization rules. See
+[mailer delivery](../other/mailers.md#delivery) and
+[mailer helpers](../other/mailers.md#mailer-helper-methods).
 
-Standalone Flask template rendering inside an application context uses all
-application helpers by default, or just `ApplicationHelper` when
+### Rendering without a controller
+
+Flask template rendering inside an application context uses all application
+helpers by default, or just `ApplicationHelper` when
 `include_all_helpers` is false. Controller delegates are unavailable without
 a current request controller. Request-dependent helpers still require a request;
 URL generation outside a request follows Flask's normal configuration rules.
@@ -170,7 +183,8 @@ reload Python helper code.
 
 ## Helper escaping and URLs
 
-`link_to()` and `button_to()` escape ordinary text and HTML attribute values.
+Template output is HTML-escaped by default. Keep that protection when writing
+helpers: `link_to()` and `button_to()` escape ordinary text and attribute values.
 Use `markupsafe.Markup` only for HTML you trust, such as an application-defined
 icon or label. Never mark user input safe. Attributes are escaped even when
 supplied as `Markup`.

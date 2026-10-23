@@ -1,7 +1,8 @@
 # Rich text
 
-Declare rich-text attributes, edit them with Trix, and render formatted text,
-images, and file attachments without implementing editor or storage plumbing.
+Add formatted text, images, and file attachments with a model declaration and a
+form field. Flaskteroids provides the Trix editor, storage integration, and safe
+HTML rendering.
 
 ## Set up
 
@@ -21,18 +22,9 @@ No Node, npm, or editor CDN is required. Custom layouts should include that help
 once in their `<head>`.
 
 Repeated installation preserves existing files and avoids duplicate migrations.
-After upgrading Flaskteroids, **review application-owned asset customizations**,
-then refresh the integration with:
-
-```sh
-bin/flask rich_text:install --force
-bin/flask db:migrate
-```
-
-`--force` replaces installed editor assets, including custom CSS/JavaScript, not
-the layout or storage configuration. This is required when upgrading from the
-text-only integration. Assets use normal production fingerprinting through
-`bin/flask assets:precompile`; generated Docker builds already run it.
+Production assets are built with `bin/flask assets:precompile`; generated Docker
+builds already do this. See [upgrading the editor](#upgrade-the-editor) when
+refreshing an existing installation.
 
 ## Model declarations
 
@@ -56,15 +48,14 @@ migrating its `rich_texts.record_type` values.
 ### Declaration options
 
 - `store_if_blank=True` (default): explicit blank assignment stores an empty body.
-  With `False`, assigning `None` or blank HTML through the owner skips a missing
-  rich-text row or marks an existing row for destruction on the next successful
-  owner save. Omitted attributes are unchanged.
-- `strict_loading=True`: accessing an unloaded rich-text association raises
-  `StrictLoadingViolationError`, rather than silently querying. Use an eager
-  scope. New records and assigned bodies remain usable. The default inherits
-  `strict_loading_by_default` from the application model, normally `False`.
-  This default currently applies to rich-text declarations, not general ORM
-  association strict loading.
+  With `False`, assigning `None` or blank HTML avoids creating an empty row. If a
+  row already exists, it is removed on the model's next successful save. Omitting
+  the attribute leaves it unchanged.
+- `strict_loading=True`: require content to be preloaded rather than issuing an
+  extra query when accessed. Otherwise, `StrictLoadingViolationError` is raised.
+  Use an [eager-loading scope](#eager-loading). New records and assigned bodies
+  remain usable. The default comes from the model's `strict_loading_by_default`,
+  normally `False`; it currently applies to rich text, not all ORM associations.
 - `encrypted=True`: transparently encrypts the stored body using a dedicated key;
   see [Encryption](#encryption).
 
@@ -80,8 +71,10 @@ post.content = "<div>Revised</div>"
 post.save()
 ```
 
-`post.content` returns a stable `RichText` record; its `body` is an immutable
-`Content` value. Both assignment styles autosave with the owner:
+`post.content` is a `RichText` record, not a plain string. Its `body` is an
+immutable `Content` value: replace it rather than editing it in place. You can
+assign the attribute directly, as above, or assign its body. Both are saved when
+you save the owning `Post`:
 
 ```python
 post.content.body = "<em>Another revision</em>"
@@ -103,12 +96,12 @@ changes and reloads persisted content.
 ### Independent persistence
 
 ```python
+from flaskteroids.rich_text import RichText
+
 post.content.update(body="<div>Saved independently</div>")
 post.content.body = "<div>A second revision</div>"
 post.content.save()
 post.content.reload()
-
-from flaskteroids.rich_text import RichText
 
 content = RichText.find(post.content.id)
 content.record
@@ -144,11 +137,11 @@ def _post_params(self):
     return self.params.expect(post=["title", "content"])
 ```
 
-Uploads use the model-backed form's signed, session-bound upload capability and
-CSRF token. The editor supports file selection, drag-and-drop, and pasted image
-files. Submission waits for outstanding uploads, including with Turbo. Failed
-uploads display an alert and block submission until removed or retried.
-Standalone editors without a model-backed upload capability are text-only.
+Model-backed forms include a signed upload token tied to the browser session,
+plus a CSRF token. The editor supports file selection, drag-and-drop, and pasted
+images. Submission waits for uploads to finish, including when using Turbo. If an
+upload fails, an alert appears and submission is blocked until it is removed or
+retried. Standalone editors without the model-backed upload token are text-only.
 
 ## Rendering and attachments
 
@@ -157,8 +150,8 @@ Standalone editors without a model-backed upload capability are text-only.
 ```
 
 This renders sanitized HTML inside `<div class="trix-content">`. Do not add
-`|safe` or wrap user input in `Markup`. Server sanitization remains the security
-boundary, regardless of the editor or request source.
+`|safe` or wrap user input in `Markup`. The server sanitizes content
+regardless of whether it came from Trix or another request source.
 
 Embedded attachments use verified, purpose-specific blob signatures. The server
 ignores client-supplied file URLs, filenames, types, sizes, and executable HTML;
@@ -202,9 +195,10 @@ select body fields explicitly in your model's `__json__()`.
 
 ### Upload permissions, limits, and private files
 
-The upload capability is issued when an authorized controller renders the form.
-Upload routes do not run application controller callbacks. For permissions that
-must be checked again at upload time, configure a callback in an initializer:
+The upload token is issued when your controller renders the form, so authorize
+access to that form. **Upload routes do not run application controller callbacks.**
+If permissions must be checked again at upload time, configure a callback in an
+initializer:
 
 ```python
 from flask import current_app
@@ -214,12 +208,13 @@ from app.helpers.permissions import can_upload_rich_text
 current_app.config.rich_text.authorize_upload = can_upload_rich_text
 ```
 
-New-owner forms pass `None` as the record ID. Form capabilities expire after an
-hour; configure `config.rich_text.upload_token_expires_in` if needed.
+Forms for new records pass `None` as the record ID. Upload tokens expire after an
+hour; change `config.rich_text.upload_token_expires_in` if needed.
 
 Uploads honor `config.attachments.max_upload_size` and Flask's
-`MAX_CONTENT_LENGTH`. Set appropriate limits for your deployment; neither
-attachment encryption nor content-type detection replaces malware scanning.
+`MAX_CONTENT_LENGTH`. Set limits for your deployment. Rich-text encryption does
+not encrypt uploaded file bytes, and content-type checks do not replace malware
+scanning.
 
 Downloads and image previews use the existing attachment routes and
 `config.attachments.authorize` callback. For private files, use proxy routing.
@@ -229,8 +224,9 @@ only already-attached blobs will also deny previews of new draft uploads.
 Account for draft-upload access explicitly in your permission policy if needed;
 upload authorization does not bypass download authorization.
 
-Signed attachment references are bearer capabilities, as with ordinary signed
-blob IDs. Only expose them to users allowed to reuse those files. See
+Anyone holding a signed attachment reference may reuse it, just as with an
+ordinary signed blob ID. Share these references only with users allowed to reuse
+the files. See
 [Attachments](attachments.md) for storage services, private downloads, and limits.
 
 ### Abandoned uploads
@@ -256,8 +252,9 @@ Post.where(title="Hello").with_rich_text_content_and_embeds()
 Post.with_all_rich_text()                # All declared rich text and embeds
 ```
 
-Scopes remain chainable model queries. Generated index actions preload all rich
-text and embeds. Body-only loading is also available through
+Preloading avoids extra queries when displaying several records. These methods
+return chainable model queries. Generated index actions already preload rich text
+and embedded attachments. For the body alone, you can also use
 `Post.includes("rich_text_content")`. With strict loading, rendering attachments
 requires an embed-loading scope. Rich-text attributes are not scalar columns and
 cannot be searched using `Post.where(content=...)`.
@@ -324,6 +321,22 @@ self.assert_selector(".trix-content strong", text="world")
 
 The helper fills HTML through Trix's public editor API. Normal keyboard and file
 interaction remain available through the Playwright page.
+
+## Upgrade the editor
+
+Repeated installation preserves existing files and avoids duplicate migrations.
+After upgrading Flaskteroids, **review application-owned asset customizations**,
+then refresh the integration with:
+
+```sh
+bin/flask rich_text:install --force
+bin/flask db:migrate
+```
+
+`--force` replaces installed editor assets, including custom CSS/JavaScript, not
+the layout or storage configuration. This is required when upgrading from the
+text-only integration. Assets use normal production fingerprinting through
+`bin/flask assets:precompile`; generated Docker builds already run it.
 
 ## Limitations
 
