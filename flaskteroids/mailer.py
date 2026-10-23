@@ -83,7 +83,7 @@ class ActionMailer:
     __slots__ = ("_params", "__dict__", "__weakref__")
 
     @classmethod
-    def with_params(cls, **params):
+    def with_(cls, **params):
         return _ParameterizedMailer(cls, params)
 
     @property

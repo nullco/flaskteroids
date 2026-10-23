@@ -9,7 +9,7 @@ class ModelAssignsTest(MailerTest):
         product = Product.create(name="T-Shirt", inventory_count=0)
         subscriber = Subscriber.create(product=product, email="reader@example.org")
         with self.assert_emails(1), self.perform_enqueued_jobs():
-            ProductMailer.with_params(
+            ProductMailer.with_(
                 product=product, subscriber=subscriber
             ).in_stock().deliver_later()
         assert (

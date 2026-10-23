@@ -48,7 +48,7 @@ class PersonalNoticesMailer(NoticesMailer):
 class RelayMailer(ActionMailer):
     def notice(self):
         try:
-            NoticesMailer.with_params(
+            NoticesMailer.with_(
                 recipient=self.params["inner"], fail=self.params["inner_fails"]
             ).welcome().deliver_now()
         except ValueError:
@@ -108,7 +108,7 @@ def test_plain_mailer_instances_keep_their_own_params(mail_app):
 def test_parameterized_actions_and_callbacks_use_mailer_inputs(
     mail_app, reader, delivery, in_request
 ):
-    configured = NoticesMailer.with_params(recipient=reader, label="Thanks")
+    configured = NoticesMailer.with_(recipient=reader, label="Thanks")
     context = (
         mail_app.test_request_context("/") if in_request else mail_app.app_context()
     )
@@ -133,7 +133,7 @@ def test_parameterized_actions_and_callbacks_use_mailer_inputs(
 
 
 def test_reusing_parameterized_mailers_creates_fresh_action_instances(mail_app, reader):
-    configured = NoticesMailer.with_params(recipient=reader)
+    configured = NoticesMailer.with_(recipient=reader)
     with mail_app.app_context():
         first = configured.welcome()
         reader.name = "Second reader"
@@ -149,7 +149,7 @@ def test_reusing_parameterized_mailers_creates_fresh_action_instances(mail_app, 
 
 def test_parameterized_delivery_queues_only_captured_assigns(mail_app, reader):
     with mail_app.app_context():
-        NoticesMailer.with_params(recipient=reader).welcome().deliver_later()
+        NoticesMailer.with_(recipient=reader).welcome().deliver_later()
         queue = mail_app.extensions["flaskteroids.jobs"].queue_adapter
         payload = json.loads(json.dumps(queue.enqueued_jobs[0].kwargs))
         queue.clear()
@@ -164,14 +164,14 @@ def test_parameterized_delivery_queues_only_captured_assigns(mail_app, reader):
 
 
 def test_failed_parameterized_invocations_preserve_controller_params(mail_app, reader):
-    failed = NoticesMailer.with_params(recipient=reader, fail=True)
+    failed = NoticesMailer.with_(recipient=reader, fail=True)
     with mail_app.test_request_context("/"):
         controller = ActionController()
         controller.params["recipient"] = "HTTP input"
         with pytest.raises(ValueError, match="Invalid notice"):
             failed.welcome()
         assert controller.params["recipient"] == "HTTP input"
-        NoticesMailer.with_params(recipient=reader).welcome().deliver_now()
+        NoticesMailer.with_(recipient=reader).welcome().deliver_now()
         delivered = mail_app.extensions["flaskteroids.mail"].delivery_method.deliveries[
             -1
         ]
@@ -184,7 +184,7 @@ def test_nested_mailers_preserve_outer_mailer_params(mail_app, reader, inner_fai
     with mail_app.test_request_context("/"):
         controller = ActionController()
         controller.params["recipient"] = "HTTP input"
-        RelayMailer.with_params(
+        RelayMailer.with_(
             recipient=reader, inner=inner, inner_fails=inner_fails, handle_failure=True
         ).notice().deliver_now()
         delivered = mail_app.extensions["flaskteroids.mail"].delivery_method.deliveries
@@ -197,7 +197,7 @@ def test_nested_mailer_failures_preserve_controller_params(mail_app, reader):
         controller = ActionController()
         controller.params["recipient"] = "HTTP input"
         with pytest.raises(ValueError, match="Invalid notice"):
-            RelayMailer.with_params(
+            RelayMailer.with_(
                 recipient=reader, inner=reader, inner_fails=True, handle_failure=False
             ).notice()
         assert controller.params["recipient"] == "HTTP input"
@@ -209,7 +209,7 @@ def test_render_failures_preserve_controller_params(mail_app, reader, delivery):
     with mail_app.test_request_context("/"):
         controller = ActionController()
         controller.params["recipient"] = "HTTP input"
-        message = NoticesMailer.with_params(recipient=reader).welcome()
+        message = NoticesMailer.with_(recipient=reader).welcome()
         with pytest.raises(ZeroDivisionError):
             getattr(message, delivery)()
             if delivery == "deliver_later":
@@ -219,7 +219,7 @@ def test_render_failures_preserve_controller_params(mail_app, reader, delivery):
 
 def test_subclasses_inherit_parameterization_and_action_callbacks(mail_app, reader):
     with mail_app.app_context():
-        PersonalNoticesMailer.with_params(recipient=reader).welcome().deliver_now()
+        PersonalNoticesMailer.with_(recipient=reader).welcome().deliver_now()
         delivered = mail_app.extensions["flaskteroids.mail"].delivery_method.deliveries[
             -1
         ]
@@ -229,11 +229,9 @@ def test_subclasses_inherit_parameterization_and_action_callbacks(mail_app, read
         )
 
 
-@pytest.mark.parametrize(
-    "name", ["mail", "params", "with_params", "_prepare", "missing"]
-)
+@pytest.mark.parametrize("name", ["mail", "params", "with_", "_prepare", "missing"])
 def test_parameterized_mailers_expose_registered_actions_only(reader, name):
-    configured = NoticesMailer.with_params(recipient=reader)
+    configured = NoticesMailer.with_(recipient=reader)
     with pytest.raises(AttributeError):
         getattr(configured, name)
-    assert "with_params" not in get_actions(init(NoticesMailer))
+    assert "with_" not in get_actions(init(NoticesMailer))

@@ -14,7 +14,7 @@ class PasswordsController(ApplicationController):
 
     def create(self):
         if user := User.find_by(**self.params.expect('email_address')):
-            PasswordsMailer.with_params(user=user).reset().deliver_later()
+            PasswordsMailer.with_(user=user).reset().deliver_later()
 
         return self.redirect_to(url_for('new_session'), notice='Password reset instructions sent (If user with that email address exists).')
 

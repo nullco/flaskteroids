@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- Rename `ActionMailer.with_params(...)` to `ActionMailer.with_(...)`; the old
+  name is removed.
+
 ## 0.8.0 - 2026-10-22
 
 ### Breaking changes

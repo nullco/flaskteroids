@@ -16,15 +16,15 @@ Call `deliver_now` to send the email immediately, or `deliver_later` to enqueue 
 
 ```python
 # Deliver now
-UserMailer.with_params(user=user).welcome_email().deliver_now()
+UserMailer.with_(user=user).welcome_email().deliver_now()
 
 # Deliver later using a background job
-UserMailer.with_params(user=user).welcome_email().deliver_later()
+UserMailer.with_(user=user).welcome_email().deliver_later()
 ```
 
 ## Parameterized mailers
 
-`with_params(...)` supplies action and callback inputs through `self.params`,
+`with_(...)` supplies action and callback inputs through `self.params`,
 an instance-owned dictionary that needs no HTTP request. Each action call gets a
 fresh mailer and a shallow parameter copy. Action arguments remain supported.
 

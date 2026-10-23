@@ -18,7 +18,7 @@ with app.app_context():
     if mode == "enqueue":
         product = Product.create(name="Original product", inventory_count=1)
         subscriber = Subscriber.create(product=product, email="reader@example.org")
-        ProductMailer.with_params(
+        ProductMailer.with_(
             product=product, subscriber=subscriber
         ).in_stock().deliver_later()
         queue = app.extensions["flaskteroids.jobs"].queue_adapter
