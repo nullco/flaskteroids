@@ -4,11 +4,10 @@ from flask import current_app, url_for
 
 from flaskteroids._routing import collection_route_key
 from flaskteroids.inflector import inflector
+from flaskteroids.model import Model
 
 
 def _parameter(value):
-    from flaskteroids.model import Model
-
     if isinstance(value, Model):
         value = value.to_param()
     if value is None or value == "":
@@ -54,8 +53,6 @@ class RouteHelper:
 
 
 def _model_destination(destination):
-    from flaskteroids.model import Model
-
     records = (
         tuple(destination) if isinstance(destination, (list, tuple)) else (destination,)
     )

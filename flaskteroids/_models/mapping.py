@@ -16,9 +16,14 @@ from types import ModuleType
 from sqlalchemy import MetaData
 from sqlalchemy.orm import MappedColumn, RelationshipProperty, registry
 
+from flaskteroids._models.associations import relationship_properties
+from flaskteroids._models.encryption import column_types
 from flaskteroids.declarations import model_for
 from flaskteroids.exceptions import ProgrammerError
 from flaskteroids.inflector import inflector
+from flaskteroids.rich_text.attribute import (
+    relationship_properties as rich_text_properties,
+)
 from flaskteroids.rules import bind_rules
 
 
@@ -130,6 +135,21 @@ def ensure_mapped(cls):
                 if model in tables or "__mapper__" in vars(model):
                     return
                 bind_rules(model)
+                same_table = [
+                    candidate
+                    for candidate in catalog.values()
+                    if table_name(candidate) == table_name(model)
+                ]
+                if len(same_table) > 1:
+                    for candidate in same_table:
+                        bind_rules(candidate)
+                    if any(
+                        model_for(candidate).encrypted_attributes
+                        for candidate in same_table
+                    ):
+                        raise ProgrammerError(
+                            "Encrypted tables require a single model class per registry"
+                        )
                 table = _table(model)
                 tables[model] = table
                 graph.append(model)
@@ -164,20 +184,18 @@ def ensure_mapped(cls):
             visit(cls)
             # Check the entire graph before publishing a mapper. Missing tables
             # must not poison an otherwise reusable registry during app boot.
-            from flaskteroids._models.associations import relationship_properties
-
             for model in graph:
                 properties[model].update(
                     relationship_properties(model, catalog, _table)
                 )
-            from flaskteroids.rich_text.attribute import (
-                relationship_properties as rich_text_properties,
-            )
-
+            encrypted = {model: column_types(model, tables[model]) for model in graph}
             for model in graph:
                 properties[model].update(
                     rich_text_properties(model, tables[model], root.registry)
                 )
+            for model, types in encrypted.items():
+                for name, type_ in types.items():
+                    tables[model].c[name].type = type_
             for model in graph:
                 root.registry.map_imperatively(
                     model, tables[model], properties=properties[model]

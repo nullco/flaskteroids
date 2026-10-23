@@ -7,10 +7,13 @@ from typing import TYPE_CHECKING, Self
 from flask import current_app
 from sqlalchemy import func, inspect, select
 from sqlalchemy.orm import selectinload
+from sqlalchemy.sql import visitors
 
+from flaskteroids._models.encryption import EncryptedAttribute
 from flaskteroids.db import session
 from flaskteroids.declarations import model_for
-from flaskteroids.exceptions import RecordNotFoundException
+from flaskteroids.exceptions import EncryptionError, RecordNotFoundException
+from flaskteroids.rich_text.embeds import preload
 
 if TYPE_CHECKING:
     from flaskteroids.model import Model
@@ -116,12 +119,23 @@ class ModelQuery[QueryModel: "Model"]:
         return self._with(self.statement.options(*options))
 
     def order(self, *expressions, **directions: str) -> Self:
-        clauses = list(expressions)
+        clauses = [
+            getattr(self._model_cls, expression)
+            if isinstance(expression, str)
+            else expression
+            for expression in expressions
+        ]
         for name, direction in directions.items():
             if direction not in {"asc", "desc"}:
                 raise ValueError("Order direction must be 'asc' or 'desc'")
             attribute = getattr(self._model_cls, name)
             clauses.append(attribute.desc() if direction == "desc" else attribute.asc())
+        if any(
+            isinstance(getattr(node, "type", None), EncryptedAttribute)
+            for clause in clauses
+            for node in visitors.iterate(clause)
+        ):
+            raise EncryptionError("Encrypted attributes cannot be ordered")
         statement = self.statement if self._ordered else self.statement.order_by(None)
         result = self._with(statement.order_by(*clauses))
         result._ordered = True
@@ -145,8 +159,6 @@ class ModelQuery[QueryModel: "Model"]:
 
     def _preload_rich_text(self, records):
         if self._rich_text_embeds:
-            from flaskteroids.rich_text.embeds import preload
-
             preload(records, self._rich_text_embeds)
         return records
 

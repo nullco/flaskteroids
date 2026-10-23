@@ -14,6 +14,22 @@ from sqlalchemy.exc import DBAPIError
 from flaskteroids.cli.db.config import get_config
 from flaskteroids.cli.db.lifecycle import _error_code, ensure_database
 from flaskteroids.cli.db.snapshot import dump_schema
+from flaskteroids.encryption import generate_encryption_key
+
+
+@click.command("db:encryption:init")
+def encryption_init():
+    """Generate dedicated model encryption keys.
+
+    Paste the YAML into flask credentials:edit. Existing credentials are unchanged.
+    Do not commit or log the plaintext output. These keys are separate from
+    credentials and signing keys.
+    """
+    click.echo(
+        "active_record_encryption:\n"
+        f"  primary_key: {generate_encryption_key()}\n"
+        f"  deterministic_key: {generate_encryption_key()}"
+    )
 
 
 @click.command("db:init")

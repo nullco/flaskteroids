@@ -5,7 +5,9 @@ from sqlalchemy.orm import MANYTOONE
 
 from flaskteroids._models.associations import AssociationCollection
 from flaskteroids._models.attributes import cast_input, database_value
+from flaskteroids._models.encryption import EncryptedAttribute
 from flaskteroids.declarations import model_for
+from flaskteroids.rich_text.attribute import association_value
 
 
 class StagedAttributes:
@@ -18,8 +20,6 @@ class StagedAttributes:
                 name.startswith("rich_text_")
                 and name[10:] in model_for(type(self)).rich_texts
             ):
-                from flaskteroids.rich_text.attribute import association_value
-
                 return association_value(self, name[10:])
             association = model_for(type(self)).associations.get(name)
             if association is not None and association.kind == "has_many":
@@ -33,7 +33,11 @@ class StagedAttributes:
                 column = mapper.column_attrs[name].columns[0]
                 pending = self.__dict__.setdefault("_changes", {})
                 raw = self.__dict__.setdefault("_raw_attributes", {})
-                pending[name] = cast_input(column.type, value)
+                pending[name] = (
+                    column.type.normalize(value)
+                    if isinstance(column.type, EncryptedAttribute)
+                    else cast_input(column.type, value)
+                )
                 raw[name] = value
                 return
             if mapper is not None and name in mapper.relationships:

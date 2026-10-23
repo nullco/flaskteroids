@@ -36,6 +36,20 @@ This framework provides a collection of tools and a cohesive ecosystem with a cl
 *   **Dependency Management:** `uv`; reproduce the development environment with `uv sync --locked --dev`.
 *   **Virtual Environment:** `.venv/`
 
+## Import discipline
+
+* Keep imports at module scope in framework code, tests, and generated code.
+* Do not put imports inside functions or methods to hide circular dependencies,
+  defer ordinary dependencies, or make an import error disappear. Fix the module
+  boundaries instead: extract shared types or services into lower-level modules
+  and keep dependencies flowing in one direction.
+* Function-local imports are allowed only for genuinely optional dependencies
+  (such as the S3 extra) or tests specifically exercising import timing/order.
+  Keep these exceptions narrow and explain why they are necessary. A lint
+  exemption is not permission to use local imports elsewhere.
+* Module-level `TYPE_CHECKING` imports are appropriate for type-only dependencies;
+  do not replace runtime dependencies with typing tricks.
+
 ## Common Commands
 
 ### Running Tests

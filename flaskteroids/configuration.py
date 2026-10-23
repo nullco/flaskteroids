@@ -118,9 +118,17 @@ class Configuration(FlaskConfig):
                 "authorize": None,
             }
         )
+        self.active_record = Options(
+            {
+                "encryption": {
+                    "primary_key": None,
+                    "deterministic_key": None,
+                    "support_unencrypted_data": False,
+                }
+            }
+        )
         self.rich_text = Options(
             {
-                "encryption_keys": [],
                 "authorize_upload": None,
                 "upload_token_expires_in": 3600,
             }

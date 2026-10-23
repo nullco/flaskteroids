@@ -143,10 +143,18 @@ dependency internals or introduce a parallel implementation of a supported featu
   Uploads require the model-backed form\'s session-bound capability and CSRF;
   use `config.rich_text.authorize_upload` for fresh application permission checks.
   Declarations support `store_if_blank`, `strict_loading`, and `encrypted`.
-  Encrypted bodies need a dedicated key from `bin/flask rich_text:keys`; store it
-  in encrypted credentials as `rich_text.encryption_key`, not the signing secret.
-  Upgrading from text-only assets requires `rich_text:install --force` after
-  reviewing local CSS/JavaScript customizations.
+  Encrypted bodies share the model encryption service and primary key.
+- Use `encrypts("notes")` for model string/text encryption and
+  `encrypts("email", deterministic=True, downcase=True)` for equality lookups.
+  Generate dedicated keys with `bin/flask db:encryption:init` and store the printed
+  `active_record_encryption` YAML in credentials. Configure overrides through
+  `config.active_record.encryption`; never reuse credentials/signing keys.
+  Prefer text columns, without plaintext server defaults. Encrypted primary/foreign
+  keys, ordering, and substring queries are unsupported. Inspection filters these
+  attributes, but forms/JSON/rendering expose plaintext and still need authorization.
+  Primary-key rotation uses `[previous_key, current_key]`; the last key writes.
+  `record.encrypt()` re-encrypts persisted attributes without unrelated saves.
+  Deterministic keys must stay stable; do not replace one expecting queries to work.
 - Use attachment declarations, `config/storage.yml`, and `attachments:install`
   for file uploads rather than independent storage plumbing.
   Model attachments upload after commit. Use `blob_path` or `blob_url` for

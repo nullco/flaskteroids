@@ -12,18 +12,7 @@ from flask.cli import with_appcontext
 
 from flaskteroids.cli.attachments import install as attachments_install
 from flaskteroids.cli.db.config import get_config
-from flaskteroids.rich_text.encryption import generate_encryption_key
 from flaskteroids.rich_text.schema import metadata
-
-
-@click.command("rich_text:keys")
-def encryption_init():
-    """Generate a dedicated rich-text encryption key.
-
-    Prints secret YAML for flask credentials:edit. Do not commit or log the
-    plaintext output. Existing keys and credentials are never overwritten.
-    """
-    click.echo(f"rich_text:\n  encryption_key: {generate_encryption_key()}")
 
 
 @click.command("rich_text:install")

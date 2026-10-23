@@ -1,3 +1,6 @@
+from sqlalchemy.exc import DontWrapMixin
+
+
 class ProgrammerError(Exception):
     def __init__(self, *args: object) -> None:
         super().__init__(*args)
@@ -11,7 +14,7 @@ class StrictLoadingViolationError(ProgrammerError):
     pass
 
 
-class EncryptionError(ProgrammerError):
+class EncryptionError(ProgrammerError, DontWrapMixin):
     pass
 
 

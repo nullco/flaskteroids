@@ -1,8 +1,13 @@
+import os
 from contextlib import ExitStack, contextmanager
+from threading import Thread
 from typing import ClassVar
 from urllib.parse import urlsplit
 
 import pytest
+from flask import current_app
+from playwright.sync_api import expect, sync_playwright
+from werkzeug.serving import make_server
 
 from flaskteroids.testing.context import activate_test_context, current_response
 from flaskteroids.testing.database import transactional_test
@@ -152,8 +157,6 @@ class FlaskteroidsTest:
 
     @property
     def _application(self):
-        from flask import current_app
-
         return current_app._get_current_object()
 
     def _response(self):
@@ -182,12 +185,6 @@ class SystemTest(IntegrationTest):
     pytestmark = pytest.mark.system
 
     def _before_test(self, application):
-        import os
-        from threading import Thread
-
-        from playwright.sync_api import sync_playwright
-        from werkzeug.serving import make_server
-
         with ExitStack() as resources:
             server = resources.enter_context(make_server("127.0.0.1", 0, application))
             server_thread = Thread(target=server.serve_forever, daemon=True)
@@ -222,8 +219,6 @@ class SystemTest(IntegrationTest):
         self.page.get_by_label(label).fill(str(with_))
 
     def fill_in_rich_text_area(self, label, *, with_):
-        from playwright.sync_api import expect
-
         editor = self.page.get_by_label(label)
         expect(editor).to_be_editable()
         editor.evaluate("(element, html) => element.editor.loadHTML(html)", str(with_))
@@ -232,13 +227,9 @@ class SystemTest(IntegrationTest):
         self.page.get_by_label(label).set_input_files(path)
 
     def assert_text(self, text):
-        from playwright.sync_api import expect
-
         expect(self.page.get_by_text(text)).to_be_visible()
 
     def assert_selector(self, selector, *, text=None):
-        from playwright.sync_api import expect
-
         locator = self.page.locator(selector)
         if text is not None:
             locator = locator.filter(has_text=text)

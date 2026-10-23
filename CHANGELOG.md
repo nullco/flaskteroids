@@ -15,11 +15,14 @@
 - Editable `RichText` records with independent save/update/destroy, signed Trix
   file uploads, image galleries, embed preloading, and post-commit attachment
   cleanup. Uploads use session-bound form capabilities and CSRF protection.
-- Rich-text `encrypted`, `strict_loading`, and `store_if_blank` options, dedicated
-  encryption keys with rotation and explicit plaintext migration, and
-  `Blob.purge_unattached()` for abandoned-upload cleanup. `rich_text:keys`
-  generates a key for encrypted credentials; `rich_text:install --force` updates
-  app-owned editor assets after reviewing customizations.
+- Rich-text `encrypted`, `strict_loading`, and `store_if_blank` options and
+  `Blob.purge_unattached()` for abandoned-upload cleanup. `rich_text:install --force`
+  updates app-owned editor assets after reviewing customizations.
+- Model-level `encrypts(...)` declarations with randomized encryption,
+  deterministic equality lookups, lowercase normalization, filtered inspection,
+  encrypted fixtures, and explicit data/key migration. Rich text shares the same
+  encryption service. `db:encryption:init` generates dedicated credentials keys;
+  `config.active_record.encryption` configures model and rich-text encryption.
 
 ## 0.8.0 - 2026-10-22
 

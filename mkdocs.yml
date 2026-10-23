@@ -42,6 +42,7 @@ nav:
     - Testing: testing.md
   - Models:
     - Overview: models/index.md
+    - Attribute encryption: models/encryption.md
   - Views:
     - Overview: views/index.md
   - Controllers:

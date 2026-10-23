@@ -7,6 +7,8 @@ from pathlib import Path
 from flask import Flask
 
 from flaskteroids._method_override import MethodOverrideMiddleware
+from flaskteroids._request_context import RoutingRequestContext
+from flaskteroids.app import finalize_app, initialize_app
 from flaskteroids.configuration import Configuration
 from flaskteroids.credentials import Credentials, CredentialsError
 from flaskteroids.database_configuration import load_database_configuration
@@ -62,16 +64,12 @@ class Application(Flask):
         self.template_folder = str(project_root / self.config.paths.views)
         self.extensions["flaskteroids.application"] = self
 
-        from flaskteroids.app import finalize_app, initialize_app
-
         self.wsgi_app = MethodOverrideMiddleware(self, self.wsgi_app)
         initialize_app(self)
         self._run_initializers()
         finalize_app(self)
 
     def request_context(self, environ):
-        from flaskteroids._request_context import RoutingRequestContext
-
         return RoutingRequestContext(self, environ)
 
     def configure(self, config):

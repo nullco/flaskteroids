@@ -264,50 +264,44 @@ cannot be searched using `Post.where(content=...)`.
 
 ## Encryption
 
-Generate a dedicated key, then put the printed YAML in encrypted credentials:
+Rich text uses the same [attribute encryption](../models/encryption.md) service
+and dedicated keys as ordinary model attributes:
 
 ```sh
-bin/flask rich_text:keys
+bin/flask db:encryption:init
 bin/flask credentials:edit
 ```
 
-The key command prints a new secret without modifying existing credentials.
-Do not commit or log its plaintext output. Python callers can also use
-`flaskteroids.rich_text.generate_encryption_key()`.
-
-The framework reads `rich_text.encryption_key` from the selected encrypted
-credentials, or `FLASKTEROIDS_RICH_TEXT_ENCRYPTION_KEY` from the environment.
-The credentials master key and Flask signing secret are **not** reused as content
-encryption keys.
+Store the generated `active_record_encryption` YAML in encrypted credentials.
+The primary key encrypts rich-text bodies; neither the credentials master key nor
+the Flask signing secret is reused.
 
 ```python
 class Post(ApplicationModel):
     has_rich_text("content", encrypted=True)
 ```
 
-Bodies use nondeterministic, authenticated AES-256-GCM envelopes. Missing/wrong
-keys, modified ciphertext, and unexpected plaintext raise `EncryptionError`;
-there is no automatic plaintext fallback. Editing and rendering still expose
-decrypted content to the authorized application/browser.
+Bodies use randomized, authenticated encryption. Missing/wrong keys, modified
+ciphertext, and unexpected plaintext raise `EncryptionError` by default. Editing
+and rendering still expose plaintext to the authorized application/browser.
+Rich text does not accept per-field deterministic encryption options.
 
-For rotation, set `config.rich_text.encryption_keys = [current_key, previous_key]`
-using values from your secret storage. The first key encrypts; all listed keys
-may decrypt. Re-encrypt existing bodies before retiring old keys:
+For randomized-key rotation, configure
+`config.active_record.encryption.primary_key = [previous_key, current_key]`.
+The last key encrypts; all keys may decrypt. Re-encrypt before retiring old keys:
 
 ```python
 for post in Post.with_rich_text_content():
     post.content.encrypt()
 ```
 
-The same explicit method migrates existing plaintext bodies after changing their
-declaration to `encrypted=True`. Perform that migration before serving reads of
-those rows; existing plaintext is otherwise rejected. Review and back up data
-before a migration. Keep previous keys while old rows or backups still need them.
+The same explicit method migrates plaintext bodies after enabling encryption,
+without requiring permissive plaintext reads. Perform migrations before serving
+normal traffic; back up data and retain keys needed for old backups.
 
 Encryption covers the body, not uploaded file bytes, attachment metadata, or
-rendered responses. Use storage-provider encryption and access controls for
-files. This envelope/key setup is Flaskteroids-specific, not Rails ciphertext
-compatibility or a repository-wide ORM encryption facility.
+rendered responses. Use storage-provider encryption and download authorization
+for files. Envelopes are Flaskteroids-specific, not Rails ciphertext-compatible.
 
 ## Tests
 

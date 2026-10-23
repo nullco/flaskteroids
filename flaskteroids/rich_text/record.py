@@ -4,6 +4,8 @@ from flask import current_app
 from sqlalchemy import event, inspect, update
 from sqlalchemy.orm import attributes
 
+from flaskteroids import encryption
+from flaskteroids._models.errors import Errors
 from flaskteroids.attachments import attached as attached_storage
 from flaskteroids.attachments.attached import has_many_attached
 from flaskteroids.db import session, transactional
@@ -13,8 +15,8 @@ from flaskteroids.exceptions import (
     ProgrammerError,
     RecordNotFoundException,
 )
-from flaskteroids.rich_text import encryption
 from flaskteroids.rich_text.content import Content
+from flaskteroids.rich_text.embeds import preload_rows
 
 
 class RichText:
@@ -26,8 +28,6 @@ class RichText:
         self._initialize()
 
     def _initialize(self):
-        from flaskteroids._models.validation import Errors
-
         self._changes = {}
         self._attachment_changes = {}
         self._attachment_cache = {}
@@ -56,7 +56,9 @@ class RichText:
             return self._changes["body"]
         source = self._body or ""
         if self._definition.encrypted and self._body is not None:
-            source = encryption.decrypt(source)
+            source = encryption.decrypt(
+                source, context=f"{self.record_type}.{self.name}"
+            )
         elif encryption.is_encrypted(source):
             raise EncryptionError("Encrypted rich-text bodies require encrypted=True")
         return Content(source, _record=self)
@@ -88,8 +90,6 @@ class RichText:
         return (state.persistent or state.detached) and not state.was_deleted
 
     def is_valid(self):
-        from flaskteroids._models.validation import Errors
-
         self._errors = Errors()
         self._attachment_changes["embeds"] = self.body.attachables
         attached_storage.validate(self)
@@ -147,8 +147,8 @@ class RichText:
             raise EncryptionError("Declare encrypted=True before encrypting rich text")
         if "body" in self._changes or encryption.is_encrypted(self._body):
             source = self.body._source
-        elif self._body and self._body.startswith("flaskteroids:rich-text:"):
-            raise EncryptionError("Unsupported rich-text encryption envelope")
+        elif self._body and self._body.startswith("flaskteroids:encrypted:"):
+            raise EncryptionError("Unsupported attribute encryption envelope")
         else:
             source = self._body or ""
         self.body = source
@@ -189,7 +189,9 @@ class RichText:
         if "body" in self._changes or self.is_new_record():
             source = self.body.to_html()
             self._body = (
-                encryption.encrypt(source) if self._definition.encrypted else source
+                encryption.encrypt(source, context=f"{self.record_type}.{self.name}")
+                if self._definition.encrypted
+                else source
             )
         self.updated_at = now
         setattr(self.record, f"rich_text_{self.name}", self)
@@ -197,8 +199,6 @@ class RichText:
     def _persist_embeds(self):
         self._attachment_changes["embeds"] = self.body.attachables
         attached_storage.persist(self)
-        from flaskteroids.rich_text.embeds import preload_rows
-
         preload_rows([self])
 
     def _touch_owner(self):

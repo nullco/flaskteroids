@@ -7,6 +7,8 @@ from flaskteroids.db import session
 from flaskteroids.declarations import RichTextDefinition, model_for
 from flaskteroids.exceptions import ProgrammerError, StrictLoadingViolationError
 from flaskteroids.rich_text.content import Content
+from flaskteroids.rich_text.embeds import EmbeddedFiles
+from flaskteroids.rich_text.record import RichText
 from flaskteroids.rules import bind_rules, declaration
 
 
@@ -87,8 +89,6 @@ def assign(instance, name, value):
     definition = model_for(type(instance)).rich_texts.get(name)
     if definition is None:
         return False
-    from flaskteroids.rich_text.record import RichText
-
     if isinstance(value, RichText):
         value = value.body
     if value is not None and not isinstance(value, (str, Content)):
@@ -124,8 +124,6 @@ def read(instance, name):
 
 
 def relationship_properties(model, table, registry):
-    from flaskteroids.rich_text.record import RichText
-
     definitions = model_for(model).rich_texts
     if not definitions:
         return {}
@@ -150,8 +148,6 @@ def relationship_properties(model, table, registry):
     if row_type is None:
         row_type = type("RichText", (RichText,), {})
         bind_rules(row_type)
-        from flaskteroids.rich_text.embeds import EmbeddedFiles
-
         row_type.embeds = property(
             lambda row: EmbeddedFiles(row, model_for(type(row)).attachments["embeds"])
         )

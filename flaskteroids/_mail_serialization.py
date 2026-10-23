@@ -9,13 +9,12 @@ from flaskteroids.exceptions import (
     RecordNotFoundException,
     SerializationError,
 )
+from flaskteroids.model import Model
 
 _TAG = "_flaskteroids_mail_value"
 
 
 def serialize(value):
-    from flaskteroids.model import Model
-
     if isinstance(value, Model):
         if not value.is_persisted() or inspect(value).identity is None:
             raise SerializationError("Save model assigns before queuing mail.")

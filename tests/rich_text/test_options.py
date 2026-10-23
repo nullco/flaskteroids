@@ -5,8 +5,8 @@ import pytest
 from sqlalchemy import select, update
 
 from flaskteroids.db import session
+from flaskteroids.encryption import generate_encryption_key
 from flaskteroids.exceptions import EncryptionError, StrictLoadingViolationError
-from flaskteroids.rich_text import generate_encryption_key
 from tests.rich_text.app.models.default_note import DefaultNote
 from tests.rich_text.app.models.entry import Entry
 
@@ -16,7 +16,7 @@ pytestmark = pytest.mark.usefixtures("app_ctx")
 @pytest.fixture
 def encryption_keys(app):
     keys = [base64.urlsafe_b64encode(os.urandom(32)).decode() for _ in range(2)]
-    app.config.rich_text.encryption_keys = keys[:1]
+    app.config.active_record.encryption.primary_key = keys[:1]
     return keys
 
 
@@ -59,7 +59,7 @@ def test_environment_key_configures_encryption_without_application_plumbing(
     monkeypatch,
 ):
     monkeypatch.setenv(
-        "FLASKTEROIDS_RICH_TEXT_ENCRYPTION_KEY", generate_encryption_key()
+        "ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY", generate_encryption_key()
     )
     owner = Entry.create(content="Environment secret")
     assert owner.reload().content.to_plain_text() == "Environment secret"
@@ -77,7 +77,7 @@ def test_explicit_encrypt_rejects_unknown_envelopes(encryption_keys):
     session.execute(
         update(table)
         .where(table.c.id == owner.content.id)
-        .values(body="flaskteroids:rich-text:v999:unknown")
+        .values(body="flaskteroids:encrypted:v999:unknown")
     )
     session.commit()
     with pytest.raises(EncryptionError):
@@ -95,16 +95,16 @@ def test_encryption_rotation_reads_old_keys_and_writes_with_the_current_key(
 ):
     owner = Entry.create(content="Secret")
     original = stored_body(owner)
-    app.config.rich_text.encryption_keys = [encryption_keys[1], encryption_keys[0]]
+    app.config.active_record.encryption.primary_key = encryption_keys
     assert owner.reload().content.to_plain_text() == "Secret"
     assert owner.content.encrypt()
     assert stored_body(owner) != original
-    app.config.rich_text.encryption_keys = [encryption_keys[1]]
+    app.config.active_record.encryption.primary_key = encryption_keys[1]
     assert owner.content.reload().to_plain_text() == "Secret"
 
 
 def test_encryption_fails_closed_without_a_key(monkeypatch):
-    monkeypatch.delenv("FLASKTEROIDS_RICH_TEXT_ENCRYPTION_KEY", raising=False)
+    monkeypatch.delenv("ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY", raising=False)
     with pytest.raises(EncryptionError):
         Entry.create(content="Never store plaintext")
     assert Entry.count() == 0
@@ -112,7 +112,7 @@ def test_encryption_fails_closed_without_a_key(monkeypatch):
 
 def test_encryption_rejects_wrong_keys_and_plaintext_rows(app, encryption_keys):
     owner = Entry.create(content="Secret")
-    app.config.rich_text.encryption_keys = [encryption_keys[1]]
+    app.config.active_record.encryption.primary_key = encryption_keys[1]
     with pytest.raises(EncryptionError):
         owner.reload().content.to_plain_text()
     table = Entry.metadata.tables["rich_texts"]

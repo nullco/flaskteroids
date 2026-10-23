@@ -235,6 +235,18 @@ inside a controller class to allow public actions. Templates can call
 `is_authenticated()` on both public and protected pages without an extra callback.
 See [the authentication walkthrough](../getting_started.md#8-require-login-to-change-products).
 
+## Attribute encryption
+
+```sh
+bin/flask db:encryption:init
+bin/flask credentials:edit
+```
+
+Prints dedicated primary and deterministic encryption keys as credentials YAML,
+without modifying existing credentials. Do not commit or log the plaintext output.
+These keys serve `encrypts(...)` on models and `has_rich_text(..., encrypted=True)`.
+See [Attribute encryption](../models/encryption.md).
+
 ## Rich text
 
 ```sh
@@ -246,8 +258,7 @@ Installs local Trix assets, adds the asset helper to the application layout, and
 creates shared rich-text and attachment storage migrations as needed. Repeated
 runs preserve existing files and avoid duplicate migrations. Use `--force` to
 refresh application-owned editor assets after reviewing local customizations.
-`bin/flask rich_text:keys` prints a dedicated encryption key for encrypted
-credentials. Model, resource, and scaffold generators accept `content:rich_text`.
+Model, resource, and scaffold generators accept `content:rich_text`.
 See [Rich text](rich_text.md).
 
 ## Attachments

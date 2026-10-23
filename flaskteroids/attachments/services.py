@@ -127,12 +127,12 @@ class S3Service:
     ):
         if client is None:
             try:
-                import boto3
+                import boto3  # noqa: PLC0415 -- optional S3 dependency
             except ImportError as error:
                 raise StorageError(
                     'S3 storage requires the optional dependency: pip install "flaskteroids[s3]"'
                 ) from error
-            from botocore.config import Config
+            from botocore.config import Config  # noqa: PLC0415 -- optional S3 dependency
 
             options = {
                 "region_name": region,

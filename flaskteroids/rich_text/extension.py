@@ -4,7 +4,7 @@ from flask import Blueprint, abort, current_app, jsonify, request, session, url_
 from itsdangerous import BadSignature
 
 from flaskteroids.attachments import Blob
-from flaskteroids.attachments.services import StorageError
+from flaskteroids.attachments.services import StorageError, UploadTooLarge
 from flaskteroids.attachments.signatures import signed_token, verified_token
 from flaskteroids.attachments.urls import blob_path
 from flaskteroids.csrf import CSRFToken
@@ -71,8 +71,6 @@ def init_rich_text(app):
                 io=file.stream, filename=file.filename, content_type=file.content_type
             )
         except StorageError as error:
-            from flaskteroids.attachments.services import UploadTooLarge
-
             if isinstance(error, UploadTooLarge):
                 raise
             abort(400, "Invalid file upload")

@@ -16,6 +16,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Time,
+    TypeDecorator,
 )
 from sqlalchemy.orm.attributes import NO_VALUE
 
@@ -52,6 +53,8 @@ def schema_default(column):
 
 
 def cast_input(type_, value):
+    if isinstance(type_, TypeDecorator):
+        return cast_input(type_.impl, value)
     if value is None:
         return None
     if isinstance(type_, JSON):

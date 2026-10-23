@@ -38,6 +38,12 @@ class AssociationDefinition:
 
 
 @dataclass(frozen=True)
+class EncryptedAttributeDefinition:
+    deterministic: bool = False
+    downcase: bool = False
+
+
+@dataclass(frozen=True)
 class RichTextDefinition:
     encrypted: bool = False
     strict_loading: bool = False
@@ -61,6 +67,9 @@ class ModelDefinition:
     associations: dict[str, AssociationDefinition] = field(default_factory=dict)
     attachments: dict[str, "Definition"] = field(default_factory=dict)
     rich_texts: dict[str, RichTextDefinition] = field(default_factory=dict)
+    encrypted_attributes: dict[str, EncryptedAttributeDefinition] = field(
+        default_factory=dict
+    )
 
 
 def model_for(cls: type) -> ModelDefinition:

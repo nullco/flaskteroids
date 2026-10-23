@@ -5,6 +5,15 @@ from html.parser import HTMLParser
 import nh3
 from markupsafe import Markup, escape
 
+from flaskteroids.rich_text.embeds import (
+    Fragment,
+    Reference,
+    canonical,
+    previewable,
+    render,
+    resolve,
+)
+
 _TAGS = {
     "a",
     "blockquote",
@@ -67,8 +76,6 @@ class Content:
 
     @cached_property
     def _parts(self):
-        from flaskteroids.rich_text.embeds import Fragment
-
         html = nh3.clean(
             self._source.encode("utf-8", errors="replace").decode(),
             tags=_TAGS,
@@ -85,8 +92,6 @@ class Content:
 
     @cached_property
     def _blobs(self):
-        from flaskteroids.rich_text.embeds import Reference, resolve
-
         return resolve(
             [part for part in self._parts if isinstance(part, Reference)], self._record
         )
@@ -96,8 +101,6 @@ class Content:
         return list({blob.id: blob for blob in self._blobs.values()}.values())
 
     def append_attachables(self, attachables):
-        from flaskteroids.rich_text.embeds import Reference, canonical
-
         return Content(
             self.to_html()
             + "".join(
@@ -107,8 +110,6 @@ class Content:
         )
 
     def to_html(self):
-        from flaskteroids.rich_text.embeds import Reference, canonical
-
         return "".join(
             canonical(part)
             if isinstance(part, Reference) and part.sgid in self._blobs
@@ -119,8 +120,6 @@ class Content:
         )
 
     def _render(self, *, editor=False):
-        from flaskteroids.rich_text.embeds import Reference, previewable, render
-
         output, gallery = [], []
 
         def finish_gallery():
@@ -153,8 +152,6 @@ class Content:
         return self._render(editor=True)
 
     def to_plain_text(self):
-        from flaskteroids.rich_text.embeds import Reference
-
         parts = []
         for part in self._parts:
             if isinstance(part, Reference):

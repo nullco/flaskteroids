@@ -20,6 +20,7 @@ from flaskteroids._models.authentication import (
     PasswordAuthenticator,
     has_secure_password,
 )
+from flaskteroids._models.encryption import EncryptableRecord, encrypts
 from flaskteroids._models.mapping import SchemaModel
 from flaskteroids._models.query import ModelQuery
 from flaskteroids._models.staging import StagedAttributes
@@ -85,6 +86,7 @@ __all__ = [
     "before_update",
     "before_validation",
     "belongs_to",
+    "encrypts",
     "has_many",
     "has_many_attached",
     "has_one",
@@ -101,7 +103,7 @@ def init(cls):
     return cls
 
 
-class Model(StagedAttributes, SchemaModel):
+class Model(EncryptableRecord, StagedAttributes, SchemaModel):
     __abstract__ = True
     _serialization_exclude = frozenset()
     strict_loading_by_default = False
@@ -465,7 +467,7 @@ class Model(StagedAttributes, SchemaModel):
             destroying.remove(self)
 
     def __repr__(self) -> str:
-        excluded = self._sensitive_attributes()
+        excluded = self._sensitive_attributes() | self.encrypted_attributes()
         values = {
             name: self.read_published_attribute(name)
             for name in self.column_names

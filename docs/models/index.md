@@ -64,6 +64,14 @@ and server defaults, including tables without a behavioral model. It contains no
 model behavior, validators, or relationship choices. `Post` conventionally maps
 to `posts`; a model may set `__table_name__ = "legacy_posts"` for another table.
 
+## Encrypted attributes
+
+Use `encrypts("notes")` for randomized string/text encryption, or
+`encrypts("email", deterministic=True, downcase=True)` for equality lookups.
+Assignment, validation, forms, and saves work with plaintext; storage uses
+ciphertext. Rich-text encryption shares the same service and dedicated keys.
+See [Attribute encryption](encryption.md) for setup, queries, rotation, and limits.
+
 ## Class-body declarations
 
 Import declaration functions explicitly and call them inside the class body.

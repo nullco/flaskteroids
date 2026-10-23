@@ -2,6 +2,10 @@ from jinja2 import Template
 from markupsafe import Markup, escape
 
 from flaskteroids._html import attributes
+from flaskteroids.declarations import model_for
+from flaskteroids.rich_text.content import Content
+from flaskteroids.rich_text.extension import upload_attributes
+from flaskteroids.rich_text.record import RichText
 
 
 class Form:
@@ -122,12 +126,7 @@ class Form:
         return Markup(f"<textarea {attrs}>{val}</textarea>")
 
     def rich_text_area(self, field, *, value=None, **kwargs):
-        from flaskteroids.rich_text import Content, RichText
-        from flaskteroids.rich_text.extension import upload_attributes
-
         if value is None:
-            from flaskteroids.declarations import model_for
-
             value = (
                 getattr(self._model, field).body
                 if self._model is not None

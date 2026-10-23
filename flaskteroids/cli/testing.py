@@ -1,6 +1,7 @@
 import os
 
 import click
+import pytest
 
 
 @click.command("test", context_settings={"ignore_unknown_options": True})
@@ -44,8 +45,6 @@ def test_system(pytest_args):
 
 
 def _run_tests(pytest_args):
-    import pytest
-
     previous_environment = os.environ.get("FLASK_ENV")
     os.environ["FLASK_ENV"] = "test"
     try:

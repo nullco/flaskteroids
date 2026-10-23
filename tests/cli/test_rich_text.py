@@ -1,12 +1,10 @@
-import base64
 import shutil
 from pathlib import Path
 
 import pytest
-import yaml
 from sqlalchemy import create_engine, inspect
 
-from flaskteroids.rich_text import generate_encryption_key
+from flaskteroids.encryption import generate_encryption_key
 from tests.assertions import assert_pytest_passed
 
 
@@ -80,13 +78,6 @@ def test_generated_rich_text_browser_workflow(generated_app_factory):
     assert_pytest_passed(report)
 
 
-def test_key_command_generates_a_dedicated_credentials_key(cli_runner):
-    result = cli_runner.invoke(args=["rich_text:keys"])
-    assert result.exit_code == 0, result.output
-    key = yaml.safe_load(result.output)["rich_text"]["encryption_key"]
-    assert len(base64.urlsafe_b64decode(key)) == 32
-
-
 def test_encrypted_scaffold_fixtures_and_controller_workflows(generated_app_factory):
     root, run = generated_app_factory("writing_encrypted")
     run("rich_text:install")
@@ -96,7 +87,7 @@ def test_encrypted_scaffold_fixtures_and_controller_workflows(generated_app_fact
     shutil.copyfile(source / "requests.py", root / "test/controllers/rich_text_test.py")
     (root / "config/initializers/rich_text.py").write_text(
         "from flask import current_app\n"
-        f"current_app.config.rich_text.encryption_keys = [{generate_encryption_key()!r}]\n"
+        f"current_app.config.active_record.encryption.primary_key = {generate_encryption_key()!r}\n"
     )
     report = root / "encrypted-rich-text.xml"
     run("test", "-q", "--junitxml", str(report))
