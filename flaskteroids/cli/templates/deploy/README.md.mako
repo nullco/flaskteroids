@@ -29,7 +29,7 @@ docker run --rm -p 8000:8000 --env-file .env.production \
   -v my-app-storage:/app/storage --entrypoint gunicorn my-app wsgi:app -b 0.0.0.0:8000
 ```
 Automatic preparation is not distributed migration coordination. Other commands bypass it:
-`docker run ... my-app celery -A jobs worker --loglevel=info`.
+`docker run ... my-app bin/jobs start`.
 Workers require a reachable `CELERY_BROKER_URL`; this is not provisioned by the framework.
 
 The image sets `FLASKTEROIDS_ENV=production`. `FLASKTEROIDS_DATABASE_URL` optionally overrides SQLite;

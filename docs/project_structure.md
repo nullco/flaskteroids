@@ -16,7 +16,7 @@ my_project/
 │   ├── mailers/
 │   ├── views/
 │   └── jobs/
-├── bin/                 # flask, setup, release, docker-entrypoint
+├── bin/                 # flask, jobs, setup, release, docker-entrypoint
 ├── deploy/README.md
 ├── Dockerfile
 ├── .dockerignore
@@ -67,6 +67,7 @@ my_project/
 | `db/migrate` | Database migrations. |
 | `storage` | Local database files and uploads; keep persistent in containers. |
 | `bin/flask` | Run Flask commands using your app's environment. |
+| `bin/jobs start` | Start a background job worker using your app's environment. |
 | `bin/setup` | Install dependencies and prepare the database. |
 | `bin/release migrate` | Apply database changes during deployment. |
 | `bin/docker-entrypoint` | Start the Docker application. |

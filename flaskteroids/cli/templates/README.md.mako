@@ -15,6 +15,9 @@ bin/flask generate scaffold Post title:string content:text
 bin/flask db:prepare
 ```
 
+Start a background job worker in a separate terminal with `bin/jobs start`.
+The worker and web server must use the same environment and broker settings.
+
 Bash/POSIX, Git and uv are setup prerequisites. No shell activation is needed.
 Commit `uv.lock`: setup uses `uv sync` without unconditional upgrades; CI and Docker
 use `uv sync --locked` and fail on missing/stale locks. This app is not a Python package.

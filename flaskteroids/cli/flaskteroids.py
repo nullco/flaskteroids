@@ -114,6 +114,7 @@ def new(app_name, skip_install):
         ab.file("wsgi.py", _template(path="wsgi.py.mako"))
         ab.file("jobs.py", _template(path="jobs.py.mako"))
         ab.file("bin/flask", _template(path="bin/flask.mako"))
+        ab.file("bin/jobs", _template(path="bin/jobs.mako"))
         ab.file("bin/setup", _template(path="bin/setup.mako"))
         ab.file("bin/release", _template(path="bin/release.mako"))
         ab.file("bin/docker-entrypoint", _template(path="bin/docker-entrypoint.mako"))

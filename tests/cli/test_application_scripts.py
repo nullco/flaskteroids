@@ -1,6 +1,8 @@
 import os
 import signal
 import subprocess
+import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -50,38 +52,90 @@ def run_script(root, name, environment, *args):
         capture_output=True,
         text=True,
         check=False,
+        timeout=30,
     )
 
 
-def test_launcher_missing_environment_is_actionable(scripts_app):
-    result = run_script(scripts_app, "flask", os.environ, "--help")
+@pytest.mark.parametrize(("name", "args"), [("flask", ["--help"]), ("jobs", ["start"])])
+def test_launcher_missing_environment_is_actionable(scripts_app, name, args):
+    result = run_script(scripts_app, name, os.environ, *args)
     assert result.returncode != 0
     assert "bin/setup" in result.stderr
 
 
+@pytest.mark.parametrize(
+    ("name", "args", "forwarded"),
+    [
+        (
+            "flask",
+            ["test", "-k", "title with spaces", ""],
+            ["-m", "flask", "test", "-k", "title with spaces", ""],
+        ),
+        (
+            "jobs",
+            ["start"],
+            ["-m", "celery", "-A", "jobs", "worker", "--loglevel=info"],
+        ),
+        (
+            "jobs",
+            ["start", "--hostname", "worker with spaces", "--loglevel=debug", ""],
+            [
+                "-m",
+                "celery",
+                "-A",
+                "jobs",
+                "worker",
+                "--loglevel=info",
+                "--hostname",
+                "worker with spaces",
+                "--loglevel=debug",
+                "",
+            ],
+        ),
+    ],
+)
 def test_launcher_preserves_root_arguments_environment_and_status(
-    scripts_app, script_environment
+    scripts_app, script_environment, name, args, forwarded
 ):
     env = script_environment | {
         "FLASKTEROIDS_ENV": "production",
         "FLASKTEROIDS_DATABASE_URL": "sqlite:///other.sqlite3",
         "PREPARE_STATUS": "23",
     }
-    result = run_script(
-        scripts_app, "flask", env, "test", "-k", "title with spaces", ""
-    )
+    result = run_script(scripts_app, name, env, *args)
     assert result.returncode == 23
     assert Path(env["TRACE"]).read_text().splitlines() == [
         str(scripts_app),
         "production",
         "sqlite:///other.sqlite3",
-        "-m",
-        "flask",
-        "test",
-        "-k",
-        "title with spaces",
-        "",
+        *forwarded,
     ]
+
+
+@pytest.mark.parametrize("args", [[], ["stop"], ["--concurrency=2"]])
+def test_jobs_launcher_rejects_missing_or_unknown_commands(
+    scripts_app, script_environment, args
+):
+    result = run_script(scripts_app, "jobs", script_environment, *args)
+    assert result.returncode != 0
+    assert "Usage:" in result.stderr
+    assert not Path(script_environment["TRACE"]).exists()
+
+
+def test_jobs_launcher_loads_generated_celery_application(scripts_app):
+    (scripts_app / ".venv").symlink_to(sys.prefix, target_is_directory=True)
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if not key.startswith(("FLASK", "DATABASE", "CELERY"))
+    }
+    env["FLASKTEROIDS_ENV"] = "development"
+    env["PYTHONPATH"] = os.pathsep.join(
+        (str(scripts_app), str(Path(__file__).parents[2]))
+    )
+    result = run_script(scripts_app, "jobs", env, "start", "--help")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "--concurrency" in result.stdout
 
 
 @pytest.mark.parametrize("environment", [None, "test", "production"])
@@ -161,6 +215,18 @@ def test_entrypoint_only_prepares_default_web_command(
         assert trace.read_text().splitlines()[-1] == "exec:" + " ".join(args[1:])
 
 
+def test_entrypoint_starts_jobs_without_database_preparation(
+    scripts_app, script_environment
+):
+    result = run_script(
+        scripts_app, "docker-entrypoint", script_environment, "bin/jobs", "start"
+    )
+    assert result.returncode == 0, result.stderr
+    trace = Path(script_environment["TRACE"]).read_text().splitlines()
+    assert trace[-6:] == ["-m", "celery", "-A", "jobs", "worker", "--loglevel=info"]
+    assert "db:prepare" not in trace
+
+
 def test_entrypoint_stops_web_startup_on_preparation_failure(
     scripts_app, script_environment
 ):
@@ -179,18 +245,19 @@ def test_release_delegates_and_rejects_unknown_tasks(scripts_app, script_environ
         assert result.returncode != 0
 
 
-@pytest.mark.parametrize("name", ["flask", "docker-entrypoint"])
+@pytest.mark.parametrize("name", ["flask", "jobs", "docker-entrypoint"])
 def test_launchers_replace_process_and_preserve_termination(
     scripts_app, script_environment, name
 ):
     (scripts_app / ".venv/bin/python").write_text("#!/bin/bash\nexec /bin/sleep 60\n")
     args = [str(scripts_app / "bin" / name)]
-    args += [] if name == "flask" else ["/bin/sleep", "60"]
+    if name == "jobs":
+        args += ["start"]
+    elif name == "docker-entrypoint":
+        args += ["/bin/sleep", "60"]
     process = subprocess.Popen(args, env=script_environment, cwd=scripts_app.parent)
     try:
         # Wait for exec, not for a fixed amount of scheduling time.
-        import time
-
         for _ in range(100):
             if Path(f"/proc/{process.pid}/comm").read_text().strip() == "sleep":
                 break
@@ -214,6 +281,11 @@ def test_scripts_use_valid_syntax_executable_modes_and_safe_defaults(scripts_app
         assert result.returncode == 0, result.stderr
         assert path.read_bytes().startswith(b"#!/usr/bin/env bash\n")
         assert path.read_bytes().endswith(b"\n")
+    procfile = dict(
+        line.split(": ", 1)
+        for line in (scripts_app / "Procfile").read_text().splitlines()
+    )
+    assert procfile["worker"] == "bin/jobs start"
     assert not (scripts_app / "deploy/README.md").stat().st_mode & 0o111
     for path in ("kamal.yml", ".github/workflows/deploy.yml", "deploy/release.sh"):
         assert not (scripts_app / path).exists()

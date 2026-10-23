@@ -36,11 +36,22 @@ Celery is the default queue adapter. From the application directory, start a
 worker in a separate terminal:
 
 ```sh
-.venv/bin/celery -A jobs worker --loglevel=info
+bin/jobs start
+```
+
+The script uses the application's `.venv` and works from outside the application
+directory too. Run `bin/setup` first if the environment is missing. Extra options
+are passed to the Celery worker, for example:
+
+```sh
+bin/jobs start --concurrency=2 --loglevel=debug
 ```
 
 The web process and worker must use the same environment and broker settings.
 See your generated `Procfile` and `deploy/README.md` for process examples.
+Existing applications are not automatically updated: add the
+[`bin/jobs` script](https://github.com/nullco/flaskteroids/blob/main/flaskteroids/cli/templates/bin/jobs.mako)
+without the template's `<%text>` / `</%text>` wrappers and run `chmod +x bin/jobs`.
 
 ## Configuration
 

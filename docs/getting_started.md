@@ -1396,7 +1396,7 @@ Restart the web server to load the model. From `store`, start a worker in anothe
 terminal:
 
 ```sh
-.venv/bin/celery -A jobs worker --loglevel=info
+bin/jobs start
 ```
 
 The web process and worker read the same development configuration and local
