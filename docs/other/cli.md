@@ -243,9 +243,12 @@ bin/flask db:migrate
 ```
 
 Installs local Trix assets, adds the asset helper to the application layout, and
-creates a shared rich-text storage migration. Repeated runs preserve existing
-files and avoid duplicate migrations. Model, resource, and scaffold generators
-accept `content:rich_text`. See [Rich text](rich_text.md).
+creates shared rich-text and attachment storage migrations as needed. Repeated
+runs preserve existing files and avoid duplicate migrations. Use `--force` to
+refresh application-owned editor assets after reviewing local customizations.
+`bin/flask rich_text:keys` prints a dedicated encryption key for encrypted
+credentials. Model, resource, and scaffold generators accept `content:rich_text`.
+See [Rich text](rich_text.md).
 
 ## Attachments
 

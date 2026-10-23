@@ -14,6 +14,13 @@ class StagedAttributes:
             pending = object.__getattribute__(self, "__dict__").get("_changes", {})
             if name in pending:
                 return pending[name]
+            if (
+                name.startswith("rich_text_")
+                and name[10:] in model_for(type(self)).rich_texts
+            ):
+                from flaskteroids.rich_text.attribute import association_value
+
+                return association_value(self, name[10:])
             association = model_for(type(self)).associations.get(name)
             if association is not None and association.kind == "has_many":
                 return AssociationCollection(self, name)

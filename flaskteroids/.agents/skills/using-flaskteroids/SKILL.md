@@ -137,8 +137,16 @@ dependency internals or introduce a parallel implementation of a supported featu
   `bin/flask rich_text:install` installs shared storage and local Trix assets;
   migrate afterward. Scaffolds accept `content:rich_text`. Render the attribute
   directly, without `|safe` or `Markup`; use `to_plain_text()` for plain text.
-  Use `with_rich_text_content()` or `with_all_rich_text()` on listing queries.
-  The current feature is text-only: embedded files and images are disabled.
+  The attribute is a `RichText` record with an immutable `.body` value; assign
+  through either and save the owner, or use the rich-text record\'s own `save()`.
+  Use `with_rich_text_content_and_embeds()` or `with_all_rich_text()` on listings.
+  Uploads require the model-backed form\'s session-bound capability and CSRF;
+  use `config.rich_text.authorize_upload` for fresh application permission checks.
+  Declarations support `store_if_blank`, `strict_loading`, and `encrypted`.
+  Encrypted bodies need a dedicated key from `bin/flask rich_text:keys`; store it
+  in encrypted credentials as `rich_text.encryption_key`, not the signing secret.
+  Upgrading from text-only assets requires `rich_text:install --force` after
+  reviewing local CSS/JavaScript customizations.
 - Use attachment declarations, `config/storage.yml`, and `attachments:install`
   for file uploads rather than independent storage plumbing.
   Model attachments upload after commit. Use `blob_path` or `blob_url` for

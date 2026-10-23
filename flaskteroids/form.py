@@ -5,9 +5,12 @@ from flaskteroids._html import attributes
 
 
 class Form:
-    def __init__(self, prefix: str | None, data: dict | None = None) -> None:
+    def __init__(
+        self, prefix: str | None, data: dict | None = None, *, model=None
+    ) -> None:
         self._prefix = prefix
         self._data = data or {}
+        self._model = model
         self.multipart = False
 
     def _build_attributes(self, attrs):
@@ -119,9 +122,20 @@ class Form:
         return Markup(f"<textarea {attrs}>{val}</textarea>")
 
     def rich_text_area(self, field, *, value=None, **kwargs):
-        from flaskteroids.rich_text import Content
+        from flaskteroids.rich_text import Content, RichText
+        from flaskteroids.rich_text.extension import upload_attributes
 
-        value = self._get_value(field) if value is None else value
+        if value is None:
+            from flaskteroids.declarations import model_for
+
+            value = (
+                getattr(self._model, field).body
+                if self._model is not None
+                and field in model_for(type(self._model)).rich_texts
+                else self._get_value(field)
+            )
+        if isinstance(value, RichText):
+            value = value.body
         content = value if isinstance(value, Content) else Content(str(value))
         editor_id = kwargs.pop("id", self._get_id(field))
         input_id = f"{editor_id}_input"
@@ -129,6 +143,11 @@ class Form:
         attrs = self._build_attributes(
             {
                 **kwargs,
+                **(
+                    upload_attributes(self._model, field)
+                    if self._model is not None
+                    else {}
+                ),
                 "id": editor_id,
                 "input": input_id,
                 "class": kwargs.get("class", "trix-content"),

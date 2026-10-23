@@ -28,6 +28,17 @@ def test_rich_text_declaration_rejects_invalid_names(name):
             has_rich_text(name)
 
 
+@pytest.mark.parametrize(
+    "options",
+    [{"encrypted": "yes"}, {"store_if_blank": 0}, {"strict_loading": "raise"}],
+)
+def test_rich_text_options_reject_nonboolean_values(options):
+    with pytest.raises(ProgrammerError):
+
+        class Invalid:
+            has_rich_text("content", **options)
+
+
 def test_abstract_model_declarations_supply_independent_rich_text_fields():
     class Base(Model):
         __abstract__ = True

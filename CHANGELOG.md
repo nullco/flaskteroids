@@ -11,8 +11,15 @@
 
 - Rich-text attributes with `has_rich_text`, a locally bundled Trix editor,
   server-sanitized rendering, eager-loading scopes, and scaffold support.
-  `rich_text:install` generates shared storage and installs assets. This first
-  release supports text formatting and links; embedded files remain disabled.
+  `rich_text:install` generates shared storage and installs assets.
+- Editable `RichText` records with independent save/update/destroy, signed Trix
+  file uploads, image galleries, embed preloading, and post-commit attachment
+  cleanup. Uploads use session-bound form capabilities and CSRF protection.
+- Rich-text `encrypted`, `strict_loading`, and `store_if_blank` options, dedicated
+  encryption keys with rotation and explicit plaintext migration, and
+  `Blob.purge_unattached()` for abandoned-upload cleanup. `rich_text:keys`
+  generates a key for encrypted credentials; `rich_text:install --force` updates
+  app-owned editor assets after reviewing customizations.
 
 ## 0.8.0 - 2026-10-22
 

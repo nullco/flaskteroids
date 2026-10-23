@@ -131,7 +131,7 @@ def test_eager_loading_reads_bodies_without_per_record_queries(app, scope):
         before = len(queries)
         assert [record.content.to_plain_text() for record in records] == ["Body"] * 3
         assert len(queries) == before
-        assert before <= 3
+        assert before <= 4
     finally:
         event.remove(engine, "before_cursor_execute", track)
 

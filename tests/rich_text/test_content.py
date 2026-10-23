@@ -59,6 +59,23 @@ def test_content_reports_visually_empty_text_as_blank(source):
     assert not Content(source)
 
 
+def test_deeply_nested_editor_metadata_is_removed():
+    metadata = "[" * 2000 + "]" * 2000
+    body = Content(
+        f'<figure data-trix-attachment="{metadata}"></figure><div>Safe</div>'
+    )
+    assert body.to_trix_html() == "<div>Safe</div>"
+
+
+def test_invalid_unicode_and_signature_characters_are_safe():
+    body = Content(
+        "<div>Safe"
+        + chr(0xD800)
+        + '</div><action-text-attachment sgid="?.token"></action-text-attachment>'
+    )
+    assert body.to_plain_text() == "Safe?"
+
+
 def test_plain_text_is_an_ordinary_string_that_templates_escape():
     value = Content("&lt;script&gt;alert(1)&lt;/script&gt;").to_plain_text()
     assert value == "<script>alert(1)</script>"

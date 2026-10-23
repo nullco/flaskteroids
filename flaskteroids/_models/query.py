@@ -25,6 +25,7 @@ class ModelQuery[QueryModel: "Model"]:
         self._ordered = False
         self._limit = None
         self._creation_attributes = {}
+        self._rich_text_embeds = ()
 
     def _with(self, statement):
         result = copy(self)
@@ -85,20 +86,30 @@ class ModelQuery[QueryModel: "Model"]:
         return self.options(*options)
 
     def with_all_rich_text(self) -> Self:
-        return self.includes(
-            *(
-                f"rich_text_{name}"
-                for name in sorted(model_for(self._model_cls).rich_texts)
-            )
+        return self.with_rich_text_embeds(
+            *sorted(model_for(self._model_cls).rich_texts)
         )
+
+    def with_rich_text_embeds(self, *names) -> Self:
+        if any(name not in model_for(self._model_cls).rich_texts for name in names):
+            raise AttributeError("Unknown rich-text attribute")
+        result = self.includes(*(f"rich_text_{name}" for name in names))
+        result._rich_text_embeds = tuple(
+            dict.fromkeys((*self._rich_text_embeds, *names))
+        )
+        return result
 
     def __getattr__(self, name):
         prefix = "with_rich_text_"
-        if (
-            name.startswith(prefix)
-            and name[len(prefix) :] in model_for(self._model_cls).rich_texts
-        ):
-            return lambda: self.includes(f"rich_text_{name[len(prefix) :]}")
+        if name.startswith(prefix):
+            field = name[len(prefix) :]
+            if field in model_for(self._model_cls).rich_texts:
+                return lambda: self.includes(f"rich_text_{field}")
+            if (
+                field.endswith("_and_embeds")
+                and field[:-11] in model_for(self._model_cls).rich_texts
+            ):
+                return lambda: self.with_rich_text_embeds(field[:-11])
         raise AttributeError(f"{type(self).__name__} has no attribute {name!r}")
 
     def options(self, *options) -> Self:
@@ -132,15 +143,27 @@ class ModelQuery[QueryModel: "Model"]:
         """Return this scope without executing it."""
         return self
 
+    def _preload_rich_text(self, records):
+        if self._rich_text_embeds:
+            from flaskteroids.rich_text.embeds import preload
+
+            preload(records, self._rich_text_embeds)
+        return records
+
     def _load_records(self) -> list[QueryModel]:
-        return self._session().execute(self.statement).scalars().unique().all()
+        return self._preload_rich_text(
+            self._session().execute(self.statement).scalars().unique().all()
+        )
 
     def first(self) -> QueryModel | None:
         if self._limit == 0:
             return None
-        return (
+        record = (
             self._session().execute(self.statement.limit(1)).scalars().unique().first()
         )
+        if record is not None:
+            self._preload_rich_text([record])
+        return record
 
     def last(self) -> QueryModel | None:
         # Honor explicit ordering and pagination instead of silently replacing it.

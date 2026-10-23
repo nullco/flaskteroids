@@ -6,7 +6,7 @@ import string
 import tempfile
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import BinaryIO
 
@@ -175,6 +175,23 @@ class Blob:
             upload.close()
 
     @classmethod
+    @transactional
+    def purge_unattached(cls, *, older_than=timedelta(days=2)):
+        if not isinstance(older_than, timedelta) or older_than <= timedelta(0):
+            raise ValueError("older_than must be a positive timedelta")
+        cutoff = datetime.now(UTC) - older_than
+        query = select(blobs).where(
+            blobs.c.created_at < cutoff,
+            ~select(attachments.c.id)
+            .where(attachments.c.blob_id == blobs.c.id)
+            .exists(),
+        )
+        pending = [cls(**row) for row in session.execute(query).mappings()]
+        for blob in pending:
+            blob.purge_later()
+        return len(pending)
+
+    @classmethod
     def _create(cls, upload, service_name):
         storage().service(service_name)
         key = "".join(
@@ -207,6 +224,10 @@ class Blob:
 
     def signed_id(self, *, expires_in=None, purpose="blob_id"):
         return signed_token(purpose, {"id": self.id, "key": self.key}, expires_in)
+
+    @property
+    def attachable_sgid(self):
+        return self.signed_id(purpose="rich_text_attachable")
 
     def serving_options(self, disposition="inline"):
         if disposition not in {"attachment", "inline"}:

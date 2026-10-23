@@ -118,6 +118,13 @@ class Configuration(FlaskConfig):
                 "authorize": None,
             }
         )
+        self.rich_text = Options(
+            {
+                "encryption_keys": [],
+                "authorize_upload": None,
+                "upload_token_expires_in": 3600,
+            }
+        )
         self.action_mailer = Options(
             {
                 "perform_deliveries": False,

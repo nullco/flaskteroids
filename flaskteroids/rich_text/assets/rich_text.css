@@ -1,1 +1,5 @@
 trix-editor[data-flaskteroids-rich-text] { min-height: 12rem; }
+.trix-content .attachment-gallery { display: flex; flex-wrap: wrap; gap: 1rem; }
+.trix-content .attachment-gallery .attachment { flex: 1 1 15rem; min-width: 0; }
+.trix-content .attachment img { max-width: 100%; height: auto; }
+[data-rich-text-upload-error] { color: #a00; margin-block: .5rem; }

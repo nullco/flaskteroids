@@ -17,6 +17,7 @@ from flaskteroids.cli.attachments import install as attachments_install
 from flaskteroids.cli.db import commands as db_commands
 from flaskteroids.cli.db.snapshot import dump as schema_dump
 from flaskteroids.cli.generators import commands as generate_commands
+from flaskteroids.cli.rich_text import encryption_init as rich_text_encryption_init
 from flaskteroids.cli.rich_text import install as rich_text_install
 from flaskteroids.csrf import CSRFToken
 from flaskteroids.db import session
@@ -27,6 +28,7 @@ from flaskteroids.extensions.jobs import JobsExtension
 from flaskteroids.extensions.mail import MailExtension
 from flaskteroids.extensions.routes import RoutesExtension
 from flaskteroids.flash import flash
+from flaskteroids.rich_text.extension import init_rich_text
 from flaskteroids.rich_text.helpers import rich_text_assets
 
 _logger = logging.getLogger(__name__)
@@ -47,6 +49,7 @@ def initialize_app(app):
     _setup_jobs(app)
     _setup_mailers(app)
     AttachmentsExtension(app)
+    init_rich_text(app)
     init_assets(app)
     app._flaskteroids_initialized = True
 
@@ -102,6 +105,7 @@ def _register_cli_commands(app):
     app.cli.add_command(testing_commands.test_system)
     app.cli.add_command(attachments_install)
     app.cli.add_command(rich_text_install)
+    app.cli.add_command(rich_text_encryption_init)
     app.cli.add_command(assets_precompile)
 
 

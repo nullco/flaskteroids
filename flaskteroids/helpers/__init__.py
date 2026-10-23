@@ -78,7 +78,9 @@ def form_with(
     # Validate before invoking the caller, retaining explicit false/empty actions.
     if url is not False:
         url = validate_url(url)
-    form = Form(prefix, target._form_data() if target is not None else None)
+    form = Form(
+        prefix, target._form_data() if target is not None else None, model=target
+    )
     body = caller(form) if caller else ""
     opening = _form_open(url, method, multipart=multipart or form.multipart)
     return Markup(f"{opening}{body}</form>")

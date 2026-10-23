@@ -228,6 +228,14 @@ another attachment uses them.
 Prefer `purge_later` in transactions and callbacks. Rolling back after `purge`
 does not restore the deleted file.
 
+## Unattached uploads
+
+Schedule a job calling `Blob.purge_unattached()` to enqueue purging of blobs
+that are unattached and older than two days. Use a positive
+`older_than=timedelta(...)` to change the grace period. This includes abandoned
+rich-text uploads and all other unattached blobs. Jobs recheck attachments
+before deleting files. Cleanup is not scheduled automatically.
+
 ## Tests
 
 Place files in `test/fixtures/files` and attach them in your tests:

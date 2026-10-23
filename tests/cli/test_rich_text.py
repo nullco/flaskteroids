@@ -1,9 +1,12 @@
+import base64
 import shutil
 from pathlib import Path
 
 import pytest
+import yaml
 from sqlalchemy import create_engine, inspect
 
+from flaskteroids.rich_text import generate_encryption_key
 from tests.assertions import assert_pytest_passed
 
 
@@ -25,17 +28,20 @@ def test_install_preserves_customizations_and_generates_reversible_storage(
     layout.write_text(layout.read_text().replace("</head>", marker + "\n</head>"))
     run("rich_text:install")
     installed = layout.read_text()
+    migrations = set((root / "db/migrate/versions").glob("*.py"))
     assert marker in installed
     asset = root / "app/assets/rich_text/rich_text.css"
     asset.write_text("/* application styles */")
     run("rich_text:install")
     assert layout.read_text() == installed
     assert asset.read_text() == "/* application styles */"
-    assert len(list((root / "db/migrate/versions").glob("*.py"))) == 1
+    assert set((root / "db/migrate/versions").glob("*.py")) == migrations
     run("db:migrate")
     engine = create_engine(f"sqlite:///{root / 'storage/test.sqlite3'}")
     try:
-        assert "rich_texts" in inspect(engine).get_table_names()
+        assert {"rich_texts", "attachment_blobs", "record_attachments"} <= set(
+            inspect(engine).get_table_names()
+        )
         assert inspect(engine).get_indexes("rich_texts")[0]["unique"]
         run("db:rollback")
         assert "rich_texts" not in inspect(engine).get_table_names()
@@ -71,6 +77,29 @@ def test_generated_rich_text_browser_workflow(generated_app_factory):
     )
     report = root / "rich-text-browser.xml"
     run("test:system", "-q", "--junitxml", str(report), "test/system/writing_test.py")
+    assert_pytest_passed(report)
+
+
+def test_key_command_generates_a_dedicated_credentials_key(cli_runner):
+    result = cli_runner.invoke(args=["rich_text:keys"])
+    assert result.exit_code == 0, result.output
+    key = yaml.safe_load(result.output)["rich_text"]["encryption_key"]
+    assert len(base64.urlsafe_b64decode(key)) == 32
+
+
+def test_encrypted_scaffold_fixtures_and_controller_workflows(generated_app_factory):
+    root, run = generated_app_factory("writing_encrypted")
+    run("rich_text:install")
+    run("generate", "scaffold", "Post", "title:string", "content:rich_text")
+    source = Path(__file__).parent / "fixtures/rich_text"
+    shutil.copyfile(source / "encrypted_post.py", root / "app/models/post.py")
+    shutil.copyfile(source / "requests.py", root / "test/controllers/rich_text_test.py")
+    (root / "config/initializers/rich_text.py").write_text(
+        "from flask import current_app\n"
+        f"current_app.config.rich_text.encryption_keys = [{generate_encryption_key()!r}]\n"
+    )
+    report = root / "encrypted-rich-text.xml"
+    run("test", "-q", "--junitxml", str(report))
     assert_pytest_passed(report)
 
 

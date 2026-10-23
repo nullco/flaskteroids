@@ -5,7 +5,7 @@ from flaskteroids.assets import asset_path, stylesheet_link_tag
 
 
 def rich_text_assets():
-    """Include the locally installed Trix editor and text-only integration."""
+    """Include the locally installed Trix editor and attachment integration."""
     tags = [stylesheet_link_tag("rich_text/trix.css", "rich_text/rich_text.css")]
     for name in ("rich_text/rich_text.js", "rich_text/trix.js"):
         attrs = attributes(

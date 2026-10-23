@@ -37,6 +37,13 @@ class AssociationDefinition:
     optional: bool = False
 
 
+@dataclass(frozen=True)
+class RichTextDefinition:
+    encrypted: bool = False
+    strict_loading: bool = False
+    store_if_blank: bool = True
+
+
 class VirtualFieldConfig(TypedDict, total=False):
     read_only: bool
     cache: bool
@@ -53,7 +60,7 @@ class ModelDefinition:
     callbacks: dict[str, list["Callback"]] = field(default_factory=dict)
     associations: dict[str, AssociationDefinition] = field(default_factory=dict)
     attachments: dict[str, "Definition"] = field(default_factory=dict)
-    rich_texts: set[str] = field(default_factory=set)
+    rich_texts: dict[str, RichTextDefinition] = field(default_factory=dict)
 
 
 def model_for(cls: type) -> ModelDefinition:

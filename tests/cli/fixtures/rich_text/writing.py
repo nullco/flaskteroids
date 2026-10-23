@@ -1,3 +1,5 @@
+import re
+
 from playwright.sync_api import expect
 from test.test_helper import SystemTest
 
@@ -31,16 +33,90 @@ class WritingTest(SystemTest):
         self.assert_selector(".trix-content em", text="body")
         assert self.page.evaluate("window.richTextNavigation") == "retained"
 
-    def test_editor_rejects_file_uploads_and_embedded_attachments(self):
+    def test_uploaded_files_survive_validation_redisplay_and_remain_editable(self):
         self.visit(new_post_path())
         editor = self.page.get_by_label("Content")
         expect(editor).to_be_editable()
-        assert self.page.locator('[data-trix-action="attachFiles"]').count() == 0
-        accepted = editor.evaluate("""element => {
-            const event = new Event("trix-file-accept", { bubbles: true, cancelable: true })
-            return element.dispatchEvent(event)
+        editor.evaluate("""element => {
+            element.editor.insertFile(new File(["A report"], "report.txt", {type: "text/plain"}))
         }""")
-        assert not accepted
+        expect(self.page.locator('input[name="post[content]"]')).to_have_value(
+            re.compile(".*sgid.*", re.S)
+        )
+        self.click_on("Submit")
+        self.assert_selector("li", text="Field title is blank")
+        expect(self.page.get_by_label("Content")).to_contain_text("report.txt")
+        self.fill_in("Title", with_="A report")
+        self.click_on("Submit")
+        self.assert_selector(".attachment--file a", text="report.txt")
+        self.click_on("Edit this post")
+        expect(self.page.get_by_label("Content")).to_contain_text("report.txt")
+        self.click_on("Submit")
+        self.assert_selector(".attachment--file a", text="report.txt")
+
+    def test_uploaded_images_render_as_a_gallery(self):
+        self.visit(new_post_path())
+        self.fill_in("Title", with_="Gallery")
+        editor = self.page.get_by_label("Content")
+        expect(editor).to_be_editable()
+        editor.evaluate("""element => {
+            const bytes = Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aK1sAAAAASUVORK5CYII="), character => character.charCodeAt(0))
+            for (let index = 0; index < 2; index++) {
+                element.editor.insertFile(new File([bytes], `image${index}.png`, {type: "image/png"}))
+            }
+        }""")
+        self.page.wait_for_function("""() => {
+            const input = document.querySelector('input[name="post[content]"]')
+            return (input.value.match(/sgid/g) || []).length === 2
+        }""")
+        self.click_on("Submit")
+        gallery = self.page.locator(".attachment-gallery img")
+        expect(gallery).to_have_count(2)
+        assert gallery.evaluate_all(
+            "images => Promise.all(images.map(async image => { await image.decode(); return image.naturalWidth }))"
+        ) == [1, 1]
+
+    def test_submit_waits_for_pending_uploads(self):
+        pending = []
+        self.page.route(
+            "**/flaskteroids/rich_text/uploads/**", lambda route: pending.append(route)
+        )
+        self.visit(new_post_path())
+        self.fill_in("Title", with_="Wait for upload")
+        editor = self.page.get_by_label("Content")
+        expect(editor).to_be_editable()
+        with self.page.expect_request("**/flaskteroids/rich_text/uploads/**"):
+            editor.evaluate("""element => {
+                element.editor.insertFile(new File(["Upload"], "pending.txt", {type: "text/plain"}))
+            }""")
+        self.click_on("Submit")
+        assert self.page.url.endswith(new_post_path())
+        assert pending
+        pending[0].continue_()
+        self.assert_selector(".attachment--file a", text="pending.txt")
+
+    def test_failed_uploads_block_submission_until_the_attachment_is_removed(self):
+        self.page.route(
+            "**/flaskteroids/rich_text/uploads/**",
+            lambda route: route.fulfill(status=413),
+        )
+        self.visit(new_post_path())
+        self.fill_in("Title", with_="Upload failed")
+        self.fill_in_rich_text_area("Content", with_="<div>Keep this text</div>")
+        editor = self.page.get_by_label("Content")
+        editor.evaluate("""element => {
+            element.editor.insertFile(new File(["Too large"], "large.txt", {type: "text/plain"}))
+        }""")
+        self.assert_selector('[role="alert"]', text="Upload failed")
+        self.click_on("Submit")
+        assert self.page.url.endswith(new_post_path())
+        self.fill_in_rich_text_area("Content", with_="<div>Keep this text</div>")
+        self.assert_text("Post was successfully created.")
+
+    def test_editor_rejects_unsigned_html_attachments(self):
+        self.visit(new_post_path())
+        editor = self.page.get_by_label("Content")
+        expect(editor).to_be_editable()
         editor.evaluate("""element => {
             element.editor.insertAttachment(new Trix.Attachment({content: "<strong>Injected</strong>"}))
         }""")

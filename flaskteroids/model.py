@@ -104,6 +104,7 @@ def init(cls):
 class Model(StagedAttributes, SchemaModel):
     __abstract__ = True
     _serialization_exclude = frozenset()
+    strict_loading_by_default = False
 
     def _initialize(self):
         self._changes = {}
@@ -218,12 +219,7 @@ class Model(StagedAttributes, SchemaModel):
         return {
             name: value
             for name, value in (
-                self.attributes_before_type_cast
-                | self._virtual_fields
-                | {
-                    name: getattr(self, name).to_trix_html()
-                    for name in model_for(type(self)).rich_texts
-                }
+                self.attributes_before_type_cast | self._virtual_fields
             ).items()
             if name not in excluded
         }
@@ -301,7 +297,7 @@ class Model(StagedAttributes, SchemaModel):
         self._errors = Errors()
         self._attachment_changes.clear()
         self._attachment_cache.clear()
-        self._rich_text_changes.clear()
+        rich_text_storage.discard(self)
         return self
 
     def _prepare_commit(self):
@@ -319,6 +315,7 @@ class Model(StagedAttributes, SchemaModel):
         for validator in model_for(type(self)).validators:
             self._errors.extend(validator(instance=self))
         attached_storage.validate(self)
+        rich_text_storage.validate(self)
 
     def _save_graph(self):
         records, seen = [], set()
@@ -405,11 +402,10 @@ class Model(StagedAttributes, SchemaModel):
                 if "updated_at" in record.column_names:
                     record.updated_at = now
                 record.apply_changes()
-                rich_text_storage.publish(record)
             session.add(self)
             session.flush()
             for record in graph:
-                record._rich_text_changes.clear()
+                rich_text_storage.persist(record)
             for record in graph:
                 record._saved_changes = {
                     name: (old, new)
@@ -455,6 +451,7 @@ class Model(StagedAttributes, SchemaModel):
             if not destroy_dependents(self):
                 return _HALTED
             attached_storage.destroy(self)
+            rich_text_storage.destroy(self)
             session.delete(self)
             session.flush()
 

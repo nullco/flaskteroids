@@ -7,6 +7,14 @@ class DoubleRenderError(ProgrammerError):
     pass
 
 
+class StrictLoadingViolationError(ProgrammerError):
+    pass
+
+
+class EncryptionError(ProgrammerError):
+    pass
+
+
 class UserError(Exception):
     def __init__(self, *args: object) -> None:
         super().__init__(*args)
