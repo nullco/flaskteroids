@@ -221,6 +221,13 @@ class SystemTest(IntegrationTest):
     def fill_in(self, label, *, with_):
         self.page.get_by_label(label).fill(str(with_))
 
+    def fill_in_rich_text_area(self, label, *, with_):
+        from playwright.sync_api import expect
+
+        editor = self.page.get_by_label(label)
+        expect(editor).to_be_editable()
+        editor.evaluate("(element, html) => element.editor.loadHTML(html)", str(with_))
+
     def attach_file(self, label, path):
         self.page.get_by_label(label).set_input_files(path)
 

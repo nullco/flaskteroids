@@ -17,6 +17,7 @@ from flaskteroids.cli.attachments import install as attachments_install
 from flaskteroids.cli.db import commands as db_commands
 from flaskteroids.cli.db.snapshot import dump as schema_dump
 from flaskteroids.cli.generators import commands as generate_commands
+from flaskteroids.cli.rich_text import install as rich_text_install
 from flaskteroids.csrf import CSRFToken
 from flaskteroids.db import session
 from flaskteroids.exceptions import InvalidParameter, MissingParameter
@@ -26,6 +27,7 @@ from flaskteroids.extensions.jobs import JobsExtension
 from flaskteroids.extensions.mail import MailExtension
 from flaskteroids.extensions.routes import RoutesExtension
 from flaskteroids.flash import flash
+from flaskteroids.rich_text.helpers import rich_text_assets
 
 _logger = logging.getLogger(__name__)
 
@@ -99,6 +101,7 @@ def _register_cli_commands(app):
     app.cli.add_command(testing_commands.test)
     app.cli.add_command(testing_commands.test_system)
     app.cli.add_command(attachments_install)
+    app.cli.add_command(rich_text_install)
     app.cli.add_command(assets_precompile)
 
 
@@ -125,6 +128,7 @@ def _prepare_template_contexts(app):
     ).generate
     app.jinja_env.globals["blob_path"] = blob_path
     app.jinja_env.globals["blob_url"] = blob_url
+    app.jinja_env.globals["rich_text_assets"] = rich_text_assets
 
     @app.context_processor
     def _():

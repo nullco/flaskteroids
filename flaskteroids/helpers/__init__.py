@@ -9,6 +9,7 @@ from flaskteroids.assets import stylesheet_link_tag as stylesheet_link_tag
 from flaskteroids.csrf import CSRFToken
 from flaskteroids.form import Form
 from flaskteroids.inflector import inflector
+from flaskteroids.rich_text.helpers import rich_text_assets as rich_text_assets
 from flaskteroids.routes import _model_destination, _polymorphic_path
 
 

@@ -54,6 +54,7 @@ nav:
     - Forms: other/forms.md
     - Assets: other/assets.md
     - Attachments: other/attachments.md
+    - Rich text: other/rich_text.md
     - Background jobs: other/jobs.md
     - Mailers: other/mailers.md
 

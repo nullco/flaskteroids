@@ -67,6 +67,13 @@ JSON's default serialization stores explicit `None` as JSON `null`, which reads
 back as `None`. JSON `null` is distinct from SQL `NULL`; an SQL `IS NULL` predicate
 does not necessarily match it. Primary-key generation remains native.
 
+## Rich text
+
+Model, resource, and scaffold generators accept `content:rich_text`. This generates
+`has_rich_text("content")`, not a column on the owner. Scaffolds include a Trix
+editor, safe rendering, and permitted parameters. Run `flask rich_text:install`,
+then `flask db:migrate`. See [Rich text](rich_text.md).
+
 ## Attachments
 
 Model, resource, and scaffold generators accept `avatar:attachment` for a single

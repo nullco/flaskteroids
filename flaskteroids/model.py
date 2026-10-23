@@ -54,6 +54,8 @@ from flaskteroids.callbacks import (
 from flaskteroids.db import session, transaction, transactional
 from flaskteroids.declarations import model_for
 from flaskteroids.exceptions import ProgrammerError, RecordNotFoundException
+from flaskteroids.rich_text import attribute as rich_text_storage
+from flaskteroids.rich_text import has_rich_text
 from flaskteroids.rules import bind_rules
 
 __all__ = [
@@ -87,6 +89,7 @@ __all__ = [
     "has_many_attached",
     "has_one",
     "has_one_attached",
+    "has_rich_text",
     "has_secure_password",
     "init",
     "validates",
@@ -110,6 +113,7 @@ class Model(StagedAttributes, SchemaModel):
         self._errors = Errors()
         self._attachment_changes = {}
         self._attachment_cache = {}
+        self._rich_text_changes = {}
 
     def __init__(self, **kwargs):
         init(type(self))
@@ -134,7 +138,7 @@ class Model(StagedAttributes, SchemaModel):
             if definition.virtual_fields[name].get("read_only"):
                 raise AttributeError(f"{field_name} is read-only.")
             return
-        if name in definition.attachments:
+        if name in definition.attachments or name in definition.rich_texts:
             return
         mapper = inspect(type(self))
         if name in mapper.attrs:
@@ -162,6 +166,8 @@ class Model(StagedAttributes, SchemaModel):
                 )
             return super().__setattr__(name, value)
         self._check_assignment(name)
+        if rich_text_storage.assign(self, name, value):
+            return
         if attached_storage.assign(self, name, value):
             return
         definition = model_for(type(self)).virtual_fields.get(name)
@@ -212,7 +218,12 @@ class Model(StagedAttributes, SchemaModel):
         return {
             name: value
             for name, value in (
-                self.attributes_before_type_cast | self._virtual_fields
+                self.attributes_before_type_cast
+                | self._virtual_fields
+                | {
+                    name: getattr(self, name).to_trix_html()
+                    for name in model_for(type(self)).rich_texts
+                }
             ).items()
             if name not in excluded
         }
@@ -238,6 +249,10 @@ class Model(StagedAttributes, SchemaModel):
     @classmethod
     def includes(cls, *paths: str) -> ModelQuery[Self]:
         return cls.all().includes(*paths)
+
+    @classmethod
+    def with_all_rich_text(cls) -> ModelQuery[Self]:
+        return cls.all().with_all_rich_text()
 
     @classmethod
     def order(cls, *expressions, **directions) -> ModelQuery[Self]:
@@ -286,6 +301,7 @@ class Model(StagedAttributes, SchemaModel):
         self._errors = Errors()
         self._attachment_changes.clear()
         self._attachment_cache.clear()
+        self._rich_text_changes.clear()
         return self
 
     def _prepare_commit(self):
@@ -389,8 +405,11 @@ class Model(StagedAttributes, SchemaModel):
                 if "updated_at" in record.column_names:
                     record.updated_at = now
                 record.apply_changes()
+                rich_text_storage.publish(record)
             session.add(self)
             session.flush()
+            for record in graph:
+                record._rich_text_changes.clear()
             for record in graph:
                 record._saved_changes = {
                     name: (old, new)

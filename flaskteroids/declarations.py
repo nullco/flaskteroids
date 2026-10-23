@@ -53,6 +53,7 @@ class ModelDefinition:
     callbacks: dict[str, list["Callback"]] = field(default_factory=dict)
     associations: dict[str, AssociationDefinition] = field(default_factory=dict)
     attachments: dict[str, "Definition"] = field(default_factory=dict)
+    rich_texts: set[str] = field(default_factory=set)
 
 
 def model_for(cls: type) -> ModelDefinition:

@@ -7,6 +7,13 @@
 - Rename `ActionMailer.with_params(...)` to `ActionMailer.with_(...)`; the old
   name is removed.
 
+### Added
+
+- Rich-text attributes with `has_rich_text`, a locally bundled Trix editor,
+  server-sanitized rendering, eager-loading scopes, and scaffold support.
+  `rich_text:install` generates shared storage and installs assets. This first
+  release supports text formatting and links; embedded files remain disabled.
+
 ## 0.8.0 - 2026-10-22
 
 ### Breaking changes

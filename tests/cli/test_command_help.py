@@ -35,6 +35,7 @@ APPLICATION_HELP = {
     ("generate", "resource"): ["NAME", "FIELDS"],
     ("generate", "authentication"): [],
     ("attachments:install",): ["config/storage.yml"],
+    ("rich_text:install",): ["db:migrate", "rich_texts"],
     ("db:init",): ["db/migrate"],
     ("db:create",): [],
     ("db:schema:dump",): ["db/schema.py"],

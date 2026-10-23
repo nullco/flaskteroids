@@ -118,6 +118,25 @@ class Form:
         )
         return Markup(f"<textarea {attrs}>{val}</textarea>")
 
+    def rich_text_area(self, field, *, value=None, **kwargs):
+        from flaskteroids.rich_text import Content
+
+        value = self._get_value(field) if value is None else value
+        content = value if isinstance(value, Content) else Content(str(value))
+        editor_id = kwargs.pop("id", self._get_id(field))
+        input_id = f"{editor_id}_input"
+        hidden = self.hidden_field(field, id=input_id, value=content.to_trix_html())
+        attrs = self._build_attributes(
+            {
+                **kwargs,
+                "id": editor_id,
+                "input": input_id,
+                "class": kwargs.get("class", "trix-content"),
+                "data-flaskteroids-rich-text": "",
+            }
+        )
+        return Markup(f"{hidden}<trix-editor {attrs}></trix-editor>")
+
     def collection_select(
         self,
         field,

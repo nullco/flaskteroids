@@ -6,6 +6,7 @@ from flaskteroids.cli.generators.fields import (
     association_pattern,
     attachment_pattern,
     field_pattern,
+    rich_text_pattern,
 )
 from flaskteroids.inflector import inflector
 
@@ -16,6 +17,7 @@ class _ScaffoldCommand:
         "fields": field_pattern,
         "reference": association_pattern,
         "attachment": attachment_pattern,
+        "rich_text": rich_text_pattern,
     }
 
     @classmethod
@@ -38,6 +40,7 @@ class _ScaffoldCommand:
             "fields": [
                 {"name": m.group(1), "type": m.group(2)} for m in args_matches["fields"]
             ],
+            "rich_texts": [m.group(1) for m in args_matches["rich_text"]],
             "attachments": [
                 {"name": m.group(1), "type": m.group(2)}
                 for m in args_matches["attachment"]

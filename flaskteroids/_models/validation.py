@@ -7,6 +7,7 @@ from functools import partial
 from typing import TYPE_CHECKING, Any, NotRequired, TypedDict
 
 from flaskteroids.declarations import model_for
+from flaskteroids.rich_text.content import Content
 from flaskteroids.rules import declaration
 
 if TYPE_CHECKING:
@@ -122,7 +123,11 @@ def _validate_presence(
 
     errors = []
     value = getattr(instance, field)
-    if value is None or (isinstance(value, str) and not value.strip()):
+    if (
+        value is None
+        or (isinstance(value, str) and not value.strip())
+        or (isinstance(value, Content) and value.blank())
+    ):
         errors.append((f"{field}.presence", config["message"]))
     return errors
 

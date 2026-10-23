@@ -72,6 +72,7 @@ def generate_model(name, fields):
     NAME is a singular CamelCase model name, such as Post.
     avatar:attachment and documents:attachments declare file attachments.
     Install their tables with flask attachments:install before migrating.
+    content:rich_text declares rich text; run flask rich_text:install before migrating.
     """
     model.generate(name, list(fields))
 
@@ -128,6 +129,8 @@ def generate_scaffold(name, fields):
     required references before running tests. avatar:attachment and
     documents:attachments include file inputs and permitted upload parameters.
     Install their tables with flask attachments:install before migrating.
+    content:rich_text includes a Trix editor and safe display.
+    Run flask rich_text:install before migrating.
     """
     scaffold.generate(name, list(fields))
 
@@ -147,6 +150,7 @@ def generate_resource(name, fields):
     generate actions, views, or fixtures; implement the actions you need.
     avatar:attachment and documents:attachments declare file attachments.
     Install their tables with flask attachments:install before migrating.
+    content:rich_text declares rich text; run flask rich_text:install before migrating.
     """
     resource.generate(name, list(fields))
 

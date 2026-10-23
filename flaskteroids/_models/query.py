@@ -9,6 +9,7 @@ from sqlalchemy import func, inspect, select
 from sqlalchemy.orm import selectinload
 
 from flaskteroids.db import session
+from flaskteroids.declarations import model_for
 from flaskteroids.exceptions import RecordNotFoundException
 
 if TYPE_CHECKING:
@@ -35,6 +36,10 @@ class ModelQuery[QueryModel: "Model"]:
         return session
 
     def where(self, *expressions, **filters) -> Self:
+        if names := filters.keys() & model_for(self._model_cls).rich_texts:
+            raise ValueError(
+                f"Rich-text attributes are not searchable scalar columns: {sorted(names)}"
+            )
         result = self._with(self.statement.where(*expressions).filter_by(**filters))
         result._creation_attributes = self._creation_attributes | filters
         return result
@@ -78,6 +83,23 @@ class ModelQuery[QueryModel: "Model"]:
                 model = relationship.mapper.class_
             options.append(option)
         return self.options(*options)
+
+    def with_all_rich_text(self) -> Self:
+        return self.includes(
+            *(
+                f"rich_text_{name}"
+                for name in sorted(model_for(self._model_cls).rich_texts)
+            )
+        )
+
+    def __getattr__(self, name):
+        prefix = "with_rich_text_"
+        if (
+            name.startswith(prefix)
+            and name[len(prefix) :] in model_for(self._model_cls).rich_texts
+        ):
+            return lambda: self.includes(f"rich_text_{name[len(prefix) :]}")
+        raise AttributeError(f"{type(self).__name__} has no attribute {name!r}")
 
     def options(self, *options) -> Self:
         return self._with(self.statement.options(*options))

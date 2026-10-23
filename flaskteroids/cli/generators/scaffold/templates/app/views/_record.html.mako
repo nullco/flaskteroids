@@ -5,6 +5,12 @@
       {{ ${model_ref}.${field['name']} }}
     </p>
 % endfor
+% for rich_text in rich_texts:
+    <div>
+      <strong>${rich_text.title()}</strong>
+      {{ ${model_ref}.${rich_text} }}
+    </div>
+% endfor
 % for attachment in attachments:
   {% if ${model_ref}.${attachment['name']}.attached() %}
     <p>

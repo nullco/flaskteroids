@@ -127,6 +127,10 @@ class PostsTest(SystemTest):
         self.assert_selector("h1", text="Posts")
 ```
 
+Use `self.fill_in_rich_text_area("Content", with_="<div>Hello</div>")` to fill a
+Trix editor by its label. The value is HTML, loaded through the editor API. See
+[Rich text](other/rich_text.md) for setup and model fixtures.
+
 Flaskteroids includes the Playwright Python package, but not its browser binaries. Install Chromium before your first system test run:
 
 ```sh

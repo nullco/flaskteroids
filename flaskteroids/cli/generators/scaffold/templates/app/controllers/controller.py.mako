@@ -9,7 +9,7 @@ class ${controller}Controller(ApplicationController):
     before_action('_set_${singular}', only=['show', 'edit', 'update', 'destroy'])
 
     def index(self):
-        self.${models_ref} = ${model}.all()
+        self.${models_ref} = ${model}.${"with_all_rich_text()" if rich_texts else "all()"}
         return self.respond_to(
             html=lambda: self.render('index'),
             json=lambda: self.render(json=self.${models_ref})
@@ -64,6 +64,9 @@ class ${controller}Controller(ApplicationController):
 
     def _${model_ref}_params(self):
         permitted = [${', '.join("'" + field['name'] + "'" for field in fields)}]
+% for rich_text in rich_texts:
+        permitted.append("${rich_text}")
+% endfor
 % for attachment in attachments:
         permitted.append(${"('" + attachment['name'] + "', [])" if attachment['type'] == 'attachments' else "'" + attachment['name'] + "'"})
 % endfor

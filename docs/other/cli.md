@@ -235,6 +235,18 @@ inside a controller class to allow public actions. Templates can call
 `is_authenticated()` on both public and protected pages without an extra callback.
 See [the authentication walkthrough](../getting_started.md#8-require-login-to-change-products).
 
+## Rich text
+
+```sh
+bin/flask rich_text:install
+bin/flask db:migrate
+```
+
+Installs local Trix assets, adds the asset helper to the application layout, and
+creates a shared rich-text storage migration. Repeated runs preserve existing
+files and avoid duplicate migrations. Model, resource, and scaffold generators
+accept `content:rich_text`. See [Rich text](rich_text.md).
+
 ## Attachments
 
 Set up file attachments:

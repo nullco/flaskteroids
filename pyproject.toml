@@ -8,6 +8,7 @@ include = ["flaskteroids", "flaskteroids.*"]
 [tool.setuptools.package-data]
 "*" = ["templates/**/*", "templates/.github/workflows/*.mako"]
 "flaskteroids" = [".agents/skills/*/SKILL.md"]
+"flaskteroids.rich_text" = ["assets/*"]
 
 [project]
 name = "flaskteroids"
@@ -31,6 +32,7 @@ classifiers = [
 ]
 dependencies = [
     "alembic>=1.20.0",
+    "nh3>=0.3.4",
     "Flask>=3.1.3",
     "sqlalchemy>=2.1.4",
     "celery>=5.6.3",

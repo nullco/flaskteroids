@@ -38,6 +38,7 @@ Models, controllers, and templates live in conventional directories. The framewo
 - Generators for models, migrations, controllers, scaffolds, mailers, and authentication.
 - Background jobs and email delivery.
 - File attachments with disk and S3-compatible storage.
+- Rich-text fields with an integrated Trix editor and safe HTML rendering.
 - Environment settings, `database.yml`, encrypted credentials, and boot-time initializers.
 - Pytest-based transactional tests, YAML fixtures, job and mail assertions, and Playwright browser tests.
 

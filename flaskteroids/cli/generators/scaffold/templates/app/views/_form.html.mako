@@ -30,6 +30,12 @@
       % endif
     </div>
 % endfor
+% for rich_text in rich_texts:
+    <div>
+      {{ form.label("${rich_text}", style="display: block") }}
+      {{ form.rich_text_area("${rich_text}") }}
+    </div>
+% endfor
 % for ref in references:
     <div>
       {{ form.label('${ref['name']}', style='display: block') }}

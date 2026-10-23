@@ -66,6 +66,10 @@ Use `file_field('avatar')` or `file_field('documents', multiple=True)` for uploa
 `form_with` detects these fields and adds multipart encoding. See
 [Attachments](attachments.md) for attachment forms and permitted parameters.
 
+Use `form.rich_text_area("content")` for declared rich-text attributes. Install
+Trix and storage with `bin/flask rich_text:install`, then migrate. See
+[Rich text](rich_text.md) for setup, rendering, and validation.
+
 ## Buttons that submit forms
 
 ```html

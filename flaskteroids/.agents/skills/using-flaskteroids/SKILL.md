@@ -133,6 +133,12 @@ dependency internals or introduce a parallel implementation of a supported featu
   reverse order, including on failures. Cleanup resumes them normally rather than
   throwing the action exception into them. After callbacks require successful
   action execution and cleanup. Do not use after callbacks for failure cleanup.
+- Use `has_rich_text("content")` and `form.rich_text_area("content")` for rich text.
+  `bin/flask rich_text:install` installs shared storage and local Trix assets;
+  migrate afterward. Scaffolds accept `content:rich_text`. Render the attribute
+  directly, without `|safe` or `Markup`; use `to_plain_text()` for plain text.
+  Use `with_rich_text_content()` or `with_all_rich_text()` on listing queries.
+  The current feature is text-only: embedded files and images are disabled.
 - Use attachment declarations, `config/storage.yml`, and `attachments:install`
   for file uploads rather than independent storage plumbing.
   Model attachments upload after commit. Use `blob_path` or `blob_url` for

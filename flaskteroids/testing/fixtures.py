@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from pathlib import Path
 
 import yaml
@@ -6,6 +7,7 @@ from sqlalchemy import func, inspect, select, text
 from flaskteroids._models.attributes import cast_input
 from flaskteroids._models.mapping import table_name
 from flaskteroids.db import session
+from flaskteroids.declarations import model_for
 from flaskteroids.inflector import inflector
 
 
@@ -74,7 +76,14 @@ def load_fixtures(application, requested):
 
     fixture_order = _fixture_order(fixture_models)
     for fixture_name in reversed(fixture_order):
-        session.execute(fixture_models[fixture_name].__table__.delete())
+        model = fixture_models[fixture_name]
+        model.prepare()
+        if model_for(model).rich_texts:
+            rich_texts = model.metadata.tables["rich_texts"]
+            session.execute(
+                rich_texts.delete().where(rich_texts.c.record_type == model.__name__)
+            )
+        session.execute(model.__table__.delete())
     session.flush()
 
     loaded = {}
@@ -98,11 +107,30 @@ def load_fixtures(application, requested):
                 ):
                     values[foreign_key] = fixture_ids[related_set][related_label]
                     values.pop(key)
+            rich_values = {
+                name: values.pop(name)
+                for name in model_for(model).rich_texts
+                if name in values
+            }
             converted = {
                 key: cast_input(model.__table__.columns[key].type, value)
                 for key, value in values.items()
             }
             session.execute(model.__table__.insert().values(**converted))
+            for name, body in rich_values.items():
+                now = datetime.now(UTC)
+                session.execute(
+                    model.metadata.tables["rich_texts"]
+                    .insert()
+                    .values(
+                        name=name,
+                        body="" if body is None else body,
+                        record_type=model.__name__,
+                        record_id=converted["id"],
+                        created_at=now,
+                        updated_at=now,
+                    )
+                )
             loaded[fixture_name][label] = model.find(converted["id"])
         _advance_fixture_sequence(model)
 

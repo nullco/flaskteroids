@@ -170,6 +170,14 @@ def ensure_mapped(cls):
                 properties[model].update(
                     relationship_properties(model, catalog, _table)
                 )
+            from flaskteroids.rich_text.attribute import (
+                relationship_properties as rich_text_properties,
+            )
+
+            for model in graph:
+                properties[model].update(
+                    rich_text_properties(model, tables[model], root.registry)
+                )
             for model in graph:
                 root.registry.map_imperatively(
                     model, tables[model], properties=properties[model]
@@ -284,7 +292,9 @@ class SchemaMeta(type):
             raise AttributeError(name)
         ensure_mapped(cls)
         if name == "__clause_element__":
-            return cls.__mapper__.__clause_element__
+            # Let SQLAlchemy inspect the now-mapped class. Exposing the mapper's
+            # bound method here breaks aliased() and joined select-in loaders.
+            raise AttributeError(name)
         return type.__getattribute__(cls, name)
 
     def __getattribute__(cls, name):

@@ -70,6 +70,10 @@ def _controller_test(params):
         f'"{field["name"]}": self.{singular}.{field["name"]}'
         for field in params["fields"]
     ]
+    values.extend(
+        f'"{name}": self.{singular}.{name}.to_trix_html()'
+        for name in params["rich_texts"]
+    )
     for attachment in params["attachments"]:
         upload = 'fixture_file_upload("attachment.txt")'
         if attachment["type"] == "attachments":
@@ -108,6 +112,7 @@ def _fixtures(params):
         field["name"]: _sample_value(field["type"], field["name"])
         for field in params["fields"]
     }
+    values.update({name: f"<div>My {name}</div>" for name in params["rich_texts"]})
     return yaml.safe_dump({"one": dict(values), "two": dict(values)}, sort_keys=False)
 
 
