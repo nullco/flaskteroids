@@ -45,8 +45,8 @@ def app(tmp_path):
             config.paths.routes = "tests.app.config.routes"
             config.paths.jobs = "tests.app.jobs"
             config.paths.mailers = "tests.app.mailers"
-            config.active_job.broker_url = "sqla+sqlite:///:memory:"
-            config.active_job.queue_adapter = TestQueueAdapter
+            config.jobs.broker_url = "sqla+sqlite:///:memory:"
+            config.jobs.queue_adapter = TestQueueAdapter
             config.action_mailer.delivery_method = TestDeliveryMethod
             config.action_mailer.perform_deliveries = True
 

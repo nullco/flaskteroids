@@ -27,7 +27,7 @@ def view_app_factory(tmp_path):
                 )
                 config.paths.routes = "tests.views.fixtures.routes"
                 config.action_controller.include_all_helpers = include_all
-                config.active_job.queue_adapter = TestQueueAdapter
+                config.jobs.queue_adapter = TestQueueAdapter
                 config.action_mailer.delivery_method = TestDeliveryMethod
                 config.action_mailer.perform_deliveries = True
 

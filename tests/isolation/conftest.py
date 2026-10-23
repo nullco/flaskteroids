@@ -59,10 +59,10 @@ def make_app(tmp_path):
                 config.paths.mailers = "tests.isolation.mailers"
                 config.paths.controllers = "tests.isolation.controllers"
                 config.paths.routes = "tests.isolation.routes"
-                config.active_job.queue_adapter = adapter
-                config.active_job.broker_url = "memory://"
-                config.active_job.result_backend = "cache+memory://"
-                config.active_job.additional_config.task_always_eager = True
+                config.jobs.queue_adapter = adapter
+                config.jobs.broker_url = "memory://"
+                config.jobs.result_backend = "cache+memory://"
+                config.jobs.additional_config.task_always_eager = True
                 config.action_mailer.delivery_method = TestDeliveryMethod
                 config.action_mailer.perform_deliveries = True
                 config.action_mailer.default_options = {"from_": f"{name}@example.org"}

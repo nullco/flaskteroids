@@ -272,7 +272,7 @@ bin/flask db:encryption:init
 bin/flask credentials:edit
 ```
 
-Store the generated `active_record_encryption` YAML in encrypted credentials.
+Store the generated `encryption` YAML in encrypted credentials.
 The primary key encrypts rich-text bodies; neither the credentials master key nor
 the Flask signing secret is reused.
 
@@ -287,7 +287,7 @@ and rendering still expose plaintext to the authorized application/browser.
 Rich text does not accept per-field deterministic encryption options.
 
 For randomized-key rotation, configure
-`config.active_record.encryption.primary_key = [previous_key, current_key]`.
+`config.encryption.primary_key = [previous_key, current_key]`.
 The last key encrypts; all keys may decrypt. Re-encrypt before retiring old keys:
 
 ```python
@@ -301,7 +301,7 @@ normal traffic; back up data and retain keys needed for old backups.
 
 Encryption covers the body, not uploaded file bytes, attachment metadata, or
 rendered responses. Use storage-provider encryption and download authorization
-for files. Envelopes are Flaskteroids-specific, not Rails ciphertext-compatible.
+for files. Ciphertext uses Flaskteroids-specific envelopes.
 
 ## Tests
 
@@ -325,14 +325,9 @@ self.assert_selector(".trix-content strong", text="world")
 The helper fills HTML through Trix's public editor API. Normal keyboard and file
 interaction remain available through the Playwright page.
 
-## Rails compatibility boundaries
-
-Declarations, editable rich-text records, owner autosave, independent persistence,
-Trix forms, signed embeds, eager scopes, and the three declaration options follow
-Action Text's application workflow. This is not a drop-in Action Text database or
-serialization implementation.
+## Limitations
 
 Arbitrary record embeds, custom attachment-rendering partials, image resizing,
-video/PDF preview generation, rich-text search, and the full Active Record API on
-`RichText` are not implemented. Sanitized HTML and plain-text formatting are not
-guaranteed byte-for-byte identical to Rails.
+video/PDF preview generation, and rich-text search are not implemented.
+`RichText` provides the record operations documented here, not the full
+`Model` API.

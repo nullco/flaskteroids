@@ -78,6 +78,6 @@ delivery raise `DeserializationError` (both in `flaskteroids.exceptions`). Queue
 rendering ignores unsaved edits without altering the caller's objects. Enqueue
 after commit so records are visible to the worker.
 
-Text and HTML parts share one delivery-time mailer. Unlike Rails, queued delivery
-does not rerun the action, so model-backed template values can change while the
-captured headers remain fixed.
+Text and HTML parts share one delivery-time mailer. Queued delivery does not rerun
+the action, so model-backed template values can change while the captured headers
+remain fixed.

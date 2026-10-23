@@ -98,7 +98,7 @@ One source root contains all asset types. URL prefixes must be absolute paths
 without query strings; trailing slashes are normalized.
 
 For example, use `source_path = "frontend"`, `output_path = "static"`, and
-`prefix = "/rails/assets"` to change the directories and URL independently.
+`prefix = "/custom/assets"` to change the directories and URL independently.
 The bootless compiler does not read Python configuration; pass matching paths:
 
 ```sh

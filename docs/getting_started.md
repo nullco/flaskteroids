@@ -1315,7 +1315,7 @@ def configure(config):
     config["SERVER_NAME"] = "127.0.0.1:5000"
     config.action_mailer.perform_deliveries = True
     config.action_mailer.delivery_method = ConsoleDeliveryMethod
-    config.active_job.broker_url = "sqla+sqlite:///storage/jobs_database.db"
+    config.jobs.broker_url = "sqla+sqlite:///storage/jobs_database.db"
 ```
 
 `SERVER_NAME` supplies a host for absolute links even in the shell. This adapter

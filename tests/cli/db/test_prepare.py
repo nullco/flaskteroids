@@ -69,13 +69,13 @@ def test_prepare_respects_environment_and_database_override(
 ):
     root, run = preparation_app
     env = {
-        "FLASK_ENV": environment,
+        "FLASKTEROIDS_ENV": environment,
         "FLASKTEROIDS_MASTER_KEY": (root / "config/master.key").read_text().strip(),
     }
     result = run("db:prepare", env=env)
     assert result.returncode == 0, result.stderr
     assert (root / f"storage/{environment}.sqlite3").exists()
-    env["DATABASE_URL"] = "sqlite:///storage/override.sqlite3"
+    env["FLASKTEROIDS_DATABASE_URL"] = "sqlite:///storage/override.sqlite3"
     result = run("db:prepare", env=env)
     assert result.returncode == 0, result.stderr
     assert (root / "storage/override.sqlite3").exists()
@@ -119,7 +119,8 @@ def test_prepare_propagates_unknown_revision_and_bad_scripts(preparation_app):
 def test_prepare_rejects_missing_database_parent_directory(preparation_app):
     root, run = preparation_app
     result = run(
-        "db:prepare", env={"DATABASE_URL": "sqlite:///absent/database.sqlite3"}
+        "db:prepare",
+        env={"FLASKTEROIDS_DATABASE_URL": "sqlite:///absent/database.sqlite3"},
     )
     assert result.returncode != 0
     assert not (root / "absent").exists()
@@ -164,7 +165,7 @@ def test_migration_execution_failure_keeps_database_and_uses_safe_errors(
 def test_help_requires_production_credentials(preparation_app):
     root, run = preparation_app
     (root / "config/master.key").unlink()
-    result = run("db:create", "--help", env={"FLASK_ENV": "production"})
+    result = run("db:create", "--help", env={"FLASKTEROIDS_ENV": "production"})
     assert result.returncode != 0
     assert "credentials" in result.stderr.casefold()
     assert not (root / "storage/production.sqlite3").exists()
@@ -257,7 +258,8 @@ def test_custom_factory_and_project_root_migrations_work_from_another_cwd(
 def test_percent_in_database_filename_survives_alembic_interpolation(preparation_app):
     root, run = preparation_app
     result = run(
-        "db:prepare", env={"DATABASE_URL": "sqlite:///storage/100%ready.sqlite3"}
+        "db:prepare",
+        env={"FLASKTEROIDS_DATABASE_URL": "sqlite:///storage/100%ready.sqlite3"},
     )
     assert result.returncode == 0, result.stderr
     assert (root / "storage/100%ready.sqlite3").exists()
@@ -267,7 +269,9 @@ def test_dotenv_selection_and_global_options_use_normal_flask_discovery(
     preparation_app,
 ):
     root, run = preparation_app
-    (root / ".env").write_text("DATABASE_URL=sqlite:///storage/dotenv.sqlite3\n")
+    (root / ".env").write_text(
+        "FLASKTEROIDS_DATABASE_URL=sqlite:///storage/dotenv.sqlite3\n"
+    )
     (root / ".flaskenv").write_text("FLASK_APP=wsgi:app\n")
     result = run("--env-file", str(root / ".env"), "db:prepare")
     assert result.returncode == 0, result.stderr

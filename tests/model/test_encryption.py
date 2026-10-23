@@ -58,21 +58,52 @@ class ShortSecret(model_base(Base)):
 def encrypted(init_models):
     init_models(Base, [(AccountTable, Account), (ShortSecretTable, ShortSecret)])
     keys = [generate_encryption_key() for _ in range(3)]
-    current_app.config.active_record = Options(
+    current_app.config.encryption = Options(
         {
-            "encryption": {
-                "primary_key": keys[0],
-                "deterministic_key": keys[1],
-                "support_unencrypted_data": False,
-            }
+            "primary_key": keys[0],
+            "deterministic_key": keys[1],
+            "support_unencrypted_data": False,
         }
     )
     return SimpleNamespace(
         Account=Account,
         session=session,
         keys=keys,
-        config=current_app.config.active_record.encryption,
+        config=current_app.config.encryption,
     )
+
+
+@pytest.mark.parametrize(
+    "key_name,attribute",
+    [("primary_key", "notes"), ("deterministic_key", "email")],
+)
+@pytest.mark.parametrize("source", ["configuration", "environment", "credentials"])
+def test_encryption_keys_follow_configuration_environment_credentials_precedence(
+    encrypted, monkeypatch, mocker, key_name, attribute, source
+):
+    configured_key, environment_key, credentials_key = encrypted.keys
+    variable = f"FLASKTEROIDS_ENCRYPTION_{key_name.upper()}"
+    monkeypatch.delenv(variable, raising=False)
+    credentials = mocker.Mock()
+    credentials.to_dict.return_value = {"encryption": {key_name: credentials_key}}
+    monkeypatch.setattr(current_app, "credentials", credentials, raising=False)
+    setattr(
+        encrypted.config,
+        key_name,
+        configured_key if source == "configuration" else None,
+    )
+    if source != "credentials":
+        monkeypatch.setenv(variable, environment_key)
+
+    account = Account.create(name="Ada", **{attribute: "secret@example.com"})
+
+    expected_key = {
+        "configuration": configured_key,
+        "environment": environment_key,
+        "credentials": credentials_key,
+    }[source]
+    setattr(encrypted.config, key_name, expected_key)
+    assert getattr(account.reload(), attribute) == "secret@example.com"
 
 
 @pytest.mark.parametrize("value", [None, "", "Private notes", "Español 日本語 🔐"])
@@ -262,7 +293,7 @@ def test_authenticated_encryption_rejects_ciphertext_moved_between_attributes(
 def test_invalid_keys_reject_persistence_without_exposing_plaintext(
     encrypted, monkeypatch, key
 ):
-    monkeypatch.delenv("ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY", raising=False)
+    monkeypatch.delenv("FLASKTEROIDS_ENCRYPTION_PRIMARY_KEY", raising=False)
     encrypted.config.primary_key = key
     with pytest.raises(EncryptionError) as failure:
         Account.create(name="Ada", notes="Secret")
@@ -305,7 +336,7 @@ def test_deterministic_encryption_rejects_tampered_ciphertext(encrypted):
 
 
 def test_deterministic_encryption_requires_a_separate_key(encrypted, monkeypatch):
-    monkeypatch.delenv("ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY", raising=False)
+    monkeypatch.delenv("FLASKTEROIDS_ENCRYPTION_DETERMINISTIC_KEY", raising=False)
     encrypted.config.deterministic_key = None
     with pytest.raises(EncryptionError):
         Account.create(name="Ada", email="ada@example.com")

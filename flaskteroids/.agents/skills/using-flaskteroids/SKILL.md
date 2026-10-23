@@ -33,7 +33,7 @@ description: Use when building or modifying a Flaskteroids application.
 - Use `bin/flask` for app commands without activation; existing Flask/uv syntax
   remains supported. Use `bin/setup` for a fresh checkout or changed dependencies.
   Commit the app-owned `uv.lock`; CI and Docker use `uv sync --locked`.
-- Setup honors explicit FLASK_ENV/DATABASE_URL and prepares that selected database.
+- Setup honors explicit FLASKTEROIDS_ENV/FLASKTEROIDS_DATABASE_URL and prepares that selected database.
   `bin/flask db:prepare` applies existing migrations without resets, repairs,
   external DB creation, or seeds. `db:init` stays strict. Restart after migrations.
 - `bin/flask test` and `bin/flask test:system` report empty selections as success;
@@ -100,7 +100,7 @@ Always use public Flaskteroids abstractions when they cover the task. This is a
 requirement, not merely a stylistic preference: do not bypass the framework with
 dependency internals or introduce a parallel implementation of a supported feature.
 
-- Use the application's abstract `ApplicationModel` base, Rails-like queries,
+- Use the application's abstract `ApplicationModel` base, model queries,
   and class-body `belongs_to(...)` / `has_many(...)` declarations for routine work.
   Models themselves are native SQLAlchemy-mapped objects, prepared lazily from
   the generated snapshot. Native statements/options are supported on those same
@@ -147,8 +147,8 @@ dependency internals or introduce a parallel implementation of a supported featu
 - Use `encrypts("notes")` for model string/text encryption and
   `encrypts("email", deterministic=True, downcase=True)` for equality lookups.
   Generate dedicated keys with `bin/flask db:encryption:init` and store the printed
-  `active_record_encryption` YAML in credentials. Configure overrides through
-  `config.active_record.encryption`; never reuse credentials/signing keys.
+  `encryption` YAML in credentials. Configure overrides through
+  `config.encryption`; never reuse credentials/signing keys.
   Prefer text columns, without plaintext server defaults. Encrypted primary/foreign
   keys, ordering, and substring queries are unsupported. Inspection filters these
   attributes, but forms/JSON/rendering expose plaintext and still need authorization.

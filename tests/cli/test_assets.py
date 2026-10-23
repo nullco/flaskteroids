@@ -37,8 +37,8 @@ def run(root, *args, environment="development"):
     }
     env |= {
         "PYTHONPATH": os.pathsep.join((str(root), str(FRAMEWORK_ROOT))),
-        "FLASK_ENV": environment,
-        "DATABASE_URL": "sqlite:///:memory:",
+        "FLASKTEROIDS_ENV": environment,
+        "FLASKTEROIDS_DATABASE_URL": "sqlite:///:memory:",
     }
     return subprocess.run(
         args, cwd=root.parent, env=env, capture_output=True, text=True, check=False

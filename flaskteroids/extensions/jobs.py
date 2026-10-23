@@ -39,7 +39,7 @@ class JobsExtension:
             )
         if "flaskteroids.jobs" in app.extensions:
             return
-        config: Options = app.config.active_job
+        config: Options = app.config.jobs
         jobs_module = app.config.paths.jobs
         self.queue_adapter = config.queue_adapter(app, config)
         for job_name, job_class in discover_classes(jobs_module, Job).items():

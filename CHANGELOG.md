@@ -4,8 +4,18 @@
 
 ### Breaking changes
 
+- Job configuration now lives under `config.jobs`. Update application and
+  environment settings to use this namespace; queue adapter behavior is unchanged.
 - Rename `ActionMailer.with_params(...)` to `ActionMailer.with_(...)`; the old
   name is removed.
+- Attribute encryption uses `config.encryption`, the `encryption` credentials
+  section, and `FLASKTEROIDS_ENCRYPTION_*` environment variables. Update existing
+  encryption settings to these names; key material and ciphertext are unchanged.
+- Framework environment overrides use `FLASKTEROIDS_ENV`,
+  `FLASKTEROIDS_DATABASE_URL`, `FLASKTEROIDS_SECRET_KEY_BASE`, and
+  `FLASKTEROIDS_ATTACHMENTS_SERVICE`. Update deployment variables and generated
+  setup/test/Docker configuration. Python settings and credential names remain
+  unprefixed; dependency-owned variables retain their native names.
 
 ### Added
 
@@ -22,7 +32,7 @@
   deterministic equality lookups, lowercase normalization, filtered inspection,
   encrypted fixtures, and explicit data/key migration. Rich text shares the same
   encryption service. `db:encryption:init` generates dedicated credentials keys;
-  `config.active_record.encryption` configures model and rich-text encryption.
+  `config.encryption` configures model and rich-text encryption.
 
 ## 0.8.0 - 2026-10-22
 
@@ -132,7 +142,7 @@
 
 ### Added
 
-- Rails-style asset helpers and `assets:precompile`, using Flask's native static
+- Asset helpers and `assets:precompile`, using Flask's native static
   endpoint. Generated layouts and Docker builds integrate assets.
   See [Assets](docs/other/assets.md).
 

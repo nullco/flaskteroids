@@ -104,8 +104,8 @@ Names such as `"formatting"`, `"FormattingHelper"`, and `"admin/money"` resolve
 against the configured helper package. `helper("all")` explicitly includes all
 discovered helpers.
 
-This mirrors Rails' distinction: `helper(...)` includes presentation helpers in
-the view context; [`helper_method(...)`](../controllers/index.md#controller-helpers)
+`helper(...)` includes presentation helpers in the view context;
+[`helper_method(...)`](../controllers/index.md#controller-helpers)
 delegates a particular method to the current controller or delivery-time mailer.
 
 ### Method precedence

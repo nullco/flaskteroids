@@ -15,7 +15,7 @@ bin/flask credentials:edit
 ```
 
 ```yaml
-active_record_encryption:
+encryption:
   primary_key: <base64-encoded 32-byte key>
   deterministic_key: <another base64-encoded 32-byte key>
 ```
@@ -24,17 +24,40 @@ The command prints new secrets without changing existing credentials. Do not log
 or commit its plaintext output. Neither the credentials master key nor the Flask
 signing secret is reused for attribute encryption.
 
-Keys can instead come from `ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY` and
-`ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY`, or from
-`config.active_record.encryption.primary_key` and
-`config.active_record.encryption.deterministic_key`. Explicit configuration takes
-precedence over the environment, which takes precedence over credentials.
+Keys can instead come from `FLASKTEROIDS_ENCRYPTION_PRIMARY_KEY` and
+`FLASKTEROIDS_ENCRYPTION_DETERMINISTIC_KEY`, or from
+`config.encryption.primary_key` and `config.encryption.deterministic_key`.
+Explicit configuration takes precedence over the environment, which takes
+precedence over credentials.
 Python callers can generate keys with
 `flaskteroids.encryption.generate_encryption_key()`.
 
-Configure separate keys for each application/environment, including tests. A
-deterministic key is needed only for deterministically encrypted attributes.
+The primary key serves randomized encryption, including ordinary `encrypts(...)`
+declarations and encrypted rich-text bodies. The deterministic key serves only
+encryption explicitly requested with `deterministic=True`. Neither is a database
+primary key.
+
+Configure separate keys for each application/environment, including tests.
 Keep keys outside database backups, and retain keys needed to restore old backups.
+
+## Direct use outside models
+
+The same service encrypts UTF-8 strings in other application code, using the same
+configuration and keys:
+
+```python
+from config.environment import application
+from flaskteroids.encryption import decrypt, encrypt
+
+with application.app_context():
+    ciphertext = encrypt("Sensitive value", context="external_service.token")
+    plaintext = decrypt(ciphertext, context="external_service.token")
+```
+
+Use a stable, purpose-specific context; decryption requires the same context.
+Both calls default to randomized encryption with the primary key. Pass
+`deterministic=True` to both calls to use the deterministic key instead.
+Requests and jobs already run inside an application context.
 
 ## Declare attributes
 
@@ -140,7 +163,7 @@ keys. No `encrypt_fixtures` switch is required.
 For randomized encryption, configure primary keys oldest to newest:
 
 ```python
-config.active_record.encryption.primary_key = [previous_key, current_key]
+config.encryption.primary_key = [previous_key, current_key]
 ```
 
 The last key encrypts new writes; every listed key may decrypt. Re-encrypt records
@@ -164,7 +187,7 @@ Plaintext in an encrypted column is rejected by default. To explicitly migrate
 existing plaintext, back up data, stop normal traffic/workers, temporarily set:
 
 ```python
-config.active_record.encryption.support_unencrypted_data = True
+config.encryption.support_unencrypted_data = True
 ```
 
 Then load records and call `encrypt()`, verify the data, and remove that setting
@@ -183,25 +206,22 @@ The rich-text record also supports explicit plaintext migration through its
 `encrypt()` method without the temporary plaintext-read setting. See
 [Rich text](../other/rich_text.md#encryption).
 
-## Security and Rails boundaries
+## Security and limitations
 
 Randomized encryption uses AES-256-GCM with a fresh 96-bit nonce. Deterministic
 encryption uses AES-256-SIV with a domain-separated, HKDF-derived key. Both
 authenticate an attribute context, so moving ciphertext to another model/attribute
 fails authentication. Model and attribute names are part of that context: renaming
 one requires decrypting/re-encrypting its data under the new context, not just
-renaming a declaration. Deterministic encryption deliberately uses an audited SIV
-primitive rather than implementing Rails' deterministic GCM nonce construction.
+renaming a declaration. Deterministic encryption uses the audited SIV primitive
+provided by the cryptography library.
 
-The declaration and workflow are Rails-shaped, but keys are base64-encoded raw
-32-byte keys, not Rails password-derived keys. Envelopes are Flaskteroids-specific
-and are not interoperable with Rails. Reads decrypt through mapped database types,
-not Active Record's lazy attribute deserializer.
+Keys are base64-encoded raw 32-byte keys. Ciphertext uses Flaskteroids-specific
+envelopes, and model reads decrypt through mapped database types.
 
-This is not complete Active Record Encryption parity: custom key providers,
-`ignore_case` with preserved original casing, serialized/non-string attributes,
-encryption contexts, a plaintext-writing `decrypt()` operation, and online
-multi-scheme deterministic queries are not implemented.
+Custom key providers, case-insensitive encryption that preserves original casing,
+serialized/non-string attributes, a plaintext-writing model `decrypt()` operation,
+and online multi-scheme deterministic queries are not implemented.
 
 Encryption protects database contents, not an application holding its keys.
 Ciphertext can still reveal length, NULL values, and deterministic equality.

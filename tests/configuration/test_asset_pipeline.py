@@ -572,14 +572,14 @@ def test_native_static_directory_and_url_are_customizable(
         environment,
         source_path="frontend",
         output_path="static",
-        prefix="/rails/assets/",
+        prefix="/custom/assets/",
     )
     assert app.static_folder == str(
         asset_root / ("frontend" if environment == "development" else "static")
     )
-    assert app.static_url_path == "/rails/assets"
+    assert app.static_url_path == "/custom/assets"
     with app.test_request_context(environ_overrides={"SCRIPT_NAME": "/mounted"}):
-        assert asset_path("logo.png").startswith("/mounted/rails/assets/images/logo")
+        assert asset_path("logo.png").startswith("/mounted/custom/assets/images/logo")
     with app.test_request_context():
         url = asset_path("application.css")
     assert app.test_client().get(url).data == b"body { color: red; }"

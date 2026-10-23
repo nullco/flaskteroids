@@ -79,7 +79,7 @@ def test_s3_rejects_bad_checksum_and_keys_before_contacting_service(mocker):
     client.delete_object.assert_not_called()
 
 
-def test_s3_rails_configuration_maps_to_sdk_options(mocker):
+def test_s3_configuration_maps_to_sdk_options(mocker):
     pytest.importorskip("boto3")
     client = mocker.patch("boto3.client")
     S3Service(

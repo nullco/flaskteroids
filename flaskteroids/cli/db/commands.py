@@ -19,14 +19,14 @@ from flaskteroids.encryption import generate_encryption_key
 
 @click.command("db:encryption:init")
 def encryption_init():
-    """Generate dedicated model encryption keys.
+    """Generate dedicated application encryption keys.
 
     Paste the YAML into flask credentials:edit. Existing credentials are unchanged.
     Do not commit or log the plaintext output. These keys are separate from
     credentials and signing keys.
     """
     click.echo(
-        "active_record_encryption:\n"
+        "encryption:\n"
         f"  primary_key: {generate_encryption_key()}\n"
         f"  deterministic_key: {generate_encryption_key()}"
     )
@@ -61,7 +61,7 @@ def migrate():
     \b
     Examples:
       flask db:migrate
-      FLASK_ENV=test flask db:migrate
+      FLASKTEROIDS_ENV=test flask db:migrate
     """
     upgrade_database(get_config())
 
@@ -72,7 +72,7 @@ def create():
     """Ensure the selected database exists and is connectable.
 
     Does not apply migrations, seed records, or start a database server.
-    Uses the current environment and DATABASE_URL; no migrations required.
+    Uses the current environment and FLASKTEROIDS_DATABASE_URL; no migrations required.
 
     \b
     Example:
@@ -96,13 +96,13 @@ def prepare():
 
     Requires an existing valid db/migrate tree; does not repair migration files,
     reset data, or seed records. Ensures the selected supported database exists,
-    then applies migrations. Uses the current environment and honors DATABASE_URL.
+    then applies migrations. Uses the current environment and honors FLASKTEROIDS_DATABASE_URL.
     Start servers in a fresh process.
 
     \b
     Examples:
       bin/flask db:prepare
-      FLASK_ENV=test bin/flask db:prepare
+      FLASKTEROIDS_ENV=test bin/flask db:prepare
     """
     config = get_config()
     preflight_migrations(config)

@@ -30,10 +30,10 @@ def flask_cli(mocker):
 def test_flask_commands_run_pytest_without_loading_application(
     flask_cli, mocker, monkeypatch, command, marker
 ):
-    monkeypatch.setenv("FLASK_ENV", "production")
+    monkeypatch.setenv("FLASKTEROIDS_ENV", "production")
 
     def run_pytest(args):
-        assert os.environ["FLASK_ENV"] == "test"
+        assert os.environ["FLASKTEROIDS_ENV"] == "test"
         return 0
 
     pytest_main = mocker.patch("pytest.main", side_effect=run_pytest)
@@ -44,7 +44,7 @@ def test_flask_commands_run_pytest_without_loading_application(
     pytest_main.assert_called_once_with(
         ["-m", marker, "-q", "-n", "auto", "test/models"]
     )
-    assert os.environ["FLASK_ENV"] == "production"
+    assert os.environ["FLASKTEROIDS_ENV"] == "production"
 
 
 @pytest.mark.parametrize("command", ["test", "test:system"])
@@ -53,21 +53,21 @@ def test_test_command_preserves_exit_code_and_restores_unset_environment(
     cli_runner, mocker, monkeypatch, exit_code, command
 ):
     mocker.patch("pytest.main", return_value=exit_code)
-    monkeypatch.delenv("FLASK_ENV", raising=False)
+    monkeypatch.delenv("FLASKTEROIDS_ENV", raising=False)
 
     result = cli_runner.invoke(args=[command, "-q"])
 
     assert result.exit_code == (0 if exit_code == 5 else exit_code)
     assert ("No tests collected" in result.output) is (exit_code == 5)
-    assert "FLASK_ENV" not in os.environ
+    assert "FLASKTEROIDS_ENV" not in os.environ
 
 
 def test_test_command_restores_environment_on_error(cli_runner, mocker, monkeypatch):
     mocker.patch("pytest.main", side_effect=RuntimeError("pytest failed"))
-    monkeypatch.setenv("FLASK_ENV", "development")
+    monkeypatch.setenv("FLASKTEROIDS_ENV", "development")
 
     result = cli_runner.invoke(args=["test"])
 
     assert result.exit_code == 1
     assert isinstance(result.exception, RuntimeError)
-    assert os.environ["FLASK_ENV"] == "development"
+    assert os.environ["FLASKTEROIDS_ENV"] == "development"

@@ -87,7 +87,7 @@ def test_encrypted_scaffold_fixtures_and_controller_workflows(generated_app_fact
     shutil.copyfile(source / "requests.py", root / "test/controllers/rich_text_test.py")
     (root / "config/initializers/rich_text.py").write_text(
         "from flask import current_app\n"
-        f"current_app.config.active_record.encryption.primary_key = {generate_encryption_key()!r}\n"
+        f"current_app.config.encryption.primary_key = {generate_encryption_key()!r}\n"
     )
     report = root / "encrypted-rich-text.xml"
     run("test", "-q", "--junitxml", str(report))

@@ -26,28 +26,26 @@ def is_encrypted(source):
 
 def _keys(deterministic):
     name = "deterministic_key" if deterministic else "primary_key"
-    value = getattr(current_app.config.active_record.encryption, name)
+    value = getattr(current_app.config.encryption, name)
     if value is None:
-        value = os.environ.get(f"ACTIVE_RECORD_ENCRYPTION_{name.upper()}")
+        value = os.environ.get(f"FLASKTEROIDS_ENCRYPTION_{name.upper()}")
     if value is None:
         credentials = getattr(current_app, "credentials", None)
         configured = (
-            credentials.to_dict().get("active_record_encryption", {})
+            credentials.to_dict().get("encryption", {})
             if credentials is not None
             else {}
         )
         if not isinstance(configured, dict):
-            raise EncryptionError(
-                "active_record_encryption credentials must be a mapping"
-            )
+            raise EncryptionError("encryption credentials must be a mapping")
         value = configured.get(name)
     values = value if isinstance(value, (list, tuple)) else [value]
     if deterministic and isinstance(value, (list, tuple)):
         raise EncryptionError("deterministic_key must be a single, stable key")
     if not values or any(not isinstance(value, str) for value in values):
         raise EncryptionError(
-            f"Configure active_record.encryption.{name} or "
-            f"active_record_encryption.{name} credentials. "
+            f"Configure config.encryption.{name} or "
+            f"encryption.{name} credentials. "
             "Generate dedicated keys with flask db:encryption:init."
         )
     keys = []
@@ -99,10 +97,7 @@ def decrypt(source, *, context, deterministic=False):
         return None
     if not is_encrypted(source):
         if isinstance(source, str) and not source.startswith("flaskteroids:encrypted:"):
-            if (
-                current_app.config.active_record.encryption.support_unencrypted_data
-                is True
-            ):
+            if current_app.config.encryption.support_unencrypted_data is True:
                 return source
         raise EncryptionError("Expected an encrypted attribute envelope")
     try:

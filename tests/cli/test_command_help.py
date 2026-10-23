@@ -41,7 +41,7 @@ APPLICATION_HELP = {
     ("db:create",): [],
     ("db:schema:dump",): ["db/schema.py"],
     ("db:migrate",): [],
-    ("db:prepare",): ["DATABASE_URL"],
+    ("db:prepare",): ["FLASKTEROIDS_DATABASE_URL"],
     ("db:rollback",): [],
     ("credentials:show",): ["--environment", "NAME"],
     ("credentials:edit",): ["--environment", "NAME"],

@@ -45,15 +45,15 @@ def test_system(pytest_args):
 
 
 def _run_tests(pytest_args):
-    previous_environment = os.environ.get("FLASK_ENV")
-    os.environ["FLASK_ENV"] = "test"
+    previous_environment = os.environ.get("FLASKTEROIDS_ENV")
+    os.environ["FLASKTEROIDS_ENV"] = "test"
     try:
         exit_code = pytest.main(list(pytest_args))
     finally:
         if previous_environment is None:
-            os.environ.pop("FLASK_ENV", None)
+            os.environ.pop("FLASKTEROIDS_ENV", None)
         else:
-            os.environ["FLASK_ENV"] = previous_environment
+            os.environ["FLASKTEROIDS_ENV"] = previous_environment
     if exit_code == pytest.ExitCode.NO_TESTS_COLLECTED:
         click.echo("No tests collected; nothing to run.")
         exit_code = 0

@@ -23,10 +23,10 @@ def generated_app_factory(tmp_path_factory):
             if not key.startswith(("FLASK", "UV_"))
         }
         environment.update(
-            FLASK_ENV="test",
+            FLASKTEROIDS_ENV="test",
             PYTHONPATH=os.pathsep.join((str(root), str(Path(__file__).parents[1]))),
-            DATABASE_URL=os.environ.get(
-                "DATABASE_URL", "sqlite:///storage/test.sqlite3"
+            FLASKTEROIDS_DATABASE_URL=os.environ.get(
+                "FLASKTEROIDS_DATABASE_URL", "sqlite:///storage/test.sqlite3"
             ),
         )
 

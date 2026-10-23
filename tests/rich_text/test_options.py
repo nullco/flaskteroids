@@ -16,7 +16,7 @@ pytestmark = pytest.mark.usefixtures("app_ctx")
 @pytest.fixture
 def encryption_keys(app):
     keys = [base64.urlsafe_b64encode(os.urandom(32)).decode() for _ in range(2)]
-    app.config.active_record.encryption.primary_key = keys[:1]
+    app.config.encryption.primary_key = keys[:1]
     return keys
 
 
@@ -58,9 +58,7 @@ def test_explicit_encrypt_migrates_existing_plaintext(encryption_keys):
 def test_environment_key_configures_encryption_without_application_plumbing(
     monkeypatch,
 ):
-    monkeypatch.setenv(
-        "ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY", generate_encryption_key()
-    )
+    monkeypatch.setenv("FLASKTEROIDS_ENCRYPTION_PRIMARY_KEY", generate_encryption_key())
     owner = Entry.create(content="Environment secret")
     assert owner.reload().content.to_plain_text() == "Environment secret"
 
@@ -95,16 +93,16 @@ def test_encryption_rotation_reads_old_keys_and_writes_with_the_current_key(
 ):
     owner = Entry.create(content="Secret")
     original = stored_body(owner)
-    app.config.active_record.encryption.primary_key = encryption_keys
+    app.config.encryption.primary_key = encryption_keys
     assert owner.reload().content.to_plain_text() == "Secret"
     assert owner.content.encrypt()
     assert stored_body(owner) != original
-    app.config.active_record.encryption.primary_key = encryption_keys[1]
+    app.config.encryption.primary_key = encryption_keys[1]
     assert owner.content.reload().to_plain_text() == "Secret"
 
 
 def test_encryption_fails_closed_without_a_key(monkeypatch):
-    monkeypatch.delenv("ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY", raising=False)
+    monkeypatch.delenv("FLASKTEROIDS_ENCRYPTION_PRIMARY_KEY", raising=False)
     with pytest.raises(EncryptionError):
         Entry.create(content="Never store plaintext")
     assert Entry.count() == 0
@@ -112,7 +110,7 @@ def test_encryption_fails_closed_without_a_key(monkeypatch):
 
 def test_encryption_rejects_wrong_keys_and_plaintext_rows(app, encryption_keys):
     owner = Entry.create(content="Secret")
-    app.config.active_record.encryption.primary_key = encryption_keys[1]
+    app.config.encryption.primary_key = encryption_keys[1]
     with pytest.raises(EncryptionError):
         owner.reload().content.to_plain_text()
     table = Entry.metadata.tables["rich_texts"]

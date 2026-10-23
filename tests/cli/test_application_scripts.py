@@ -30,7 +30,7 @@ def script_environment(scripts_app, tmp_path):
     python.parent.mkdir(parents=True)
     python.write_text(
         "#!/bin/bash\n"
-        'printf "%s\\n" "$PWD" "${FLASK_ENV-unset}" "${DATABASE_URL-unset}" "$@" >> "$TRACE"\n'
+        'printf "%s\\n" "$PWD" "${FLASKTEROIDS_ENV-unset}" "${FLASKTEROIDS_DATABASE_URL-unset}" "$@" >> "$TRACE"\n'
         'exit "${PREPARE_STATUS:-0}"\n'
     )
     python.chmod(0o755)
@@ -63,8 +63,8 @@ def test_launcher_preserves_root_arguments_environment_and_status(
     scripts_app, script_environment
 ):
     env = script_environment | {
-        "FLASK_ENV": "production",
-        "DATABASE_URL": "sqlite:///other.sqlite3",
+        "FLASKTEROIDS_ENV": "production",
+        "FLASKTEROIDS_DATABASE_URL": "sqlite:///other.sqlite3",
         "PREPARE_STATUS": "23",
     }
     result = run_script(
@@ -88,9 +88,11 @@ def test_launcher_preserves_root_arguments_environment_and_status(
 def test_setup_syncs_then_prepares_selected_database(
     scripts_app, script_environment, environment
 ):
-    env = script_environment | {"DATABASE_URL": "sqlite:///selected.sqlite3"}
+    env = script_environment | {
+        "FLASKTEROIDS_DATABASE_URL": "sqlite:///selected.sqlite3"
+    }
     if environment is not None:
-        env["FLASK_ENV"] = environment
+        env["FLASKTEROIDS_ENV"] = environment
     result = run_script(scripts_app, "setup", env)
     assert result.returncode == 0, result.stderr
     assert Path(env["TRACE"]).read_text().splitlines() == [

@@ -11,10 +11,10 @@ uv run pytest tests/integration -v
 ```
 
 To try another backend, start a disposable server and set the application's usual
-`DATABASE_URL`:
+`FLASKTEROIDS_DATABASE_URL`:
 
 ```sh
-DATABASE_URL='postgresql+psycopg://postgres:password@localhost/flaskteroids_integration' \
+FLASKTEROIDS_DATABASE_URL='postgresql+psycopg://postgres:password@localhost/flaskteroids_integration' \
   uv run --locked --group integration pytest tests/integration -v
 ```
 
@@ -46,4 +46,4 @@ blocked: remote/Turbo behavior is outside this correctness package.
 multipart uploads/limits, resource identities/helpers, and model form/button
 inference. Method override inputs and expectations are ordinary Python test data
 in `tests/routing/method_override_cases.py`. These suites test Flaskteroids and its
-generated applications, not Rails or Rack.
+generated applications.

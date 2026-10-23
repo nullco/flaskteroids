@@ -55,7 +55,7 @@ def configure(config):
 def test_uses_environment_variable_to_select_environment(
     tmp_path, routes_module, monkeypatch
 ):
-    monkeypatch.setenv("FLASK_ENV", "test")
+    monkeypatch.setenv("FLASKTEROIDS_ENV", "test")
 
     app = application_class(routes_module).initialize(root_path=tmp_path)
 
@@ -65,7 +65,7 @@ def test_uses_environment_variable_to_select_environment(
 def test_explicit_environment_overrides_environment_variable(
     tmp_path, routes_module, monkeypatch
 ):
-    monkeypatch.setenv("FLASK_ENV", "production")
+    monkeypatch.setenv("FLASKTEROIDS_ENV", "production")
 
     app = application_class(routes_module).initialize(
         environment="test", root_path=tmp_path
@@ -77,7 +77,7 @@ def test_explicit_environment_overrides_environment_variable(
 def test_defaults_to_development_without_environment_variable(
     tmp_path, routes_module, monkeypatch
 ):
-    monkeypatch.delenv("FLASK_ENV", raising=False)
+    monkeypatch.delenv("FLASKTEROIDS_ENV", raising=False)
 
     app = application_class(routes_module).initialize(root_path=tmp_path)
 
@@ -117,6 +117,17 @@ def test_loads_secret_key_base_from_credentials(tmp_path, routes_module):
 
     assert app.secret_key == "shared-secret"
     assert app.credentials.secret_key_base == "shared-secret"
+
+
+def test_loads_signing_secret_from_environment(tmp_path, routes_module, monkeypatch):
+    monkeypatch.setenv("FLASKTEROIDS_SECRET_KEY_BASE", "environment-secret")
+
+    app = application_class(routes_module).initialize(
+        environment="production", root_path=tmp_path
+    )
+
+    assert app.secret_key == "environment-secret"
+    assert app.config.secret_key_base == "environment-secret"
 
 
 def test_production_requires_secret_key_base(tmp_path, routes_module):

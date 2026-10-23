@@ -50,7 +50,7 @@ class Application(Flask):
         )
         self.project_root = project_root
         self.env = Environment(
-            environment or os.environ.get("FLASK_ENV") or "development"
+            environment or os.environ.get("FLASKTEROIDS_ENV") or "development"
         )
         self.credentials = Credentials(project_root, self.env)
         self.database_url = "sqlite:///storage/database.db"
@@ -114,14 +114,15 @@ class Application(Flask):
                 )
 
         secret_key_base = (
-            os.environ.get("SECRET_KEY_BASE") or self.config.secret_key_base
+            os.environ.get("FLASKTEROIDS_SECRET_KEY_BASE")
+            or self.config.secret_key_base
         )
         if not secret_key_base and self.credentials.content_path.exists():
             secret_key_base = self.credentials.get("secret_key_base")
         if not secret_key_base:
             if self.env.production:
                 raise CredentialsError(
-                    "Missing secret_key_base. Add it to credentials or set SECRET_KEY_BASE."
+                    "Missing secret_key_base. Add it to credentials or set FLASKTEROIDS_SECRET_KEY_BASE."
                 )
             secret_key_base = secrets.token_hex(64)
         self.config.secret_key_base = secret_key_base

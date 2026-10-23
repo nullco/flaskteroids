@@ -32,10 +32,10 @@ Automatic preparation is not distributed migration coordination. Other commands 
 `docker run ... my-app celery -A jobs worker --loglevel=info`.
 Workers require a reachable `CELERY_BROKER_URL`; this is not provisioned by the framework.
 
-The image sets `FLASK_ENV=production`. `DATABASE_URL` optionally overrides SQLite;
+The image sets `FLASKTEROIDS_ENV=production`. `FLASKTEROIDS_DATABASE_URL` optionally overrides SQLite;
 external databases must exist and their drivers must be installed and locked.
-`ATTACHMENTS_SERVICE` defaults to local; external storage and SMTP need application
-configuration/credentials. `SECRET_KEY_BASE` is optional, not a replacement for the
+`FLASKTEROIDS_ATTACHMENTS_SERVICE` defaults to local; external storage and SMTP need application
+configuration/credentials. `FLASKTEROIDS_SECRET_KEY_BASE` is optional, not a replacement for the
 matching credentials key. `PORT` is for Procfile platforms, not Docker's port 8000.
 Procfile is a process example, not consumed by Docker.
 

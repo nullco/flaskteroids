@@ -6,7 +6,7 @@
 </h1>
 
 <p align="center">
-  A Rails-inspired Python MVC framework built on Flask, SQLAlchemy, and Celery.
+  A batteries-included Python MVC framework built on Flask, SQLAlchemy, and Celery.
 </p>
 
 <p align="center">

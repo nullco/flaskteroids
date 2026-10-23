@@ -21,7 +21,7 @@ use `uv sync --locked` and fail on missing/stale locks. This app is not a Python
 The framework constraint tracks the generator's minor line; prerelease/development
 generators are pinned and require an explicitly configured source if unpublished.
 
-Setup prepares the selected database; explicit `FLASK_ENV` and `DATABASE_URL` are honored.
+Setup prepares the selected database; explicit `FLASKTEROIDS_ENV` and `FLASKTEROIDS_DATABASE_URL` are honored.
 External databases must already exist, with their Python drivers added and locked.
 Preparation retains records and credentials; it neither repairs migrations nor runs seeds.
 Start servers/tests in a fresh process after migrating.
@@ -36,5 +36,5 @@ See [Assets](https://nullco.github.io/flaskteroids/other/assets/) for helpers,
 build commands, and configuration.
 
 Never commit `config/master.key` or plaintext secrets. Production requires the matching
-`FLASKTEROIDS_MASTER_KEY`; `SECRET_KEY_BASE` is not a substitute.
+`FLASKTEROIDS_MASTER_KEY`; `FLASKTEROIDS_SECRET_KEY_BASE` is not a substitute.
 See [deploy/README.md](deploy/README.md) for Docker, persistent storage and release steps.

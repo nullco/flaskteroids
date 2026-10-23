@@ -74,7 +74,7 @@ jobs:
           --health-cmd="${{ matrix.healthcheck }}"
           --health-interval=5s --health-timeout=5s --health-retries=30
     env:
-      DATABASE_URL: ${{ matrix.url }}
+      FLASKTEROIDS_DATABASE_URL: ${{ matrix.url }}
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-python@v5

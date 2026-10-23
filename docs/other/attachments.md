@@ -168,7 +168,7 @@ config.attachments.service = "amazon"
 ```
 
 Generated applications use `local` in development and `test` in tests. Production
-uses `ATTACHMENTS_SERVICE`, defaulting to `local`. A declaration can override the
+uses `FLASKTEROIDS_ATTACHMENTS_SERVICE`, defaulting to `local`. A declaration can override the
 default with `service="amazon"`. Changing services does not move existing files.
 
 ## Download links

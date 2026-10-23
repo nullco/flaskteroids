@@ -27,8 +27,8 @@ def test_application_uses_custom_adapter_and_dynamic_configuration(mocker):
 
     app = Flask(__name__)
     app.config = Configuration(app.root_path, app.config)
-    app.config.active_job.queue_adapter = CustomAdapter
-    app.config.active_job.extra = {"mode": "custom"}
+    app.config.jobs.queue_adapter = CustomAdapter
+    app.config.jobs.extra = {"mode": "custom"}
     app.config.x.nested.value = "custom"
     mocker.patch("flaskteroids.extensions.jobs.discover_classes", return_value={})
     jobs = JobsExtension(app)

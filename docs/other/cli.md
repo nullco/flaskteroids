@@ -39,11 +39,11 @@ As your models grow, migrations describe how their tables should change. Run
 bin/flask db:prepare
 ```
 
-To prepare another environment, choose it with `FLASK_ENV`:
+To prepare another environment, choose it with `FLASKTEROIDS_ENV`:
 
 ```sh
-FLASK_ENV=test bin/flask db:prepare
-FLASK_ENV=production bin/flask db:prepare
+FLASKTEROIDS_ENV=test bin/flask db:prepare
+FLASKTEROIDS_ENV=production bin/flask db:prepare
 ```
 
 Preparation doesn't reset the database or seed records. After successful migration,
@@ -242,9 +242,10 @@ bin/flask db:encryption:init
 bin/flask credentials:edit
 ```
 
-Prints dedicated primary and deterministic encryption keys as credentials YAML,
-without modifying existing credentials. Do not commit or log the plaintext output.
-These keys serve `encrypts(...)` on models and `has_rich_text(..., encrypted=True)`.
+Prints dedicated primary and deterministic encryption keys under the `encryption`
+credentials section, without modifying existing credentials. Do not commit or log
+this plaintext output. These keys serve `encrypts(...)` on models,
+`has_rich_text(..., encrypted=True)`, and direct use of `flaskteroids.encryption`.
 See [Attribute encryption](../models/encryption.md).
 
 ## Rich text

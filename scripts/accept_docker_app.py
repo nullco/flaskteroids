@@ -83,7 +83,7 @@ def main():
                 "--rm",
                 *runtime,
                 "-e",
-                "DATABASE_URL=sqlite:///absent/db.sqlite3",
+                "FLASKTEROIDS_DATABASE_URL=sqlite:///absent/db.sqlite3",
                 args.image,
                 success=False,
             )

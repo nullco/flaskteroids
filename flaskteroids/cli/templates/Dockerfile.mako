@@ -5,7 +5,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --locked --no-dev --no-install-project
 
 FROM python:3.12-slim
-ENV FLASK_ENV=production PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+ENV FLASKTEROIDS_ENV=production PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 ENV PATH="/app/.venv/bin:$PATH"
 WORKDIR /app
 COPY --from=deps /app/.venv /app/.venv

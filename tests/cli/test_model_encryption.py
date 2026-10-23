@@ -17,7 +17,7 @@ def test_encryption_key_command_prints_distinct_keys_without_changing_credential
     app.credentials.content_path.write_bytes(original)
     result = cli_runner.invoke(args=["db:encryption:init"])
     assert result.exit_code == 0, result.output
-    keys = yaml.safe_load(result.output)["active_record_encryption"]
+    keys = yaml.safe_load(result.output)["encryption"]
     assert set(keys) == {"primary_key", "deterministic_key"}
     assert len({*keys.values()}) == 2
     assert all(len(base64.urlsafe_b64decode(key)) == 32 for key in keys.values())

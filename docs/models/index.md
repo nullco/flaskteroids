@@ -1,6 +1,6 @@
 # Models
 
-Flaskteroids models are SQLAlchemy-mapped application objects with Rails-like
+Flaskteroids models are SQLAlchemy-mapped application objects with built-in
 querying, validation, and persistence methods. Columns come from a generated
 snapshot of the migrated database; behavior and association declarations stay in model
 files. There is no separate mapped row hidden behind a model.
@@ -55,7 +55,7 @@ Model/scaffold generators write migrations and behavioral model files. Successfu
 selected database. Commit it, but **do not edit it manually**. Use
 `flask db:schema:dump` to refresh it independently. See [CLI](../other/cli.md).
 
-The snapshot lives alongside migrations in `db/`, matching Rails conventions.
+The snapshot lives alongside migrations in `db/`.
 For an existing app with `app/schema.py`, run `flask db:schema:dump`, remove the
 old snapshot, and restart servers and workers. No database changes are needed.
 

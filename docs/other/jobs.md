@@ -18,6 +18,26 @@ To enqueue a job, call `perform_later`:
 MyJob().perform_later(user_id=1)
 ```
 
+## Configuration
+
+Configure jobs through `config.jobs` in application or environment settings:
+
+```python
+config.jobs.broker_url = "sqla+sqlite:///storage/jobs_database.db"
+config.jobs.result_backend = None
+config.jobs.additional_config = {}
+```
+
+Celery is the default queue adapter. For tests, use:
+
+```python
+from flaskteroids.testing import TestQueueAdapter
+
+config.jobs.queue_adapter = TestQueueAdapter
+```
+
+## Registration and application context
+
 Jobs in `app/jobs` are registered automatically. Call `perform_later` inside an
 application context. Requests already have one; see
 [using models and jobs in scripts](../configuration.md#using-models-and-jobs-in-scripts)

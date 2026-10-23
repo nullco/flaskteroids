@@ -16,7 +16,7 @@ from tests.isolation.models.records import Author, Story
 
 @pytest.fixture
 def lazy_app(tmp_path, monkeypatch):
-    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.delenv("FLASKTEROIDS_DATABASE_URL", raising=False)
 
     def create(url, initializer=None):
         root = tmp_path / "lazy"
@@ -34,7 +34,7 @@ def lazy_app(tmp_path, monkeypatch):
                 config.paths.mailers = "tests.isolation.mailers"
                 config.paths.controllers = "tests.isolation.controllers"
                 config.paths.routes = "tests.isolation.routes"
-                config.active_job.queue_adapter = TestQueueAdapter
+                config.jobs.queue_adapter = TestQueueAdapter
                 config.action_mailer.delivery_method = TestDeliveryMethod
 
         return LazyApplication.initialize(environment="test", root_path=root)

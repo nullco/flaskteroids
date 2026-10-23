@@ -17,8 +17,8 @@ _HALTED = object()
 _COMMIT_CALLBACKS = "flaskteroids.commit_callbacks"
 
 # Callback names that accept the <on> option, and the values each accepts.
-# Mirroring Rails, <on> is only meaningful for callbacks that fire in more than
-# one context (validation, save) or after a transaction (commit/rollback).
+# <on> applies to callbacks that fire in more than one context (validation,
+# save) or after a transaction (commit/rollback).
 ON_VALUES = {
     "before_validation": {"create", "update"},
     "after_validation": {"create", "update"},
@@ -157,7 +157,7 @@ def run_callbacks(instance, kind, operation, body, *args, **kwargs):
 
     Before callbacks run in registration order, around callbacks wrap the body
     (generator-based, like the controller around_action pattern), and after
-    callbacks run in reverse registration order (LIFO), mirroring Rails.
+    callbacks run in reverse registration order (LIFO).
 
     Returns ``_HALTED`` if a before callback returns ``False`` or an around
     callback fails to yield; otherwise returns the body's return value.
@@ -231,7 +231,7 @@ def _resolve_session(session_obj):
 def queue_after_commit(instance, operation, session_obj):
     sess = _resolve_session(session_obj)
     # One entry per record per transaction (latest operation wins), so saving
-    # the same record multiple times in one transaction fires once, like Rails.
+    # the same record multiple times in one transaction fires once.
     transaction = sess.get_nested_transaction() or sess.get_transaction()
     entries = _pending.setdefault(sess, {}).setdefault(transaction, {})
     entries[id(instance)] = (instance, operation, instance.saved_changes)

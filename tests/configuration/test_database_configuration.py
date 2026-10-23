@@ -42,7 +42,9 @@ production:
     result = load_database_configuration(
         tmp_path,
         "production",
-        environ={"DATABASE_URL": "postgresql://example/environment_database"},
+        environ={
+            "FLASKTEROIDS_DATABASE_URL": "postgresql://example/environment_database"
+        },
     )
 
     assert result["url"] == "postgresql://example/environment_database"
@@ -60,7 +62,9 @@ production:
     result = load_database_configuration(
         tmp_path,
         "production",
-        environ={"DATABASE_URL": "postgresql://example/environment_database"},
+        environ={
+            "FLASKTEROIDS_DATABASE_URL": "postgresql://example/environment_database"
+        },
     )
 
     assert result["url"] == "postgresql://example/configured_database"

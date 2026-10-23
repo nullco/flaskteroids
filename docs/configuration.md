@@ -73,10 +73,20 @@ See [Models](models/index.md#assignment-validation-and-persistence).
 Flaskteroids selects the environment in this order:
 
 1. The explicit `environment=` argument to `Application.initialize()`.
-2. `FLASK_ENV`.
+2. `FLASKTEROIDS_ENV`.
 3. `development`.
 
-Flaskteroids reads `FLASK_ENV` to select configuration. Flask itself no longer uses this variable; use `flask run --debug` to enable its debugger.
+`FLASKTEROIDS_ENV` selects Flaskteroids configuration, not Flask's debugger.
+Use `flask run --debug` to enable the debugger.
+
+Framework-provided environment variables use the `FLASKTEROIDS_` prefix, including
+`FLASKTEROIDS_DATABASE_URL`, `FLASKTEROIDS_SECRET_KEY_BASE`,
+`FLASKTEROIDS_MASTER_KEY`, `FLASKTEROIDS_ATTACHMENTS_SERVICE`, and
+`FLASKTEROIDS_ENCRYPTION_*`. The prefix applies only to environment variables:
+Python settings such as `config.secret_key_base` and `config.encryption.primary_key`,
+and credential names such as `secret_key_base` and `encryption`, remain unprefixed.
+Dependency-owned variables such as Flask's `FLASK_APP` and Celery's
+`CELERY_BROKER_URL` retain their native names.
 
 Flaskteroids applies the selected file under `config/environments/` after application-wide configuration:
 
@@ -90,8 +100,8 @@ def configure(config):
     config.consider_all_requests_local = False
     config.require_master_key = True
     config.action_mailer.perform_deliveries = True
-    config.active_job.broker_url = os.environ.get(
-        'CELERY_BROKER_URL', config.active_job.broker_url
+    config.jobs.broker_url = os.environ.get(
+        'CELERY_BROKER_URL', config.jobs.broker_url
     )
 ```
 
@@ -124,31 +134,31 @@ test:
   database: storage/test.sqlite3
 
 production:
-  url: ${DATABASE_URL}
+  url: ${FLASKTEROIDS_DATABASE_URL}
 ```
 
 The generated app uses SQLite for development and tests. For another database,
-install its driver and set `DATABASE_URL`:
+install its driver and set `FLASKTEROIDS_DATABASE_URL`:
 
 For PostgreSQL:
 
 ```sh
 uv add 'psycopg[binary]'
-export DATABASE_URL='postgresql+psycopg://app:password@localhost/my_app'
+export FLASKTEROIDS_DATABASE_URL='postgresql+psycopg://app:password@localhost/my_app'
 ```
 
 Or for MySQL:
 
 ```sh
 uv add 'PyMySQL[rsa]'
-export DATABASE_URL='mysql+pymysql://app:password@localhost/my_app'
+export FLASKTEROIDS_DATABASE_URL='mysql+pymysql://app:password@localhost/my_app'
 ```
 
 YAML values can reference environment variables with `${NAME}` or
 `${NAME:-default}`. Connection settings are chosen in this order:
 
 1. An explicit `url` in `database.yml`.
-2. `DATABASE_URL`.
+2. `FLASKTEROIDS_DATABASE_URL`.
 3. Individual settings such as `adapter`, `database`, `username`, and `password`.
 
 ## Preparing for deployment
@@ -157,7 +167,7 @@ On a fresh checkout, run `bin/setup` to install dependencies and prepare the
 database. Before deploying database changes, prepare your production environment:
 
 ```sh
-FLASK_ENV=production bin/flask db:prepare
+FLASKTEROIDS_ENV=production bin/flask db:prepare
 ```
 
 Start PostgreSQL or MySQL yourself and give the application permission to create

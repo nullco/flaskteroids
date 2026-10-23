@@ -14,7 +14,7 @@ def test_generated_scaffold_serves_json_and_html_responses(tmp_path, monkeypatch
     root = tmp_path / "weblog"
     environment = os.environ | {
         "PYTHONPATH": str(Path(__file__).parents[4]),
-        "FLASK_ENV": "test",
+        "FLASKTEROIDS_ENV": "test",
     }
 
     def run(*args):

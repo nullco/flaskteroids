@@ -37,9 +37,9 @@ def test_generated_application_boots_in_development_and_production(
     assert development.returncode == 0, development.stderr
 
     environment = os.environ | {
-        "FLASK_ENV": "production",
+        "FLASKTEROIDS_ENV": "production",
         "FLASKTEROIDS_MASTER_KEY": (root / "config" / "master.key").read_text().strip(),
-        "DATABASE_URL": "sqlite:///:memory:",
+        "FLASKTEROIDS_DATABASE_URL": "sqlite:///:memory:",
     }
     production = subprocess.run(
         [
@@ -71,7 +71,7 @@ def test_generated_model_can_boot_migrate_and_use_fresh_mappings(tmp_path, monke
     root = tmp_path / "weblog"
     environment = os.environ | {
         "PYTHONPATH": os.pathsep.join((str(root), str(Path(__file__).parents[2]))),
-        "FLASK_ENV": "development",
+        "FLASKTEROIDS_ENV": "development",
     }
 
     def run(*args):

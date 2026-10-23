@@ -1,4 +1,4 @@
-"""Rails-directed scalar input casting, separate from database serialization."""
+"""Scalar input casting, separate from database serialization."""
 
 import json
 import re
@@ -109,8 +109,8 @@ def cast_input(type_, value):
 
 
 def database_value(type_, value, raw):
-    # Ruby's Integer#to_i reads a nonnumeric string as zero, but Active Record
-    # serializes that input as NULL. Numericality validation examines raw input.
+    # Nonnumeric strings cast to zero in memory but persist as NULL.
+    # Numericality validation examines raw input.
     if isinstance(type_, Integer) and isinstance(raw, str) and not _INTEGER.match(raw):
         return None
     return value

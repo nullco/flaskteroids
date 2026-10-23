@@ -16,7 +16,7 @@ def pytest_configure(config):
 
 
 def pytest_sessionstart(session):
-    os.environ.setdefault("FLASK_ENV", "test")
+    os.environ.setdefault("FLASKTEROIDS_ENV", "test")
     session.config._flaskteroids_worker_database = _configure_worker_database()
     _prepare_test_database(session.config.rootpath)
 
@@ -55,10 +55,10 @@ def attachment_storage(application):
 
 def _configure_worker_database():
     worker = os.environ.get("PYTEST_XDIST_WORKER")
-    if not worker or os.environ.get("DATABASE_URL"):
+    if not worker or os.environ.get("FLASKTEROIDS_DATABASE_URL"):
         return None
     path = Path("storage", f"test-{worker}.sqlite3").resolve()
-    os.environ["DATABASE_URL"] = f"sqlite:///{path}"
+    os.environ["FLASKTEROIDS_DATABASE_URL"] = f"sqlite:///{path}"
     return path
 
 

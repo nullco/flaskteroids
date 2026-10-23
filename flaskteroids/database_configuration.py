@@ -34,7 +34,7 @@ def load_database_configuration(root, environment, environ=None):
         )
 
     explicit_url = selected.get("url")
-    environment_url = environ.get("DATABASE_URL")
+    environment_url = environ.get("FLASKTEROIDS_DATABASE_URL")
     if "url" in selected:
         if not explicit_url:
             raise DatabaseConfigurationError("Explicit database URL is empty")

@@ -50,7 +50,7 @@ class Options:
 
 class Configuration(FlaskConfig):
     paths: Options
-    active_job: Options
+    jobs: Options
 
     def __init__(self, root_path, defaults=None):
         super().__init__(root_path, defaults)
@@ -75,7 +75,7 @@ class Configuration(FlaskConfig):
                 "serve": True,
             }
         )
-        self.active_job = Options(
+        self.jobs = Options(
             {
                 "broker_url": "sqla+sqlite:///storage/jobs_database.db",
                 "result_backend": None,
@@ -118,13 +118,11 @@ class Configuration(FlaskConfig):
                 "authorize": None,
             }
         )
-        self.active_record = Options(
+        self.encryption = Options(
             {
-                "encryption": {
-                    "primary_key": None,
-                    "deterministic_key": None,
-                    "support_unencrypted_data": False,
-                }
+                "primary_key": None,
+                "deterministic_key": None,
+                "support_unencrypted_data": False,
             }
         )
         self.rich_text = Options(
