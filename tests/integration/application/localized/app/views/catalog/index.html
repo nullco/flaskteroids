@@ -1,0 +1,6 @@
+{% extends "layouts/application.html" %}
+{% block body %}
+<h1>{{ t(".title") }}</h1>
+<a href="{{ catalog_path(locale='en') }}">English</a>
+<a href="{{ catalog_path(locale='es') }}">Español</a>
+{% endblock %}

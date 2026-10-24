@@ -24,6 +24,13 @@ variables become template variables, so `self.posts` is available as `posts`:
 {% endblock %}
 ```
 
+## Translations and dates
+
+Use `t("products.index.title")` for translations and `l(value, format="short")`
+for localized dates and times. A relative key such as `t(".title")` uses the
+current template context. See [Internationalization](../other/internationalization.md)
+for YAML catalogs, locale selection, pluralization, and safe HTML translations.
+
 ## Application helpers
 
 Put reusable presentation methods in helper classes under `app/helpers`. The

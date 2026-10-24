@@ -174,6 +174,15 @@ dependency internals or introduce a parallel implementation of a supported featu
   Model-backed forms obtain values independently of response serialization.
 - Use Flaskteroids jobs and mailers (`perform_later`, `deliver_later`) rather than
   registering raw Celery tasks or managing Celery dispatch directly.
+- Use `config/locales/**/*.yml`, `config.i18n`, and `t`/`l` helpers for application
+  messages and dates. Select allowed locales with `with_locale(...)` around a
+  request or operation; never change Python's process-global locale. Relative
+  view keys use the template context; use absolute keys in shared layouts/macros.
+  `_html` keys permit trusted catalog markup in HTML templates while escaping
+  interpolated user values. Mail captures locale at `mail()`; general jobs need
+  an explicit locale argument. Built-in validation/form messages and numeric
+  formatting are not yet localized. See
+  [Internationalization](https://nullco.github.io/flaskteroids/other/internationalization/).
 - Use framework configuration, credentials, migrations, and testing abstractions
   rather than configuring or bootstrapping the underlying dependencies separately.
 

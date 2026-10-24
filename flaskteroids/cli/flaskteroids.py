@@ -105,6 +105,7 @@ def new(app_name, skip_install):
         ab.file("config/initializers/.keep")
         ab.file("config/database.yml", _template(path="config/database.yml.mako"))
         ab.file("config/storage.yml", STORAGE_YAML)
+        ab.file("config/locales/en.yml", 'en:\n  hello: "Hello world"\n')
         credentials_key = generate_key()
         credentials = yaml.safe_dump(
             {"secret_key_base": secrets.token_hex(64)}, sort_keys=False

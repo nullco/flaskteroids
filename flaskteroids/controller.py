@@ -25,6 +25,7 @@ from flaskteroids.actions import (
 from flaskteroids.declarations import actions_for
 from flaskteroids.exceptions import DoubleRenderError, ProgrammerError
 from flaskteroids.flash import flash
+from flaskteroids.i18n import localize, translate
 from flaskteroids.inflector import inflector
 from flaskteroids.rules import bind_rules
 
@@ -149,6 +150,21 @@ class ActionController:
         self._response = response
         self._performed = True
         return response
+
+    def translate(self, key, **options):
+        if isinstance(key, str) and key.startswith(".") and "scope" not in options:
+            action = getattr(self, "_action_name", None)
+            if not action:
+                raise ProgrammerError("Relative translations require a current action.")
+            controller = inflector.underscore(
+                type(self).__name__.removesuffix("Controller")
+            )
+            options["scope"] = f"{controller}.{action}"
+        return translate(key, **options)
+
+    t = translate
+    localize = staticmethod(localize)
+    l = localize  # noqa: E741 - Rails-compatible localization alias.
 
     def redirect_to(self, target, *, status=302, notice=None, alert=None):
         self._ensure_response_available()

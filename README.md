@@ -39,6 +39,7 @@ control, without giving up the framework's everyday workflows.
 - Resource routing with CRUD routes and path helpers.
 - Models with associations, validations, and lifecycle callbacks.
 - Jinja templates, form helpers, and HTML or JSON responses.
+- YAML translations, scoped locales, pluralization, and localized date/time formats.
 - Generators for models, migrations, controllers, scaffolds, mailers, and authentication.
 - Background jobs and email delivery.
 - File attachments with disk and S3-compatible storage.

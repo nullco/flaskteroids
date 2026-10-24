@@ -1,0 +1,32 @@
+es:
+  hello: "Hola %{name}"
+  messages:
+    zero: "Ningún mensaje"
+    one: "Un mensaje"
+    other: "%{count} mensajes"
+  plain: "<b>%{name}</b>"
+  welcome_html: "<b>%{name}</b>"
+  products:
+    index:
+      title: "Productos"
+    row:
+      title: "Fila de producto"
+    show:
+      notice: "Producto encontrado"
+  notices_mailer:
+    welcome:
+      title: "Bienvenido %{name}"
+  date:
+    formats:
+      default: "%d/%m/%Y"
+      long: "%A, %-d de %B de %Y"
+    day_names: [domingo, lunes, martes, miércoles, jueves, viernes, sábado]
+    abbr_day_names: [dom, lun, mar, mié, jue, vie, sáb]
+    month_names: [null, enero, febrero, marzo, abril, mayo, junio, julio, agosto, septiembre, octubre, noviembre, diciembre]
+    abbr_month_names: [null, ene, feb, mar, abr, may, jun, jul, ago, sep, oct, nov, dic]
+  time:
+    formats:
+      default: "%d/%m/%Y %H:%M"
+      short: "%H:%M"
+    am: "a. m."
+    pm: "p. m."

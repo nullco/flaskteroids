@@ -1,7 +1,6 @@
 from functools import wraps
 
 import pytest
-from flask import Flask
 
 from flaskteroids.actions import (
     after_action,
@@ -48,7 +47,7 @@ def test_rules_collect_local_declarations_once_through_diamond():
 @pytest.mark.parametrize(
     "base,prepare", [(ActionController, init_controller), (ActionMailer, init_mailer)]
 )
-def test_plain_mixin_diamonds_contribute_action_callbacks(base, prepare):
+def test_plain_mixin_diamonds_contribute_action_callbacks(base, prepare, app):
     events = []
 
     class Shared:
@@ -73,8 +72,6 @@ def test_plain_mixin_diamonds_contribute_action_callbacks(base, prepare):
             )
 
     prepare(Example)
-    app = Flask(__name__)
-    app.config.action_mailer = type("MailConfig", (), {"default_options": {}})()
     with app.app_context():
         Example().index()
     assert events == ["shared", "action"]
@@ -84,7 +81,7 @@ def test_plain_mixin_diamonds_contribute_action_callbacks(base, prepare):
     "base,prepare", [(ActionController, init_controller), (ActionMailer, init_mailer)]
 )
 def test_inherited_actions_prepare_once_and_preserve_application_decorators(
-    base, prepare
+    base, prepare, app
 ):
     events = []
 
@@ -126,8 +123,6 @@ def test_inherited_actions_prepare_once_and_preserve_application_decorators(
 
     prepare(Child)
     prepare(Child)
-    app = Flask(__name__)
-    app.config.action_mailer = type("MailConfig", (), {"default_options": {}})()
     with app.app_context():
         result = Child().index()
         if base is ActionMailer:
@@ -138,7 +133,7 @@ def test_inherited_actions_prepare_once_and_preserve_application_decorators(
 @pytest.mark.parametrize(
     "base,prepare", [(ActionController, init_controller), (ActionMailer, init_mailer)]
 )
-def test_explicit_super_action_runs_parent_chain(base, prepare):
+def test_explicit_super_action_runs_parent_chain(base, prepare, app):
     events = []
 
     class Parent(base):
@@ -164,8 +159,6 @@ def test_explicit_super_action_runs_parent_chain(base, prepare):
 
     prepare(Child)
     prepare(Parent)
-    app = Flask(__name__)
-    app.config.action_mailer = type("MailConfig", (), {"default_options": {}})()
     with app.app_context():
         Child().index()
     assert events == ["before", "child", "before", "parent"]
@@ -174,7 +167,7 @@ def test_explicit_super_action_runs_parent_chain(base, prepare):
 @pytest.mark.parametrize(
     "base,prepare", [(ActionController, init_controller), (ActionMailer, init_mailer)]
 )
-def test_diamond_action_chains_apply_to_new_actions_and_overrides(base, prepare):
+def test_diamond_action_chains_apply_to_new_actions_and_overrides(base, prepare, app):
     events = []
 
     class Root(base):
@@ -240,8 +233,6 @@ def test_diamond_action_chains_apply_to_new_actions_and_overrides(base, prepare)
 
     prepare(Child)
     prepare(Child)
-    app = Flask(__name__)
-    app.config.action_mailer = type("MailConfig", (), {"default_options": {}})()
     with app.app_context():
         child = Child()
         child.index()

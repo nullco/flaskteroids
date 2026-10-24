@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="{{ get_locale() }}">
   <head>
     <meta charset="utf-8">
     <title>{% block title %}Test App{% endblock title %}</title>

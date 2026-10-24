@@ -18,6 +18,7 @@ from flaskteroids.actions import (
     register_actions,
 )
 from flaskteroids.declarations import actions_for
+from flaskteroids.i18n import get_locale, with_locale
 from flaskteroids.inflector import inflector
 from flaskteroids.jobs.job import Job
 from flaskteroids.rules import bind_rules
@@ -120,6 +121,7 @@ class MessageBuilder:
         template_name=None,
         template_params=None,
         helper_owner=None,
+        locale=None,
     ):
         defaults = current_app.config.action_mailer.default_options
         self.from_ = from_ or defaults.get("from_") or "no-reply@flaskteroids.me"
@@ -129,6 +131,7 @@ class MessageBuilder:
         self.template_name = template_name
         self.template_params = template_params or {}
         self.helper_owner = helper_owner
+        self.locale = get_locale() if locale is None else locale
 
     def build(self):
         msg = EmailMessage()
@@ -142,7 +145,7 @@ class MessageBuilder:
             else None
         )
         assigns = vars(owner) if owner is not None else self.template_params
-        with mailer_scope(owner, assigns):
+        with with_locale(self.locale), mailer_scope(owner, assigns):
             txt = self._render_content(type_="txt", assigns=assigns)
             html = self._render_content(type_="html", assigns=assigns)
         if txt:

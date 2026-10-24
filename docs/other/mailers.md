@@ -1,5 +1,9 @@
 # Mailers
 
+Mail captures the locale when `mail()` is called and uses it for immediate or
+queued template rendering. See [Internationalization](internationalization.md#mail-and-jobs)
+for locale selection and translated subjects.
+
 Mailers build and send email. Each action chooses a recipient and subject, and
 sets the values its templates need. You can deliver the message immediately or
 send it through a background job.

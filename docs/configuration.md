@@ -50,6 +50,23 @@ conventionally matching controller helpers, and explicit `helper(...)`
 selections. See [application helpers](views/index.md#application-helpers) for
 inheritance, naming, mailer boundaries, and development reloading.
 
+## Internationalization
+
+Translation catalogs live under `config/locales` by default:
+
+```python
+config.i18n.default_locale = "en"
+config.i18n.available_locales = ["en", "es"]
+config.i18n.fallbacks = False
+config.i18n.raise_on_missing_translations = False
+config.i18n.pluralization_rules = {}
+config.paths.locales = "config/locales"
+```
+
+Locale selection is application policy. Use `with_locale(...)` in an around
+callback rather than changing process-global state. See
+[Internationalization](other/internationalization.md) for catalogs and helpers.
+
 ## Request limits
 
 Set request limits in `configure`, rather than in request or controller callbacks:

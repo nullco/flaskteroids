@@ -25,6 +25,7 @@ my_project/
 │   │   ├── development.py
 │   │   ├── test.py
 │   │   └── production.py
+│   ├── locales/en.yml   # application translations
 │   ├── initializers/
 │   ├── application.py
 │   ├── boot.py
@@ -64,6 +65,7 @@ my_project/
 | `config/database.yml` | Database connections by environment. |
 | `config/credentials.yml.enc` | Encrypted application secrets. |
 | `config/routes.py` | Application routes. |
+| `config/locales` | YAML translation catalogs. |
 | `db/migrate` | Database migrations. |
 | `storage` | Local database files and uploads; keep persistent in containers. |
 | `bin/flask` | Run Flask commands using your app's environment. |

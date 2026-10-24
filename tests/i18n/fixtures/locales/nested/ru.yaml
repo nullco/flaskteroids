@@ -1,0 +1,6 @@
+ru:
+  messages:
+    one: "%{count} сообщение"
+    few: "%{count} сообщения"
+    many: "%{count} сообщений"
+    other: "%{count} сообщения"

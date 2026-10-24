@@ -1,0 +1,23 @@
+en:
+  hello: "Hello %{name}"
+  english_only: "English fallback"
+  messages:
+    zero: "No messages"
+    one: "One message"
+    other: "%{count} messages"
+  plain: "<b>%{name}</b>"
+  welcome_html: "<b>%{name}</b>"
+  notice:
+    html: "<em>%{name}</em>"
+  incomplete:
+    one: "One"
+  products:
+    index:
+      title: "Products"
+    row:
+      title: "Product row"
+    show:
+      notice: "Found product"
+  notices_mailer:
+    welcome:
+      title: "Welcome %{name}"

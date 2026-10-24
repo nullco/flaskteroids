@@ -53,6 +53,7 @@ nav:
     - CLI: other/cli.md
     - Fields: other/fields.md
     - Forms: other/forms.md
+    - Internationalization: other/internationalization.md
     - Assets: other/assets.md
     - Attachments: other/attachments.md
     - Rich text: other/rich_text.md

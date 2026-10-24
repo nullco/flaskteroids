@@ -18,6 +18,7 @@ Start with [Getting started](getting_started.md) to build a product catalog, lea
 | Encrypt sensitive database values | [Attribute encryption](models/encryption.md) |
 | Handle requests and define URLs | [Controllers](controllers/index.md), [Routing](controllers/routing.md) |
 | Build pages and accept input | [Views](views/index.md), [Forms](other/forms.md) |
+| Translate messages and format dates | [Internationalization](other/internationalization.md) |
 | Add styles and images | [Assets](other/assets.md) |
 | Upload files or add a text editor | [Attachments](other/attachments.md), [Rich text](other/rich_text.md) |
 | Run work in the background or send email | [Jobs](other/jobs.md), [Mailers](other/mailers.md) |

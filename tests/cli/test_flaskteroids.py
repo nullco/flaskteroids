@@ -31,6 +31,7 @@ def test_new_creates_application_and_runs_setup(cli_runner, artifacts_builder):
         "config/environments/test.py",
         "config/environments/production.py",
         "config/database.yml",
+        "config/locales/en.yml",
         "config/credentials.yml.enc",
         "config/master.key",
         "test/__init__.py",

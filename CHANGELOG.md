@@ -19,6 +19,10 @@
 
 ### Added
 
+- Dependency-free internationalization with YAML catalogs, scoped locales,
+  Python/controller/Jinja translation and localization helpers, interpolation,
+  configurable plural rules, safe HTML translations, and locale-aware mail delivery.
+  New applications include an English catalog and a locale-aware layout language.
 - Rich-text attributes with `has_rich_text`, a locally bundled Trix editor,
   server-sanitized rendering, eager-loading scopes, and scaffold support.
   `rich_text:install` generates shared storage and installs assets.

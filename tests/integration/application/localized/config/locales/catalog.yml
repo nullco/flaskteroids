@@ -1,0 +1,12 @@
+en:
+  catalog:
+    index:
+      title: "Catalog"
+    show:
+      notice: "Product found"
+es:
+  catalog:
+    index:
+      title: "Catálogo"
+    show:
+      notice: "Producto encontrado"

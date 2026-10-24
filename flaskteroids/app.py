@@ -27,6 +27,7 @@ from flaskteroids.extensions.jobs import JobsExtension
 from flaskteroids.extensions.mail import MailExtension
 from flaskteroids.extensions.routes import RoutesExtension
 from flaskteroids.flash import flash
+from flaskteroids.i18n import I18nExtension
 from flaskteroids.rich_text.extension import init_rich_text
 from flaskteroids.rich_text.helpers import rich_text_assets
 
@@ -41,6 +42,7 @@ def initialize_app(app):
     _configure_orm(app)
     _prepare_shell_context(app)
     _prepare_template_contexts(app)
+    I18nExtension(app)
     HelpersExtension(app)
     _register_error_handlers(app)
     _register_cli_commands(app)

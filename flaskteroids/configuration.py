@@ -65,6 +65,7 @@ class Configuration(FlaskConfig):
                 "jobs": "app.jobs",
                 "mailers": "app.mailers",
                 "initializers": "config/initializers",
+                "locales": "config/locales",
             }
         )
         self.assets = Options(
@@ -81,6 +82,15 @@ class Configuration(FlaskConfig):
                 "result_backend": None,
                 "additional_config": {},
                 "queue_adapter": CeleryQueueAdapter,
+            }
+        )
+        self.i18n = Options(
+            {
+                "default_locale": "en",
+                "available_locales": ["en"],
+                "fallbacks": False,
+                "raise_on_missing_translations": False,
+                "pluralization_rules": {},
             }
         )
         self.database_tasks = Options({"maintenance_database": "postgres"})
