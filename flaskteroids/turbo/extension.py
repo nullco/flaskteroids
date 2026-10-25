@@ -41,10 +41,24 @@ def template_context():
     }
 
 
+class _FrameETagResponse:
+    def set_etag(self, etag, weak=False):
+        if has_request_context() and (
+            getattr(g, "controller", None) is not None
+            or getattr(g, "_flaskteroids_turbo_rendered", False)
+        ):
+            variant = "frame" if turbo_frame_request() else "page"
+            etag = sha256(f"{etag}\0{variant}".encode()).hexdigest()
+        return super().set_etag(etag, weak=weak)
+
+
 def init_turbo(app):
     if app.extensions.get("flaskteroids.turbo"):
         return
     app.extensions["flaskteroids.turbo"] = True
+    app.response_class = type(
+        "TurboResponse", (_FrameETagResponse, app.response_class), {}
+    )
     app.jinja_env.loader = ChoiceLoader(
         [app.jinja_env.loader, PackageLoader("flaskteroids.turbo", "templates")]
     )
@@ -59,9 +73,4 @@ def init_turbo(app):
         if response.mimetype not in {"text/html", "application/json", STREAM_MIMETYPE}:
             return response
         response.vary.update(("Accept", "Turbo-Frame"))
-        etag, weak = response.get_etag()
-        if etag is not None:
-            variant = "frame" if turbo_frame_request() else "page"
-            identity = f"{etag}\0{response.mimetype}\0{variant}".encode()
-            response.set_etag(sha256(identity).hexdigest(), weak=weak)
         return response
