@@ -30,6 +30,7 @@ from flaskteroids.flash import flash
 from flaskteroids.i18n import I18nExtension
 from flaskteroids.rich_text.extension import init_rich_text
 from flaskteroids.rich_text.helpers import rich_text_assets
+from flaskteroids.turbo import dom_class, dom_id, turbo_frame_tag, turbo_stream
 
 _logger = logging.getLogger(__name__)
 
@@ -124,6 +125,10 @@ def _prepare_template_contexts(app):
 
     db = app.extensions["flaskteroids.db"]
 
+    app.jinja_env.globals["dom_id"] = dom_id
+    app.jinja_env.globals["dom_class"] = dom_class
+    app.jinja_env.globals["turbo_frame_tag"] = turbo_frame_tag
+    app.jinja_env.globals["turbo_stream"] = turbo_stream
     app.jinja_env.globals["render"] = helpers.render
     app.jinja_env.globals["button_to"] = helpers.button_to
     app.jinja_env.globals["link_to"] = helpers.link_to

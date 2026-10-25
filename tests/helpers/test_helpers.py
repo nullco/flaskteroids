@@ -1,14 +1,9 @@
 import pytest
+from jinja2 import DictLoader
+from markupsafe import Markup
 
 from flaskteroids.helpers import button_to, csrf_token, form_with, link_to, render
 from tests.assertions import HTML
-
-
-@pytest.fixture
-def render_template(mocker):
-    render_template = mocker.patch("flaskteroids.helpers.render_template")
-    render_template.return_value = "<div>test</div>"
-    return render_template
 
 
 @pytest.fixture
@@ -33,10 +28,12 @@ class TestHelpers:
         assert html.has("button", type="submit")
         assert "Delete" in html.text
 
-    def test_render_calls_render_template(self, render_template):
-        result = render("test.html", name="value")
-        render_template.assert_called_once_with("test.html", name="value")
-        assert "<div>test</div>" in str(result)
+    def test_render_returns_safe_html_with_escaped_template_values(self, app):
+        app.jinja_loader = DictLoader({"test.html": "<div>{{ name }}</div>"})
+        result = render("test.html", name="<value>")
+        assert isinstance(result, Markup)
+        assert HTML(result).text == "<value>"
+        assert "&lt;value&gt;" in result
 
     def test_form_with_detects_file_fields(self):
         result = form_with(url="/upload", caller=lambda form: form.file_field("avatar"))

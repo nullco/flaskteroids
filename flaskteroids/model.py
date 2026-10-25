@@ -55,6 +55,7 @@ from flaskteroids.callbacks import (
 from flaskteroids.db import session, transaction, transactional
 from flaskteroids.declarations import model_for
 from flaskteroids.exceptions import ProgrammerError, RecordNotFoundException
+from flaskteroids.inflector import inflector
 from flaskteroids.rich_text import attribute as rich_text_storage
 from flaskteroids.rich_text import has_rich_text
 from flaskteroids.rules import bind_rules
@@ -434,6 +435,21 @@ class Model(EncryptableRecord, StagedAttributes, SchemaModel):
     def is_new_record(self):
         state = inspect(self)
         return state.transient or state.pending
+
+    def to_key(self):
+        """Return primary key values, independent of persistence and URL slugs."""
+        mapper = inspect(type(self))
+        values = [
+            getattr(self, mapper.get_property_by_column(column).key)
+            for column in mapper.primary_key
+        ]
+        return values if all(value is not None for value in values) else None
+
+    @classmethod
+    def to_partial_path(cls):
+        """The conventional record partial, without underscore or extension."""
+        name = inflector.underscore(cls.__name__)
+        return f"{inflector.pluralize(name)}/{name}"
 
     def to_param(self):
         """The public route identity; override intentionally for slug-based URLs."""

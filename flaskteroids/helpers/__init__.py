@@ -1,4 +1,4 @@
-from flask import current_app, render_template
+from flask import current_app
 from flask import url_for as url_for
 from markupsafe import Markup, escape
 
@@ -11,6 +11,7 @@ from flaskteroids.form import Form
 from flaskteroids.inflector import inflector
 from flaskteroids.rich_text.helpers import rich_text_assets as rich_text_assets
 from flaskteroids.routes import _model_destination, _polymorphic_path
+from flaskteroids.turbo.rendering import render as render
 
 
 def link_to(name, path, **kwargs):
@@ -84,10 +85,6 @@ def form_with(
     body = caller(form) if caller else ""
     opening = _form_open(url, method, multipart=multipart or form.multipart)
     return Markup(f"{opening}{body}</form>")
-
-
-def render(template, **kwargs):
-    return Markup(render_template(template, **kwargs))
 
 
 def csrf_token():

@@ -5,8 +5,7 @@ from importlib import import_module
 from importlib.util import find_spec
 from pathlib import Path
 
-from flask import current_app, g, has_request_context, render_template
-from markupsafe import Markup
+from flask import current_app, g, has_request_context
 
 from flaskteroids._view_helpers import (
     HelperMethod,
@@ -21,6 +20,8 @@ from flaskteroids.exceptions import ProgrammerError
 from flaskteroids.inflector import inflector
 from flaskteroids.mailer import ActionMailer
 from flaskteroids.rules import _get_ancestors
+from flaskteroids.turbo import TurboStreamBuilder
+from flaskteroids.turbo.rendering import render
 
 
 def _discover(package_name):
@@ -92,12 +93,14 @@ class _ViewContext:
             and (inspect.isfunction(member) or inspect.ismethod(member))
         }
 
-    def render(self, template, **kwargs):
+    @property
+    def turbo_stream(self):
+        return TurboStreamBuilder(renderer=self.render)
+
+    def render(self, template=None, **kwargs):
         token = active_view.set(self)
         try:
-            return Markup(
-                render_template(template, **{**self._flaskteroids_assigns, **kwargs})
-            )
+            return render(template, **kwargs)
         finally:
             active_view.reset(token)
 
@@ -266,6 +269,7 @@ class HelpersExtension:
                 self._app, scope, owner, assigns
             )
         context = view._flaskteroids_exports()
+        context["turbo_stream"] = view.turbo_stream
         if scope[0] == "controller" and owner is not None:
             context["params"] = owner.params
         return context
