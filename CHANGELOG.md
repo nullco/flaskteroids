@@ -4,6 +4,14 @@
 
 ### Breaking changes
 
+- Links, buttons, forms, and Turbo tags now normalize `class_` to `class` rather
+  than emitting a literal `class_` attribute; nested `data`/`aria` dictionaries and
+  boolean attributes use HTML-aware serialization with escaped values.
+- New generated pages use `{% extends layout %}`, scaffold record IDs use
+  underscored `dom_id` values, and scaffold update redirects use 303. New app
+  layouts load a local Turbo runtime and include the CSRF meta token. These are
+  intentional generator-output changes, not removals of existing public APIs;
+  existing literal layout inheritance still works and views are not rewritten.
 - Job configuration now lives under `config.jobs`. Update application and
   environment settings to use this namespace; queue adapter behavior is unchanged.
 - Rename `ActionMailer.with_params(...)` to `ActionMailer.with_(...)`; the old
@@ -19,6 +27,14 @@
 
 ### Added
 
+- Rails-style Turbo Frames and HTTP Stream responses: record DOM IDs, frame tags,
+  partial rendering, Stream builders/templates, HTML/JSON/Stream negotiation,
+  resource `.turbo_stream` URLs, frame-aware layouts, and representation-aware
+  cache boundaries. No live subscriptions or broadcasts are included.
+- Bundled upstream Turbo 8.0.23 with license/provenance and `turbo:install` for
+  existing applications. Installation preserves app-owned assets unless `--force`
+  is supplied and migrates the known generated CDN URL; custom layouts receive
+  instructions. See [Turbo Frames and Streams](docs/views/turbo.md).
 - Dependency-free internationalization with YAML catalogs, scoped locales,
   Python/controller/Jinja translation and localization helpers, interpolation,
   configurable plural rules, safe HTML translations, and locale-aware mail delivery.

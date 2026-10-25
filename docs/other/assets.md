@@ -38,6 +38,19 @@ when a file changes, its URL changes too.
 
 Native `url_for("static", filename=...)` works, but does not look up fingerprints.
 
+## Local Turbo runtime
+
+New applications load pinned upstream Turbo **8.0.23** from
+`app/assets/turbo/turbo.js` using `asset_path("turbo/turbo.js")`. Its license and
+provenance are included alongside it. This is a local browser runtime, not a
+Node/build dependency; normal asset precompilation fingerprints it for production.
+
+Existing applications can run `bin/flask turbo:install`. It preserves app-owned
+assets unless `--force` is supplied, migrates the known generated CDN URL while
+preserving script attributes, and prints instructions for custom layouts. Load
+only one runtime. See [Turbo setup](../views/turbo.md#install-or-upgrade) for the
+script and CSRF markup and view migration choices.
+
 ## CSS references
 
 Use ordinary file-relative paths. In `stylesheets/application.css`:

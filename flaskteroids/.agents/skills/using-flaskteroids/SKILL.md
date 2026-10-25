@@ -118,6 +118,38 @@ dependency internals or introduce a parallel implementation of a supported featu
   Native relationship mutations are not scalar staging. A rejected scalar update
   retains its input and does not undo a prior collection mutation. `apply_changes()`
   explicitly publishes staged scalars for native writes, bypassing validation/callbacks.
+- Prefer public Turbo helpers (`dom_id`, `dom_class`, `turbo_frame_tag`, and
+  `turbo_stream`, automatic in Jinja) over hand-built frame/stream tags or record
+  IDs. Import them or `TurboStreamBuilder` from `flaskteroids.turbo` in Python.
+  IDs use `to_key()`, not URL slugs; record partials use `to_partial_path()`.
+  Template/helper `render`
+  accepts records, `partial=...` with `locals`, or exact template paths.
+- Use `{% extends layout %}` on new pages for normal/minimal frame layouts;
+  preserve existing literal inheritance unless the task calls for migration.
+  Use matching frame IDs for show/edit/422 redisplay, and 303 after successful
+  mutations. Scaffolds are full-page CRUD, not inline interfaces by default.
+  Controller frame detection uses the `self.turbo_frame_request` boolean and
+  `self.turbo_frame_request_id` properties; Jinja calls
+  `turbo_frame_request()` / `turbo_frame_request_id()`.
+- Use `self.respond_to(html=..., json=..., turbo_stream=...)`, conventional
+  `<action>.turbo_stream.html` templates without page layout inheritance, or
+  `self.render(turbo_stream=...)` with one operation or a list/tuple. Offer HTML
+  fallback for ordinary Turbo forms. Resource helpers support
+  `format="turbo_stream"`; custom routes do not gain suffixes automatically.
+  Links/forms accept nested `data`/`aria` attributes and `class_`; set
+  `data={"turbo_frame": ...}` for a target or `data={"turbo": False}` to opt out.
+- Keep one Turbo runtime. New apps bundle 8.0.23 locally with CSRF meta markup;
+  use `bin/flask turbo:install` for existing apps, review custom layouts, and
+  do not load a second CDN/runtime. `--force` replaces app-owned assets; it does
+  not rewrite existing views. Frames and HTTP Streams are supported, not live
+  subscriptions/broadcasts, Action Cable, Stimulus, or Node/build tooling.
+- Keep authentication, authorization, strong parameters, and CSRF for Turbo
+  requests; the frame header is not authorization. Framework response-class
+  `set_etag`/`add_etag` validators are partitioned by final MIME and frame/page;
+  still call `make_conditional` explicitly when needed. Native manually created
+  Flask/Werkzeug responses and raw ETag header strings need application-owned,
+  representation-specific validators. See
+  [Turbo](https://nullco.github.io/flaskteroids/views/turbo/).
 - Use application controllers, `config/routes.py`, resourceful routing, strong
   parameters (`params.expect`), and framework response helpers instead of standalone
   Flask routes or manually rebuilding the request pipeline. `render(json=value,

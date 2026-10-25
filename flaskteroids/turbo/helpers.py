@@ -38,7 +38,7 @@ def turbo_frame_tag(*ids, src=None, target=None, caller=None, **attrs):
             src = _polymorphic_path(src)
         src = validate_url(src)
     options = tag_attributes({**attrs, "id": identifier, "src": src, "target": target})
-    body = caller() if caller is not None else ""
+    body = escape(caller()) if caller is not None else ""
     return Markup(f"<turbo-frame {options}>{body}</turbo-frame>")
 
 
@@ -60,7 +60,7 @@ class TurboStreamBuilder:
 
     def _content(self, target, content, *, partial, locals, caller):
         if caller is not None:
-            return Markup(caller())
+            return escape(caller())
         if partial is not None:
             return self._render(partial=partial, locals=locals)
         if content is _MISSING or content is None:

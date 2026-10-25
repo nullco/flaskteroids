@@ -48,7 +48,8 @@ Several actions share a path: the HTTP method selects which action runs. For
 example, GET `/products` lists products, while POST `/products` creates one.
 
 Resource helpers generate paths **without trailing slashes**. Requests with or
-without a trailing slash reach the same action, including `.json/` requests.
+without a trailing slash reach the same action, including `.json/` and
+`.turbo_stream/` requests.
 
 Limit actions with `only`; an empty list generates no resource actions:
 
@@ -188,19 +189,26 @@ route.get("/dashboard", to="products#index", as_="dashboard")
 # dashboard_path(), dashboard_url()
 ```
 
-## JSON destinations
+## Response formats
 
-Use format suffixes, not separate action helpers:
+Use resource format suffixes, not separate action helpers:
 
 ```python
 products_path(format="json")        # /products.json
 product_path(product, format="json") # /products/1.json
+products_path(format="turbo_stream") # /products.turbo_stream
+product_path(product, format="turbo_stream") # /products/1.turbo_stream
 ```
 
 These URLs call the same actions as the HTML paths. Use
 [`self.respond_to(...)`](index.md#content-negotiation) in the controller to choose
-an HTML or JSON response. It recognizes `.json` and the `Accept` header.
-Only JSON suffix generation is currently supported.
+an HTML, JSON, or Turbo Stream response. Explicit `.json` and `.turbo_stream`
+suffixes override `Accept` negotiation; `.turbo_stream` forces a Stream response,
+not HTML fallback. Without a suffix, Turbo forms can negotiate Streams or fall
+back to acceptable HTML. See [Turbo Streams](../views/turbo.md#negotiation-and-routes).
+
+Suffix support belongs to resource routes. Existing custom named routes do not
+automatically gain `.json` or `.turbo_stream` variants.
 
 ## HTML method overrides
 

@@ -13,7 +13,10 @@ def turbo_application(generated_app_factory):
     source = Path(__file__).parent / "application/turbo"
     for path in source.rglob("*"):
         if path.is_file() and "__pycache__" not in path.parts:
-            destination = root / path.relative_to(source)
+            relative = path.relative_to(source)
+            if relative == Path("test/system/browser.py"):
+                relative = Path("test/system/turbo_test.py")
+            destination = root / relative
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(path, destination)
     run("db:prepare")

@@ -45,6 +45,7 @@ nav:
     - Attribute encryption: models/encryption.md
   - Views:
     - Overview: views/index.md
+    - Turbo: views/turbo.md
   - Controllers:
     - Overview: controllers/index.md
     - Routing: controllers/routing.md

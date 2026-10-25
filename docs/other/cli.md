@@ -195,6 +195,11 @@ Creates a model, migration, resource route, controller, and views for the standa
 `index`, `show`, `new`, `edit`, `create`, `update`, and `destroy` actions. Apply the
 migration and restart the server before visiting the resource.
 
+New controller/scaffold page templates use `{% extends layout %}` for frame-aware
+layout selection. Scaffold records use underscored `dom_id` values, and successful
+updates redirect with 303. Scaffolds remain ordinary full-page CRUD, not inline
+editors; see [Turbo Frames and Streams](../views/turbo.md) to add that behavior.
+
 ### Mailer
 
 ```sh
@@ -240,6 +245,21 @@ Do not commit or log the plaintext output.
 
 These keys serve model `encrypts(...)`, encrypted rich text, and direct use of
 `flaskteroids.encryption`. See [Attribute encryption](../models/encryption.md).
+
+## Turbo
+
+```sh
+bin/flask turbo:install
+# Replace app-owned assets only after reviewing local customizations:
+bin/flask turbo:install --force
+```
+
+Installs the bundled Turbo 8.0.23 runtime, license, and provenance into application
+assets. Existing files are preserved unless `--force` is supplied. The known
+generated CDN URL is migrated without replacing surrounding script attributes;
+custom layouts receive instructions to load one runtime and include the CSRF
+meta token. Existing views are not rewritten. New applications already include
+this setup. See [Turbo installation](../views/turbo.md#install-or-upgrade).
 
 ## Rich text
 

@@ -185,6 +185,19 @@ def test_jinja_identifier_helpers_are_registered(view_app_factory, post):
         )
 
 
+@pytest.mark.parametrize("helper", [turbo_frame_tag, turbo_stream.update])
+@pytest.mark.parametrize("trusted", [False, True])
+def test_python_capture_callbacks_escape_plain_text_and_preserve_trusted_html(
+    helper, trusted
+):
+    content = "<strong>Captured</strong>"
+    if trusted:
+        content = Markup(content)
+    result = helper("posts", caller=lambda: content)
+    assert HTML(result).has("strong") is trusted
+    assert ("&lt;strong&gt;" in result) is not trusted
+
+
 def test_frame_requires_an_id_and_limits_record_prefix_arguments(post):
     with pytest.raises(ValueError, match="identifier"):
         turbo_frame_tag()

@@ -71,6 +71,25 @@ rejected input. `scope="signup"` overrides that prefix without changing the
 model that supplies values and errors. A missing parent identifier raises an
 error. Nested URLs do **not** automatically save nested model attributes.
 
+### Turbo and HTML attributes
+
+Pass HTML attributes directly to `form_with`, including nested `data` and `aria`
+dictionaries. `class_` emits `class`; nested keys become dashed attributes:
+
+```html
+{% call(form) form_with(model=post, class_="editor", data={"turbo_frame": dom_id(post)}) %}
+  {{ form.text_field("title") }}
+  {{ form.submit("Save") }}
+{% endcall %}
+```
+
+Use `data={"turbo_frame": "_top"}` to navigate outside a frame,
+`data={"turbo": False}` to submit without Turbo, or
+`data={"turbo_stream": True}` to request Streams on a GET form. For Turbo
+validation failures, render HTML with **422**; redirect successful mutations with
+**303 See Other**. See the [inline edit example](../views/turbo.md#minimal-inline-edit)
+and [HTTP Streams](../views/turbo.md#http-stream-responses).
+
 ### Choose a field helper
 
 Field helpers include `text_field`, `text_area`, `password_field`, and `checkbox`.
@@ -106,8 +125,10 @@ Button attributes and form attributes are separate:
 
 Labels and attributes are escaped; trusted `Markup` is permitted for labels,
 not unescaped attributes. Unsupported/executable destination schemes are rejected.
+Put Turbo data on the form with, for example,
+`button_to("Delete", post, method="DELETE", form={"data": {"turbo_frame": "_top"}})`.
 `button_to` does not support omitting the action, adding arbitrary extra hidden
-parameters, or remote/Turbo options.
+parameters, or a separate remote-submission API.
 
 ## Form values and escaping
 
@@ -223,7 +244,10 @@ See [Routing](../controllers/routing.md#html-method-overrides).
 Tokens belong to the browser session and expire after one hour. Clearing the
 session invalidates its tokens; reload forms to obtain a new token. AJAX requests
 can send the token in the `X-CSRF-TOKEN` header instead of the `csrf_token` form
-field. Do not store pages containing CSRF tokens in a shared cache.
+field. Generated layouts also include
+`<meta name="csrf-token" content="{{ csrf_token() }}">` for Turbo's request header.
+Add it to custom layouts when [installing Turbo](../views/turbo.md#install-or-upgrade).
+Do not store pages containing CSRF tokens in a shared cache.
 
 Include the token yourself in manual forms:
 

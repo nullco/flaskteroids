@@ -11,7 +11,7 @@ variables become template variables, so `self.posts` is available as `posts`:
 
 ```html
 <!-- app/views/posts/index.html -->
-{% extends "layouts/application.html" %}
+{% extends layout %}
 
 {% block body %}
 <h1>Posts</h1>
@@ -23,6 +23,19 @@ variables become template variables, so `self.posts` is available as `posts`:
 </ul>
 {% endblock %}
 ```
+
+## Turbo Frames and Streams
+
+Use [Turbo Frames and HTTP Streams](turbo.md) for inline navigation, partial page
+updates, and responses that change several elements at once. New page templates
+use `{% extends layout %}` to select the application layout or a minimal frame
+layout. Existing literal layout inheritance still works through Turbo's full-page
+frame extraction; existing views are not rewritten automatically.
+
+The template/helper `render` function accepts a record (`render(post)`), an
+explicit partial (`render(partial="posts/post", locals={"post": post})`), or an
+exact template path (`render("exact/file.html", post=post)`). It returns rendered
+HTML, not a controller response.
 
 ## Translations and dates
 
@@ -201,6 +214,13 @@ supplied as `Markup`.
 HTTP(S) action URLs. Unsupported schemes, such as `javascript` and `data`, and
 URLs containing control characters raise `ValueError`. HTML escaping alone does
 not make an executable URL safe.
+
+`link_to`, `button_to`, `form_with`, and Turbo tag helpers accept `class_="button"`
+as `class="button"`, nested `data={"turbo_frame": "editor"}` /
+`aria={"label": "Edit"}` dictionaries, and
+boolean HTML attributes. For example, `disabled=True` includes the boolean
+attribute; `False` omits it. Data/ARIA booleans instead emit `"true"` or `"false"`.
+The `class_` normalization intentionally replaces the old literal `class_` output.
 
 These checks do not restrict destination hosts. Applications must validate
 user-supplied destinations when links or forms should stay on a particular site.

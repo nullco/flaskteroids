@@ -48,8 +48,9 @@ can be integers or `HTTPStatus` members.
 `return self.render(...)` to exit the action. Preparing another response raises
 `DoubleRenderError` from `flaskteroids.exceptions`.
 
-The template/helper function `render(...)` is different: it renders a partial,
-not a controller response.
+The template/helper function `render(...)` is different: it renders a record,
+partial, or exact template to HTML, not a controller response. See
+[view rendering](../views/turbo.md#builder-and-partials).
 
 ### JSON values
 
@@ -77,6 +78,20 @@ format for JSON validation failures. See
 [model serialization](../models/index.md#temporary-attributes-and-serialization)
 for field selection and authentication-secret filtering.
 
+### Turbo Frames and Stream responses
+
+Controllers expose `self.turbo_frame_request` (boolean) and
+`self.turbo_frame_request_id` (ID or `None`). Page views using `{% extends layout %}`
+select `layout = "layouts/application.html"` normally and
+`frame_layout = "layouts/turbo/frame.html"` for frame requests. Override either
+path on the controller class or instance before rendering.
+
+Use `self.render(turbo_stream=self.turbo_stream.remove(self.post))` for an HTTP
+Stream response, or pass a list/tuple of operations. Templates can use the
+conventional `<action>.turbo_stream.html` name. See
+[Turbo Frames and Streams](../views/turbo.md) for examples, HTML fallback, and
+[representation-specific cache validators](../views/turbo.md#caching-and-security).
+
 ### Headers and response state
 
 Use `self.response` to set headers or status before preparing the body. These
@@ -94,6 +109,9 @@ return self.redirect_to(products_path(), status=303, alert="Product removed")
 return self.head(204, headers={"X-Result": "complete"})
 ```
 
+Use status **303 See Other** after successful Turbo form mutations, and render
+invalid HTML forms with **422** so Turbo can redisplay validation errors.
+
 Redirects can include a `notice` or `alert`. `head` prepares an empty response.
 Both use the same response tracking as `render` and `respond_to`.
 
@@ -102,7 +120,7 @@ callback, preparing a response stops the callback chain even without a return.
 
 ## Content negotiation
 
-Use `respond_to` to serve HTML and JSON from the same action:
+Use `respond_to` to serve HTML, JSON, or Turbo Streams from the same action:
 
 ```python
 from app.models.post import Post
@@ -118,8 +136,16 @@ class PostsController(ActionController):
         )
 ```
 
-A `.json` URL suffix takes precedence over the `Accept` header. Without either,
-HTML is selected. A requested format you do not offer returns **406 Not Acceptable**.
+A resource URL's `.json` or `.turbo_stream` suffix takes precedence over the
+`Accept` header. Without either, HTML is selected. A requested format you do not
+offer returns **406 Not Acceptable**.
+
+Add a `turbo_stream=lambda: self.render()` handler to use the conventional Stream
+template. Accept quality values are honored; equal-quality requests explicitly
+listing Streams follow client order, while wildcard-only requests default to
+HTML. Ordinary Turbo forms can fall back to offered HTML. See
+[Stream negotiation](../views/turbo.md#negotiation-and-routes) for template fallback
+and forced-format URLs.
 
 The selected response is recorded on the controller, so returning it is optional.
 HTML handlers can leave template rendering implicit. JSON handlers must render
