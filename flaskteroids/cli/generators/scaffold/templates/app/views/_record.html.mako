@@ -1,4 +1,4 @@
-<div id="${model_ref}-{{ ${model_ref}.id }}">
+<div id="{{ dom_id(${model_ref}) }}">
 % for field in fields:
     <p>
       <strong>${field['name'].title()}</strong>

@@ -19,6 +19,7 @@ from flaskteroids.cli.attachments import STORAGE_YAML
 from flaskteroids.cli.db.config import initialize_migrations
 from flaskteroids.cli.generators.templates import template
 from flaskteroids.credentials import encrypt, generate_key
+from flaskteroids.turbo.installation import install_assets as install_turbo_assets
 
 
 @click.group()
@@ -126,6 +127,8 @@ def new(app_name, skip_install):
         ab.dir("app/")
         ab.file("app/assets/stylesheets/application.css")
         ab.file("app/assets/images/.keep")
+        for asset in install_turbo_assets(Path(base_path)):
+            click.echo(f"    create  {asset.relative_to(base_path)}")
         ab.file(
             "app/helpers/application_helper.py",
             _template(path="app/helpers/application_helper.py.mako"),

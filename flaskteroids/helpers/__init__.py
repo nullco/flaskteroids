@@ -2,7 +2,7 @@ from flask import current_app
 from flask import url_for as url_for
 from markupsafe import Markup, escape
 
-from flaskteroids._html import attributes, validate_url
+from flaskteroids._html import attributes, tag_attributes, validate_url
 from flaskteroids._routing import HTTP_METHODS
 from flaskteroids.assets import asset_path as asset_path
 from flaskteroids.assets import stylesheet_link_tag as stylesheet_link_tag
@@ -16,7 +16,7 @@ from flaskteroids.turbo.rendering import render as render
 
 def link_to(name, path, **kwargs):
     path = validate_url(path, link=True)
-    attrs = attributes(kwargs)
+    attrs = tag_attributes(kwargs)
     return Markup(f'<a href="{escape(path)}" {attrs}>{escape(name)}</a>')
 
 
@@ -44,7 +44,7 @@ def _form_open(url, method, *, form=None, multipart=False):
         hidden += _hidden_field("_method", verb)
     if verb != "GET":
         hidden += _hidden_field("csrf_token", csrf_token())
-    return f"<form {attributes(attrs)}>{hidden}"
+    return f"<form {tag_attributes(attrs)}>{hidden}"
 
 
 def button_to(message, destination, *, method=None, form=None, **button_attrs):
@@ -61,12 +61,19 @@ def button_to(message, destination, *, method=None, form=None, **button_attrs):
     )
     button_attrs["type"] = "submit"
     return Markup(
-        f"{opening}<button {attributes(button_attrs)}>{escape(message)}</button></form>"
+        f"{opening}<button {tag_attributes(button_attrs)}>{escape(message)}</button></form>"
     )
 
 
 def form_with(
-    model=None, caller=None, *, url=None, method=None, scope=None, multipart=False
+    model=None,
+    caller=None,
+    *,
+    url=None,
+    method=None,
+    scope=None,
+    multipart=False,
+    **attrs,
 ):
     target = _model_destination(model)[-1] if model is not None else None
     prefix = scope
@@ -83,7 +90,7 @@ def form_with(
         prefix, target._form_data() if target is not None else None, model=target
     )
     body = caller(form) if caller else ""
-    opening = _form_open(url, method, multipart=multipart or form.multipart)
+    opening = _form_open(url, method, form=attrs, multipart=multipart or form.multipart)
     return Markup(f"{opening}{body}</form>")
 
 

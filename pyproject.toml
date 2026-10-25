@@ -9,6 +9,7 @@ include = ["flaskteroids", "flaskteroids.*"]
 "*" = ["templates/**/*", "templates/.github/workflows/*.mako"]
 "flaskteroids" = [".agents/skills/*/SKILL.md"]
 "flaskteroids.rich_text" = ["assets/*"]
+"flaskteroids.turbo" = ["assets/*"]
 
 [project]
 name = "flaskteroids"

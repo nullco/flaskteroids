@@ -43,7 +43,7 @@ class ${controller}Controller(ApplicationController):
     def update(self):
         if self.${model_ref}.update(**self._${model_ref}_params()):
             return self.respond_to(
-                html=lambda: self.redirect_to(${singular}_path(self.${model_ref}), notice="${singular.title()} was successfully updated."),
+                html=lambda: self.redirect_to(${singular}_path(self.${model_ref}), notice="${singular.title()} was successfully updated.", status=HTTPStatus.SEE_OTHER),
                 json=lambda: self.render(json=self.${model_ref})
             )
         else:

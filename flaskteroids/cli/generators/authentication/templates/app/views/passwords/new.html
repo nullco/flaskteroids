@@ -1,3 +1,6 @@
+{% extends layout %}
+
+{% block body %}
 <h1>Forgot your password?</h1>
 
 {% if params.alert %}<div style="color: red">{{ params.alert }}</div>{% endif %}
@@ -6,3 +9,4 @@
 	{{ form.email_field('email_address', required=True, autofocus=True, autocomplete="username", placeholder='Enter your email address', value=params['email_address']) }}
 	{{ form.submit('Email reset instructions') }}
 {% endcall %}
+{% endblock %}

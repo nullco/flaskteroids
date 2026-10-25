@@ -25,6 +25,9 @@ try:
         page = browser.new_page()
         page.route("https://cdn.jsdelivr.net/**", lambda route: route.abort())
         page.goto(f"http://127.0.0.1:{server.server_port}/asset-test/")
+        page.wait_for_function("!!window.Turbo && !!customElements.get('turbo-frame')")
+        turbo_src = page.locator('script[src*="/turbo/"]').get_attribute("src")
+        assert ("turbo-" in turbo_src) == production
         href = page.locator('link[rel="stylesheet"]').get_attribute("href")
         assert href.startswith("/assets/stylesheets/application")
         assert ("application-" in href) == production

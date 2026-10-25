@@ -5,7 +5,8 @@
     <title>{% block title %}Test App{% endblock title %}</title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     {{ stylesheet_link_tag("application", **{"data-turbo-track": "reload"}) }}
-    <script type="module" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@latest/dist/turbo.es2017-esm.min.js"></script>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <script defer src="{{ asset_path('turbo/turbo.js') }}" data-turbo-track="reload"></script>
     {% block head %}{% endblock head%}
   </head>
 

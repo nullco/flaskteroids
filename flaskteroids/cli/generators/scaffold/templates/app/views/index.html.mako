@@ -1,4 +1,4 @@
-{% extends "layouts/application.html" %}
+{% extends layout %}
 
 {% block title %}${plural}{% endblock %}
 

@@ -17,7 +17,7 @@ class TestHelpers:
     def test_link_to_generates_anchor_tag(self):
         result = link_to("Click me", "/test", class_="btn", id="link")
         html = HTML(result)
-        assert html.has("a", href="/test", class_="btn", id="link")
+        assert html.has("a", href="/test", id="link", **{"class": "btn"})
         assert html.text == "Click me"
 
     def test_button_to_generates_delete_form(self):

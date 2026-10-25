@@ -1,47 +1,14 @@
 """HTML-only Turbo helpers; response handling belongs to the controller layer."""
 
-import json
-
 from flask import has_request_context, request
 from markupsafe import Markup, escape
 
-from flaskteroids._html import attributes, validate_url
+from flaskteroids._html import tag_attributes, validate_url
 from flaskteroids.routes import _polymorphic_path
 from flaskteroids.turbo.identifiers import dom_id
 from flaskteroids.turbo.rendering import render
 
-_BOOLEAN_ATTRIBUTES = frozenset(
-    "allowfullscreen allowpaymentrequest async autofocus autoplay checked compact "
-    "controls declare default defaultchecked defaultmuted defaultselected defer "
-    "disabled enabled formnovalidate hidden indeterminate inert ismap itemscope "
-    "loop multiple muted nohref nomodule noresize noshade novalidate nowrap open "
-    "pauseonexit playsinline readonly required reversed scoped seamless selected "
-    "sortable truespeed typemustmatch".split()
-)
 _MISSING = object()
-
-
-def _tag_attributes(values):
-    """Rails-style options, without changing existing helpers' attribute rules."""
-    normalized = {}
-    for name, value in values.items():
-        if not isinstance(name, str):
-            raise ValueError(f"Invalid HTML attribute name: {name!r}")
-        name = name.removesuffix("_")
-        if name in {"data", "aria"} and isinstance(value, dict):
-            for key, item in value.items():
-                if item is not None:
-                    normalized[f"{name}-{str(key).replace('_', '-')}"] = (
-                        item
-                        if isinstance(item, str)
-                        else json.dumps(item, separators=(",", ":"))
-                    )
-        elif name in _BOOLEAN_ATTRIBUTES:
-            if value:
-                normalized[name] = name
-        elif value is not None:
-            normalized[name] = str(value).lower() if isinstance(value, bool) else value
-    return attributes(normalized)
 
 
 def _compound_id(values):
@@ -70,7 +37,7 @@ def turbo_frame_tag(*ids, src=None, target=None, caller=None, **attrs):
         if callable(getattr(src, "to_param", None)) or isinstance(src, (list, tuple)):
             src = _polymorphic_path(src)
         src = validate_url(src)
-    options = _tag_attributes({**attrs, "id": identifier, "src": src, "target": target})
+    options = tag_attributes({**attrs, "id": identifier, "src": src, "target": target})
     body = caller() if caller is not None else ""
     return Markup(f"<turbo-frame {options}>{body}</turbo-frame>")
 
@@ -135,7 +102,7 @@ class TurboStreamBuilder:
                 caller=caller,
             )
             body = f"<template>{html}</template>"
-        return Markup(f"<turbo-stream {_tag_attributes(options)}>{body}</turbo-stream>")
+        return Markup(f"<turbo-stream {tag_attributes(options)}>{body}</turbo-stream>")
 
     def action(self, name, target=None, content=_MISSING, **options):
         """Build a custom action addressed to an element or record DOM ID."""

@@ -57,10 +57,12 @@ class ${controller}ControllerTest(IntegrationTest):
             },
         )
 
+        self.assert_response(303)
         self.assert_redirected_to(${singular}_url(self.${singular}))
 
     def test_should_destroy_${singular}(self):
         with self.assert_difference(${model}.count, by=-1):
             delete(${singular}_url(self.${singular}))
 
+        self.assert_response(303)
         self.assert_redirected_to(${collection}_url())

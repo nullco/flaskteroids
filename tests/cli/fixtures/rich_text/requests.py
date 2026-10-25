@@ -46,7 +46,8 @@ class RichTextTest(IntegrationTest):
         assert any(tag == "strong" for tag, _ in parsed.tags)
         assert "Secret" not in parsed.text
         assert not any(
-            name.startswith("on") or value.startswith("javascript:")
+            name.startswith("on")
+            or (value is not None and value.startswith("javascript:"))
             for _, attrs in parsed.tags
             for name, value in attrs.items()
         )

@@ -65,14 +65,6 @@ def test_generated_rich_text_browser_workflow(generated_app_factory):
     source = Path(__file__).parent / "fixtures/rich_text"
     shutil.copyfile(source / "post.py", root / "app/models/post.py")
     shutil.copyfile(source / "writing.py", root / "test/system/writing_test.py")
-    shutil.copyfile(source / "vendor/turbo.js", root / "app/assets/rich_text/turbo.js")
-    layout = root / "app/views/layouts/application.html"
-    layout.write_text(
-        layout.read_text().replace(
-            "https://cdn.jsdelivr.net/npm/@hotwired/turbo@latest/dist/turbo.es2017-esm.min.js",
-            "{{ asset_path('rich_text/turbo.js') }}",
-        )
-    )
     report = root / "rich-text-browser.xml"
     run("test:system", "-q", "--junitxml", str(report), "test/system/writing_test.py")
     assert_pytest_passed(report)
