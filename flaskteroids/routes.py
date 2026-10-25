@@ -46,9 +46,14 @@ class RouteHelper:
         format_ = values.pop("format", None)
         endpoint = helper.endpoint
         if format_ is not None:
-            if format_ != "json" or helper.json_endpoint is None:
+            if format_ == "json":
+                endpoint = helper.json_endpoint
+            elif format_ == "turbo_stream":
+                endpoint = helper.turbo_stream_endpoint
+            else:
+                endpoint = None
+            if endpoint is None:
                 raise ValueError(f"Unsupported format <{format_}> for <{self.name}>.")
-            endpoint = helper.json_endpoint
         return url_for(endpoint, _external=self.external, **values)
 
 

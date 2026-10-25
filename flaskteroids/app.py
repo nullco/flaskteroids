@@ -31,6 +31,7 @@ from flaskteroids.i18n import I18nExtension
 from flaskteroids.rich_text.extension import init_rich_text
 from flaskteroids.rich_text.helpers import rich_text_assets
 from flaskteroids.turbo import dom_class, dom_id, turbo_frame_tag, turbo_stream
+from flaskteroids.turbo.extension import init_turbo
 
 _logger = logging.getLogger(__name__)
 
@@ -45,6 +46,7 @@ def initialize_app(app):
     _prepare_template_contexts(app)
     I18nExtension(app)
     HelpersExtension(app)
+    init_turbo(app)
     _register_error_handlers(app)
     _register_cli_commands(app)
     _setup_csrf(app)

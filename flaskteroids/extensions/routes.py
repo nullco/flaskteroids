@@ -98,21 +98,22 @@ class RoutesExtension:
                 endpoint=resource.endpoint,
                 strict_slashes=False,
             )
-            json_endpoint = resource.endpoint + ".json"
-            self._register_view_func(
-                resource.path + ".json",
-                resource.to,
-                resource.methods,
-                endpoint=json_endpoint,
-                strict_slashes=False,
-            )
+            for format_ in ("json", "turbo_stream"):
+                self._register_view_func(
+                    resource.path + "." + format_,
+                    resource.to,
+                    resource.methods,
+                    endpoint=resource.endpoint + "." + format_,
+                    strict_slashes=False,
+                )
             self._register_helper(
                 resource.helper,
                 RouteDescription(
                     resource.endpoint,
                     tuple(_PARAMETER.findall(resource.path)),
                     resource.path,
-                    json_endpoint,
+                    resource.endpoint + ".json",
+                    resource.endpoint + ".turbo_stream",
                 ),
             )
 

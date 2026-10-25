@@ -3,12 +3,15 @@ from functools import wraps
 from flask import (
     current_app,
     g,
+    has_request_context,
     jsonify,
     make_response,
     redirect,
     render_template,
     request,
 )
+from jinja2 import TemplateNotFound
+from markupsafe import Markup
 from werkzeug.wrappers import Response as BaseResponse
 
 from flaskteroids._view_helpers import controller_scope
@@ -28,8 +31,31 @@ from flaskteroids.flash import flash
 from flaskteroids.i18n import localize, translate
 from flaskteroids.inflector import inflector
 from flaskteroids.rules import bind_rules
+from flaskteroids.turbo import TurboStreamBuilder
+from flaskteroids.turbo.extension import STREAM_MIMETYPE as _STREAM_MIME
+from flaskteroids.turbo.extension import turbo_frame_request, turbo_frame_request_id
+from flaskteroids.turbo.rendering import render as render_view
 
 _UNSET = object()
+
+
+def _negotiate_mime(offered):
+    if not has_request_context():
+        return "text/html"
+    path = request.path.rstrip("/")
+    if path.endswith(".json"):
+        return "application/json"
+    if path.endswith(".turbo_stream"):
+        return _STREAM_MIME
+    if not request.headers.get("Accept"):
+        return "text/html"
+    offered = list(offered)
+    accepted = [mime for mime, _quality in request.accept_mimetypes]
+    if _STREAM_MIME in accepted:
+        offered.sort(
+            key=lambda mime: accepted.index(mime) if mime in accepted else len(accepted)
+        )
+    return request.accept_mimetypes.best_match(offered)
 
 
 def init(cls):
@@ -75,6 +101,7 @@ def _decorate_action(cls, action):
             self._performed = False
             self._action_name = action.__name__
             self._action_depth = 0
+            self._response_mime = None
         self._action_depth += 1
         try:
             result = action(self, *args, **kwargs)
@@ -101,18 +128,38 @@ def _serialize_json(value):
 
 
 class ActionController:
+    layout = "layouts/application.html"
+    frame_layout = "layouts/turbo/frame.html"
+
     __slots__ = (
         "_params",
         "_response",
         "_performed",
         "_action_name",
         "_action_depth",
+        "_response_mime",
         "__dict__",
         "__weakref__",
     )
 
     def __init__(self, *args, **kwargs) -> None:
         g.controller = self
+
+    @property
+    def turbo_frame_request_id(self):
+        return turbo_frame_request_id()
+
+    @property
+    def turbo_frame_request(self) -> bool:
+        return turbo_frame_request()
+
+    @property
+    def turbo_stream(self):
+        return TurboStreamBuilder(renderer=self._render_stream_partial)
+
+    def _render_stream_partial(self, *args, **kwargs):
+        with controller_scope(self):
+            return render_view(*args, **kwargs)
 
     @property
     def params(self) -> ActionParameters:
@@ -191,27 +238,30 @@ class ActionController:
             response.headers.pop("Content-Length", None)
         return response
 
-    def respond_to(self, *, html=None, json=None):
+    def respond_to(self, *, html=None, json=None, turbo_stream=None):
         self._ensure_response_available()
         handlers = {
             mime: handler
-            for mime, handler in (("text/html", html), ("application/json", json))
+            for mime, handler in (
+                ("text/html", html),
+                ("application/json", json),
+                (_STREAM_MIME, turbo_stream),
+            )
             if handler is not None
         }
         if any(not callable(handler) for handler in handlers.values()):
             raise ProgrammerError("respond_to() handlers must be callable.")
-        if request.path.rstrip("/").endswith(".json"):
-            mime = "application/json"
-        elif request.headers.get("Accept"):
-            mime = request.accept_mimetypes.best_match(handlers)
-        else:
-            mime = "text/html"
+        mime = _negotiate_mime(handlers)
+        self._response_mime = mime
         handler = handlers.get(mime)
         if handler is None:
             self._prepare_response(make_response("406 Not Acceptable", 406))
         else:
             result = handler()
             if not self.performed and result is not None:
+                if mime == _STREAM_MIME and isinstance(result, str):
+                    result = make_response(result, self.response.status_code)
+                    result.mimetype = _STREAM_MIME
                 self._prepare_response(result)
             if not self.performed and mime == "application/json":
                 raise ProgrammerError(
@@ -219,13 +269,28 @@ class ActionController:
                 )
         return self.response if self.performed else None
 
-    def render(self, action=None, *, status=_UNSET, json=_UNSET):
+    def render(self, action=None, *, status=_UNSET, json=_UNSET, turbo_stream=_UNSET):
         self._ensure_response_available()
+        if (
+            sum((action is not None, json is not _UNSET, turbo_stream is not _UNSET))
+            > 1
+        ):
+            raise ProgrammerError("Choose a template, JSON, or Turbo Stream to render.")
         status = self.response.status_code if status is _UNSET else status
         if json is not _UNSET:
-            if action is not None:
-                raise ProgrammerError("Choose either a template or JSON to render.")
             response = make_response(jsonify(_serialize_json(json)), status)
+        elif turbo_stream is not _UNSET:
+            operations = (
+                turbo_stream
+                if isinstance(turbo_stream, (list, tuple))
+                else (turbo_stream,)
+            )
+            if any(not isinstance(operation, str) for operation in operations):
+                raise ProgrammerError(
+                    "Turbo Stream operations must be strings or Markup."
+                )
+            response = make_response(Markup("").join(operations), status)
+            response.mimetype = _STREAM_MIME
         else:
             action = (
                 action if action is not None else getattr(self, "_action_name", None)
@@ -236,9 +301,31 @@ class ActionController:
                 )
             cname = inflector.underscore(type(self).__name__.removesuffix("Controller"))
             template = action if "/" in action else f"{cname}/{action}"
+            mime = getattr(self, "_response_mime", None) or _negotiate_mime(
+                ("text/html", _STREAM_MIME)
+            )
+            template_name = f"{template}.html"
+            if mime == _STREAM_MIME:
+                stream_template = f"{template}.turbo_stream.html"
+                try:
+                    current_app.jinja_env.get_template(stream_template)
+                except TemplateNotFound:
+                    if (
+                        request.path.rstrip("/").endswith(".turbo_stream")
+                        or request.accept_mimetypes["text/html"] <= 0
+                    ):
+                        raise
+                    mime = "text/html"
+                else:
+                    template_name = stream_template
+            assigns = {
+                key: value for key, value in vars(self).items() if key != "layout"
+            }
             with controller_scope(self):
                 view = render_template(
-                    f"{template}.html", **{**vars(self), "params": self.params}
+                    template_name, **{**assigns, "params": self.params}
                 )
             response = make_response(view, status)
+            if mime == _STREAM_MIME:
+                response.mimetype = _STREAM_MIME
         return self._prepare_response(response)

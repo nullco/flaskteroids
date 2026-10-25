@@ -126,9 +126,8 @@ def _view_translate(
     if isinstance(key, str) and key.startswith(".") and scope is None:
         if not context.name:
             raise TranslationError("Relative translation keys require a named template")
-        scope = ".".join(
-            part.removeprefix("_") for part in context.name.rsplit(".", 1)[0].split("/")
-        )
+        template_path = context.name.rsplit(".", 1)[0].removesuffix(".turbo_stream")
+        scope = ".".join(part.removeprefix("_") for part in template_path.split("/"))
     key = _key(key, scope)
     last = key.rsplit(".", 1)[-1]
     html = context.eval_ctx.autoescape and (last == "html" or last.endswith("_html"))

@@ -33,6 +33,12 @@ def response_client():
             view_func=view,
             strict_slashes=False,
         )
+        app.add_url_rule(
+            "/response.turbo_stream",
+            endpoint="response_turbo_stream",
+            view_func=view,
+            strict_slashes=False,
+        )
         return app.test_client()
 
     return build

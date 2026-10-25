@@ -17,3 +17,4 @@ class RouteDescription:
     parameters: tuple[str, ...]
     path: str
     json_endpoint: str | None = None
+    turbo_stream_endpoint: str | None = None

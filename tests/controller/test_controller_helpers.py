@@ -82,6 +82,20 @@ def test_render_uses_the_receiving_controllers_assigns_and_helpers(
         )
 
 
+def test_controller_stream_partials_use_the_receiving_controllers_helpers(
+    helper_app, helpers_controller
+):
+    with helper_app.test_request_context("/"):
+        receiver = helpers_controller()
+        receiver.prefix = "receiver"
+        ActionController()
+        response = receiver.render(
+            turbo_stream=receiver.turbo_stream.update("label", partial="helpers/label")
+        )
+    assert response.mimetype == "text/vnd.turbo-stream.html"
+    assert "<template>receiver:partial</template>" in response.get_data(as_text=True)
+
+
 def test_helpers_are_scoped_to_the_current_controller(helper_app, helpers_controller):
     class UnrelatedController(ActionController):
         def show(self):
