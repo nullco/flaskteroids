@@ -1,0 +1,7 @@
+{% extends layout %}
+{% block head %}<meta name="preview-head" content="preserved">{% endblock %}
+{% block body %}
+  {% call turbo_frame_tag('preview') %}
+    <p id="preview-result" data-requested-frame="{{ requested_frame }}" data-is-frame="{{ is_frame | lower }}">{{ post.title }}</p>
+  {% endcall %}
+{% endblock %}

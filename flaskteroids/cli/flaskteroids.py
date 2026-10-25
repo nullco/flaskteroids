@@ -3,6 +3,7 @@ import os
 import re
 import secrets
 from importlib.metadata import PackageNotFoundError, distribution, version
+from importlib.resources import files
 from pathlib import Path
 from urllib.parse import urlsplit
 from urllib.request import url2pathname
@@ -19,7 +20,7 @@ from flaskteroids.cli.attachments import STORAGE_YAML
 from flaskteroids.cli.db.config import initialize_migrations
 from flaskteroids.cli.generators.templates import template
 from flaskteroids.credentials import encrypt, generate_key
-from flaskteroids.turbo.installation import install_assets as install_turbo_assets
+from flaskteroids.turbo.installation import ASSET_NAMES
 
 
 @click.group()
@@ -127,8 +128,9 @@ def new(app_name, skip_install):
         ab.dir("app/")
         ab.file("app/assets/stylesheets/application.css")
         ab.file("app/assets/images/.keep")
-        for asset in install_turbo_assets(Path(base_path)):
-            click.echo(f"    create  {asset.relative_to(base_path)}")
+        turbo_assets = files("flaskteroids.turbo").joinpath("assets")
+        for name in ASSET_NAMES:
+            ab.file(f"app/assets/turbo/{name}", turbo_assets.joinpath(name).read_text())
         ab.file(
             "app/helpers/application_helper.py",
             _template(path="app/helpers/application_helper.py.mako"),

@@ -1,0 +1,25 @@
+{% extends layout %}
+{% block title %}Turbo posts{% endblock %}
+{% block body %}
+  <h1>Posts workspace</h1>
+  <aside id="outside">Outside the record frames</aside>
+  <p>Posts: <span id="post_count">{{ posts | count }}</span></p>
+  <p id="status">Ready</p>
+  <p id="pending">Waiting for a new post</p>
+  <section id="submission_summary" data-placeholder="true">No submissions yet</section>
+  <div id="posts">
+    {% for post in posts %}
+      {% include 'posts/_post.html' %}
+    {% endfor %}
+  </div>
+  {% call(form) form_with(model=post, id='new_post') %}
+    {{ form.label('title') }}
+    {{ form.text_field('title') }}
+    {{ form.submit('Add post') }}
+  {% endcall %}
+  {{ link_to('Refresh first post', refresh_post_path(posts[0]), data={'turbo_stream': True}) }}
+  <div style="height: 3000px" aria-hidden="true"></div>
+  {% call turbo_frame_tag('preview', src=preview_posts_path(), loading='lazy') %}
+    <p>Preview waiting</p>
+  {% endcall %}
+{% endblock %}

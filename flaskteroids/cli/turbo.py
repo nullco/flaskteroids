@@ -21,7 +21,7 @@ _LOCAL_RUNTIME = re.compile(r"asset_path\(\s*['\"]turbo/turbo\.js['\"]\s*\)")
 )
 @with_appcontext
 def install(force):
-    """Install the bundled Turbo runtime without a JavaScript build toolchain.
+    """Install the locally bundled Turbo runtime.
 
     Preserves app-owned assets unless --force is supplied. Migrates the original
     generated CDN URL; custom layouts receive instructions instead. Existing

@@ -1,0 +1,7 @@
+{% extends layout %}
+{% block title %}Post details{% endblock %}
+{% block body %}
+  <h1>Full post details</h1>
+  {% include 'posts/_post.html' %}
+  {{ link_to('All posts', posts_path()) }}
+{% endblock %}

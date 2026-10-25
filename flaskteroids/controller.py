@@ -33,7 +33,11 @@ from flaskteroids.inflector import inflector
 from flaskteroids.rules import bind_rules
 from flaskteroids.turbo import TurboStreamBuilder
 from flaskteroids.turbo.extension import STREAM_MIMETYPE as _STREAM_MIME
-from flaskteroids.turbo.extension import turbo_frame_request, turbo_frame_request_id
+from flaskteroids.turbo.extension import (
+    inherit_response_etag,
+    turbo_frame_request,
+    turbo_frame_request_id,
+)
 from flaskteroids.turbo.rendering import render as render_view
 
 _UNSET = object()
@@ -190,6 +194,7 @@ class ActionController:
             if isinstance(response, (BaseResponse, tuple))
             else make_response(response, self.response.status_code)
         )
+        inherit_response_etag(self.response, response)
         supplied = {name.lower() for name in response.headers.keys()}
         for name, value in self.response.headers:
             if name.lower() not in supplied:

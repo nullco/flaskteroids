@@ -33,6 +33,7 @@ from flaskteroids.rich_text.extension import init_rich_text
 from flaskteroids.rich_text.helpers import rich_text_assets
 from flaskteroids.turbo import dom_class, dom_id, turbo_frame_tag, turbo_stream
 from flaskteroids.turbo.extension import init_turbo
+from flaskteroids.turbo.extension import template_context as turbo_template_context
 
 _logger = logging.getLogger(__name__)
 
@@ -150,6 +151,7 @@ def _prepare_template_contexts(app):
             "flash": flash.messages if has_request_context() else {},
             **db.models,
             **app.extensions["flaskteroids.helpers"].template_context(),
+            **turbo_template_context(),
         }
 
 

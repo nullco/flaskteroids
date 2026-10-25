@@ -242,6 +242,8 @@ def test_controller_frame_properties_identify_nonblank_frame_requests(header, ex
 
 
 def test_controller_frame_properties_are_safe_without_a_request():
-    controller = object.__new__(ActionController)
+    app = Flask(__name__)
+    with app.app_context():
+        controller = ActionController()
     assert controller.turbo_frame_request_id is None
     assert not controller.turbo_frame_request

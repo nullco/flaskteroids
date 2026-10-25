@@ -1,0 +1,19 @@
+{% extends layout %}
+{% block title %}Edit post{% endblock %}
+{% block body %}
+  {% call turbo_frame_tag(post) %}
+    <h2>Edit post</h2>
+    {% if post.errors %}
+      <ul role="alert">
+        {% for message in post.errors.full_messages() %}
+          <li>{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+    {% call(form) form_with(model=post, data={'turbo_frame': dom_id(post)}) %}
+      {{ form.label('title') }}
+      {{ form.text_field('title') }}
+      {{ form.submit('Save post') }}
+    {% endcall %}
+  {% endcall %}
+{% endblock %}

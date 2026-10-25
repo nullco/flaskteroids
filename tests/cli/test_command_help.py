@@ -36,6 +36,7 @@ APPLICATION_HELP = {
     ("generate", "authentication"): [],
     ("attachments:install",): ["config/storage.yml"],
     ("rich_text:install",): ["db:migrate", "rich_texts", "--force"],
+    ("turbo:install",): ["--force", "{% extends layout %}"],
     ("db:encryption:init",): ["credentials:edit"],
     ("db:init",): ["db/migrate"],
     ("db:create",): [],

@@ -43,13 +43,53 @@ def template_context():
 
 class _FrameETagResponse:
     def set_etag(self, etag, weak=False):
-        if has_request_context() and (
-            getattr(g, "controller", None) is not None
-            or getattr(g, "_flaskteroids_turbo_rendered", False)
+        super().set_etag(etag, weak=weak)
+        self._turbo_etag_source = (etag, weak)
+        self._turbo_etag_header = self.headers.get("ETag")
+        self._finalize_turbo_etag()
+
+    def _managed_turbo_etag(self):
+        source = getattr(self, "_turbo_etag_source", None)
+        if source is not None and self.headers.get("ETag") != self._turbo_etag_header:
+            self._turbo_etag_source = None
+            return None
+        return source
+
+    def _finalize_turbo_etag(self):
+        source = self._managed_turbo_etag()
+        if source is None:
+            return
+        etag, weak = source
+        if (
+            has_request_context()
+            and self.mimetype
+            and (
+                getattr(g, "controller", None) is not None
+                or getattr(g, "_flaskteroids_turbo_rendered", False)
+            )
         ):
             variant = "frame" if turbo_frame_request() else "page"
-            etag = sha256(f"{etag}\0{variant}".encode()).hexdigest()
-        return super().set_etag(etag, weak=weak)
+            identity = f"{etag}\0{self.mimetype}\0{variant}".encode()
+            etag = sha256(identity).hexdigest()
+        super().set_etag(etag, weak=weak)
+        self._turbo_etag_header = self.headers.get("ETag")
+
+    def make_conditional(
+        self, request_or_environ, accept_ranges=False, complete_length=None
+    ):
+        self._finalize_turbo_etag()
+        return super().make_conditional(
+            request_or_environ,
+            accept_ranges=accept_ranges,
+            complete_length=complete_length,
+        )
+
+
+def inherit_response_etag(source, target):
+    if isinstance(source, _FrameETagResponse) and "ETag" not in target.headers:
+        etag = source._managed_turbo_etag()
+        if etag is not None:
+            target.set_etag(etag[0], weak=etag[1])
 
 
 def init_turbo(app):
@@ -62,7 +102,6 @@ def init_turbo(app):
     app.jinja_env.loader = ChoiceLoader(
         [app.jinja_env.loader, PackageLoader("flaskteroids.turbo", "templates")]
     )
-    app.context_processor(template_context)
 
     @app.after_request
     def vary_representation(response):
@@ -70,7 +109,8 @@ def init_turbo(app):
         controller = getattr(g, "controller", None)
         if not rendered and controller is None:
             return response
-        if response.mimetype not in {"text/html", "application/json", STREAM_MIMETYPE}:
-            return response
-        response.vary.update(("Accept", "Turbo-Frame"))
+        if isinstance(response, _FrameETagResponse):
+            response._finalize_turbo_etag()
+        if response.mimetype in {"text/html", "application/json", STREAM_MIMETYPE}:
+            response.vary.update(("Accept", "Turbo-Frame"))
         return response

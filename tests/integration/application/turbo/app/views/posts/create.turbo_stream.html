@@ -1,0 +1,5 @@
+{{ turbo_stream.append('posts', post) }}
+{{ turbo_stream.replace('submission_summary', partial='posts/submission_summary', locals={'post': post}) }}
+{{ turbo_stream.update('post_count', count | string) }}
+{{ turbo_stream.update('status', post.title) }}
+{{ turbo_stream.remove('pending') }}
