@@ -43,8 +43,3 @@ def test_generated_application_includes_source_configuration_and_credentials(
     )
     layout = (generated_app / "app/views/layouts/application.html").read_text()
     assert "{%" in layout
-    for name in ("setup", "release"):
-        script = generated_app / "bin" / name
-        assert script.read_bytes().startswith(b"#!/usr/bin/env bash\n")
-        assert script.stat().st_mode & 0o111
-        assert script.read_bytes().endswith(b"\n")

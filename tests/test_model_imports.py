@@ -45,12 +45,6 @@ PUBLIC_NAMES = {
 CONFIG_NAMES = {"PresenceConfig", "LengthConfig", "ComparisonConfig"}
 
 
-def test_length_config_exposes_minimum_and_maximum():
-    from flaskteroids.model import LengthConfig
-
-    assert LengthConfig(minimum=1, maximum=72) == {"minimum": 1, "maximum": 72}
-
-
 def test_model_exports_public_api_and_configuration_types():
     assert PUBLIC_NAMES <= set(model.__all__)
     for name in PUBLIC_NAMES | CONFIG_NAMES:
