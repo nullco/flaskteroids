@@ -10,7 +10,7 @@ from tests.assertions import assert_pytest_passed
 def turbo_application(generated_app_factory):
     root, run = generated_app_factory("turbo_browser")
     run("generate", "scaffold", "Post", "title:string")
-    source = Path(__file__).parent / "application/turbo"
+    source = Path(__file__).parents[1] / "integration/application/turbo"
     for path in source.rglob("*"):
         if path.is_file() and "__pycache__" not in path.parts:
             relative = path.relative_to(source)

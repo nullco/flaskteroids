@@ -42,6 +42,10 @@ navigation, CRUD, nested forms, scaffold deletion, and normal session logout wit
 CSRF enabled and JavaScript both disabled/enabled. External Turbo loading is
 blocked: remote/Turbo behavior is outside this correctness package.
 
+`tests/system/test_turbo.py` covers generated Turbo Frame and HTTP Stream browser
+workflows using the application fixture in `tests/integration/application/turbo`.
+These browser tests run in the Python-version matrix, not the database-only jobs.
+
 `tests/routing/` covers method override behavior, native route boundaries,
 multipart uploads/limits, resource identities/helpers, and model form/button
 inference. Method override inputs and expectations are ordinary Python test data
