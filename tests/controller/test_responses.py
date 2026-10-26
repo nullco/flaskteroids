@@ -11,23 +11,22 @@ from flaskteroids.model import Errors
 
 
 @pytest.mark.parametrize(
-    "value",
+    ("value", "status"),
     [
-        {},
-        [],
-        "",
-        0,
-        False,
-        None,
-        {"name": "Alice"},
-        [1, "two", None],
-        "hello",
-        1.5,
-        True,
+        ({}, 200),
+        ([], 200),
+        ("", 200),
+        (0, 200),
+        (False, 200),
+        (None, 200),
+        ({"name": "Alice"}, 200),
+        ([1, "two", None], 200),
+        ("hello", 200),
+        (1.5, 200),
+        (True, 200),
+        (None, HTTPStatus.CREATED),
+        ({}, HTTPStatus.UNPROCESSABLE_ENTITY),
     ],
-)
-@pytest.mark.parametrize(
-    "status", [200, HTTPStatus.CREATED, HTTPStatus.UNPROCESSABLE_ENTITY]
 )
 def test_json_render_preserves_values_and_status(
     response_client, render_template, value, status

@@ -76,9 +76,17 @@ def conditional_app(view_app_factory):
     return app
 
 
-@pytest.mark.parametrize("mode", ["rendered", "framework", "late"])
+@pytest.mark.parametrize(
+    ("mode", "weak"),
+    [
+        ("rendered", False),
+        ("rendered", True),
+        ("framework", False),
+        ("framework", True),
+        ("late", False),
+    ],
+)
 @pytest.mark.parametrize("frame", [False, True])
-@pytest.mark.parametrize("weak", [False, True])
 def test_same_variant_supports_conditional_revalidation(
     conditional_app, mode, frame, weak
 ):

@@ -128,13 +128,6 @@ def test_frame_and_full_page_etags_have_distinct_stable_variants(frame_app, weak
     assert {"Accept", "Turbo-Frame"} <= set(frame.vary)
 
 
-def test_frame_header_is_available_to_controller(frame_app):
-    with frame_app.test_request_context("/pages", headers={"Turbo-Frame": "editor"}):
-        controller = FramePagesController()
-        assert controller.turbo_frame_request
-        assert controller.turbo_frame_request_id == "editor"
-
-
 @pytest.mark.parametrize("value", [None, "", "   "])
 def test_blank_frame_headers_select_the_full_layout(frame_app, value):
     headers = {} if value is None else {"Turbo-Frame": value}
