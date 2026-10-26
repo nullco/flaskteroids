@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.9.0 - 2026-10-26
+
 ### Breaking changes
 
 - Links, buttons, forms, and Turbo tags now normalize `class_` to `class` rather
