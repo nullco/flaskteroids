@@ -19,7 +19,7 @@ class Product(ApplicationModel):
         content_types=["image/png", "image/jpeg"],
     )
     has_many("subscribers", dependent="destroy")
-    after_commit("_notify_subscribers", on="update", if_="_back_in_stock")
+    after_commit("_notify_subscribers", on="update", when="_back_in_stock")
 
     def _back_in_stock(self):
         change = self.saved_change_to_attribute("inventory_count")

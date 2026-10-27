@@ -11,7 +11,7 @@ A destination such as `"products#show"` means: call `show` on
 ```python
 def register(route):
     route.root(to="products#index")
-    route.get("/about", to="pages#about", as_="about")
+    route.get("/about", to="pages#about", aka="about")
     route.post("/login", to="sessions#create")
     route.put("/products/<int:id>", to="products#update")
     route.patch("/products/<int:id>", to="products#update")
@@ -182,10 +182,10 @@ and, where needed, `APPLICATION_ROOT` and `PREFERRED_URL_SCHEME`. Explicit calle
 control query values; do not forward unfiltered request parameters to URL helpers.
 Native Flask `url_for` remains available for advanced endpoint-based routing.
 
-An individual route's `as_` declares its public helper name:
+An individual route's `aka` declares its public helper name:
 
 ```python
-route.get("/dashboard", to="products#index", as_="dashboard")
+route.get("/dashboard", to="products#index", aka="dashboard")
 # dashboard_path(), dashboard_url()
 ```
 

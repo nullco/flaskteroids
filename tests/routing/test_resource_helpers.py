@@ -217,10 +217,10 @@ def test_nested_helpers_reject_unresolved_or_duplicate_bindings(
 
 def test_helpers_use_the_active_application_in_python_and_templates(make_routing_app):
     a = make_routing_app(
-        lambda route: route.get("/one/<id>", to="products#show", as_="product")
+        lambda route: route.get("/one/<id>", to="products#show", aka="product")
     )
     b = make_routing_app(
-        lambda route: route.get("/two/<id>", to="products#show", as_="product")
+        lambda route: route.get("/two/<id>", to="products#show", aka="product")
     )
     for app, prefix in [(a, "one"), (b, "two"), (a, "one")]:
         app.config.update(SERVER_NAME="example.test", APPLICATION_ROOT="/store")
@@ -236,7 +236,7 @@ def test_named_helper_collisions_are_configuration_errors(routing_app):
     route = routing_app.extensions["flaskteroids.routes"]
     routing_app.jinja_env.globals["dashboard_path"] = lambda: "application helper"
     with pytest.raises(ProgrammerError, match="dashboard_path"):
-        route.get("/dashboard", to="products#show", as_="dashboard")
+        route.get("/dashboard", to="products#show", aka="dashboard")
 
 
 def test_duplicate_resource_declarations_report_endpoint_collision(routing_app):

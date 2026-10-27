@@ -328,6 +328,19 @@ Supported callbacks include:
 Before callbacks can return `False` to halt an operation. Around callbacks are
 generators that yield once. Callback methods can change staged scalar attributes.
 
+### Conditional callbacks
+
+Use `when` to run a callback only when a condition is true, or `unless` to skip
+it when a condition is true:
+
+```python
+before_save("_normalize", when="_needs_normalization", unless="_importing")
+```
+
+A condition can be a method name or a callable receiving the record. Lists are
+also supported: every `when` condition must pass, and no `unless` condition may
+pass.
+
 ### Callback timing
 
 After-find runs before after-initialize when a record is loaded from the database.
@@ -359,7 +372,7 @@ from flaskteroids.model import after_commit
 
 
 class Product(ApplicationModel):
-    after_commit("_notify_subscribers", on="update", if_="_back_in_stock")
+    after_commit("_notify_subscribers", on="update", when="_back_in_stock")
 
     def _back_in_stock(self):
         change = self.saved_change_to_attribute("inventory_count")

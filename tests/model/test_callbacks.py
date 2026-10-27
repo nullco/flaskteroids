@@ -263,11 +263,11 @@ class TestCallbacks:
         assert user.destroy() is False
         assert User.find_by(username="x")
 
-    def test_callbacks_evaluate_named_if_condition(self, init_models):
+    def test_callbacks_evaluate_named_when_condition(self, init_models):
         calls = []
 
         class User(model_base(Base)):
-            before_save("_cb", if_="_should_run")
+            before_save("_cb", when="_should_run")
 
             def _cb(self):
                 calls.append("cb")
@@ -287,7 +287,7 @@ class TestCallbacks:
         calls = []
 
         class User(model_base(Base)):
-            before_save("_cb", unless_=lambda user: user.username == "skip")
+            before_save("_cb", unless=lambda user: user.username == "skip")
 
             def _cb(self):
                 calls.append("cb")

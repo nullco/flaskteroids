@@ -112,6 +112,18 @@ class PostsControllerTest(IntegrationTest):
 
 Available request functions are `get`, `post`, `patch`, `put`, and `delete`.
 
+## State changes
+
+Use `assert_changes` around an operation to check that an expression changes:
+
+```python
+with self.assert_changes(lambda: post.title, was="Draft", to="Published"):
+    post.update(title="Published")
+```
+
+`was` checks the value before the block, and `to` checks the value afterward.
+Both are optional; the expression must change even when neither is supplied.
+
 ## Jobs and mail
 
 The test environment keeps queued jobs and delivered email in memory. Inside a

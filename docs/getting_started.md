@@ -1193,9 +1193,9 @@ Before sending notifications, let's give recipients a way to stop them. Add
 these routes inside `register` in `config/routes.py`:
 
 ```python
-    route.get("/unsubscribe/<token>/", to="unsubscribes#show", as_="unsubscribe")
+    route.get("/unsubscribe/<token>/", to="unsubscribes#show", aka="unsubscribe")
     route.post(
-        "/unsubscribe/<token>/", to="unsubscribes#destroy", as_="cancel_subscription"
+        "/unsubscribe/<token>/", to="unsubscribes#destroy", aka="cancel_subscription"
     )
 ```
 
@@ -1368,7 +1368,7 @@ class Product(ApplicationModel):
         content_types=["image/png", "image/jpeg"],
     )
     has_many("subscribers", dependent="destroy")
-    after_commit("_notify_subscribers", on="update", if_="_back_in_stock")
+    after_commit("_notify_subscribers", on="update", when="_back_in_stock")
 
     def _back_in_stock(self):
         change = self.saved_change_to_attribute("inventory_count")

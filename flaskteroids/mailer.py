@@ -94,14 +94,14 @@ class ActionMailer:
             self._params = {}
         return self._params
 
-    def mail(self, *, from_=None, to, subject):
+    def mail(self, *, by=None, to, subject):
         helpers = current_app.extensions.get("flaskteroids.helpers")
         helper_owner = (
             helpers.register_mailer(type(self)) if helpers is not None else None
         )
         return MessageDelivery(
             MessageBuilder(
-                from_=from_,
+                by=by,
                 to=to,
                 subject=subject,
                 template_path=inflector.underscore(self.__class__.__name__),
@@ -115,7 +115,7 @@ class MessageBuilder:
     def __init__(
         self,
         *,
-        from_,
+        by,
         to,
         subject,
         template_path=None,
@@ -125,7 +125,7 @@ class MessageBuilder:
         locale=None,
     ):
         defaults = current_app.config.action_mailer.default_options
-        self.from_ = from_ or defaults.get("from_") or "no-reply@flaskteroids.me"
+        self.by = by or defaults.get("by") or "no-reply@flaskteroids.me"
         self.to = to
         self.subject = subject
         self.template_path = template_path
@@ -137,7 +137,7 @@ class MessageBuilder:
     def build(self):
         msg = EmailMessage()
         msg["Subject"] = self.subject
-        msg["From"] = self.from_
+        msg["From"] = self.by
         msg["To"] = self.to
         helpers = current_app.extensions.get("flaskteroids.helpers")
         owner = (

@@ -68,23 +68,23 @@ class RoutesExtension:
     def helpers(self):
         return self._helpers
 
-    def root(self, *, to, as_="root"):
-        self.get("/", to=to, as_=as_)
+    def root(self, *, to, aka="root"):
+        self.get("/", to=to, aka=aka)
 
-    def get(self, path, *, to, as_=None):
-        self._register_view_func(path, to, ["GET"], as_=as_)
+    def get(self, path, *, to, aka=None):
+        self._register_view_func(path, to, ["GET"], aka=aka)
 
-    def post(self, path, *, to, as_=None):
-        self._register_view_func(path, to, ["POST"], as_=as_)
+    def post(self, path, *, to, aka=None):
+        self._register_view_func(path, to, ["POST"], aka=aka)
 
-    def put(self, path, *, to, as_=None):
-        self._register_view_func(path, to, ["PUT"], as_=as_)
+    def put(self, path, *, to, aka=None):
+        self._register_view_func(path, to, ["PUT"], aka=aka)
 
-    def patch(self, path, *, to, as_=None):
-        self._register_view_func(path, to, ["PATCH"], as_=as_)
+    def patch(self, path, *, to, aka=None):
+        self._register_view_func(path, to, ["PATCH"], aka=aka)
 
-    def delete(self, path, *, to, as_=None):
-        self._register_view_func(path, to, ["DELETE"], as_=as_)
+    def delete(self, path, *, to, aka=None):
+        self._register_view_func(path, to, ["DELETE"], aka=aka)
 
     def resources(self, name, *, param=None, only=None, nested=None):
         self._register_resources(
@@ -171,7 +171,7 @@ class RoutesExtension:
         return controllers.get(f"{inflector.camelize(controller_name)}Controller")
 
     def _register_view_func(
-        self, path, to, methods, as_=None, *, endpoint=None, strict_slashes=None
+        self, path, to, methods, aka=None, *, endpoint=None, strict_slashes=None
     ):
         cname, caction = to.split("#")
         controller = self._get_controller_class(cname)
@@ -185,8 +185,8 @@ class RoutesExtension:
             instance.params.update(request_parameters(instance, kwargs))
             return getattr(instance, caction)()
 
-        explicit_endpoint = endpoint is not None or as_ is not None
-        endpoint = endpoint or as_ or f"{caction}_{inflector.singularize(cname)}"
+        explicit_endpoint = endpoint is not None or aka is not None
+        endpoint = endpoint or aka or f"{caction}_{inflector.singularize(cname)}"
         if endpoint in self._app.view_functions:
             if explicit_endpoint or self._targets.get(endpoint) != to:
                 raise ProgrammerError(f"Conflicting route endpoint <{endpoint}>.")
@@ -207,9 +207,9 @@ class RoutesExtension:
         self._targets[endpoint] = to
         if controller is not None:
             view_func._flaskteroids_request_policy = controller._request_policy
-        if as_:
+        if aka:
             self._register_helper(
-                as_, RouteDescription(endpoint, tuple(_PARAMETER.findall(path)), path)
+                aka, RouteDescription(endpoint, tuple(_PARAMETER.findall(path)), path)
             )
 
 

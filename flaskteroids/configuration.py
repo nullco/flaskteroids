@@ -148,7 +148,7 @@ class Configuration(FlaskConfig):
                 "preview_paths": ["test/mailers/previews"],
                 "delivery_method": SMTPDeliveryMethod,
                 "smtp_settings": {},
-                "default_options": {"from_": "no-reply@flaskteroids.me"},
+                "default_options": {"by": "no-reply@flaskteroids.me"},
             }
         )
         self.action_controller = Options(

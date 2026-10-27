@@ -99,10 +99,10 @@ class FlaskteroidsTest:
         )
 
     @contextmanager
-    def assert_changes(self, expression, *, from_=None, to=None):
+    def assert_changes(self, expression, *, was=None, to=None):
         before = expression()
-        if from_ is not None:
-            assert before == from_
+        if was is not None:
+            assert before == was
         yield
         after = expression()
         assert after != before, "Expected value to change, but it did not"

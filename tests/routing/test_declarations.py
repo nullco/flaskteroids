@@ -8,7 +8,7 @@ from flaskteroids.exceptions import ProgrammerError
 def test_individual_verbs_dispatch_to_named_actions(make_routing_app, method):
     app = make_routing_app(
         lambda route: getattr(route, method)(
-            "/operation", to="probes#show", as_="operation"
+            "/operation", to="probes#show", aka="operation"
         )
     )
     with app.test_request_context():
@@ -21,7 +21,7 @@ def test_individual_verbs_dispatch_to_named_actions(make_routing_app, method):
 def test_individual_routes_share_a_controller_action_across_verbs(make_routing_app):
     def register(route):
         route.root(to="products#index")
-        route.get("/about", to="pages#about", as_="about")
+        route.get("/about", to="pages#about", aka="about")
         route.post("/login", to="sessions#create")
         route.put("/products/<int:id>", to="products#update")
         route.patch("/products/<int:id>", to="products#update")
@@ -39,7 +39,7 @@ def test_duplicate_individual_declarations_report_collisions(
     make_routing_app, explicit
 ):
     def register(route):
-        options = {"as_": "operation"} if explicit else {}
+        options = {"aka": "operation"} if explicit else {}
         route.put("/operation", to="probes#update", **options)
         method = route.patch if explicit else route.put
         method("/operation", to="probes#update", **options)
@@ -51,7 +51,7 @@ def test_duplicate_individual_declarations_report_collisions(
 def test_absolute_helper_retains_a_declared_name_ending_in_path(make_routing_app):
     app = make_routing_app(
         lambda route: route.get(
-            "/operation/<id>", to="probes#show", as_="operation_path"
+            "/operation/<id>", to="probes#show", aka="operation_path"
         )
     )
     with app.test_request_context():

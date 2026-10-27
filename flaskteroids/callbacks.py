@@ -78,19 +78,19 @@ def _evaluate(condition, instance):
 
 
 class Callback:
-    def __init__(self, method_name, *, if_=None, unless_=None, on=None, prepend=False):
+    def __init__(self, method_name, *, when=None, unless=None, on=None, prepend=False):
         self.method_name = method_name
-        self.if_ = _conditions(if_)
-        self.unless_ = _conditions(unless_)
+        self.when = _conditions(when)
+        self.unless = _conditions(unless)
         self.on = on
         self.prepend = prepend
 
     def applies(self, instance, operation):
         if self.on is not None and operation not in self.on:
             return False
-        if any(not _evaluate(condition, instance) for condition in self.if_):
+        if any(not _evaluate(condition, instance) for condition in self.when):
             return False
-        return not any(_evaluate(condition, instance) for condition in self.unless_)
+        return not any(_evaluate(condition, instance) for condition in self.unless)
 
     def call(self, instance):
         return getattr(instance, self.method_name)()
@@ -100,7 +100,7 @@ class Callback:
 
 
 def _register_callback(
-    cls, name, method_name, *, if_=None, unless_=None, on=None, prepend=False
+    cls, name, method_name, *, when=None, unless=None, on=None, prepend=False
 ):
     if getattr_static(cls, method_name, None) is None:
         raise ProgrammerError(
@@ -110,7 +110,7 @@ def _register_callback(
     on = _normalize_on(name, on)
 
     chain = model_for(cls).callbacks.setdefault(name, [])
-    callback = Callback(method_name, if_=if_, unless_=unless_, on=on, prepend=prepend)
+    callback = Callback(method_name, when=when, unless=unless, on=on, prepend=prepend)
     if prepend:
         chain.insert(0, callback)
     else:
@@ -119,10 +119,10 @@ def _register_callback(
 
 
 def _make_callback(name):
-    def decorator(method_name, *, if_=None, unless_=None, on=None, prepend=False):
+    def decorator(method_name, *, when=None, unless=None, on=None, prepend=False):
         def bind(cls):
             _register_callback(
-                cls, name, method_name, if_=if_, unless_=unless_, on=on, prepend=prepend
+                cls, name, method_name, when=when, unless=unless, on=on, prepend=prepend
             )
 
         return bind

@@ -59,7 +59,7 @@ configuration. For an SMTP server that supports STARTTLS and authentication:
 
 ```python
 config.action_mailer.perform_deliveries = True
-config.action_mailer.default_options = {"from_": "hello@example.com"}
+config.action_mailer.default_options = {"by": "hello@example.com"}
 config.action_mailer.smtp_settings = {
     "host": "smtp.example.com",
     "port": 587,
@@ -72,6 +72,17 @@ These credentials are placeholders. Keep real secrets in
 [encrypted credentials](../configuration.md#encrypted-credentials) or your
 deployment's secret management, not source control. SMTP is the default delivery
 method; `config.action_mailer.delivery_method` can select another adapter.
+
+The `by` option sets the email's From header. Pass it to `mail()` to override
+the configured default for an individual message:
+
+```python
+return self.mail(
+    to=self.user.email,
+    by="team@example.com",
+    subject="Welcome to My App!",
+)
+```
 
 Generated tests use an in-memory mail adapter instead of SMTP. See
 [mail assertions](../testing.md#jobs-and-mail).

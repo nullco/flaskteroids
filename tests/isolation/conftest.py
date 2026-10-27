@@ -65,7 +65,7 @@ def make_app(tmp_path):
                 config.jobs.additional_config.task_always_eager = True
                 config.action_mailer.delivery_method = TestDeliveryMethod
                 config.action_mailer.perform_deliveries = True
-                config.action_mailer.default_options = {"from_": f"{name}@example.org"}
+                config.action_mailer.default_options = {"by": f"{name}@example.org"}
                 config.action_controller.allow_forgery_protection = False
                 config.secret_key_base = f"{name}-secret"
 

@@ -11,6 +11,13 @@
   `value=` instead of `with_=`. Update system tests; the old keyword is removed.
 - Rename the rate limiter's custom-handler keyword from `with_=` to `using=`.
   Update controller declarations; the old keyword is removed.
+- Individual route names use `aka=` instead of `as_=`.
+- Mailer From addresses use `by=` instead of `from_=`, including the
+  `config.action_mailer.default_options["by"]` setting.
+- Model callback conditions use `when=` and `unless=` instead of `if_=` and
+  `unless_=`.
+- `assert_changes(..., was=..., to=...)` replaces the `from_=` keyword;
+  `to=` is unchanged. The old keyword aliases are removed.
 
 ## 0.10.0 - 2026-10-27
 

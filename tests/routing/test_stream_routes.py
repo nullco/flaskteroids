@@ -135,7 +135,7 @@ def test_singular_stream_routes_respect_selected_actions(make_routing_app):
 
 def test_custom_named_routes_keep_existing_format_semantics(make_routing_app):
     app = make_routing_app(
-        lambda route: route.get("/item/<id>", to="products#show", as_="product")
+        lambda route: route.get("/item/<id>", to="products#show", aka="product")
     )
     with app.test_request_context():
         with pytest.raises(ValueError, match="Unsupported format"):
