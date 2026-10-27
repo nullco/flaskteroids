@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.10.0 - 2026-10-27
+
 ### Breaking changes
 
 - Drop Python 3.12 and 3.13 support. Flaskteroids and newly generated applications
