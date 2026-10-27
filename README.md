@@ -36,15 +36,15 @@ control, without giving up the framework's everyday workflows.
 
 ## What's included
 
-- Resource routing with CRUD routes and path helpers.
-- Models with associations, validations, and lifecycle callbacks.
-- Jinja templates, form helpers, and HTML or JSON responses.
-- [Turbo Frames and HTTP Streams](https://nullco.github.io/flaskteroids/views/turbo/) with a locally bundled Turbo runtime.
-- YAML translations, scoped locales, pluralization, and localized date/time formats.
 - Generators for models, migrations, controllers, scaffolds, mailers, and authentication.
-- Background jobs and email delivery.
-- File attachments with disk and S3-compatible storage.
+- Models with associations, validations, and lifecycle callbacks.
+- Resource routing with CRUD routes and path helpers.
+- Jinja templates, form helpers, and HTML or JSON responses.
+- Turbo Frames and HTTP Streams with a locally bundled Turbo runtime.
 - Rich-text fields with an integrated Trix editor and safe HTML rendering.
+- File attachments with disk and S3-compatible storage.
+- YAML translations, scoped locales, pluralization, and localized date/time formats.
+- Background jobs and email delivery.
 - Environment settings, `database.yml`, encrypted credentials, and boot-time initializers.
 - Pytest-based transactional tests, YAML fixtures, job and mail assertions, and Playwright browser tests.
 - API-only applications with JSON scaffolds and request tests.
