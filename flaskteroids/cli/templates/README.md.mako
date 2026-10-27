@@ -10,7 +10,8 @@ If you generated with `--skip-install`, run setup before running commands or bui
 bin/setup
 bin/flask run
 bin/flask test
-bin/flask test:system
+<%block name="system_test_command">bin/flask test:system
+</%block>\
 bin/flask generate scaffold Post title:string content:text
 bin/flask db:prepare
 ```
@@ -31,12 +32,12 @@ Start servers/tests in a fresh process after migrating.
 
 A health integration test is included. Framework test commands report empty selections as
 successful with a no-tests message; direct pytest retains its strict exit status.
-Install browsers explicitly when adding system tests:
+<%block name="browser_guidance">Install browsers explicitly when adding system tests:
 `.venv/bin/playwright install chromium`.
 
 Assets live in `app/assets` and are linked by the generated layout.
 See [Assets](https://nullco.github.io/flaskteroids/other/assets/) for helpers,
-build commands, and configuration.
+build commands, and configuration.</%block>
 
 Never commit `config/master.key` or plaintext secrets. Production requires the matching
 `FLASKTEROIDS_MASTER_KEY`; `FLASKTEROIDS_SECRET_KEY_BASE` is not a substitute.

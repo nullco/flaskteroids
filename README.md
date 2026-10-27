@@ -37,6 +37,7 @@ control, without giving up the framework's everyday workflows.
 ## What's included
 
 - Resource routing with CRUD routes and path helpers.
+- [API-only applications](https://nullco.github.io/flaskteroids/controllers/api/) with JSON scaffolds and request tests.
 - Models with associations, validations, and lifecycle callbacks.
 - Jinja templates, form helpers, and HTML or JSON responses.
 - [Turbo Frames and HTTP Streams](https://nullco.github.io/flaskteroids/views/turbo/) with a locally bundled Turbo runtime.

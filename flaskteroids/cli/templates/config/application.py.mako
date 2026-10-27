@@ -7,3 +7,4 @@ class Application(FlaskteroidsApplication):
 
     def configure(self, config):
         config.load_defaults('0.1')
+<%block name="application_options"/>\

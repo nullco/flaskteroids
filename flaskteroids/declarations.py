@@ -24,6 +24,7 @@ class ActionDefinition:
     after: dict[str, list[str]] = field(default_factory=dict)
     originals: dict[str, Callable] = field(default_factory=dict)
     prepared: bool = False
+    wrap_parameters: bool | str = True
 
 
 @dataclass(frozen=True)

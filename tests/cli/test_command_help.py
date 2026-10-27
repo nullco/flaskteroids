@@ -173,7 +173,7 @@ def test_generators_require_a_name(cli_runner, command):
 def test_generator_commands_forward_arguments(
     cli_runner, mocker, args, module, expected
 ):
-    generator = mocker.patch(f"flaskteroids.cli.generators.commands.{module}.generate")
+    generator = mocker.patch(f"flaskteroids.cli.generators.{module}.generator.generate")
 
     result = cli_runner.invoke(args=["generate", *args])
 
@@ -194,7 +194,7 @@ def test_generator_commands_forward_arguments(
     ],
 )
 def test_documented_generator_examples_dispatch(cli_runner, mocker, name, module):
-    generator = mocker.patch(f"flaskteroids.cli.generators.commands.{module}.generate")
+    generator = mocker.patch(f"flaskteroids.cli.generators.{module}.generator.generate")
     help_result = cli_runner.invoke(args=["generate", name, "--help"])
     assert help_result.exit_code == 0
     generator.assert_not_called()

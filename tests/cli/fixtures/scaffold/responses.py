@@ -28,6 +28,30 @@ class ResponsesTest(IntegrationTest):
             assert Post.find(record.id).title == "Existing"
 
     @pytest.mark.parametrize("suffix", ["", ".json"])
+    @pytest.mark.parametrize("operation", ["create", "update"])
+    def test_json_column_persists_structured_values(self, suffix, operation):
+        settings = {"notifications": True, "groups": [{"limits": [1, None, False]}]}
+        record = (
+            Post.create(title="Existing", settings={"old": True})
+            if operation == "update"
+            else None
+        )
+        url = f"/posts/{record.id}{suffix}/" if record else f"/posts{suffix}/"
+        send = patch if record else post
+
+        response = send(
+            url,
+            json={"post": {"title": "Settings", "settings": settings}},
+            headers={"Accept": "application/json"},
+        )
+
+        self.assert_response(200)
+        assert response.get_json()["settings"] == settings
+        saved = Post.find(response.get_json()["id"])
+        saved.reload()
+        assert saved.settings == settings
+
+    @pytest.mark.parametrize("suffix", ["", ".json"])
     def test_json_index_returns_empty_list(self, suffix):
         headers = {"Accept": "application/json"} if not suffix else {}
         get(f"/posts{suffix}/", headers=headers)

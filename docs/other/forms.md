@@ -212,6 +212,28 @@ Omitted fields are not filled with defaults; an explicitly submitted `None` scal
 is retained. Use model validations to require attributes, rather than treating the
 allowlist as validation.
 
+### JSON-valued fields
+
+Use the explicit `JSONValue` schema marker for a field that accepts an entire
+JSON value, such as a JSON database column:
+
+```python
+from flaskteroids.actions import JSONValue
+
+attributes = self.params.expect(post=["title", ("settings", JSONValue)])
+```
+
+This permits objects with arbitrary string keys, arrays, strings, finite numbers,
+booleans, and null, including nested values and empty containers. The permission
+is limited to `settings`: other attributes still need their own allowlist entries.
+Uploads and arbitrary Python objects are rejected. Prefer an explicit nested
+schema when the permitted keys are known; `JSONValue` deliberately permits all
+JSON content inside that one field.
+
+Scaffold generators use this schema automatically for `name:json` columns.
+Omitting the field leaves it unchanged during partial updates. JSON strings are
+values, not an invitation to decode another JSON document inside them.
+
 ### Missing or malformed input
 
 - A missing, null, or empty root raises `MissingParameter`. This includes a
@@ -223,8 +245,9 @@ allowlist as validation.
 
 During HTTP requests, Flaskteroids automatically translates `MissingParameter`
 and `InvalidParameter` into **400 Bad Request** responses; controllers do not
-need to catch them. The default response is an HTML error page, including when
-JSON is requested. Applications can customize either response with Flask's
+need to catch them. Browser controllers return an HTML error page, including when
+JSON is requested; API controllers return JSON errors. Applications can customize
+either response with Flask's
 `register_error_handler()` in an initializer (for example, to return JSON).
 Direct calls outside request dispatch still raise these exceptions. Programmer
 errors and unrelated exceptions are not translated into 400 responses.

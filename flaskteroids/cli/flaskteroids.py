@@ -3,7 +3,6 @@ import os
 import re
 import secrets
 from importlib.metadata import PackageNotFoundError, distribution, version
-from importlib.resources import files
 from pathlib import Path
 from urllib.parse import urlsplit
 from urllib.request import url2pathname
@@ -14,13 +13,12 @@ from alembic.util import CommandError
 from packaging.version import InvalidVersion, Version
 
 from flaskteroids.cli.agent_skills import agent_skills
+from flaskteroids.cli.application import application_generator
 from flaskteroids.cli.artifacts import ArtifactsBuilder, ArtifactsBuilderException
 from flaskteroids.cli.assets import precompile as assets_precompile
 from flaskteroids.cli.attachments import STORAGE_YAML
 from flaskteroids.cli.db.config import initialize_migrations
-from flaskteroids.cli.generators.templates import template
 from flaskteroids.credentials import encrypt, generate_key
-from flaskteroids.turbo.installation import ASSET_NAMES
 
 
 @click.group()
@@ -43,7 +41,10 @@ cli.add_command(assets_precompile)
     is_flag=True,
     help="Skip dependency installation and database preparation; run bin/setup later.",
 )
-def new(app_name, skip_install):
+@click.option(
+    "--api", "api_only", is_flag=True, help="Generate an API-only application."
+)
+def new(app_name, skip_install, api_only):
     """Create a ready-to-run application.
 
     Creates the APP_NAME directory with tests, encrypted credentials, Docker
@@ -84,28 +85,39 @@ def new(app_name, skip_install):
         if editable_path
         else None,
     }
+    generator = application_generator(api_only, params)
     ab = ArtifactsBuilder(base_path, click.echo)
     try:
         ab.dir()
-        ab.file("README.md", _template(path="README.md.mako", params=params))
+        ab.file("README.md", generator.render(path="README.md.mako", params=params))
         ab.file(
             ".agents/skills/using-flaskteroids/SKILL.md",
-            _template(path="agent_skill.md.mako"),
+            generator.render(path="agent_skill.md.mako"),
         )
-        ab.file("Dockerfile", _template(path="Dockerfile.mako"))
-        ab.file(".dockerignore", _template(path="dockerignore.mako"))
-        ab.file(".gitignore", _template(path="gitignore.mako"))
-        ab.file("pyproject.toml", _template(path="pyproject.toml.mako", params=params))
-        ab.file("config/application.py", _template(path="config/application.py.mako"))
-        ab.file("config/boot.py", _template(path="config/boot.py.mako"))
-        ab.file("config/environment.py", _template(path="config/environment.py.mako"))
+        ab.file("Dockerfile", generator.render(path="Dockerfile.mako", params=params))
+        ab.file(".dockerignore", generator.render(path="dockerignore.mako"))
+        ab.file(".gitignore", generator.render(path="gitignore.mako"))
+        ab.file(
+            "pyproject.toml",
+            generator.render(path="pyproject.toml.mako", params=params),
+        )
+        ab.file(
+            "config/application.py",
+            generator.render(path="config/application.py.mako", params=params),
+        )
+        ab.file("config/boot.py", generator.render(path="config/boot.py.mako"))
+        ab.file(
+            "config/environment.py", generator.render(path="config/environment.py.mako")
+        )
         for environment in ("development", "test", "production"):
             ab.file(
                 f"config/environments/{environment}.py",
-                _template(path=f"config/environments/{environment}.py.mako"),
+                generator.render(path=f"config/environments/{environment}.py.mako"),
             )
         ab.file("config/initializers/.keep")
-        ab.file("config/database.yml", _template(path="config/database.yml.mako"))
+        ab.file(
+            "config/database.yml", generator.render(path="config/database.yml.mako")
+        )
         ab.file("config/storage.yml", STORAGE_YAML)
         ab.file("config/locales/en.yml", 'en:\n  hello: "Hello world"\n')
         credentials_key = generate_key()
@@ -114,72 +126,63 @@ def new(app_name, skip_install):
         )
         ab.file("config/master.key", f"{credentials_key}\n")
         ab.file("config/credentials.yml.enc", encrypt(credentials, credentials_key))
-        ab.file("wsgi.py", _template(path="wsgi.py.mako"))
-        ab.file("jobs.py", _template(path="jobs.py.mako"))
-        ab.file("bin/flask", _template(path="bin/flask.mako"))
-        ab.file("bin/jobs", _template(path="bin/jobs.mako"))
-        ab.file("bin/setup", _template(path="bin/setup.mako"))
-        ab.file("bin/release", _template(path="bin/release.mako"))
-        ab.file("bin/docker-entrypoint", _template(path="bin/docker-entrypoint.mako"))
-        ab.file("Procfile", _template(path="Procfile.mako"))
-        ab.file("deploy/README.md", _template(path="deploy/README.md.mako"))
+        ab.file("wsgi.py", generator.render(path="wsgi.py.mako"))
+        ab.file("jobs.py", generator.render(path="jobs.py.mako"))
+        ab.file("bin/flask", generator.render(path="bin/flask.mako"))
+        ab.file("bin/jobs", generator.render(path="bin/jobs.mako"))
+        ab.file("bin/setup", generator.render(path="bin/setup.mako"))
+        ab.file("bin/release", generator.render(path="bin/release.mako"))
+        ab.file(
+            "bin/docker-entrypoint", generator.render(path="bin/docker-entrypoint.mako")
+        )
+        ab.file("Procfile", generator.render(path="Procfile.mako"))
+        ab.file(
+            "deploy/README.md",
+            generator.render(path="deploy/README.md.mako", params=params),
+        )
         ab.file("storage/.keep")
         ab.dir("db/")
         ab.dir("app/")
-        ab.file("app/assets/stylesheets/application.css")
-        ab.file("app/assets/images/.keep")
-        turbo_assets = files("flaskteroids.turbo").joinpath("assets")
-        for name in ASSET_NAMES:
-            ab.file(f"app/assets/turbo/{name}", turbo_assets.joinpath(name).read_text())
-        ab.file(
-            "app/helpers/application_helper.py",
-            _template(path="app/helpers/application_helper.py.mako"),
-        )
+        generator.write_presentation(ab)
         ab.file(
             "app/models/application_model.py",
-            _template(path="app/models/application_model.py.mako"),
+            generator.render(path="app/models/application_model.py.mako"),
         )
-        ab.file("db/schema.py", _template(path="db/schema.py.mako"))
+        ab.file("db/schema.py", generator.render(path="db/schema.py.mako"))
         ab.file("app/jobs/application_job.py")
         ab.file(
             "app/mailers/application_mailer.py",
-            _template(path="app/mailers/application_mailer.py.mako"),
-        )
-        ab.file(
-            "app/views/layouts/application.html",
-            _template(path="app/views/layouts/application.html.mako"),
+            generator.render(path="app/mailers/application_mailer.py.mako"),
         )
         ab.file("app/views/layouts/mailer.html")
         ab.file("app/views/layouts/mailer.txt")
         ab.file(
             "app/controllers/application_controller.py",
-            _template(path="app/controllers/application_controller.py.mako"),
+            generator.render(
+                path="app/controllers/application_controller.py.mako", params=params
+            ),
         )
         ab.file(
             "config/routes.py",
             'def register(route):\n    route.get("/up/", to="flaskteroids/health#show")\n',
         )
         ab.file("test/__init__.py")
-        ab.file("test/conftest.py", _template(path="test/conftest.py.mako"))
-        ab.file("test/test_helper.py", _template(path="test/test_helper.py.mako"))
+        ab.file("test/conftest.py", generator.render(path="test/conftest.py.mako"))
+        ab.file(
+            "test/test_helper.py",
+            generator.render(path="test/test_helper.py.mako", params=params),
+        )
         ab.file(
             "test/controllers/health_controller_test.py",
-            _template(path="test/controllers/health_controller_test.py.mako"),
+            generator.render(path="test/controllers/health_controller_test.py.mako"),
         )
-        for directory in (
-            "fixtures",
-            "models",
-            "controllers",
-            "mailers",
-            "jobs",
-            "system",
-        ):
+        for directory in generator.test_directories:
             ab.file(f"test/{directory}/.keep")
             if directory != "fixtures":
                 ab.file(f"test/{directory}/__init__.py")
         ab.file(
             ".github/workflows/test.yml",
-            _template(path=".github/workflows/test.yml.mako"),
+            generator.render(path=".github/workflows/test.yml.mako", params=params),
         )
         # Copy canonical Alembic assets before app dependencies or database are available.
         initialize_migrations(Path(base_path) / "db/migrate")
@@ -208,9 +211,7 @@ def new(app_name, skip_install):
             "Application generated; installation and database preparation skipped. Run bin/setup."
         )
     else:
-        click.echo(
-            "Application ready. Run bin/flask run, bin/flask test, and bin/flask test:system."
-        )
+        click.echo(f"Application ready. Run {generator.next_commands}.")
     click.echo(f"Next: cd {app_name!r}")
 
 
@@ -235,7 +236,3 @@ def _editable_framework_path():
             f"Cannot read editable Flaskteroids source from direct_url.json: {error}"
         ) from error
     return path
-
-
-def _template(*, path, params=None):
-    return template("flaskteroids.cli", path=path, params=params)

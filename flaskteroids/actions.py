@@ -1,6 +1,7 @@
 import logging
 from collections import UserDict
 from functools import wraps
+from math import isfinite
 from typing import Any, Literal
 
 from werkzeug.datastructures import FileStorage
@@ -166,6 +167,10 @@ def skip_before_action(method_name: str, *, only=None):
     return bind
 
 
+class JSONValue:
+    """Strong-parameter schema marker for a complete JSON value."""
+
+
 class ActionParameters(UserDict):
     @classmethod
     def new(cls, params):
@@ -201,7 +206,9 @@ class ActionParameters(UserDict):
                 schema[f] = Any
             elif isinstance(f, tuple) and len(f) == 2:
                 fk, fv = f
-                if isinstance(fv, list) and len(fv) == 0:
+                if fv is JSONValue:
+                    schema[fk] = JSONValue
+                elif isinstance(fv, list) and len(fv) == 0:
                     schema[fk] = list
                 elif isinstance(fv, list) and len(fv) == 1 and isinstance(fv[0], list):
                     schema[fk] = [self._schema(fk, fv[0])]
@@ -225,6 +232,23 @@ class ActionParameters(UserDict):
                 raise MissingParameter(key, name, "Parameter is missing or empty")
         return expected
 
+    def _json_value(self, key, value):
+        if value is None or type(value) in (str, int, bool):
+            return value
+        if type(value) is float and isfinite(value):
+            return value
+        if isinstance(value, dict) and all(isinstance(name, str) for name in value):
+            return {
+                name: self._json_value(f"{key}.{name}", item)
+                for name, item in value.items()
+            }
+        if isinstance(value, list):
+            return [
+                self._json_value(f"{key}[{index}]", item)
+                for index, item in enumerate(value)
+            ]
+        raise InvalidParameter(key, "Invalid parameter type. Not a JSON value")
+
     def _expect(self, key, value, schema):
         if not isinstance(value, dict):
             raise InvalidParameter(key, "Invalid parameter type. Not a dict")
@@ -234,6 +258,8 @@ class ActionParameters(UserDict):
                 continue
             elif value[k] is None:
                 expected[k] = None
+            elif v is JSONValue:
+                expected[k] = self._json_value(f"{key}.{k}", value[k])
             elif v is Any:
                 if type(value[k]) not in (int, float, str, bool) and not isinstance(
                     value[k], FileStorage

@@ -41,6 +41,15 @@ def template_context():
     }
 
 
+def _response_variant():
+    controller = getattr(g, "controller", None)
+    if controller is not None:
+        return controller._response_variant()
+    if getattr(g, "_flaskteroids_turbo_rendered", False):
+        return "frame" if turbo_frame_request() else "page"
+    return None
+
+
 class _FrameETagResponse:
     def set_etag(self, etag, weak=False):
         super().set_etag(etag, weak=weak)
@@ -60,15 +69,8 @@ class _FrameETagResponse:
         if source is None:
             return
         etag, weak = source
-        if (
-            has_request_context()
-            and self.mimetype
-            and (
-                getattr(g, "controller", None) is not None
-                or getattr(g, "_flaskteroids_turbo_rendered", False)
-            )
-        ):
-            variant = "frame" if turbo_frame_request() else "page"
+        variant = _response_variant() if has_request_context() else None
+        if self.mimetype and variant is not None:
             identity = f"{etag}\0{self.mimetype}\0{variant}".encode()
             etag = sha256(identity).hexdigest()
         super().set_etag(etag, weak=weak)
@@ -105,9 +107,7 @@ def init_turbo(app):
 
     @app.after_request
     def vary_representation(response):
-        rendered = getattr(g, "_flaskteroids_turbo_rendered", False)
-        controller = getattr(g, "controller", None)
-        if not rendered and controller is None:
+        if _response_variant() is None:
             return response
         if isinstance(response, _FrameETagResponse):
             response._finalize_turbo_etag()

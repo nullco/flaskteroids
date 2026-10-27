@@ -2,12 +2,12 @@ import re
 from dataclasses import dataclass
 from importlib import import_module
 
-from flask import request
-from werkzeug.exceptions import BadRequest, HTTPException
+from werkzeug.exceptions import HTTPException
 
-from flaskteroids._method_override import FORM_PAIRS
+from flaskteroids._controllers.base import ControllerBase
+from flaskteroids._controllers.parameters import request_parameters
 from flaskteroids._routing import RouteDescription, collection_route_key
-from flaskteroids.controller import ActionController, init
+from flaskteroids.controller import init
 from flaskteroids.discovery import discover_classes
 from flaskteroids.exceptions import ProgrammerError
 from flaskteroids.inflector import inflector
@@ -41,23 +41,28 @@ class RoutesExtension:
         self._paths = set()
         self._endpoints = set()
         self._targets = {}
+        self._conventions = app.extensions["flaskteroids.stack"].routing
         self._helpers = {}
         self._controllers = discover_classes(
-            app.config.paths.controllers, ActionController
+            app.config.paths.controllers,
+            ControllerBase,
+            ignore={"APIController", "ActionController"},
         )
         self._internal_controllers = discover_classes(
-            "flaskteroids.controllers", ActionController
+            "flaskteroids.controllers",
+            ControllerBase,
+            ignore={"APIController", "ActionController"},
         )
         app.extensions["flaskteroids.routes"] = self
         import_module(app.config.paths.routes).register(self)
-        if not self.has_path("/"):
-            self.root(to="flaskteroids/welcome#show")
+        if self._conventions.fallback_root and not self.has_path("/"):
+            self.root(to=self._conventions.fallback_root)
         for controller in [
             *self._controllers.values(),
             *self._internal_controllers.values(),
         ]:
             init(controller)
-            app.extensions["flaskteroids.helpers"].validate_controller(controller)
+            controller._prepare_views(app.extensions["flaskteroids.helpers"])
 
     @property
     def helpers(self):
@@ -83,11 +88,15 @@ class RoutesExtension:
 
     def resources(self, name, *, param=None, only=None, nested=None):
         self._register_resources(
-            _ResourceBuilder().resources(name, param=param, only=only, nested=nested)
+            _ResourceBuilder(self._conventions.actions).resources(
+                name, param=param, only=only, nested=nested
+            )
         )
 
     def resource(self, name, *, only=None):
-        self._register_resources(_ResourceBuilder().resource(name, only=only))
+        self._register_resources(
+            _ResourceBuilder(self._conventions.actions).resource(name, only=only)
+        )
 
     def _register_resources(self, resources):
         for resource in resources:
@@ -98,12 +107,16 @@ class RoutesExtension:
                 endpoint=resource.endpoint,
                 strict_slashes=False,
             )
-            for format_ in ("json", "turbo_stream"):
+            format_endpoints = {
+                format_: resource.endpoint + "." + format_
+                for format_ in self._conventions.formats
+            }
+            for format_, format_endpoint in format_endpoints.items():
                 self._register_view_func(
                     resource.path + "." + format_,
                     resource.to,
                     resource.methods,
-                    endpoint=resource.endpoint + "." + format_,
+                    endpoint=format_endpoint,
                     strict_slashes=False,
                 )
             self._register_helper(
@@ -112,8 +125,8 @@ class RoutesExtension:
                     resource.endpoint,
                     tuple(_PARAMETER.findall(resource.path)),
                     resource.path,
-                    resource.endpoint + ".json",
-                    resource.endpoint + ".turbo_stream",
+                    format_endpoints.get("json"),
+                    format_endpoints.get("turbo_stream"),
                 ),
             )
 
@@ -169,17 +182,7 @@ class RoutesExtension:
             if not hasattr(controller, caction):
                 raise ProgrammerError(f"Action not found for <{to}>")
             instance = controller()
-            pairs = request.environ.get(FORM_PAIRS)
-            if pairs is None:
-                pairs = [
-                    *request.form.items(multi=True),
-                    *request.files.items(multi=True),
-                ]
-            values = _unflatten_params(pairs)
-            values.update(_unflatten_params(request.args.to_dict(False)))
-            values.update(kwargs)
-            values.pop("csrf_token", None)
-            instance.params.update(values)
+            instance.params.update(request_parameters(instance, kwargs))
             return getattr(instance, caction)()
 
         explicit_endpoint = endpoint is not None or as_ is not None
@@ -202,6 +205,8 @@ class RoutesExtension:
         self._paths.add(path)
         self._endpoints.add(endpoint)
         self._targets[endpoint] = to
+        if controller is not None:
+            view_func._flaskteroids_request_policy = controller._request_policy
         if as_:
             self._register_helper(
                 as_, RouteDescription(endpoint, tuple(_PARAMETER.findall(path)), path)
@@ -218,7 +223,8 @@ class _ResourceRoute:
 
 
 class _ResourceBuilder:
-    def __init__(self, prefix="", scope=()):
+    def __init__(self, default_actions, prefix="", scope=()):
+        self.default_actions = default_actions
         self.prefix = prefix
         self.scope = scope
 
@@ -229,7 +235,7 @@ class _ResourceBuilder:
         return self._build(name, param=param, only=only, nested=nested)
 
     def _build(self, name, *, singular=False, param=None, only=None, nested=None):
-        actions = list(_ACTIONS) if only is None else list(only)
+        actions = list(self.default_actions if only is None else only)
         if singular and only is None:
             actions.remove("index")
         if set(actions) - _ACTIONS.keys() or (singular and "index" in actions):
@@ -273,65 +279,9 @@ class _ResourceBuilder:
                 f"{converter}:{ancestor_parameter}" if separator else ancestor_parameter
             )
             child = _ResourceBuilder(
-                f"{collection_path}/<{ancestor}>", (*self.scope, singular_name)
+                self.default_actions,
+                f"{collection_path}/<{ancestor}>",
+                (*self.scope, singular_name),
             )
             resources.extend(nested(child) or ())
         return resources
-
-
-def _unflatten_params(flat_dict):
-    def insert(container, keys, value, *, indexed):
-        key = keys[0]
-        is_last = len(keys) == 1
-        if key == "":
-            if not isinstance(container, list):
-                raise BadRequest("Conflicting parameter shapes.")
-            if is_last:
-                container.append(value)
-            else:
-                if len(container) == 0 or not isinstance(container[-1], (dict, list)):
-                    container.append({})
-                container[-1] = insert(container[-1], keys[1:], value, indexed=indexed)
-            return container
-        if isinstance(container, list):
-            if not indexed or not key.isdecimal():
-                raise BadRequest("Conflicting parameter shapes.")
-            index = int(key)
-            while len(container) <= index:
-                container.append({})
-            if is_last:
-                container[index] = value
-            else:
-                container[index] = insert(
-                    container[index], keys[1:], value, indexed=indexed
-                )
-            return container
-        if is_last:
-            container[key] = value
-        else:
-            if key not in container or container[key] is None:
-                next_key = keys[1]
-                container[key] = (
-                    []
-                    if next_key == "" or (indexed and re.fullmatch(r"\d+", next_key))
-                    else {}
-                )
-            elif not isinstance(container[key], (dict, list)):
-                raise BadRequest("Conflicting parameter shapes.")
-            container[key] = insert(container[key], keys[1:], value, indexed=indexed)
-        return container
-
-    result = {}
-    entries = flat_dict.items() if isinstance(flat_dict, dict) else flat_dict
-    for flat_key, value in entries:
-        parts = re.findall(r"\w+|\[\]", flat_key)
-        if not parts:
-            continue
-        keys = [parts[0]] + [part if part != "[]" else "" for part in parts[1:]]
-        if isinstance(value, list):
-            values = value if keys[-1] == "" else value[-1:]
-        else:
-            values = [value]
-        for entry in values:
-            result = insert(result, keys, entry, indexed=keys[0] != "_method")
-    return result

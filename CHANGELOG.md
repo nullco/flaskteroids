@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Added
+
+- API-only application generation with `new --api`, `APIController`, JSON request
+  parameters and conventional root wrapping, JSON CRUD scaffolds and request
+  tests, and API-aware routing, boot, CI, and Docker defaults. Authentication
+  generation and cookie-session opt-ins remain deferred.
+- Explicit `JSONValue` strong-parameter schemas for JSON columns; scaffolds retain
+  complete JSON values without broadening other fields' allowlists.
+
 ## 0.9.0 - 2026-10-26
 
 ### Breaking changes

@@ -12,9 +12,9 @@ from flaskteroids.cli.flaskteroids import cli
 
 @pytest.fixture(scope="module")
 def generated_app_factory(tmp_path_factory):
-    def create(name):
+    def create(name, *options):
         root = tmp_path_factory.mktemp("application") / name
-        result = CliRunner().invoke(cli, ["new", str(root), "--skip-install"])
+        result = CliRunner().invoke(cli, ["new", str(root), "--skip-install", *options])
         assert result.exit_code == 0, result.output
         (root / ".venv").symlink_to(Path(sys.prefix), target_is_directory=True)
         environment = {
@@ -74,6 +74,44 @@ def generated_scaffolds(generated_app_factory):
     finally:
         for _ in scaffolds:
             run("db:rollback")
+
+
+@pytest.fixture(scope="module")
+def generated_api(generated_app_factory):
+    root, run = generated_app_factory("inventory", "--api")
+    run("db:create")
+    for name, fields in (
+        (
+            "Post",
+            (
+                "title:string",
+                "content:text",
+                "published:boolean",
+                "quantity:integer",
+                "published_at:datetime",
+                "settings:json",
+            ),
+        ),
+        ("Fish", ("name:string",)),
+        ("Equipment", ("name:string",)),
+        ("Document", ("name:string", "file:attachment")),
+        ("Empty", ()),
+    ):
+        run("generate", "scaffold", name, *fields)
+    run("attachments:install")
+    run("generate", "controller", "Status", "index")
+    run("generate", "resource", "Widget", "name:string")
+    run("generate", "mailer", "Notifications", "welcome")
+    source = Path(__file__).parent / "integration/application/api"
+    for path in source.rglob("*"):
+        if path.is_file() and "__pycache__" not in path.parts:
+            destination = root / path.relative_to(source)
+            if path.name == "contracts.py":
+                destination = destination.with_name("api_contract_test.py")
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(path, destination)
+    run("db:prepare")
+    return root, run
 
 
 @pytest.fixture(scope="module")

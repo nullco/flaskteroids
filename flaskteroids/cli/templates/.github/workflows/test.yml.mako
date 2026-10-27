@@ -12,5 +12,6 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - run: uv sync --locked
       - run: bin/flask test
-      - run: .venv/bin/playwright install --with-deps chromium
+<%block name="browser_tests">      - run: .venv/bin/playwright install --with-deps chromium
       - run: bin/flask test:system
+</%block>\

@@ -25,6 +25,10 @@ a fresh checkout, run `bin/setup` first.
 To generate files without installing, use `flaskteroids new my_app --skip-install`
 and run `bin/setup` later. Commit `uv.lock` so the team shares dependency versions.
 
+Use `flaskteroids new inventory --api` for API-only defaults. Later controller
+and scaffold generators select API output automatically, without browser views,
+assets, or system tests. See [API-only applications](../controllers/api.md).
+
 ## Database preparation
 
 Migrations describe changes to database tables. To create a database if necessary

@@ -1,5 +1,9 @@
 from http import HTTPStatus
+% if any(field["type"] == "json" for field in fields):
+from flaskteroids.actions import JSONValue, before_action
+% else:
 from flaskteroids.actions import before_action
+% endif
 from flaskteroids.routes import ${collection}_path, ${singular}_path
 from app.controllers.application_controller import ApplicationController
 from app.models.${model_ref} import ${model}
@@ -63,7 +67,12 @@ class ${controller}Controller(ApplicationController):
         self.${model_ref} = ${model}.find(id=self.params['id'])
 
     def _${model_ref}_params(self):
-        permitted = [${', '.join("'" + field['name'] + "'" for field in fields)}]
+        permitted = [${', '.join(repr(field["name"]) for field in fields if field["type"] != "json")}]
+% for field in fields:
+% if field["type"] == "json":
+        permitted.append(("${field['name']}", JSONValue))
+% endif
+% endfor
 % for rich_text in rich_texts:
         permitted.append("${rich_text}")
 % endfor

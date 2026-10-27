@@ -48,6 +48,7 @@ nav:
     - Turbo: views/turbo.md
   - Controllers:
     - Overview: controllers/index.md
+    - API-only applications: controllers/api.md
     - Routing: controllers/routing.md
     - Advanced topics: controllers/advanced.md
   - Other components:

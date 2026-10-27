@@ -29,7 +29,14 @@ def test_generated_scaffold_serves_json_and_html_responses(tmp_path, monkeypatch
         assert result.returncode == 0, result.stdout + result.stderr
         return result
 
-    run("generate", "scaffold", "Post", "title:string", "completed:boolean")
+    run(
+        "generate",
+        "scaffold",
+        "Post",
+        "title:string",
+        "completed:boolean",
+        "settings:json",
+    )
     source = Path(__file__).parents[2] / "fixtures/scaffold"
     shutil.copyfile(source / "post.py", root / "app/models/post.py")
     shutil.copyfile(

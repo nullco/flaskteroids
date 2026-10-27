@@ -13,8 +13,8 @@ docker run --rm -p 8000:8000 --env-file .env.production \
   -v my-app-storage:/app/storage my-app
 ```
 
-Docker includes asset precompilation. For non-Docker builds, caching, or
-reverse-proxy serving, see [Assets](https://nullco.github.io/flaskteroids/other/assets/).
+<%block name="asset_guidance">Docker includes asset precompilation. For non-Docker builds, caching, or
+reverse-proxy serving, see [Assets](https://nullco.github.io/flaskteroids/other/assets/).</%block>
 
 The default `gunicorn wsgi:app ...` command prepares the production database before
 launching workers. SQLite and local attachments need persistent writable `/app/storage`.

@@ -1,13 +1,11 @@
 import click
+from flask import current_app
 from flask.cli import with_appcontext
 
-import flaskteroids.cli.generators.authentication.generator as authentication
-import flaskteroids.cli.generators.controller.generator as controller
 import flaskteroids.cli.generators.mailer.generator as mailer
 import flaskteroids.cli.generators.migrations.generator as migrations
 import flaskteroids.cli.generators.model.generator as model
 import flaskteroids.cli.generators.resource.generator as resource
-import flaskteroids.cli.generators.scaffold.generator as scaffold
 from flaskteroids.cli.generators.fields import fields
 
 _FIELD_HELP = (
@@ -84,17 +82,19 @@ def generate_model(name, fields):
     "--skip-routes", is_flag=True, help="Do not add routes for the generated actions."
 )
 def generate_controller(name, actions, skip_routes):
-    """Generate a controller, helper, views, and tests.
+    """Generate a controller and request tests.
 
     Use a CamelCase NAME without the Controller suffix. Optional ACTIONS
-    get views and tests. Adds a GET route per action unless --skip-routes is set.
+    get request tests and, in browser apps, views/helpers. Adds a GET route per
+    action unless --skip-routes is set.
 
     \b
     Examples:
       flask generate controller Posts index show
       flask generate controller Posts index --skip-routes
     """
-    controller.generate(name, actions, skip_routes)
+    generators = current_app.extensions["flaskteroids.stack"].generators
+    generators.controller.generate(name, actions, skip_routes)
 
 
 @generate.command("mailer")
@@ -122,17 +122,19 @@ def generate_mailer(name, actions):
 @click.argument("name")
 @click.argument("fields", nargs=-1)
 def generate_scaffold(name, fields):
-    """Generate HTML CRUD with tests and fixtures.
+    """Generate resource CRUD with tests and fixtures.
 
     Use a singular model NAME, such as Post. Includes the model, migration,
-    controller, views, routes, and browser test. Complete fixtures for any
+    controller, and routes. API apps get JSON actions and request tests; browser
+    apps also get views and a browser test. Complete fixtures for any
     required references before running tests. avatar:attachment and
     documents:attachments include file inputs and permitted upload parameters.
     Install their tables with flask attachments:install before migrating.
     content:rich_text includes a Trix editor and safe display.
     Run flask rich_text:install before migrating.
     """
-    scaffold.generate(name, list(fields))
+    generators = current_app.extensions["flaskteroids.stack"].generators
+    generators.scaffold.generate(name, list(fields))
 
 
 @generate.command(
@@ -167,4 +169,5 @@ def generate_authentication():
     Example:
       flask generate authentication
     """
-    authentication.generate()
+    generators = current_app.extensions["flaskteroids.stack"].generators
+    generators.authentication.generate()

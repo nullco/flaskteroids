@@ -30,6 +30,15 @@ description: Use when building or modifying a Flaskteroids application.
   development SQLite by default. `--skip-install` explicitly defers this to
   `bin/setup`; it still writes Docker and migration resources. Requires Git,
   Bash/POSIX and (unless skipped) uv. Never claim skipped installation is runnable.
+- Use `flaskteroids new inventory --api` for API-only defaults and JSON scaffolds.
+  Generated API controllers inherit from `APIController`, return implicit 204,
+  and use `render(json=..., status=..., location=...)`. JSON input reaches
+  `self.params` with conventional root wrapping; keep strong parameter allowlists.
+  Use the class-body declaration `wrap_parameters(False)` to disable wrapping or
+  `wrap_parameters("event")` for a custom root; import it from `flaskteroids.controller`.
+  API apps retain jobs/mail/storage but omit browser facilities. Authentication
+  generation and cookie-session opt-ins are deferred. See
+  [API-only applications](https://nullco.github.io/flaskteroids/controllers/api/).
 - Use `bin/flask` for app commands without activation; existing Flask/uv syntax
   remains supported. Use `bin/setup` for a fresh checkout or changed dependencies.
   Commit the app-owned `uv.lock`; CI and Docker use `uv sync --locked`.
@@ -155,7 +164,8 @@ dependency internals or introduce a parallel implementation of a supported featu
   Flask routes or manually rebuilding the request pipeline. `render(json=value,
   status=...)` supports ordinary JSON values, models, queries, and model errors.
   Errors serialize as full-message lists; use status 422 for validation failures.
-  Only `None` returned by an action triggers implicit template rendering.
+  Only `None` returned by a browser action triggers implicit template rendering;
+  an API action without a response returns 204.
 - `params.expect(post=[...])` requires the outer parameter but permits optional
   nested attributes. Keep fixed allowlists for partial updates, including uploads;
   omitted attributes remain unchanged. Use model validations for required fields.

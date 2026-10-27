@@ -17,6 +17,7 @@ Start with [Getting started](getting_started.md) to build a product catalog, lea
 | Store, query, or validate data | [Models](models/index.md), [Fields](other/fields.md) |
 | Encrypt sensitive database values | [Attribute encryption](models/encryption.md) |
 | Handle requests and define URLs | [Controllers](controllers/index.md), [Routing](controllers/routing.md) |
+| Build a JSON API without browser defaults | [API-only applications](controllers/api.md) |
 | Build pages and accept input | [Views](views/index.md), [Forms](other/forms.md) |
 | Navigate within frames or update page elements | [Turbo Frames and Streams](views/turbo.md) |
 | Translate messages and format dates | [Internationalization](other/internationalization.md) |

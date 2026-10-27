@@ -159,6 +159,7 @@ class Configuration(FlaskConfig):
         self.x = Options(autovivify=True)
         self.require_master_key = False
         self.secret_key_base = None
+        self.api_only = False
         self.eager_load = False
         self.enable_reloading = False
         self.consider_all_requests_local = False
