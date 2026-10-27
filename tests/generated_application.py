@@ -111,7 +111,12 @@ def generated_api(generated_app_factory):
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(path, destination)
     run("db:prepare")
-    return root, run
+    migrations = list((root / "db/migrate/versions").glob("*.py"))
+    try:
+        yield root, run
+    finally:
+        for _ in migrations:
+            run("db:rollback")
 
 
 @pytest.fixture(scope="module")
