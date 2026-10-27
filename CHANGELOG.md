@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- Drop Python 3.12 and 3.13 support. Flaskteroids and newly generated applications
+  now require Python 3.14 or newer; generated Docker images use Python 3.14.
+  Upgrade development and deployment runtimes before updating Flaskteroids.
+
 ### Added
 
 - API-only application generation with `new --api`, `APIController`, JSON request

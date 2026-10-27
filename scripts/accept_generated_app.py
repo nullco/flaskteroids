@@ -46,7 +46,7 @@ def main():
             )
         )
     }
-    environment.update(UV_FIND_LINKS=str(wheel.parent), UV_PYTHON="3.12")
+    environment.update(UV_FIND_LINKS=str(wheel.parent), UV_PYTHON="3.14")
 
     def run(*command, cwd=work, env=None, success=True):
         print("+", " ".join(map(str, command)), flush=True)
@@ -65,7 +65,7 @@ def main():
         return result
 
     generator = work / "generator"
-    run("uv", "venv", "--python", "3.12", generator)
+    run("uv", "venv", "--python", "3.14", generator)
     run("uv", "pip", "install", "--python", generator / "bin/python", wheel)
     command = generator / "bin/flaskteroids"
     parent = work / "parent with spaces"

@@ -54,7 +54,7 @@ class RichTextDefinition:
 class VirtualFieldConfig(TypedDict, total=False):
     read_only: bool
     cache: bool
-    set_fn: Callable[["Model"], None]
+    set_fn: Callable[[Model], None]
 
 
 @dataclass
@@ -64,9 +64,9 @@ class ModelDefinition:
     )
     virtual_fields: dict[str, VirtualFieldConfig] = field(default_factory=dict)
     password_field: str | None = None
-    callbacks: dict[str, list["Callback"]] = field(default_factory=dict)
+    callbacks: dict[str, list[Callback]] = field(default_factory=dict)
     associations: dict[str, AssociationDefinition] = field(default_factory=dict)
-    attachments: dict[str, "Definition"] = field(default_factory=dict)
+    attachments: dict[str, Definition] = field(default_factory=dict)
     rich_texts: dict[str, RichTextDefinition] = field(default_factory=dict)
     encrypted_attributes: dict[str, EncryptedAttributeDefinition] = field(
         default_factory=dict

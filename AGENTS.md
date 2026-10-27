@@ -32,7 +32,7 @@ This framework provides a collection of tools and a cohesive ecosystem with a cl
 ## General Information
 
 *   **Project Type:** Python web framework.
-*   **Primary Language:** Python 3.12+
+*   **Primary Language:** Python 3.14+
 *   **Dependency Management:** `uv`; reproduce the development environment with `uv sync --locked --dev`.
 *   **Virtual Environment:** `.venv/`
 
@@ -65,7 +65,7 @@ This framework provides a collection of tools and a cohesive ecosystem with a cl
 *   **Contributor fixes (review the diff):** `uv run ruff check --diff .`, then `uv run ruff check --fix .`; format separately with `ruff format .` or `uv run ruff format .`. Do not apply unsafe fixes wholesale.
 
 Use `uv run pytest` for tests in the locked environment. Ruff policy lives only in
-`pyproject.toml`: Python 3.12, 88 columns, stable double-quoted/space formatting.
+`pyproject.toml`: Python 3.14, 88 columns, stable double-quoted/space formatting.
 Discovery includes `*.py`, `*.pyi`, and `pyproject.toml`, retaining standard cache/
 VCS exclusions and excluding build, dist, htmlcov, egg-info and raw `*.mako`
 resources even for explicit file arguments. Copied Alembic `env.py` stays in scope;
@@ -83,8 +83,8 @@ silently, not globally skipped; only missing Celery stubs are exempted. Job
 arguments/configuration remain dynamic and enqueue results may be any `object`.
 This is not repository-wide ORM or generated-application typing.
 
-CI's `Quality` job runs these three check-only commands on Python 3.12 without a
-browser. Keep the browser-enabled Python 3.12–3.15 test matrix intact. Repository
+CI's `Quality` job runs these three check-only commands on Python 3.14 without a
+browser. Keep the browser-enabled Python 3.14–3.15 test matrix intact. Repository
 administrators should require `Quality` alongside existing test checks in branch
 protection; reusable release callers already wait for the entire test workflow.
 

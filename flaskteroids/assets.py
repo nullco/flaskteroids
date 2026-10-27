@@ -247,7 +247,7 @@ def init_assets(app):
                 filename = _logical_name(values["filename"])
                 folder = Path(app.static_folder).relative_to(app.project_root)
                 _safe_path(app.project_root, (folder / filename).as_posix())
-            except (ValueError, OSError):
+            except ValueError, OSError:
                 abort(404)
 
     @app.after_request

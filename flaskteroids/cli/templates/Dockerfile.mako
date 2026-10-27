@@ -1,10 +1,10 @@
-FROM python:3.12-slim AS deps
+FROM python:3.14-slim AS deps
 COPY --from=ghcr.io/astral-sh/uv:0.10.7 /uv /usr/local/bin/uv
 WORKDIR /app
 COPY pyproject.toml uv.lock ./
 RUN uv sync --locked --no-dev --no-install-project
 
-FROM python:3.12-slim
+FROM python:3.14-slim
 ENV FLASKTEROIDS_ENV=production PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 ENV PATH="/app/.venv/bin:$PATH"
 WORKDIR /app

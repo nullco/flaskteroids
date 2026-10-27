@@ -3,7 +3,7 @@ name = ${project_name_toml}
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 dependencies = [
     ${framework_dependency_toml},
     "gunicorn",

@@ -41,7 +41,7 @@ def schema_default(column):
         if isinstance(column.type, JSON):
             try:
                 return json.loads(value)
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 return NO_VALUE
     elif expression.upper() in {"TRUE", "FALSE", "NULL"}:
         value = {"TRUE": True, "FALSE": False, "NULL": None}[expression.upper()]
@@ -69,7 +69,7 @@ def cast_input(type_, value):
             return int(match[1].replace("_", "")) if match else 0
         try:
             return int(value)
-        except (ValueError, TypeError, OverflowError):
+        except ValueError, TypeError, OverflowError:
             return None
     if isinstance(type_, (Float, Numeric)):
         if isinstance(value, str):
@@ -82,7 +82,7 @@ def cast_input(type_, value):
             if isinstance(value, bool):
                 value = int(value)
             return float(value) if isinstance(type_, Float) else Decimal(str(value))
-        except (ValueError, TypeError, InvalidOperation):
+        except ValueError, TypeError, InvalidOperation:
             return None
     if isinstance(type_, String):
         if isinstance(value, bool):

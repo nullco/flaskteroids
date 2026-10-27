@@ -28,7 +28,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.14'
       - uses: astral-sh/setup-uv@v6
       - name: Validate release metadata
         run: python scripts/release.py validate-tag "$RELEASE_TAG"

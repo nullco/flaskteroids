@@ -145,7 +145,7 @@ def _validate_numericality(*, instance, field, config):
     else:
         try:
             float(value)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             valid = False
     if valid:
         return []

@@ -25,7 +25,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.14'
       - name: Create draft from the merged release commit
         env:
           GH_TOKEN: ${{ github.token }}

@@ -46,7 +46,7 @@ class Fragment(HTMLParser):
                 try:
                     attachment = json.loads(options.get("data-trix-attachment", "{}"))
                     extra = json.loads(options.get("data-trix-attributes", "{}"))
-                except (ValueError, TypeError, RecursionError):
+                except ValueError, TypeError, RecursionError:
                     attachment, extra = {}, {}
                 if isinstance(attachment, dict) and isinstance(extra, dict):
                     sgid = attachment.get("sgid")

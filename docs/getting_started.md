@@ -39,7 +39,7 @@ should not require managing ORM mappings or database sessions yourself.
 
 Install these tools before continuing:
 
-- Python 3.12 or newer.
+- Python 3.14 or newer.
 - Git and Bash.
 - [uv](https://docs.astral.sh/uv/getting-started/installation/).
 - A code editor.

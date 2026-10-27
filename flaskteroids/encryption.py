@@ -118,6 +118,6 @@ def decrypt(source, *, context, deterministic=False):
                 else AESGCM(key).decrypt(payload[:12], payload[12:], aad)
             )
             return plaintext.decode("utf-8")
-        except (InvalidTag, UnicodeDecodeError):
+        except InvalidTag, UnicodeDecodeError:
             continue
     raise EncryptionError("Unable to decrypt attribute with the configured keys")

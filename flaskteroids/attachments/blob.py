@@ -140,7 +140,7 @@ class Blob:
     def find_signed(cls, signed_id, *, purpose="blob_id"):
         try:
             return cls.find_signed_or_raise(signed_id, purpose=purpose)
-        except (BadSignature, RecordNotFoundException):
+        except BadSignature, RecordNotFoundException:
             return None
 
     @classmethod

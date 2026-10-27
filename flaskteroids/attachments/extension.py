@@ -94,7 +94,7 @@ class AttachmentsExtension:
         def find_blob(signed_id):
             try:
                 blob = Blob.find_signed_or_raise(signed_id)
-            except (BadSignature, RecordNotFoundException):
+            except BadSignature, RecordNotFoundException:
                 abort(404)
             authorize = current_app.config.attachments.authorize
             if authorize is not None and not authorize(blob):
@@ -206,7 +206,7 @@ class AttachmentsExtension:
                     conditional=True,
                     max_age=0,
                 )
-            except (BadSignature, StorageError, FileNotFoundError):
+            except BadSignature, StorageError, FileNotFoundError:
                 abort(404)
             response.headers["X-Content-Type-Options"] = "nosniff"
             return response

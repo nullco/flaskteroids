@@ -20,7 +20,7 @@ name = "flaskteroids"
 version = "0.9.0"
 description = "Flask on steroids"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [
@@ -28,8 +28,6 @@ authors = [
 ]
 classifiers = [
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.12",
-  "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
   "Programming Language :: Python :: 3.15",
   "Operating System :: OS Independent",
@@ -61,7 +59,7 @@ test = "flaskteroids.cli.testing:test"
 
 
 [tool.ruff]
-target-version = "py312"
+target-version = "py314"
 line-length = 88
 fix = false
 preview = false
@@ -90,7 +88,7 @@ preview = false
 docstring-code-format = false
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.14"
 files = [
     "flaskteroids/declarations.py",
     "flaskteroids/jobs/adapters.py",

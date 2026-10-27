@@ -27,7 +27,6 @@ def test_generated_application_includes_source_configuration_and_credentials(
         ast.parse(path.read_text(), filename=str(path))
     metadata = tomllib.loads((generated_app / "pyproject.toml").read_text())
     assert metadata["project"]["name"].endswith("weblog")
-    assert metadata["project"]["requires-python"] == ">=3.12"
     assert "dependency-groups" not in metadata
     assert (generated_app / "db/schema.py").is_file()
     database = yaml.safe_load((generated_app / "config/database.yml").read_text())

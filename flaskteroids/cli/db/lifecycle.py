@@ -177,7 +177,7 @@ def ensure_database(database_url, *, maintenance_database="postgres"):
     """
     try:
         url = make_url(database_url)
-    except (SQLAlchemyError, TypeError, ValueError):
+    except SQLAlchemyError, TypeError, ValueError:
         raise click.ClickException("Invalid database URL for create/prepare.") from None
     backend = _SUPPORTED.get(url.drivername)
     if backend is None:

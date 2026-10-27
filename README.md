@@ -51,7 +51,7 @@ control, without giving up the framework's everyday workflows.
 
 ## Installation
 
-Requires Python 3.12 or newer. Install Flaskteroids in your Python environment:
+Requires Python 3.14 or newer. Install Flaskteroids in your Python environment:
 
 ```sh
 pip install flaskteroids
@@ -141,7 +141,7 @@ uv run playwright install chromium
 uv run pytest -q
 ```
 
-Ruff uses the Python 3.12 / 88-column policy in `pyproject.toml`. Mypy checks
+Ruff uses the Python 3.14 / 88-column policy in `pyproject.toml`. Mypy checks
 only declaration records, queue adapters, and a static contract probe, not the
 whole ORM or generated applications. Raw Mako templates are excluded; generated
 samples are validated separately and are not promised Ruff-clean.
