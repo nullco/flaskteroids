@@ -215,13 +215,13 @@ class SystemTest(IntegrationTest):
     def click_on(self, text):
         self.page.get_by_text(text, exact=True).first.click()
 
-    def fill_in(self, label, *, with_):
-        self.page.get_by_label(label).fill(str(with_))
+    def fill_in(self, label, *, value):
+        self.page.get_by_label(label).fill(str(value))
 
-    def fill_in_rich_text_area(self, label, *, with_):
+    def fill_in_rich_text_area(self, label, *, value):
         editor = self.page.get_by_label(label)
         expect(editor).to_be_editable()
-        editor.evaluate("(element, html) => element.editor.loadHTML(html)", str(with_))
+        editor.evaluate("(element, html) => element.editor.loadHTML(html)", str(value))
 
     def attach_file(self, label, path):
         self.page.get_by_label(label).set_input_files(path)

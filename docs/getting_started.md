@@ -1699,13 +1699,13 @@ class ProductsTest(SystemTest):
         self.click_on("Sign in")
         self.assert_selector("h1", text="New product")
 
-        self.fill_in("Name", with_="Browser hat")
-        self.fill_in("Description", with_="A hat created in the browser.")
+        self.fill_in("Name", value="Browser hat")
+        self.fill_in("Description", value="A hat created in the browser.")
         self.click_on("Save product")
         self.assert_selector("h1", text="Browser hat")
 
         self.click_on("Edit")
-        self.fill_in("Name", with_="Updated browser hat")
+        self.fill_in("Name", value="Updated browser hat")
         self.click_on("Save product")
         self.assert_selector("h1", text="Updated browser hat")
 ```

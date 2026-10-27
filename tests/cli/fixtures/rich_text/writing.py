@@ -13,22 +13,22 @@ class WritingTest(SystemTest):
         self.page.evaluate("window.richTextNavigation = 'retained'")
         self.click_on("New post")
         self.fill_in_rich_text_area(
-            "Content", with_="<div>Hello <strong>world</strong></div>"
+            "Content", value="<div>Hello <strong>world</strong></div>"
         )
         self.click_on("Submit")
         expect(self.page.get_by_label("Content")).to_contain_text("Hello world")
         self.assert_selector("li", text="Field title is blank")
-        self.fill_in("Title", with_="First post")
+        self.fill_in("Title", value="First post")
         self.click_on("Submit")
         self.assert_selector(".trix-content strong", text="world")
         self.click_on("Edit this post")
         expect(self.page.get_by_label("Content")).to_contain_text("Hello world")
-        self.fill_in("Title", with_="")
-        self.fill_in_rich_text_area("Content", with_="<div>Updated <em>body</em></div>")
+        self.fill_in("Title", value="")
+        self.fill_in_rich_text_area("Content", value="<div>Updated <em>body</em></div>")
         self.click_on("Submit")
         expect(self.page.get_by_label("Content")).to_contain_text("Updated body")
         self.assert_selector("li", text="Field title is blank")
-        self.fill_in("Title", with_="Revised post")
+        self.fill_in("Title", value="Revised post")
         self.click_on("Submit")
         self.assert_selector(".trix-content em", text="body")
         assert self.page.evaluate("window.richTextNavigation") == "retained"
@@ -46,7 +46,7 @@ class WritingTest(SystemTest):
         self.click_on("Submit")
         self.assert_selector("li", text="Field title is blank")
         expect(self.page.get_by_label("Content")).to_contain_text("report.txt")
-        self.fill_in("Title", with_="A report")
+        self.fill_in("Title", value="A report")
         self.click_on("Submit")
         self.assert_selector(".attachment--file a", text="report.txt")
         self.click_on("Edit this post")
@@ -56,7 +56,7 @@ class WritingTest(SystemTest):
 
     def test_uploaded_images_render_as_a_gallery(self):
         self.visit(new_post_path())
-        self.fill_in("Title", with_="Gallery")
+        self.fill_in("Title", value="Gallery")
         editor = self.page.get_by_label("Content")
         expect(editor).to_be_editable()
         editor.evaluate("""element => {
@@ -82,7 +82,7 @@ class WritingTest(SystemTest):
             "**/flaskteroids/rich_text/uploads/**", lambda route: pending.append(route)
         )
         self.visit(new_post_path())
-        self.fill_in("Title", with_="Wait for upload")
+        self.fill_in("Title", value="Wait for upload")
         editor = self.page.get_by_label("Content")
         expect(editor).to_be_editable()
         with self.page.expect_request("**/flaskteroids/rich_text/uploads/**"):
@@ -101,8 +101,8 @@ class WritingTest(SystemTest):
             lambda route: route.fulfill(status=413),
         )
         self.visit(new_post_path())
-        self.fill_in("Title", with_="Upload failed")
-        self.fill_in_rich_text_area("Content", with_="<div>Keep this text</div>")
+        self.fill_in("Title", value="Upload failed")
+        self.fill_in_rich_text_area("Content", value="<div>Keep this text</div>")
         editor = self.page.get_by_label("Content")
         editor.evaluate("""element => {
             element.editor.insertFile(new File(["Too large"], "large.txt", {type: "text/plain"}))
@@ -110,7 +110,7 @@ class WritingTest(SystemTest):
         self.assert_selector('[role="alert"]', text="Upload failed")
         self.click_on("Submit")
         assert self.page.url.endswith(new_post_path())
-        self.fill_in_rich_text_area("Content", with_="<div>Keep this text</div>")
+        self.fill_in_rich_text_area("Content", value="<div>Keep this text</div>")
         self.assert_text("Post was successfully created.")
 
     def test_editor_rejects_unsigned_html_attachments(self):

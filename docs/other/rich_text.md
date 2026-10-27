@@ -314,7 +314,7 @@ Configure test encryption keys when the declared field is encrypted. Fixtures
 use the normal rich-text persistence layer without running owner save callbacks.
 
 ```python
-self.fill_in_rich_text_area("Content", with_="<div>Hello <strong>world</strong></div>")
+self.fill_in_rich_text_area("Content", value="<div>Hello <strong>world</strong></div>")
 self.click_on("Save")
 self.assert_selector(".trix-content strong", text="world")
 ```

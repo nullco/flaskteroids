@@ -154,8 +154,14 @@ class PostsTest(SystemTest):
         self.assert_selector("h1", text="Posts")
 ```
 
-Use `self.fill_in_rich_text_area("Content", with_="<div>Hello</div>")` to fill a
-Trix editor by its label. The value is HTML, loaded through the editor API. See
+Fill fields by their labels, supplying the contents through `value`:
+
+```python
+self.fill_in("Title", value="First post")
+self.fill_in_rich_text_area("Content", value="<div>Hello</div>")
+```
+
+Rich-text values are HTML, loaded through Trix's editor API. See
 [Rich text](other/rich_text.md) for setup and model fixtures.
 
 ### Install the browser
