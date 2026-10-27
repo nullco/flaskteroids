@@ -107,7 +107,7 @@ JSON rendering does not require an Accept header. As with browser controllers,
 prepare only one response per action.
 
 You can also use `APIController` in an application that serves browser pages.
-It does not change the behavior of other controllers using `ActionController`.
+It does not change the behavior of other controllers using `Controller`.
 
 ## Accept JSON input
 

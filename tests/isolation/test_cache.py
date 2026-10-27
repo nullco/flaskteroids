@@ -3,7 +3,7 @@ import pytest
 from flaskteroids import cache
 from flaskteroids.cache import MISSING
 from flaskteroids.cache.factory import get_cache
-from flaskteroids.controller import ActionController, init
+from flaskteroids.controller import Controller, init
 from flaskteroids.rate_limit import rate_limit
 
 
@@ -34,7 +34,7 @@ def test_cache_values_counters_and_expiry_are_app_local(make_app, mocker, order)
 
 
 def test_rate_limits_are_app_local(make_app):
-    class LimitedController(ActionController):
+    class LimitedController(Controller):
         rate_limit(to=2, within=60)
 
         def index(self):

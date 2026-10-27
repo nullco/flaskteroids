@@ -4,7 +4,7 @@ Controllers handle HTTP requests. Each action is a public method on a controller
 class. Actions load or change model data, then render a page, return JSON, or
 redirect the browser.
 
-This guide uses browser controllers (`ActionController`). For an application
+This guide uses browser controllers (`Controller`). For an application
 that serves data without browser views, see [Building an API](api.md).
 
 ## Write an action
@@ -15,10 +15,10 @@ template. Instance variables become template variables:
 ```python
 # app/controllers/posts_controller.py
 from app.models.post import Post
-from flaskteroids.controller import ActionController
+from flaskteroids.controller import Controller
 
 
-class PostsController(ActionController):
+class PostsController(Controller):
     def index(self):
         self.posts = Post.all()
 
@@ -127,10 +127,10 @@ Use `respond_to` to serve HTML, JSON, or Turbo Streams from the same action:
 
 ```python
 from app.models.post import Post
-from flaskteroids.controller import ActionController
+from flaskteroids.controller import Controller
 
 
-class PostsController(ActionController):
+class PostsController(Controller):
     def index(self):
         self.posts = Post.all()
         self.respond_to(
@@ -162,10 +162,10 @@ checking authentication:
 ```python
 from app.models.post import Post
 from flaskteroids.actions import before_action
-from flaskteroids.controller import ActionController
+from flaskteroids.controller import Controller
 
 
-class PostsController(ActionController):
+class PostsController(Controller):
     before_action("_set_post", only=["show", "edit", "update", "destroy"])
 
     def show(self):
@@ -196,10 +196,10 @@ from time import monotonic
 from app.models.post import Post
 from flask import current_app
 from flaskteroids.actions import around_action
-from flaskteroids.controller import ActionController
+from flaskteroids.controller import Controller
 
 
-class PostsController(ActionController):
+class PostsController(Controller):
     around_action("_log_duration")
 
     def index(self):

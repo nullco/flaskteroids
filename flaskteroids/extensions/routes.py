@@ -46,12 +46,12 @@ class RoutesExtension:
         self._controllers = discover_classes(
             app.config.paths.controllers,
             ControllerBase,
-            ignore={"APIController", "ActionController"},
+            ignore={"APIController", "Controller"},
         )
         self._internal_controllers = discover_classes(
             "flaskteroids.controllers",
             ControllerBase,
-            ignore={"APIController", "ActionController"},
+            ignore={"APIController", "Controller"},
         )
         app.extensions["flaskteroids.routes"] = self
         import_module(app.config.paths.routes).register(self)

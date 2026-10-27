@@ -4,7 +4,7 @@ from flask import render_template as flask_render_template
 from jinja2 import DictLoader, TemplateNotFound
 
 from flaskteroids.actions import after_action, around_action
-from flaskteroids.controller import ActionController, init
+from flaskteroids.controller import Controller, init
 
 STREAM_MIME = "text/vnd.turbo-stream.html"
 TURBO_ACCEPT = f"{STREAM_MIME}, text/html, application/xhtml+xml"
@@ -20,7 +20,7 @@ def render_template(mocker):
 @pytest.fixture
 def stream_client():
     def build(action=None, templates=None):
-        class PostsController(ActionController):
+        class PostsController(Controller):
             def show(self):
                 self.title = "Assigned title"
                 if action:
@@ -173,7 +173,7 @@ def test_controller_stream_partial_shares_assigns_and_explicit_locals(stream_cli
 def test_implicit_stream_render_precedes_around_cleanup_and_after_callbacks():
     events = []
 
-    class StreamsController(ActionController):
+    class StreamsController(Controller):
         around_action("_around")
         after_action("_after")
 

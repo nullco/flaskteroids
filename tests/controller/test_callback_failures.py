@@ -2,7 +2,7 @@ import pytest
 from flask import Flask
 
 from flaskteroids.actions import after_action, around_action, before_action
-from flaskteroids.controller import ActionController, init
+from flaskteroids.controller import Controller, init
 from flaskteroids.exceptions import ProgrammerError
 
 
@@ -23,7 +23,7 @@ def callback_request():
     ):
         events = []
 
-        class CallbacksController(ActionController):
+        class CallbacksController(Controller):
             before_action("_before")
             around_action("_outer")
             around_action("_inner")
@@ -221,7 +221,7 @@ def test_after_failure_occurs_after_around_cleanup(callback_request):
 def test_multiple_around_yields_are_rejected_and_generator_is_closed():
     events = []
 
-    class InvalidController(ActionController):
+    class InvalidController(Controller):
         around_action("_around")
 
         def _around(self):

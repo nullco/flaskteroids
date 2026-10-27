@@ -4,7 +4,7 @@ import pytest
 from flask import Flask, get_flashed_messages
 
 from flaskteroids.actions import after_action, before_action
-from flaskteroids.controller import ActionController, init
+from flaskteroids.controller import Controller, init
 from flaskteroids.exceptions import DoubleRenderError, ProgrammerError
 
 
@@ -155,7 +155,7 @@ def test_pending_response_metadata_survives_body_preparation_without_performing(
 
 @pytest.mark.usefixtures("app_ctx")
 def test_pending_metadata_is_available_before_the_first_action():
-    class PreparedController(ActionController):
+    class PreparedController(Controller):
         def show(self):
             self.render(json={"ready": True})
 
@@ -220,7 +220,7 @@ def test_response_helpers_halt_before_callbacks_without_an_action_return(
 ):
     events = []
 
-    class GuardedController(ActionController):
+    class GuardedController(Controller):
         before_action("_metadata")
         before_action("_prepare")
         before_action("_later")

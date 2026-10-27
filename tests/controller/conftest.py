@@ -1,7 +1,7 @@
 import pytest
 from flask import Flask
 
-from flaskteroids.controller import ActionController, init
+from flaskteroids.controller import Controller, init
 
 
 @pytest.fixture(autouse=True)
@@ -14,7 +14,7 @@ def response_client():
     controllers = []
 
     def build(action):
-        class ResponsesController(ActionController):
+        class ResponsesController(Controller):
             def show(self):
                 return action(self)
 

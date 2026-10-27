@@ -4,6 +4,9 @@
 
 ### Breaking changes
 
+- Rename the browser controller base from `ActionController` to `Controller`.
+  Update imports and base classes; `APIController` is unchanged and the old
+  name is removed.
 - Rename `ActionMailer.with_(...)` to `ActionMailer.with_params(...)` for explicit
   mailer parameter assignment. Update mailer calls in existing applications;
   the `with_` name is removed.

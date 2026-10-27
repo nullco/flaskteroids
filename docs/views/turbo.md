@@ -50,7 +50,7 @@ New generated page templates use:
 `layout` selects `layouts/application.html` normally and
 `layouts/turbo/frame.html` for a request carrying `Turbo-Frame`. The minimal frame
 layout retains `head` and `body` blocks and the CSRF meta token. Override it in
-`app/views/layouts/turbo/frame.html` if needed. Set `ActionController.layout` or
+`app/views/layouts/turbo/frame.html` if needed. Set `Controller.layout` or
 `frame_layout` to another template path on a controller class, or assign
 `self.layout` / `self.frame_layout` in an action or callback before rendering.
 

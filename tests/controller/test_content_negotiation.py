@@ -2,7 +2,7 @@ import pytest
 from flask import Flask
 
 from flaskteroids.actions import after_action, before_action
-from flaskteroids.controller import ActionController, init
+from flaskteroids.controller import Controller, init
 from flaskteroids.exceptions import DoubleRenderError, ProgrammerError
 
 
@@ -192,7 +192,7 @@ def test_respond_to_in_a_before_callback_halts_the_action_without_returning(
 ):
     events = []
 
-    class NegotiatedController(ActionController):
+    class NegotiatedController(Controller):
         before_action("_negotiate")
         after_action("_after")
 

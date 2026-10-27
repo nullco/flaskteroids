@@ -2,11 +2,11 @@ import pytest
 from flask import render_template, request
 from jinja2 import DictLoader
 
-from flaskteroids.controller import ActionController, init
+from flaskteroids.controller import Controller, init
 from tests.assertions import HTML
 
 
-class FramePagesController(ActionController):
+class FramePagesController(Controller):
     def show(self):
         self.label = request.args.get("label", "Editor")
         self.response.set_etag("shared", weak="weak" in request.args)

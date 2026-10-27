@@ -14,7 +14,7 @@ from flaskteroids._view_helpers import (
     render_assigns,
     render_scope,
 )
-from flaskteroids.controller import ActionController
+from flaskteroids.controller import Controller
 from flaskteroids.declarations import rules_for
 from flaskteroids.exceptions import ProgrammerError
 from flaskteroids.inflector import inflector
@@ -214,7 +214,7 @@ class HelpersExtension:
                     include(cls)
 
         if owner_class is not None:
-            owner_base = ActionController if kind == "controller" else ActionMailer
+            owner_base = Controller if kind == "controller" else ActionMailer
             pending_rules = []
             first_owner = True
             for ancestor in [*_get_ancestors(owner_class), owner_class]:

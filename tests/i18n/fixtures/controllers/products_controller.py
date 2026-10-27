@@ -1,9 +1,9 @@
 from flaskteroids.actions import around_action
-from flaskteroids.controller import ActionController
+from flaskteroids.controller import Controller
 from flaskteroids.i18n import InvalidLocale, with_locale
 
 
-class ProductsController(ActionController):
+class ProductsController(Controller):
     def _switch_locale(self):
         locale = self.params.get("locale") or "en"
         try:

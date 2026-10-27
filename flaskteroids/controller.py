@@ -50,13 +50,13 @@ def init(cls):
     return cls._flaskteroids_prepare()
 
 
-class ActionController(ControllerBase):
+class Controller(ControllerBase):
     layout = "layouts/application.html"
     frame_layout = "layouts/turbo/frame.html"
 
     @classmethod
     def _flaskteroids_prepare(cls):
-        return prepare_controller(cls, ActionController)
+        return prepare_controller(cls, Controller)
 
     @classmethod
     def _prepare_views(cls, helpers):

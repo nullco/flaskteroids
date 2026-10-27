@@ -1,7 +1,7 @@
 from flask import request
 from werkzeug.datastructures import FileStorage
 
-from flaskteroids.controller import ActionController
+from flaskteroids.controller import Controller
 
 
 def describe(value):
@@ -22,7 +22,7 @@ def response(action, parameters):
     }
 
 
-class ProbesController(ActionController):
+class ProbesController(Controller):
     def index(self):
         return response("index", self.params)
 

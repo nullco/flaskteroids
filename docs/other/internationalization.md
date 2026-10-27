@@ -156,11 +156,11 @@ Use an around callback in `ApplicationController` to choose and restore the loca
 from flask import current_app
 
 from flaskteroids.actions import around_action
-from flaskteroids.controller import ActionController
+from flaskteroids.controller import Controller
 from flaskteroids.i18n import InvalidLocale, with_locale
 
 
-class ApplicationController(ActionController):
+class ApplicationController(Controller):
     def _switch_locale(self):
         selected = self.params.get("locale") or current_app.config.i18n.default_locale
         try:

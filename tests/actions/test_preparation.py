@@ -8,7 +8,7 @@ from flaskteroids.actions import (
     before_action,
     skip_before_action,
 )
-from flaskteroids.controller import ActionController
+from flaskteroids.controller import Controller
 from flaskteroids.controller import init as init_controller
 from flaskteroids.mailer import ActionMailer
 from flaskteroids.mailer import init as init_mailer
@@ -45,7 +45,7 @@ def test_rules_collect_local_declarations_once_through_diamond():
 
 
 @pytest.mark.parametrize(
-    "base,prepare", [(ActionController, init_controller), (ActionMailer, init_mailer)]
+    "base,prepare", [(Controller, init_controller), (ActionMailer, init_mailer)]
 )
 def test_plain_mixin_diamonds_contribute_action_callbacks(base, prepare, app):
     events = []
@@ -67,7 +67,7 @@ def test_plain_mixin_diamonds_contribute_action_callbacks(base, prepare, app):
             events.append("action")
             return (
                 "response"
-                if base is ActionController
+                if base is Controller
                 else self.mail(to="a@example.com", subject="hello")
             )
 
@@ -78,7 +78,7 @@ def test_plain_mixin_diamonds_contribute_action_callbacks(base, prepare, app):
 
 
 @pytest.mark.parametrize(
-    "base,prepare", [(ActionController, init_controller), (ActionMailer, init_mailer)]
+    "base,prepare", [(Controller, init_controller), (ActionMailer, init_mailer)]
 )
 def test_inherited_actions_prepare_once_and_preserve_application_decorators(
     base, prepare, app
@@ -108,7 +108,7 @@ def test_inherited_actions_prepare_once_and_preserve_application_decorators(
             events.append("action")
             return (
                 "response"
-                if base is ActionController
+                if base is Controller
                 else self.mail(to="a@example.com", subject="hello")
             )
 
@@ -131,7 +131,7 @@ def test_inherited_actions_prepare_once_and_preserve_application_decorators(
 
 
 @pytest.mark.parametrize(
-    "base,prepare", [(ActionController, init_controller), (ActionMailer, init_mailer)]
+    "base,prepare", [(Controller, init_controller), (ActionMailer, init_mailer)]
 )
 def test_explicit_super_action_runs_parent_chain(base, prepare, app):
     events = []
@@ -146,7 +146,7 @@ def test_explicit_super_action_runs_parent_chain(base, prepare, app):
             events.append("parent")
             return (
                 "response"
-                if base is ActionController
+                if base is Controller
                 else self.mail(to="a@example.com", subject="hello")
             )
 
@@ -165,7 +165,7 @@ def test_explicit_super_action_runs_parent_chain(base, prepare, app):
 
 
 @pytest.mark.parametrize(
-    "base,prepare", [(ActionController, init_controller), (ActionMailer, init_mailer)]
+    "base,prepare", [(Controller, init_controller), (ActionMailer, init_mailer)]
 )
 def test_diamond_action_chains_apply_to_new_actions_and_overrides(base, prepare, app):
     events = []
@@ -219,7 +219,7 @@ def test_diamond_action_chains_apply_to_new_actions_and_overrides(base, prepare,
             events.append("child")
             return (
                 "response"
-                if base is ActionController
+                if base is Controller
                 else self.mail(to="a@example.com", subject="hello")
             )
 
@@ -227,7 +227,7 @@ def test_diamond_action_chains_apply_to_new_actions_and_overrides(base, prepare,
             events.append("extra")
             return (
                 "response"
-                if base is ActionController
+                if base is Controller
                 else self.mail(to="a@example.com", subject="hello")
             )
 

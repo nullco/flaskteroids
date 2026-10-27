@@ -3,7 +3,7 @@ from flask import Flask, Response
 from markupsafe import Markup
 
 from flaskteroids.actions import after_action, around_action, before_action
-from flaskteroids.controller import ActionController, init
+from flaskteroids.controller import Controller, init
 from flaskteroids.exceptions import DoubleRenderError, ProgrammerError
 
 STREAM_MIME = "text/vnd.turbo-stream.html"
@@ -190,7 +190,7 @@ def test_stream_render_preserves_the_single_response_contract(response_client, s
 def test_stream_responses_keep_callback_order_and_before_action_halting(halt_before):
     events = []
 
-    class StreamsController(ActionController):
+    class StreamsController(Controller):
         before_action("_before")
         around_action("_around")
         after_action("_after")
@@ -234,7 +234,7 @@ def test_controller_frame_properties_identify_nonblank_frame_requests(header, ex
     with app.test_request_context(
         headers={"Turbo-Frame": header} if header is not None else {}
     ):
-        controller = ActionController()
+        controller = Controller()
         assert controller.turbo_frame_request_id == expected
         assert controller.turbo_frame_request is (expected is not None)
         assert controller.layout == "layouts/application.html"
@@ -244,6 +244,6 @@ def test_controller_frame_properties_identify_nonblank_frame_requests(header, ex
 def test_controller_frame_properties_are_safe_without_a_request():
     app = Flask(__name__)
     with app.app_context():
-        controller = ActionController()
+        controller = Controller()
     assert controller.turbo_frame_request_id is None
     assert not controller.turbo_frame_request

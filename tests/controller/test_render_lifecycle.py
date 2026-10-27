@@ -2,7 +2,7 @@ import pytest
 from flask import Flask
 
 from flaskteroids.actions import after_action, around_action, before_action
-from flaskteroids.controller import ActionController, init
+from flaskteroids.controller import Controller, init
 from flaskteroids.exceptions import DoubleRenderError
 
 
@@ -19,7 +19,7 @@ def lifecycle_client(render_template):
 
         render_template.side_effect = template
 
-        class LifecycleController(ActionController):
+        class LifecycleController(Controller):
             before_action("_first")
             before_action("_second")
             around_action("_around")
@@ -110,7 +110,7 @@ def test_after_callback_rejects_replacing_an_implicit_response(lifecycle_client)
 
 
 def test_inherited_actions_render_once_after_the_child_finishes(render_template):
-    class ParentController(ActionController):
+    class ParentController(Controller):
         def show(self):
             self.title = "Parent"
 

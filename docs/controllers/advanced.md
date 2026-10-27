@@ -4,11 +4,11 @@ Use a rate limit to reject requests when a client sends too many in a short
 period. This example allows five requests per client IP within 60 seconds:
 
 ```python
-from flaskteroids.controller import ActionController
+from flaskteroids.controller import Controller
 from flaskteroids.rate_limit import rate_limit
 
 
-class MyController(ActionController):
+class MyController(Controller):
     rate_limit(to=5, within=60)
 
     def index(self):

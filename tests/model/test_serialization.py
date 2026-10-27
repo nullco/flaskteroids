@@ -4,7 +4,7 @@ from itsdangerous import URLSafeTimedSerializer
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import declarative_base
 
-from flaskteroids.controller import ActionController
+from flaskteroids.controller import Controller
 from flaskteroids.helpers import form_with
 from flaskteroids.model import (
     PasswordAuthenticator,
@@ -65,7 +65,7 @@ def flask_app(account_model):
 def json_response(flask_app):
     def response(value):
         with flask_app.test_request_context():
-            return ActionController().render(json=value).get_json()
+            return Controller().render(json=value).get_json()
 
     return response
 

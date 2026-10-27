@@ -5,7 +5,7 @@ import pytest
 from jinja2 import DictLoader
 
 from flaskteroids.actions import after_action, around_action, before_action, get_actions
-from flaskteroids.controller import ActionController
+from flaskteroids.controller import Controller
 from flaskteroids.mailer import ActionMailer, MessageDeliveryJob, helper_method, init
 
 
@@ -114,7 +114,7 @@ def test_parameterized_actions_and_callbacks_use_mailer_inputs(
     )
     with context:
         if in_request:
-            controller = ActionController()
+            controller = Controller()
             controller.params["recipient"] = "HTTP input"
         message = configured.welcome("Hi", punctuation="?")
         getattr(message, delivery)()
@@ -166,7 +166,7 @@ def test_parameterized_delivery_queues_only_captured_assigns(mail_app, reader):
 def test_failed_parameterized_invocations_preserve_controller_params(mail_app, reader):
     failed = NoticesMailer.with_params(recipient=reader, fail=True)
     with mail_app.test_request_context("/"):
-        controller = ActionController()
+        controller = Controller()
         controller.params["recipient"] = "HTTP input"
         with pytest.raises(ValueError, match="Invalid notice"):
             failed.welcome()
@@ -182,7 +182,7 @@ def test_failed_parameterized_invocations_preserve_controller_params(mail_app, r
 def test_nested_mailers_preserve_outer_mailer_params(mail_app, reader, inner_fails):
     inner = SimpleNamespace(name="Inner", email="inner@example.org")
     with mail_app.test_request_context("/"):
-        controller = ActionController()
+        controller = Controller()
         controller.params["recipient"] = "HTTP input"
         RelayMailer.with_params(
             recipient=reader, inner=inner, inner_fails=inner_fails, handle_failure=True
@@ -194,7 +194,7 @@ def test_nested_mailers_preserve_outer_mailer_params(mail_app, reader, inner_fai
 
 def test_nested_mailer_failures_preserve_controller_params(mail_app, reader):
     with mail_app.test_request_context("/"):
-        controller = ActionController()
+        controller = Controller()
         controller.params["recipient"] = "HTTP input"
         with pytest.raises(ValueError, match="Invalid notice"):
             RelayMailer.with_params(
@@ -207,7 +207,7 @@ def test_nested_mailer_failures_preserve_controller_params(mail_app, reader):
 def test_render_failures_preserve_controller_params(mail_app, reader, delivery):
     mail_app.jinja_loader.mapping["notices_mailer/welcome.html"] = "{{ 1 / 0 }}"
     with mail_app.test_request_context("/"):
-        controller = ActionController()
+        controller = Controller()
         controller.params["recipient"] = "HTTP input"
         message = NoticesMailer.with_params(recipient=reader).welcome()
         with pytest.raises(ZeroDivisionError):

@@ -1,13 +1,13 @@
 import pytest
 
 from flaskteroids.actions import after_action, around_action, before_action
-from flaskteroids.controller import ActionController, init
+from flaskteroids.controller import Controller, init
 
 
 @pytest.fixture()
 def my_controller():
 
-    class TestController(ActionController):
+    class TestController(Controller):
         before_action("_before_first")
         before_action("_before_second")
         around_action("_around_first")

@@ -2,7 +2,7 @@ from io import BytesIO
 
 from flask import abort, current_app, request, send_file, session
 
-from flaskteroids.controller import ActionController, APIController, wrap_parameters
+from flaskteroids.controller import APIController, Controller, wrap_parameters
 from flaskteroids.csrf import CSRFToken
 
 
@@ -76,14 +76,14 @@ class OverriddenWrappedsController(WrappedsController):
     wrap_parameters("final")
 
 
-class BrowserWrappedsController(ActionController):
+class BrowserWrappedsController(Controller):
     wrap_parameters("browser")
 
     def create(self):
         return self.render(json=dict(self.params))
 
 
-class BrowserController(ActionController):
+class BrowserController(Controller):
     def show(self):
         return self.render(
             json={"csrf_token": CSRFToken(current_app.secret_key).generate()}

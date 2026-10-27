@@ -1,7 +1,7 @@
-from flaskteroids.controller import ActionController
+from flaskteroids.controller import Controller
 
 
-class HealthController(ActionController):
+class HealthController(Controller):
     def show(self):
         return (
             '<!DOCTYPE html><html><body style="background-color: green"></body></html>'

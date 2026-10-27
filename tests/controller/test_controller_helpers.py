@@ -4,7 +4,7 @@ from jinja2 import DictLoader
 
 from flaskteroids.actions import get_actions
 from flaskteroids.concern import Concern
-from flaskteroids.controller import ActionController, helper_method, init
+from flaskteroids.controller import Controller, helper_method, init
 from flaskteroids.exceptions import ProgrammerError
 
 
@@ -34,7 +34,7 @@ def helpers_controller():
         def _label(self, value):
             return f"{self.prefix}:{value}"
 
-    class HelpersController(ActionController, Labels):
+    class HelpersController(Controller, Labels):
         def show(self):
             self.prefix = request.headers.get("X-Prefix", "default")
             self.value = "<example>"
@@ -75,7 +75,7 @@ def test_render_uses_the_receiving_controllers_assigns_and_helpers(
         receiver = helpers_controller()
         receiver.prefix = "receiver"
         receiver.value = "body"
-        ActionController()
+        Controller()
         response = receiver.render("show")
         assert response.get_data(as_text=True) == (
             "receiver:layoutreceiver:bodyreceiver:partial"
@@ -88,7 +88,7 @@ def test_controller_stream_partials_use_the_receiving_controllers_helpers(
     with helper_app.test_request_context("/"):
         receiver = helpers_controller()
         receiver.prefix = "receiver"
-        ActionController()
+        Controller()
         response = receiver.render(
             turbo_stream=receiver.turbo_stream.update("label", partial="helpers/label")
         )
@@ -97,7 +97,7 @@ def test_controller_stream_partials_use_the_receiving_controllers_helpers(
 
 
 def test_helpers_are_scoped_to_the_current_controller(helper_app, helpers_controller):
-    class UnrelatedController(ActionController):
+    class UnrelatedController(Controller):
         def show(self):
             return render_template("unrelated.html")
 
@@ -121,7 +121,7 @@ def test_helpers_are_scoped_to_the_current_controller(helper_app, helpers_contro
 
 
 def test_inherited_helpers_use_child_overrides_without_affecting_siblings(helper_app):
-    class ParentController(ActionController):
+    class ParentController(Controller):
         helper_method("_label")
 
         def show(self):
@@ -159,7 +159,7 @@ def test_inherited_helpers_use_child_overrides_without_affecting_siblings(helper
 def test_helpers_require_private_controller_methods(method_name):
     with pytest.raises(ProgrammerError, match="private methods"):
 
-        class InvalidController(ActionController):
+        class InvalidController(Controller):
             helper_method(method_name)
 
 
@@ -167,12 +167,12 @@ def test_helpers_require_private_controller_methods(method_name):
 def test_helpers_require_public_template_names(name):
     with pytest.raises(ProgrammerError, match="public identifiers"):
 
-        class InvalidController(ActionController):
+        class InvalidController(Controller):
             helper_method("_label", name=name)
 
 
 def test_helpers_require_callable_methods():
-    class InvalidController(ActionController):
+    class InvalidController(Controller):
         helper_method("_label")
         _label = "not callable"
 

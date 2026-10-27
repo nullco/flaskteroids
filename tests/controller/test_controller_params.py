@@ -1,10 +1,10 @@
 import pytest
 
 from flaskteroids.actions import after_action, before_action
-from flaskteroids.controller import ActionController, init
+from flaskteroids.controller import Controller, init
 
 
-class InputsController(ActionController):
+class InputsController(Controller):
     before_action("_read_before")
     after_action("_read_after")
 
@@ -21,9 +21,9 @@ class InputsController(ActionController):
 
 @pytest.mark.usefixtures("app_ctx")
 def test_controller_instances_own_independent_parameter_maps():
-    first = ActionController()
+    first = Controller()
     first.params["value"] = "First"
-    second = ActionController()
+    second = Controller()
     second.params["value"] = "Second"
     assert first.params == {"value": "First"}
     assert second.params == {"value": "Second"}

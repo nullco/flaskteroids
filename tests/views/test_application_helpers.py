@@ -3,7 +3,7 @@ from flask import render_template, render_template_string
 from jinja2 import DictLoader, TemplateNotFound, UndefinedError
 
 from flaskteroids.concern import Concern
-from flaskteroids.controller import ActionController, helper, helper_method, init
+from flaskteroids.controller import Controller, helper, helper_method, init
 from flaskteroids.exceptions import ProgrammerError
 from tests.assertions import HTML
 from tests.views.fixtures.controllers.admin.reports_controller import ReportsController
@@ -181,7 +181,7 @@ def test_helper_classes_compose_with_super_and_preserve_module_deduplication(
 def test_child_helper_inclusions_can_override_inherited_controller_helpers(
     view_app_factory,
 ):
-    class ParentController(ActionController):
+    class ParentController(Controller):
         helper_method("_choice", name="choice")
         helper(ChosenHelper)
 
@@ -394,7 +394,7 @@ def test_concern_helper_methods_override_same_owner_helper_modules(view_app_fact
         def _choice(self):
             return "controller"
 
-    class CustomController(ActionController, Choice):
+    class CustomController(Controller, Choice):
         helper(ChosenHelper)
 
         def show(self):
@@ -438,5 +438,5 @@ def test_helpers_extension_initialization_preserves_application_isolation(
 def test_explicit_helper_declarations_reject_invalid_inputs(values):
     with pytest.raises(ProgrammerError, match="helper classes"):
 
-        class InvalidController(ActionController):
+        class InvalidController(Controller):
             helper(*values)

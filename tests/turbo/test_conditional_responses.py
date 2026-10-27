@@ -2,10 +2,10 @@ import pytest
 from flask import Response, current_app, render_template, request
 from jinja2 import DictLoader
 
-from flaskteroids.controller import ActionController, init
+from flaskteroids.controller import Controller, init
 
 
-class ConditionalController(ActionController):
+class ConditionalController(Controller):
     def rendered(self):
         self.response.set_etag("version-1", weak="weak" in request.args)
         self.render("conditional/show")

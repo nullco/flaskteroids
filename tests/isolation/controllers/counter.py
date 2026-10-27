@@ -1,10 +1,10 @@
 from flask import current_app
 
 from flaskteroids.actions import before_action
-from flaskteroids.controller import ActionController
+from flaskteroids.controller import Controller
 
 
-class CounterController(ActionController):
+class CounterController(Controller):
     before_action("_record")
 
     def _record(self):

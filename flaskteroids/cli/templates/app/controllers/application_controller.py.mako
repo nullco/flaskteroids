@@ -1,5 +1,5 @@
-from flaskteroids.controller import ActionController
+from flaskteroids.controller import Controller
 
 
-class ApplicationController(ActionController):
+class ApplicationController(Controller):
     pass

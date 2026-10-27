@@ -1,9 +1,9 @@
 from flask import request
 
-from flaskteroids.controller import ActionController, helper_method
+from flaskteroids.controller import Controller, helper_method
 
 
-class ApplicationController(ActionController):
+class ApplicationController(Controller):
     helper_method("_viewer")
 
     def _viewer(self):

@@ -169,11 +169,11 @@ For a post form:
 ```python
 # app/controllers/posts_controller.py
 from app.models.post import Post
-from flaskteroids.controller import ActionController
+from flaskteroids.controller import Controller
 from flaskteroids.routes import post_path
 
 
-class PostsController(ActionController):
+class PostsController(Controller):
     # ...
 
     def create(self):

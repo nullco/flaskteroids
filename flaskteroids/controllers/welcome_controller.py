@@ -4,10 +4,10 @@ from flask import render_template_string
 
 from flaskteroids import __version__ as version
 from flaskteroids._branding import brand_images
-from flaskteroids.controller import ActionController
+from flaskteroids.controller import Controller
 
 
-class WelcomeController(ActionController):
+class WelcomeController(Controller):
     def show(self):
         templates = files("flaskteroids").joinpath("controllers/templates")
         images = brand_images(

@@ -1,8 +1,8 @@
-from flaskteroids.controller import ActionController
+from flaskteroids.controller import Controller
 from tests.attachments.app.models.document import Document
 
 
-class DocumentsController(ActionController):
+class DocumentsController(Controller):
     def create(self):
         document = Document.create(
             **self.params.expect(document=["title", "avatar", ("files", [])])

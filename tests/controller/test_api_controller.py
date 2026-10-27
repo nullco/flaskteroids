@@ -2,7 +2,7 @@ import pytest
 from flask import Flask, make_response
 
 from flaskteroids.actions import after_action, around_action, before_action
-from flaskteroids.controller import ActionController, APIController, init
+from flaskteroids.controller import APIController, Controller, init
 from flaskteroids.exceptions import DoubleRenderError, ProgrammerError
 
 
@@ -30,7 +30,7 @@ def test_empty_api_action_returns_no_content(controller_client):
     assert "Content-Type" not in response.headers
 
 
-@pytest.mark.parametrize("base", [APIController, ActionController])
+@pytest.mark.parametrize("base", [APIController, Controller])
 @pytest.mark.parametrize("value", [None, False, 0, "", [], {}])
 def test_controller_families_render_explicit_json(controller_client, base, value):
     response = controller_client(
@@ -42,7 +42,7 @@ def test_controller_families_render_explicit_json(controller_client, base, value
     assert response.is_json
 
 
-@pytest.mark.parametrize("base", [APIController, ActionController])
+@pytest.mark.parametrize("base", [APIController, Controller])
 def test_json_render_sets_location_and_status(controller_client, base):
     response = controller_client(
         lambda controller: controller.render(
@@ -55,7 +55,7 @@ def test_json_render_sets_location_and_status(controller_client, base):
     assert response.headers["Location"] == "/examples/1"
 
 
-@pytest.mark.parametrize("base", [APIController, ActionController])
+@pytest.mark.parametrize("base", [APIController, Controller])
 def test_controller_families_enforce_one_response(controller_client, base):
     def action(controller):
         controller.render(json={})
@@ -65,7 +65,7 @@ def test_controller_families_enforce_one_response(controller_client, base):
         controller_client(action, base=base).get("/")
 
 
-@pytest.mark.parametrize("base", [APIController, ActionController])
+@pytest.mark.parametrize("base", [APIController, Controller])
 def test_controller_families_accept_native_responses(controller_client, base):
     response = controller_client(
         lambda controller: make_response("plain text", 202, {"X-Example": "yes"}),

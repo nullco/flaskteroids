@@ -1,12 +1,12 @@
 from http import HTTPStatus
 
 from flaskteroids.actions import before_action
-from flaskteroids.controller import ActionController
+from flaskteroids.controller import Controller
 from flaskteroids.helpers import url_for
 from tests.app.models.user import User
 
 
-class UsersController(ActionController):
+class UsersController(Controller):
     before_action("_set_user", only=["show", "edit", "update", "destroy"])
 
     def index(self):
