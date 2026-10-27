@@ -1,7 +1,7 @@
-from flaskteroids.mailer import ActionMailer, helper, helper_method
+from flaskteroids.mailer import Mailer, helper, helper_method
 
 
-class LettersMailer(ActionMailer):
+class LettersMailer(Mailer):
     helper("letters")
     helper_method("_greeting")
     helper_method("_next_number", name="delivery_number")

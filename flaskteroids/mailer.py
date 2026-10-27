@@ -31,7 +31,7 @@ def init(cls):
     definition = actions_for(cls)
     if definition.prepared:
         return cls
-    register_actions(cls, ActionMailer)
+    register_actions(cls, Mailer)
     bind_rules(cls)
     _decorate_actions(cls)
     definition.prepared = True
@@ -80,7 +80,7 @@ class _ParameterizedMailer:
         return action
 
 
-class ActionMailer:
+class Mailer:
     # Input parameters are not template assigns or serialized delivery state.
     __slots__ = ("_params", "__dict__", "__weakref__")
 

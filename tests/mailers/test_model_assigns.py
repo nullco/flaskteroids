@@ -6,11 +6,11 @@ from jinja2 import DictLoader
 
 from flaskteroids.actions import before_action
 from flaskteroids.exceptions import DeserializationError, SerializationError
-from flaskteroids.mailer import ActionMailer, MessageDeliveryJob, helper_method
+from flaskteroids.mailer import Mailer, MessageDeliveryJob, helper_method
 from tests.app.models.user import User
 
 
-class RecordsMailer(ActionMailer):
+class RecordsMailer(Mailer):
     before_action("_count_invocation")
     helper_method("_label")
     helper_method("_context_report")

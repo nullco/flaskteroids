@@ -30,7 +30,7 @@ class UserMailer(ApplicationMailer):
 ```
 
 Application mailers inherit from `ApplicationMailer`, whose base is the framework's
-`ActionMailer`. Templates match the mailer and action names:
+`Mailer`. Templates match the mailer and action names:
 
 ```html
 <!-- app/views/user_mailer/welcome_email.html -->

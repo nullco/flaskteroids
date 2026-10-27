@@ -6,10 +6,10 @@ from jinja2 import DictLoader
 
 from flaskteroids.actions import after_action, around_action, before_action, get_actions
 from flaskteroids.controller import Controller
-from flaskteroids.mailer import ActionMailer, MessageDeliveryJob, helper_method, init
+from flaskteroids.mailer import Mailer, MessageDeliveryJob, helper_method, init
 
 
-class NoticesMailer(ActionMailer):
+class NoticesMailer(Mailer):
     before_action("_prepare")
     around_action("_around")
     after_action("_finish")
@@ -45,7 +45,7 @@ class PersonalNoticesMailer(NoticesMailer):
     pass
 
 
-class RelayMailer(ActionMailer):
+class RelayMailer(Mailer):
     def notice(self):
         try:
             NoticesMailer.with_params(
@@ -57,7 +57,7 @@ class RelayMailer(ActionMailer):
         return self.mail(to=self.params["recipient"].email, subject="Outer notice")
 
 
-class CountersMailer(ActionMailer):
+class CountersMailer(Mailer):
     def notice(self):
         self.params["count"] = self.params.get("count", 0) + 1
         return self.mail(to="reader@example.org", subject=str(self.params["count"]))
@@ -84,8 +84,8 @@ def reader():
 
 
 def test_mailer_params_are_instance_owned_without_an_application_context():
-    first = ActionMailer()
-    second = ActionMailer()
+    first = Mailer()
+    second = Mailer()
     first.params["name"] = "Reader"
     assert first.params == {"name": "Reader"}
     assert second.params == {}

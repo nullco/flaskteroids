@@ -1,8 +1,8 @@
 from flaskteroids.actions import after_action, before_action
-from flaskteroids.mailer import ActionMailer, MailerPreview, helper_method
+from flaskteroids.mailer import Mailer, MailerPreview, helper_method
 
 
-class PreviewNoticesMailer(ActionMailer):
+class PreviewNoticesMailer(Mailer):
     before_action("_prepare")
     after_action("_finish")
     helper_method("_signature")

@@ -18,7 +18,7 @@ from flaskteroids.controller import Controller
 from flaskteroids.declarations import rules_for
 from flaskteroids.exceptions import ProgrammerError
 from flaskteroids.inflector import inflector
-from flaskteroids.mailer import ActionMailer
+from flaskteroids.mailer import Mailer
 from flaskteroids.rules import _get_ancestors
 from flaskteroids.turbo import TurboStreamBuilder
 from flaskteroids.turbo.rendering import render
@@ -214,7 +214,7 @@ class HelpersExtension:
                     include(cls)
 
         if owner_class is not None:
-            owner_base = Controller if kind == "controller" else ActionMailer
+            owner_base = Controller if kind == "controller" else Mailer
             pending_rules = []
             first_owner = True
             for ancestor in [*_get_ancestors(owner_class), owner_class]:

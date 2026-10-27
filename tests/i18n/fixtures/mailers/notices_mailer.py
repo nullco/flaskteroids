@@ -1,8 +1,8 @@
 from flaskteroids.i18n import t
-from flaskteroids.mailer import ActionMailer
+from flaskteroids.mailer import Mailer
 
 
-class NoticesMailer(ActionMailer):
+class NoticesMailer(Mailer):
     def welcome(self, name):
         self.name = name
         return self.mail(

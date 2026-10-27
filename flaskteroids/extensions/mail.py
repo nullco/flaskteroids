@@ -1,6 +1,6 @@
 from flaskteroids.discovery import discover_classes
 from flaskteroids.exceptions import ProgrammerError
-from flaskteroids.mailer import ActionMailer, init
+from flaskteroids.mailer import Mailer, init
 
 
 class MailExtension:
@@ -18,7 +18,7 @@ class MailExtension:
             return
         config = app.config.action_mailer
         self.delivery_method = config.delivery_method(app, config)
-        self._mailers = discover_classes(app.config.paths.mailers, ActionMailer)
+        self._mailers = discover_classes(app.config.paths.mailers, Mailer)
 
         for mailer_class in self._mailers.values():
             init(mailer_class)

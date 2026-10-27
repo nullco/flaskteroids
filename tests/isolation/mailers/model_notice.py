@@ -1,7 +1,7 @@
-from flaskteroids.mailer import ActionMailer
+from flaskteroids.mailer import Mailer
 
 
-class ModelNoticeMailer(ActionMailer):
+class ModelNoticeMailer(Mailer):
     def notice(self):
         self.author = self.params["author"]
         return self.mail(to="reader@example.org", subject="Author update")

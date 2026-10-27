@@ -10,7 +10,7 @@ from flaskteroids.actions import (
 )
 from flaskteroids.controller import Controller
 from flaskteroids.controller import init as init_controller
-from flaskteroids.mailer import ActionMailer
+from flaskteroids.mailer import Mailer
 from flaskteroids.mailer import init as init_mailer
 from flaskteroids.rules import bind_rules, declaration
 
@@ -45,7 +45,7 @@ def test_rules_collect_local_declarations_once_through_diamond():
 
 
 @pytest.mark.parametrize(
-    "base,prepare", [(Controller, init_controller), (ActionMailer, init_mailer)]
+    "base,prepare", [(Controller, init_controller), (Mailer, init_mailer)]
 )
 def test_plain_mixin_diamonds_contribute_action_callbacks(base, prepare, app):
     events = []
@@ -78,7 +78,7 @@ def test_plain_mixin_diamonds_contribute_action_callbacks(base, prepare, app):
 
 
 @pytest.mark.parametrize(
-    "base,prepare", [(Controller, init_controller), (ActionMailer, init_mailer)]
+    "base,prepare", [(Controller, init_controller), (Mailer, init_mailer)]
 )
 def test_inherited_actions_prepare_once_and_preserve_application_decorators(
     base, prepare, app
@@ -125,13 +125,13 @@ def test_inherited_actions_prepare_once_and_preserve_application_decorators(
     prepare(Child)
     with app.app_context():
         result = Child().index()
-        if base is ActionMailer:
+        if base is Mailer:
             assert result.builder.template_name == "index"
     assert events == ["child", "application", "action", "after"]
 
 
 @pytest.mark.parametrize(
-    "base,prepare", [(Controller, init_controller), (ActionMailer, init_mailer)]
+    "base,prepare", [(Controller, init_controller), (Mailer, init_mailer)]
 )
 def test_explicit_super_action_runs_parent_chain(base, prepare, app):
     events = []
@@ -165,7 +165,7 @@ def test_explicit_super_action_runs_parent_chain(base, prepare, app):
 
 
 @pytest.mark.parametrize(
-    "base,prepare", [(Controller, init_controller), (ActionMailer, init_mailer)]
+    "base,prepare", [(Controller, init_controller), (Mailer, init_mailer)]
 )
 def test_diamond_action_chains_apply_to_new_actions_and_overrides(base, prepare, app):
     events = []
@@ -237,7 +237,7 @@ def test_diamond_action_chains_apply_to_new_actions_and_overrides(base, prepare,
         child = Child()
         child.index()
         result = child.extra()
-        if base is ActionMailer:
+        if base is Mailer:
             assert result.builder.template_name == "extra"
     assert events == [
         "all",

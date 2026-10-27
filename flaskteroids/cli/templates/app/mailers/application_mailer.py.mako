@@ -1,5 +1,5 @@
-from flaskteroids.mailer import ActionMailer
+from flaskteroids.mailer import Mailer
 
 
-class ApplicationMailer(ActionMailer):
+class ApplicationMailer(Mailer):
     pass

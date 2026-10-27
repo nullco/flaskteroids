@@ -7,7 +7,9 @@
 - Rename the browser controller base from `ActionController` to `Controller`.
   Update imports and base classes; `APIController` is unchanged and the old
   name is removed.
-- Rename `ActionMailer.with_(...)` to `ActionMailer.with_params(...)` for explicit
+- Rename the mailer base from `ActionMailer` to `Mailer`. Update imports and base
+  classes; the old name is removed.
+- Rename `Mailer.with_(...)` to `Mailer.with_params(...)` for explicit
   mailer parameter assignment. Update mailer calls in existing applications;
   the `with_` name is removed.
 - Browser test helpers `fill_in(...)` and `fill_in_rich_text_area(...)` now take

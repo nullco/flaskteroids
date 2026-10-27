@@ -1,7 +1,7 @@
-from flaskteroids.mailer import ActionMailer, helper
+from flaskteroids.mailer import Mailer, helper
 
 
-class NotesMailer(ActionMailer):
+class NotesMailer(Mailer):
     helper("application", "admin/money")
 
     def welcome(self):
@@ -9,6 +9,6 @@ class NotesMailer(ActionMailer):
         return self.mail(to="reader@example.com", subject="Welcome")
 
 
-class PlainMailer(ActionMailer):
+class PlainMailer(Mailer):
     def welcome(self):
         return self.mail(to="reader@example.com", subject="Plain")

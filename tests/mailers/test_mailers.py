@@ -1,10 +1,10 @@
 import pytest
 from flask import current_app
 
-from flaskteroids.mailer import ActionMailer, init
+from flaskteroids.mailer import Mailer, init
 
 
-class UsersMailer(ActionMailer):
+class UsersMailer(Mailer):
     def welcome(self):
         return self.mail(to="john-doe@example.org", subject="Welcome!")
 
