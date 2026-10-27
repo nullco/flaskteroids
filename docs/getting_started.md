@@ -1264,7 +1264,7 @@ class ProductMailer(ApplicationMailer):
         )
 ```
 
-`with_(...)` supplies the mailer's `self.params`, using the same API as
+`with_params(...)` supplies the mailer's `self.params`, using the same API as
 controllers without an HTTP request. Instance variables expose the product and
 subscriber to templates; queued delivery reloads these saved records.
 
@@ -1333,7 +1333,7 @@ from app.mailers.product_mailer import ProductMailer
 
 subscriber = Subscriber.find_by(email="reader@example.org")
 product = subscriber.product
-ProductMailer.with_(
+ProductMailer.with_params(
     product=product, subscriber=subscriber
 ).in_stock().deliver_now()
 ```
@@ -1376,7 +1376,7 @@ class Product(ApplicationModel):
 
     def _notify_subscribers(self):
         for subscriber in self.subscribers:
-            ProductMailer.with_(
+            ProductMailer.with_params(
                 product=self, subscriber=subscriber
             ).in_stock().deliver_later()
 ```
@@ -1607,7 +1607,7 @@ class ProductMailerTest(MailerTest):
         subscriber = self.subscribers("reader")
 
         with self.assert_emails(1):
-            ProductMailer.with_(
+            ProductMailer.with_params(
                 product=product, subscriber=subscriber
             ).in_stock().deliver_now()
 

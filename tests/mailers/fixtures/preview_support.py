@@ -35,4 +35,4 @@ class PreviewNoticesMailer(ActionMailer):
 
 class BasePreview(MailerPreview):
     def inherited_scenario(self):
-        return PreviewNoticesMailer.with_().welcome()
+        return PreviewNoticesMailer.with_params().welcome()

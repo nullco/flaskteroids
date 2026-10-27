@@ -54,7 +54,7 @@ def deliveries(app):
 def test_immediate_delivery_renders_unsaved_model_assigns(mail_app):
     with mail_app.app_context():
         record = User.new(username="Draft")
-        RecordsMailer.with_(record=record).notice().deliver_now()
+        RecordsMailer.with_params(record=record).notice().deliver_now()
         assert deliveries(mail_app)[0].get_content().strip() == "Draft|Draft"
         assert record.is_new_record()
 
@@ -68,7 +68,7 @@ def test_queued_delivery_rejects_models_without_persisted_records(mail_app, dest
         if destroyed:
             assert record.destroy()
         with pytest.raises(SerializationError):
-            RecordsMailer.with_(record=record).notice().deliver_later()
+            RecordsMailer.with_params(record=record).notice().deliver_later()
         assert (
             mail_app.extensions["flaskteroids.jobs"].queue_adapter.enqueued_jobs == []
         )
@@ -78,7 +78,7 @@ def test_queued_delivery_rejects_models_without_persisted_records(mail_app, dest
 def test_queued_model_assigns_reload_saved_values_without_rerunning_actions(mail_app):
     with mail_app.app_context():
         record = User.create(username="Original")
-        RecordsMailer.with_(record=record).notice().deliver_later()
+        RecordsMailer.with_params(record=record).notice().deliver_later()
         queue = mail_app.extensions["flaskteroids.jobs"].queue_adapter
         assert record.update(username="Saved")
         record.username = "Unsaved input"
@@ -100,7 +100,7 @@ def test_queued_rendering_preserves_the_callers_application_lifecycle(mail_app):
 
     with mail_app.app_context():
         record = User.create(username="Reader")
-        RecordsMailer.with_(record=record).notice().deliver_later()
+        RecordsMailer.with_params(record=record).notice().deliver_later()
         mail_app.extensions["flaskteroids.jobs"].queue_adapter.perform_all()
         assert teardowns == []
     assert teardowns
@@ -113,7 +113,7 @@ def test_model_assigns_survive_json_transport_and_restore_nested_containers(mail
     with mail_app.app_context():
         record = User.create(username="Reader")
         mapping = {"_flaskteroids_mail_value": ["model", "user-supplied", [123]]}
-        RecordsMailer.with_(
+        RecordsMailer.with_params(
             record=record,
             context={
                 "records": (record,),
@@ -136,7 +136,7 @@ def test_model_assigns_survive_json_transport_and_restore_nested_containers(mail
 def test_deleted_model_assigns_fail_delivery_explicitly(mail_app):
     with mail_app.app_context():
         record = User.create(username="Reader")
-        RecordsMailer.with_(record=record).notice().deliver_later()
+        RecordsMailer.with_params(record=record).notice().deliver_later()
         assert record.destroy()
         with pytest.raises(DeserializationError):
             mail_app.extensions["flaskteroids.jobs"].queue_adapter.perform_all()

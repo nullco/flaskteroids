@@ -367,7 +367,7 @@ class Product(ApplicationModel):
 
     def _notify_subscribers(self):
         for subscriber in self.subscribers:
-            ProductMailer.with_(
+            ProductMailer.with_params(
                 product=self, subscriber=subscriber
             ).in_stock().deliver_later()
 ```

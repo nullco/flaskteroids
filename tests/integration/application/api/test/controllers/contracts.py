@@ -169,7 +169,9 @@ class APIContractTest(IntegrationTest):
 
     def test_mailer_templates_work_without_browser_facilities(self):
         with self.assert_emails(1):
-            NotificationsMailer.with_(greeting="Hello API").welcome().deliver_now()
+            NotificationsMailer.with_params(
+                greeting="Hello API"
+            ).welcome().deliver_now()
 
         assert (
             "Hello API"

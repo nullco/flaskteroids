@@ -45,8 +45,8 @@ parts can be included in the same email.
 ```python
 from app.mailers.user_mailer import UserMailer
 
-UserMailer.with_(user=user).welcome_email().deliver_now()
-UserMailer.with_(user=user).welcome_email().deliver_later()
+UserMailer.with_params(user=user).welcome_email().deliver_now()
+UserMailer.with_params(user=user).welcome_email().deliver_later()
 ```
 
 `deliver_now()` sends in the current process. `deliver_later()` enqueues work;
@@ -78,7 +78,7 @@ Generated tests use an in-memory mail adapter instead of SMTP. See
 
 ## Parameterized mailers
 
-`with_(...)` supplies values through `self.params`. It does not need an HTTP
+`with_params(...)` supplies values through `self.params`. It does not need an HTTP
 request. Each action gets a fresh mailer instance and a shallow copy of the
 parameters. Actions can also accept ordinary arguments.
 
@@ -165,7 +165,7 @@ from flaskteroids.mailer import MailerPreview
 class UserMailerPreview(MailerPreview):
     def welcome_email(self):
         user = User(name="Jane", email="jane@example.com")
-        return UserMailer.with_(user=user).welcome_email()
+        return UserMailer.with_params(user=user).welcome_email()
 ```
 
 A preview method returns the message; it does not call `deliver_now()` or
@@ -203,7 +203,7 @@ def welcome_email_with_long_name(self):
         name="A particularly long display name",
         email="jane@example.com",
     )
-    return UserMailer.with_(user=user).welcome_email()
+    return UserMailer.with_params(user=user).welcome_email()
 ```
 
 This scenario appears in the index and at
@@ -218,7 +218,7 @@ replace `welcome_email` with:
 ```python
 def welcome_email(self):
     user = User.find(self.params["user_id"])
-    return UserMailer.with_(user=user).welcome_email()
+    return UserMailer.with_params(user=user).welcome_email()
 ```
 
 Visit `/flaskteroids/mailers/user_mailer/welcome_email?user_id=123`, using the ID

@@ -24,7 +24,7 @@ def test_model_mail_uses_the_owning_database_and_loads_associations(make_app, ad
         with app.app_context():
             author = Author.create(name=name, passcode="secret")
             author.stories.create(title=f"{name} story")
-            ModelNoticeMailer.with_(author=author).notice().deliver_later()
+            ModelNoticeMailer.with_params(author=author).notice().deliver_later()
     if adapter is TestQueueAdapter:
         with apps["b"].app_context():
             for app in apps.values():
@@ -39,5 +39,5 @@ def test_model_mail_rejects_records_from_another_application_registry(app, make_
         record = User.create(username="Other registry")
     other = make_app("other")
     with other.app_context(), pytest.raises(SerializationError):
-        ModelNoticeMailer.with_(author=record).notice().deliver_later()
+        ModelNoticeMailer.with_params(author=record).notice().deliver_later()
     assert other.extensions["flaskteroids.jobs"].queue_adapter.enqueued_jobs == []

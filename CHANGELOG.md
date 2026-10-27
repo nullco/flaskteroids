@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- Rename `ActionMailer.with_(...)` to `ActionMailer.with_params(...)` for explicit
+  mailer parameter assignment. Update mailer calls in existing applications;
+  the `with_` name is removed.
+
 ## 0.10.0 - 2026-10-27
 
 ### Breaking changes
