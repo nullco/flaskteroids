@@ -16,7 +16,7 @@ from tests.assertions import HTML
 class PreviewApplication(Application):
     def configure(self, config):
         super().configure(config)
-        config.action_mailer.delivery_method = TestDeliveryMethod
+        config.mailer.delivery_method = TestDeliveryMethod
         config.jobs.queue_adapter = TestQueueAdapter
 
 
@@ -71,7 +71,7 @@ def check_browser(app, mailer):
 
 mailer = sys.argv[1]
 app = PreviewApplication.initialize(environment="development")
-app.config.action_mailer.perform_deliveries = True
+app.config.mailer.perform_deliveries = True
 client = app.test_client()
 prefix = "/flaskteroids/mailers"
 try:

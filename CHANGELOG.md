@@ -9,6 +9,10 @@
   name is removed.
 - Rename the mailer base from `ActionMailer` to `Mailer`. Update imports and base
   classes; the old name is removed.
+- Rename `config.action_controller` to `config.controller` and
+  `config.action_mailer` to `config.mailer`; the old namespaces are removed.
+- Rename `flaskteroids.actions.ActionParameters` to `flaskteroids.actions.Parameters`;
+  the old class name is removed.
 - Rename `Mailer.with_(...)` to `Mailer.with_params(...)` for explicit
   mailer parameter assignment. Update mailer calls in existing applications;
   the `with_` name is removed.
@@ -18,7 +22,7 @@
   Update controller declarations; the old keyword is removed.
 - Individual route names use `aka=` instead of `as_=`.
 - Mailer From addresses use `by=` instead of `from_=`, including the
-  `config.action_mailer.default_options["by"]` setting.
+  `config.mailer.default_options["by"]` setting.
 - Model callback conditions use `when=` and `unless=` instead of `if_=` and
   `unless_=`.
 - `assert_changes(..., was=..., to=...)` replaces the `from_=` keyword;

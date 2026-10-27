@@ -109,7 +109,7 @@ To include shared application helpers and only conventionally matching
 controller helpers, configure:
 
 ```python
-config.action_controller.include_all_helpers = False
+config.controller.include_all_helpers = False
 ```
 
 For example, `ProductsController` receives `ApplicationHelper` and

@@ -50,11 +50,11 @@ def preview_app_factory(tmp_path):
                 config.paths.mailers = "missing.mailers"
                 config.paths.routes = "tests.mailers.fixtures.routes"
                 config.jobs.queue_adapter = TestQueueAdapter
-                config.action_mailer.delivery_method = TestDeliveryMethod
-                config.action_mailer.perform_deliveries = True
-                config.action_mailer.show_previews = enabled
+                config.mailer.delivery_method = TestDeliveryMethod
+                config.mailer.perform_deliveries = True
+                config.mailer.show_previews = enabled
                 if paths is not None:
-                    config.action_mailer.preview_paths = paths
+                    config.mailer.preview_paths = paths
                 config.secret_key_base = "preview-test-key"
                 config.i18n.available_locales = ["en", "es"]
                 config.enable_reloading = True

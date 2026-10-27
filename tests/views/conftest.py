@@ -26,10 +26,10 @@ def view_app_factory(tmp_path):
                     "tests.views.fixtures.mailers" if owners else "missing.mailers"
                 )
                 config.paths.routes = "tests.views.fixtures.routes"
-                config.action_controller.include_all_helpers = include_all
+                config.controller.include_all_helpers = include_all
                 config.jobs.queue_adapter = TestQueueAdapter
-                config.action_mailer.delivery_method = TestDeliveryMethod
-                config.action_mailer.perform_deliveries = True
+                config.mailer.delivery_method = TestDeliveryMethod
+                config.mailer.perform_deliveries = True
 
             def _configure_database(self):
                 self.database_url = "sqlite:///:memory:"

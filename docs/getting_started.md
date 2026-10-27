@@ -1314,11 +1314,11 @@ from app.mailers.console_delivery import ConsoleDeliveryMethod
 def configure(config):
     config.enable_reloading = True
     config.consider_all_requests_local = True
-    config.action_controller.perform_caching = False
+    config.controller.perform_caching = False
     config.attachments.service = "local"
     config["SERVER_NAME"] = "127.0.0.1:5000"
-    config.action_mailer.perform_deliveries = True
-    config.action_mailer.delivery_method = ConsoleDeliveryMethod
+    config.mailer.perform_deliveries = True
+    config.mailer.delivery_method = ConsoleDeliveryMethod
     config.jobs.broker_url = "sqla+sqlite:///storage/jobs_database.db"
 ```
 

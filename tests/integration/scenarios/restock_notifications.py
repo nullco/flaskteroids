@@ -12,7 +12,7 @@ from tests.assertions import HTML
 from tests.integration.scenarios.routing_support import submit_form
 
 app.config["SERVER_NAME"] = "localhost"
-app.config.action_controller.allow_forgery_protection = True
+app.config.controller.allow_forgery_protection = True
 client = app.test_client()
 with app.app_context():
     product = Product.create(name="T-Shirt", inventory_count=0)

@@ -7,7 +7,7 @@ from werkzeug.wrappers import Response as BaseResponse
 
 from flaskteroids._request_policy import BROWSER_REQUESTS
 from flaskteroids.actions import (
-    ActionParameters,
+    Parameters,
     decorate_action,
     get_actions,
     mark_action_wrapper,
@@ -115,9 +115,9 @@ class ControllerBase:
         g.controller = self
 
     @property
-    def params(self) -> ActionParameters:
+    def params(self) -> Parameters:
         if not hasattr(self, "_params"):
-            self._params = ActionParameters()
+            self._params = Parameters()
         return self._params
 
     @property

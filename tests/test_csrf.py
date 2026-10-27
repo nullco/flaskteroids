@@ -218,7 +218,7 @@ def test_validate_rejects_invalid_session_nonce(client, token, nonce):
 
 
 def test_validate_can_be_disabled(flask_app, client):
-    flask_app.config.action_controller = SimpleNamespace(allow_forgery_protection=False)
+    flask_app.config.controller = SimpleNamespace(allow_forgery_protection=False)
 
     assert client.post("/protected").status_code == 204
 

@@ -150,7 +150,7 @@ def test_effective_method_selects_framework_action_at_a_shared_path(make_routing
 
 
 def test_overridden_multipart_retains_uploads_fields_and_token(routing_app):
-    routing_app.config.action_controller.allow_forgery_protection = True
+    routing_app.config.controller.allow_forgery_protection = True
 
     @routing_app.get("/token")
     def issue_token():
@@ -260,7 +260,7 @@ def test_conflicting_query_transport_shapes_reject_dispatch(routing_app):
 
 def test_managed_route_miss_is_not_replaced_by_a_csrf_error(make_routing_app):
     app = make_routing_app(lambda route: route.resource("probe", only=["create"]))
-    app.config.action_controller.allow_forgery_protection = True
+    app.config.controller.allow_forgery_protection = True
     assert (
         app.test_client().post("/probe", data={"_method": "delete"}).status_code == 404
     )
@@ -270,7 +270,7 @@ def test_managed_route_miss_is_not_replaced_by_a_csrf_error(make_routing_app):
     "limit", ["MAX_CONTENT_LENGTH", "MAX_FORM_MEMORY_SIZE", "MAX_FORM_PARTS"]
 )
 def test_early_parse_limits_keep_their_status_with_csrf_enabled(routing_app, limit):
-    routing_app.config.action_controller.allow_forgery_protection = True
+    routing_app.config.controller.allow_forgery_protection = True
     routing_app.config[limit] = 1
     response = routing_app.test_client().post(
         "/probe",

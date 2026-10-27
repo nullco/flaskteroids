@@ -39,8 +39,8 @@ def i18n_app_factory(tmp_path):
                 for key, value in settings.items():
                     setattr(config.i18n, key, value)
                 config.jobs.queue_adapter = TestQueueAdapter
-                config.action_mailer.delivery_method = TestDeliveryMethod
-                config.action_mailer.perform_deliveries = True
+                config.mailer.delivery_method = TestDeliveryMethod
+                config.mailer.perform_deliveries = True
                 config.consider_all_requests_local = True
 
             def _configure_database(self):

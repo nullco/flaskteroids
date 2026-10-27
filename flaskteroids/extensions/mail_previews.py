@@ -20,7 +20,7 @@ _templates = Environment(
 
 class MailPreviewsExtension:
     def __init__(self, app):
-        enabled = app.config.action_mailer.show_previews
+        enabled = app.config.mailer.show_previews
         if enabled is None:
             enabled = app.env.development
         if not enabled:
@@ -105,7 +105,7 @@ def _render(template, **context):
 def _discover_previews(app):
     previews = {}
     seen_paths = set()
-    for configured_path in app.config.action_mailer.preview_paths:
+    for configured_path in app.config.mailer.preview_paths:
         root = (app.project_root / configured_path).resolve()
         for path in sorted(root.rglob("*_preview.py")):
             if not path.is_file() or path in seen_paths:

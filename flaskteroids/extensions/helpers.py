@@ -180,8 +180,7 @@ class HelpersExtension:
 
     def _context_class(self, owner_class, kind):
         include_all = (
-            kind == "controller"
-            and self._app.config.action_controller.include_all_helpers
+            kind == "controller" and self._app.config.controller.include_all_helpers
         )
         cache_key = (owner_class, kind, include_all)
         if cache_key in self._contexts:

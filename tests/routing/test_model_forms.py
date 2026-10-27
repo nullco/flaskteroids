@@ -48,7 +48,7 @@ def test_buttons_submit_to_the_effective_resource_action(
     target, _, inferred = destination
     if isinstance(target, str):
         target = "/probe"
-    routing_app.config.action_controller.allow_forgery_protection = True
+    routing_app.config.controller.allow_forgery_protection = True
 
     @routing_app.get("/button")
     def button():

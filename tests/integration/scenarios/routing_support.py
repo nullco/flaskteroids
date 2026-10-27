@@ -8,7 +8,7 @@ from tests.assertions import HTML
 
 @contextmanager
 def account(app):
-    app.config.action_controller.allow_forgery_protection = True
+    app.config.controller.allow_forgery_protection = True
     with app.app_context():
         user = User.create(
             email_address=f"{uuid4().hex}@example.com", password="secret"

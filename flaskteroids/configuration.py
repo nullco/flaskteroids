@@ -141,7 +141,7 @@ class Configuration(FlaskConfig):
                 "upload_token_expires_in": 3600,
             }
         )
-        self.action_mailer = Options(
+        self.mailer = Options(
             {
                 "perform_deliveries": False,
                 "show_previews": None,
@@ -151,7 +151,7 @@ class Configuration(FlaskConfig):
                 "default_options": {"by": "no-reply@flaskteroids.me"},
             }
         )
-        self.action_controller = Options(
+        self.controller = Options(
             {
                 "perform_caching": False,
                 "include_all_helpers": True,

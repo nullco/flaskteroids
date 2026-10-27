@@ -99,7 +99,7 @@ def test_multipart_overrides_follow_wire_order(
 def test_upload_streams_close_after_dispatch_and_early_failures(
     routing_app, upload_streams, multipart_body, outcome
 ):
-    routing_app.config.action_controller.allow_forgery_protection = outcome == "csrf"
+    routing_app.config.controller.allow_forgery_protection = outcome == "csrf"
     body = multipart_body(
         [("image", ("image.txt", b"x" * 150_000)), ("_method", "DELETE")]
     )

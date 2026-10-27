@@ -19,7 +19,7 @@ def api_application_factory(tmp_path):
                 config.paths.jobs = "missing.jobs"
                 config.paths.helpers = "missing.helpers"
                 config.jobs.queue_adapter = TestQueueAdapter
-                config.action_mailer.delivery_method = TestDeliveryMethod
+                config.mailer.delivery_method = TestDeliveryMethod
                 config.secret_key_base = "test-signing-key"
 
             def _configure_database(self):

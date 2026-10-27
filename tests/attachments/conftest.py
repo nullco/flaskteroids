@@ -36,8 +36,8 @@ def app(tmp_path):
             config.paths.jobs = "tests.attachments.app.jobs"
             config.paths.mailers = "tests.attachments.app.mailers"
             config.jobs.queue_adapter = TestQueueAdapter
-            config.action_mailer.delivery_method = TestDeliveryMethod
-            config.action_controller.allow_forgery_protection = False
+            config.mailer.delivery_method = TestDeliveryMethod
+            config.controller.allow_forgery_protection = False
             config.secret_key_base = "storage-test"
 
         def _configure_database(self):

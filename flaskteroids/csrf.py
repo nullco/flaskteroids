@@ -37,7 +37,7 @@ class CSRFToken:
             abort(400, "CSRF token does not match this session.")
 
     def _should_validate(self):
-        config = getattr(current_app.config, "action_controller", None)
+        config = getattr(current_app.config, "controller", None)
         if config and not config.allow_forgery_protection:
             return False
         return request.method not in ["GET", "HEAD", "OPTIONS", "TRACE"]

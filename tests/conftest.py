@@ -48,8 +48,8 @@ def app(tmp_path):
             config.paths.mailers = "tests.app.mailers"
             config.jobs.broker_url = "sqla+sqlite:///:memory:"
             config.jobs.queue_adapter = TestQueueAdapter
-            config.action_mailer.delivery_method = TestDeliveryMethod
-            config.action_mailer.perform_deliveries = True
+            config.mailer.delivery_method = TestDeliveryMethod
+            config.mailer.perform_deliveries = True
 
         def _configure_database(self):
             self.database_url = db_url

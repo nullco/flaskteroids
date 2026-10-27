@@ -46,7 +46,7 @@ views by default:
 
 ```python
 config.paths.helpers = "app.helpers"
-config.action_controller.include_all_helpers = True
+config.controller.include_all_helpers = True
 ```
 
 Set `include_all_helpers = False` to include only `ApplicationHelper`,
@@ -138,7 +138,7 @@ def configure(config):
     config.eager_load = True
     config.consider_all_requests_local = False
     config.require_master_key = True
-    config.action_mailer.perform_deliveries = True
+    config.mailer.perform_deliveries = True
     config.jobs.broker_url = os.environ.get(
         "CELERY_BROKER_URL", config.jobs.broker_url
     )

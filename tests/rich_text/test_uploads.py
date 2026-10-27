@@ -12,7 +12,7 @@ pytestmark = pytest.mark.usefixtures("app_ctx")
 
 @pytest.fixture
 def editor(app):
-    app.config.action_controller.allow_forgery_protection = True
+    app.config.controller.allow_forgery_protection = True
 
     @app.get("/upload-editor")
     def editor_form():

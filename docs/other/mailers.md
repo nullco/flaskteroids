@@ -58,9 +58,9 @@ Sending is disabled by default. Set delivery options in application or environme
 configuration. For an SMTP server that supports STARTTLS and authentication:
 
 ```python
-config.action_mailer.perform_deliveries = True
-config.action_mailer.default_options = {"by": "hello@example.com"}
-config.action_mailer.smtp_settings = {
+config.mailer.perform_deliveries = True
+config.mailer.default_options = {"by": "hello@example.com"}
+config.mailer.smtp_settings = {
     "host": "smtp.example.com",
     "port": 587,
     "username": "your-username",
@@ -71,7 +71,7 @@ config.action_mailer.smtp_settings = {
 These credentials are placeholders. Keep real secrets in
 [encrypted credentials](../configuration.md#encrypted-credentials) or your
 deployment's secret management, not source control. SMTP is the default delivery
-method; `config.action_mailer.delivery_method` can select another adapter.
+method; `config.mailer.delivery_method` can select another adapter.
 
 The `by` option sets the email's From header. Pass it to `mail()` to override
 the configured default for an individual message:
@@ -256,7 +256,7 @@ Previews are enabled by default only in the `development` environment. To add
 another preview directory, append it in your application configuration:
 
 ```python
-config.action_mailer.preview_paths.append("lib/mailer_previews")
+config.mailer.preview_paths.append("lib/mailer_previews")
 ```
 
 Paths are relative to the application root; absolute paths also work. Assign a
@@ -266,7 +266,7 @@ To disable previews in an environment, set this in its `configure(config)`
 function:
 
 ```python
-config.action_mailer.show_previews = False
+config.mailer.show_previews = False
 ```
 
 `None` selects the environment default. Set `show_previews = True` to explicitly

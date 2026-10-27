@@ -16,8 +16,8 @@ def app(tmp_path):
             config.paths.jobs = "tests.rich_text.app.jobs"
             config.paths.mailers = "tests.rich_text.app.mailers"
             config.jobs.queue_adapter = TestQueueAdapter
-            config.action_mailer.delivery_method = TestDeliveryMethod
-            config.action_controller.allow_forgery_protection = False
+            config.mailer.delivery_method = TestDeliveryMethod
+            config.controller.allow_forgery_protection = False
             config.secret_key_base = "rich-text-test"
 
         def _configure_database(self):

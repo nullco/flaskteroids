@@ -5,7 +5,7 @@ from wsgi import app
 from tests.assertions import HTML
 from tests.integration.scenarios.routing_support import submit_form
 
-app.config.action_controller.allow_forgery_protection = True
+app.config.controller.allow_forgery_protection = True
 client = app.test_client()
 page = client.get("/session/new")
 assert page.status_code == 200

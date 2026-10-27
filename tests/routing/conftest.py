@@ -23,10 +23,10 @@ def make_routing_app(tmp_path, monkeypatch):
                 config.paths.models = "tests.routing.app.models"
                 config.paths.controllers = "tests.routing.app.controllers"
                 config.paths.routes = "tests.routing.app.routes"
-                config.action_controller.allow_forgery_protection = False
+                config.controller.allow_forgery_protection = False
                 config.jobs.broker_url = "sqla+sqlite:///:memory:"
                 config.jobs.queue_adapter = TestQueueAdapter
-                config.action_mailer.delivery_method = TestDeliveryMethod
+                config.mailer.delivery_method = TestDeliveryMethod
 
             def _configure_database(self):
                 self.database_url = (

@@ -101,7 +101,7 @@ def test_complete_setup_and_extension_setup_are_repeatable(make_app):
 
 def test_repeated_setup_runs_middleware_processors_and_csrf_once(make_app):
     app = make_app("a", application_class=RecordingApplication)
-    app.config.action_controller.allow_forgery_protection = True
+    app.config.controller.allow_forgery_protection = True
     app.jinja_loader = DictLoader(
         {
             "setup.html": (

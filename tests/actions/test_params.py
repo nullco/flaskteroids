@@ -1,6 +1,6 @@
 import pytest
 
-from flaskteroids.actions import ActionParameters
+from flaskteroids.actions import Parameters
 from flaskteroids.exceptions import InvalidParameter, MissingParameter
 
 
@@ -17,7 +17,7 @@ class TestExpectParameters:
         ],
     )
     def test_nested_fields_are_optional(self, attributes, expected):
-        params = ActionParameters.new({"todo": attributes})
+        params = Parameters.new({"todo": attributes})
 
         assert params.expect(todo=["title", "completed"]) == expected
         assert params["todo"] == attributes
@@ -43,7 +43,7 @@ class TestExpectParameters:
         ],
     )
     def test_optional_fields_are_filtered_recursively(self, attributes, expected):
-        params = ActionParameters.new({"todo": attributes})
+        params = Parameters.new({"todo": attributes})
 
         assert (
             params.expect(
@@ -61,33 +61,33 @@ class TestExpectParameters:
         "raw_input", [{}, {"todo": None}, {"todo": {}}, {"todo": {"admin": True}}]
     )
     def test_expect_requires_dictionary_root_after_filtering(self, raw_input):
-        params = ActionParameters.new(raw_input)
+        params = Parameters.new(raw_input)
 
         with pytest.raises(MissingParameter):
             params.expect(todo=["title", "completed"])
 
     @pytest.mark.parametrize("value", [None, "", " \t\n"])
     def test_blank_required_scalars_are_rejected(self, value):
-        params = ActionParameters.new({"title": value})
+        params = Parameters.new({"title": value})
 
         with pytest.raises(MissingParameter):
             params.expect("title")
 
     @pytest.mark.parametrize("value", [False, True, 0, 0.0, "Task"])
     def test_nonblank_required_scalars_keep_dictionary_return_shape(self, value):
-        params = ActionParameters.new({"title": value})
+        params = Parameters.new({"title": value})
 
         assert params.expect("title") == {"title": value}
 
     @pytest.mark.parametrize("schema", [[], [["name"]]])
     def test_empty_required_arrays_are_rejected(self, schema):
-        params = ActionParameters.new({"items": []})
+        params = Parameters.new({"items": []})
 
         with pytest.raises(MissingParameter):
             params.expect(items=schema)
 
     def test_multiple_roots_keep_return_shape_with_partial_attributes(self):
-        params = ActionParameters.new(
+        params = Parameters.new(
             {"owner": "Alice", "todo": {"completed": True}, "profile": {"name": "A"}}
         )
 
@@ -96,13 +96,13 @@ class TestExpectParameters:
         ) == [{"owner": "Alice"}, {"completed": True}, {"name": "A"}]
 
     def test_each_requested_root_is_required(self):
-        params = ActionParameters.new({"todo": {"completed": True}})
+        params = Parameters.new({"todo": {"completed": True}})
 
         with pytest.raises(MissingParameter):
             params.expect(todo=["title", "completed"], profile=["name"])
 
     def test_positional_dictionary_schema_also_permits_partial_attributes(self):
-        params = ActionParameters.new({"todo": {"completed": True}})
+        params = Parameters.new({"todo": {"completed": True}})
 
         assert params.expect(("todo", ["title", "completed"])) == {
             "todo": {"completed": True}
@@ -110,7 +110,7 @@ class TestExpectParameters:
 
     @pytest.mark.parametrize("value", ["wrong", [], False, 0])
     def test_wrong_shaped_dictionary_roots_are_rejected(self, value):
-        params = ActionParameters.new({"todo": value})
+        params = Parameters.new({"todo": value})
 
         with pytest.raises(InvalidParameter):
             params.expect(todo=["title"])
@@ -128,7 +128,7 @@ class TestExpectParameters:
         ],
     )
     def test_expect_rejects_invalid_supplied_nested_fields(self, attributes):
-        params = ActionParameters.new({"todo": attributes})
+        params = Parameters.new({"todo": attributes})
 
         with pytest.raises(InvalidParameter):
             params.expect(
@@ -146,14 +146,14 @@ class TestExpectParameters:
         from werkzeug.datastructures import FileStorage
 
         upload = FileStorage(BytesIO(b"file"), filename="file.txt")
-        params = ActionParameters.new({"user": {"avatar": upload, "files": [upload]}})
+        params = Parameters.new({"user": {"avatar": upload, "files": [upload]}})
         assert params.expect(user=["avatar", ("files", [])]) == {
             "avatar": upload,
             "files": [upload],
         }
 
     def test_expect_rejects_arbitrary_objects_as_uploads(self):
-        params = ActionParameters.new({"user": {"avatar": object()}})
+        params = Parameters.new({"user": {"avatar": object()}})
         with pytest.raises(InvalidParameter):
             params.expect(user=["avatar"])
 
@@ -227,7 +227,7 @@ class TestExpectParameters:
     def test_expect_returns_permitted_parameters_in_schema_shape(
         self, raw_input, expect_input, expect_output
     ):
-        params = ActionParameters.new(raw_input)
+        params = Parameters.new(raw_input)
         args, kwargs = expect_input
         output = params.expect(*args, **kwargs)
         assert output == expect_output
@@ -237,7 +237,7 @@ class TestExpectParameters:
         [({"user": "admin", "password": "S3cr3t!"}, ["user", "password", "birthdate"])],
     )
     def test_expect_rejects_missing_requested_scalar(self, raw_input, expect_input):
-        params = ActionParameters.new(raw_input)
+        params = Parameters.new(raw_input)
         with pytest.raises(MissingParameter):
             params.expect(*expect_input)
 
@@ -253,6 +253,6 @@ class TestExpectParameters:
     def test_expect_rejects_invalid_positional_nested_parameters(
         self, raw_input, expect_input
     ):
-        params = ActionParameters.new(raw_input)
+        params = Parameters.new(raw_input)
         with pytest.raises(InvalidParameter):
             params.expect(*expect_input)

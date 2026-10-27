@@ -16,7 +16,7 @@ class MailExtension:
             )
         if "flaskteroids.mail" in app.extensions:
             return
-        config = app.config.action_mailer
+        config = app.config.mailer
         self.delivery_method = config.delivery_method(app, config)
         self._mailers = discover_classes(app.config.paths.mailers, Mailer)
 

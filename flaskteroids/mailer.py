@@ -124,7 +124,7 @@ class MessageBuilder:
         helper_owner=None,
         locale=None,
     ):
-        defaults = current_app.config.action_mailer.default_options
+        defaults = current_app.config.mailer.default_options
         self.by = by or defaults.get("by") or "no-reply@flaskteroids.me"
         self.to = to
         self.subject = subject
@@ -178,7 +178,7 @@ def _deliver(message_builder):
         return
     _logger.debug("message to be sent")
     _logger.debug(msg)
-    cfg = current_app.config.action_mailer
+    cfg = current_app.config.mailer
     if not cfg.perform_deliveries:
         _logger.debug("sending mail is disabled, ignoring...")
         return

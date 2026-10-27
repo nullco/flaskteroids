@@ -35,7 +35,7 @@ def lazy_app(tmp_path, monkeypatch):
                 config.paths.controllers = "tests.isolation.controllers"
                 config.paths.routes = "tests.isolation.routes"
                 config.jobs.queue_adapter = TestQueueAdapter
-                config.action_mailer.delivery_method = TestDeliveryMethod
+                config.mailer.delivery_method = TestDeliveryMethod
 
         return LazyApplication.initialize(environment="test", root_path=root)
 

@@ -171,10 +171,10 @@ class JSONValue:
     """Strong-parameter schema marker for a complete JSON value."""
 
 
-class ActionParameters(UserDict):
+class Parameters(UserDict):
     @classmethod
     def new(cls, params):
-        p = ActionParameters()
+        p = Parameters()
         p.update(params)
         return p
 
