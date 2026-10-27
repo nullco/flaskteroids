@@ -24,6 +24,7 @@ from flaskteroids.extensions.db import SQLAlchemyExtension
 from flaskteroids.extensions.helpers import HelpersExtension
 from flaskteroids.extensions.jobs import JobsExtension
 from flaskteroids.extensions.mail import MailExtension
+from flaskteroids.extensions.mail_previews import MailPreviewsExtension
 from flaskteroids.extensions.routes import RoutesExtension
 from flaskteroids.i18n import I18nExtension
 
@@ -56,6 +57,7 @@ def finalize_app(app):
     if vars(app).get("_flaskteroids_finalized", False):
         return
     _register_routes(app)
+    MailPreviewsExtension(app)
     app._flaskteroids_finalized = True
 
 

@@ -60,6 +60,11 @@ def test_generated_controller_model_and_mailer_suites_pass(generated_application
     assert_pytest_passed(report)
 
 
+def test_generated_mailer_previews_render_without_delivery(generated_application):
+    _, run = generated_application
+    run("notices_mailer", script="mailer_previews.py")
+
+
 def test_repeated_preparation_preserves_records_and_credentials(generated_application):
     root, run = generated_application
     credentials = (root / "config/credentials.yml.enc").read_bytes()

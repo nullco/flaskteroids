@@ -16,6 +16,7 @@ def test_generate_creates_mailer_files(artifacts_builder):
     assert {call.args[0] for call in artifacts_builder.file.call_args_list} == {
         "app/mailers/test_mailer_mailer.py",
         "test/mailers/test_mailer_mailer_test.py",
+        "test/mailers/previews/test_mailer_mailer_preview.py",
         "app/views/test_mailer_mailer/welcome.html",
         "app/views/test_mailer_mailer/welcome.txt",
         "app/views/test_mailer_mailer/goodbye.html",

@@ -1,0 +1,24 @@
+{% extends "layout.html" %}
+{% block title %}{{ preview }}/{{ email }}{% endblock %}
+{% block content %}
+<h1>{{ preview }} / {{ email }}</h1>
+<article>
+  <dl>
+  {% for header in ("From", "To", "Subject") %}
+    <dt>{{ header }}</dt><dd>{{ message[header] or "" }}</dd>
+  {% endfor %}
+  </dl>
+</article>
+<nav aria-label="Message format">
+{% for name, href in links.items() %}
+  <a href="{{ href }}"{% if part == name %} aria-current="page"{% endif %}>{{ "HTML" if name == "html" else "Plain text" }}</a>
+{% endfor %}
+</nav>
+{% if part not in bodies %}
+<p>This message has no {{ "HTML" if part == "html" else "plain-text" }} part.</p>
+{% elif part == "html" %}
+<iframe title="HTML email preview" sandbox="" referrerpolicy="no-referrer" srcdoc="{{ bodies.html }}"></iframe>
+{% else %}
+<article><pre>{{ bodies.plain }}</pre></article>
+{% endif %}
+{% endblock %}

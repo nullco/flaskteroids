@@ -210,8 +210,10 @@ editors; see [Turbo Frames and Streams](../views/turbo.md) to add that behavior.
 bin/flask generate mailer User welcome_email
 ```
 
-Creates `UserMailer`, text and HTML templates, and a test. Supply the base name
-`User`, not `UserMailer`. See [Mailers](mailers.md) to configure delivery.
+Creates `UserMailer`, text and HTML templates, a test, and preview scenarios in
+`test/mailers/previews/user_mailer_preview.py`. Supply the base name `User`, not
+`UserMailer`. Browse examples at `/flaskteroids/mailers` in development. See
+[Mailers](mailers.md) for previews and delivery configuration.
 
 ### Authentication
 

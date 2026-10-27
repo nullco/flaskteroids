@@ -7,6 +7,7 @@ from flask import current_app, g, render_template
 from jinja2 import TemplateNotFound
 
 from flaskteroids._mail_serialization import deserialize, serialize
+from flaskteroids._mailer_preview import MailerPreview as MailerPreview
 from flaskteroids._view_helpers import helper as helper
 from flaskteroids._view_helpers import helper_method as helper_method
 from flaskteroids._view_helpers import mailer_scope

@@ -14,6 +14,11 @@ def test_generated_api_application_passes_its_request_suite(generated_api):
     assert_pytest_passed(report)
 
 
+def test_generated_api_mailer_previews_render_without_delivery(generated_api):
+    _, run = generated_api
+    run("notifications_mailer", script="mailer_previews.py")
+
+
 def test_api_generators_omit_browser_artifacts(generated_api):
     root, _ = generated_api
 

@@ -13,6 +13,10 @@ def generate(mailer, actions):
     ab.file(f"app/mailers/{snake}_mailer.py", _template("mailer.py.mako", params))
     ab.dir(f"app/views/{snake}_mailer/")
     ab.file(
+        f"test/mailers/previews/{snake}_mailer_preview.py",
+        _template("preview.py.mako", params),
+    )
+    ab.file(
         f"test/mailers/{snake}_mailer_test.py", _template("mailer_test.py.mako", params)
     )
     for action in actions:

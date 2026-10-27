@@ -1,0 +1,19 @@
+{% extends "layout.html" %}
+{% block content %}
+<h1>Mailer previews</h1>
+<p class="hint">Example messages rendered without delivery.</p>
+{% for name, entry in previews.items() %}
+<section>
+  <h2>{{ name }}</h2>
+  <ul>
+  {% for email in entry.emails %}
+    <li><a href="{{ url_for('flaskteroids_mail_previews.show', target=name ~ '/' ~ email) }}">{{ email }}</a></li>
+  {% else %}
+    <li>No preview scenarios defined.</li>
+  {% endfor %}
+  </ul>
+</section>
+{% else %}
+<p>No previews found. Generate a mailer or add a MailerPreview subclass under <code>test/mailers/previews</code>.</p>
+{% endfor %}
+{% endblock %}
