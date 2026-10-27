@@ -1,35 +1,72 @@
-# API-only applications
+# Building an API
 
-Create an application with API-oriented defaults:
+Use an API-only application when your clients need data rather than server-rendered
+pages—for example, a mobile app or a separate JavaScript frontend. You still use
+Flaskteroids models, routes, controllers, jobs, and mailers, but return JSON instead
+of rendering browser views.
+
+This guide builds a small posts API. If you have not installed Flaskteroids yet,
+follow the [installation steps](../getting_started.md#prerequisites) first.
+
+## Create the application
 
 ```sh
-flaskteroids new inventory --api
-cd inventory
+flaskteroids new blog --api
+cd blog
+```
+
+The generator installs dependencies and prepares the development database. Run
+application commands with `bin/flask`; no environment activation is needed.
+
+Generate a resource and apply its migration:
+
+```sh
 bin/flask generate scaffold Post title:string content:text
-bin/flask db:prepare
+bin/flask db:migrate
 bin/flask run
 ```
 
-The application retains models, migrations, jobs, mailers, translations, and file
-storage. It omits browser views, helpers, assets, Turbo, system tests, and browser
-installation steps in CI. Docker does not run asset precompilation. Mailer
-templates and helpers remain available.
+The scaffold creates a model, migration, routes, controller, and request tests.
+It does not create HTML views or forms.
 
-Scaffolds generate JSON CRUD and request tests. Resource routes default to
-`index`, `show`, `create`, `update`, and `destroy`; there are no `new` or `edit`
-routes unless explicitly requested with `only`. Nested and singular resources
-follow the same conventions. Resource helpers support `format="json"`, but do
-not add Turbo Stream routes. An application without a root route returns 404
-rather than a browser welcome page.
+## Make a request
 
-## Application and controller defaults
+In another terminal, create a post:
 
-The generated application sets `config.api_only = True` in
-`config/application.py`. This selects boot facilities, routing defaults, and
-generators during initialization. It does not change controller classes
-dynamically.
+```sh
+curl -i http://127.0.0.1:5000/posts \
+  -H 'Content-Type: application/json' \
+  -d '{"post": {"title": "Hello", "content": "My first post."}}'
+```
 
-The generated controller base is:
+The response has status **201 Created**, the saved post as JSON, and a `Location`
+header pointing to its URL. Fetch the collection with:
+
+```sh
+curl http://127.0.0.1:5000/posts
+```
+
+The generated resource supports these requests:
+
+| Method | Path | Result on success |
+| --- | --- | --- |
+| GET | `/posts` | 200 with a JSON array of posts |
+| GET | `/posts/<id>` | 200 with one post |
+| POST | `/posts` | 201 with the created post and a Location header |
+| PATCH/PUT | `/posts/<id>` | 200 with the updated post |
+| DELETE | `/posts/<id>` | 204 with an empty body |
+
+There are no `new` or `edit` pages: the client supplies the interface. Resource
+routes omit those actions unless explicitly requested with `only`. Nested and
+singular resources follow the same convention. Resource helpers accept
+`format="json"`; API-only applications do not add Turbo Stream routes.
+
+Visit `/posts`, not `/`: an application without a root route returns 404 rather
+than a welcome page.
+
+## Work with controllers
+
+Open `app/controllers/application_controller.py`:
 
 ```python
 from flaskteroids.controller import APIController
@@ -39,41 +76,42 @@ class ApplicationController(APIController):
     pass
 ```
 
-API controllers share callbacks, strong parameters, JSON serialization, response
-headers, localization, redirects, and the single-response lifecycle with browser
-controllers. An action that neither renders nor returns a response produces
-**204 No Content**, without looking for a template.
+Your controllers inherit from this base. They use the same callbacks, strong
+parameters, model serialization, headers, localization, and redirects as browser
+controllers. The difference is the default response: an action that neither
+renders nor returns a response sends **204 No Content**, rather than looking for
+a template.
 
-Use `self.render(json=value)`, `self.head(status)`, or return an ordinary Flask
-response. API-only is not JSON-only: file and plain-text responses work too.
-Explicit JSON rendering does not require an Accept header.
+The scaffold's `create` action builds a post from permitted input, saves it, and
+renders either the record or its validation errors:
 
 ```python
-def create(self):
-    self.post = Post.new(**self.params.expect(post=["title", "content"]))
-    if self.post.save():
-        return self.render(json=self.post, status=201, location=self.post)
-    return self.render(json=self.post.errors, status=422)
+    def create(self):
+        self.post = Post.new(**self._post_params())
+        if self.post.save():
+            return self.render(json=self.post, status=201, location=self.post)
+        return self.render(json=self.post.errors, status=422)
+
+    def _post_params(self):
+        return self.params.expect(post=["title", "content"])
 ```
 
 `location=` accepts a URL string, a saved model, or a nested model sequence.
-Models resolve through resource routing to a relative Location URL. Models,
-queries, and errors use their existing JSON serialization; validation errors
-remain full-message lists. API scaffolds return 201 on creation, 200 on update,
-204 on successful deletion, and 422 when a save or destruction is rejected.
+Models resolve to a relative resource URL. Models and queries use the framework's
+[JSON serialization](index.md#json-values); validation errors become a list of
+full messages. Rejected saves and destructions return **422** in scaffold actions.
 
-You can also inherit from `APIController` in a normal browser application.
-Existing `ActionController` classes keep their browser behavior.
+Use `self.head(status)` for an empty response, or return an ordinary Flask
+response for files and plain text. API-only does not mean JSON-only, and explicit
+JSON rendering does not require an Accept header. As with browser controllers,
+prepare only one response per action.
 
-## JSON input
+You can also use `APIController` in an application that serves browser pages.
+It does not change the behavior of other controllers using `ActionController`.
 
-JSON request bodies, including `application/*+json`, populate `self.params`.
-Body values are merged with query parameters, then path parameters; later
-sources take precedence. Non-object JSON is available under `self.params["_json"]`.
-Malformed JSON returns 400.
+## Accept JSON input
 
-By convention, a controller adds a model root for unwrapped JSON input while
-retaining the original values. Both requests work with
+JSON request bodies populate `self.params`. Both of these bodies work with
 `self.params.expect(post=["title"])`:
 
 ```json
@@ -84,15 +122,13 @@ retaining the original values. Both requests work with
 {"title": "Hello"}
 ```
 
-Scaffolds permit `name:json` columns using the explicit `JSONValue` strong-parameter
-schema, preserving nested objects, arrays, scalar values, and null. Other fields
-remain allowlisted independently. See [JSON-valued fields](../other/forms.md#json-valued-fields).
+By convention, the controller wraps unwrapped input under its model name while
+retaining the original values. An existing root is never replaced. When a
+conventional model exists, wrapping selects mapped columns and writable framework
+attributes. **Wrapping does not permit attributes for assignment:** always filter
+input with [strong parameters](../other/forms.md#strong-parameters).
 
-An existing root is never replaced. When a conventional model exists, wrapping
-selects mapped columns and writable framework attributes. Wrapping is not an
-assignment allowlist: always use strong parameters.
-
-Declare wrapping behavior inside the controller class:
+To customize wrapping, declare it inside the controller class:
 
 ```python
 from flaskteroids.controller import APIController, wrap_parameters
@@ -103,37 +139,66 @@ class EventsController(APIController):
 ```
 
 Use `wrap_parameters("event")` for a custom root, or `wrap_parameters(True)` to
-restore conventional wrapping. Declarations are inherited; a subclass can override
-its wrapping without changing parents or siblings. Forms and multipart uploads
-retain their existing parameter conventions.
+restore conventional wrapping. Subclasses inherit the declaration and can
+override it independently. Forms and multipart uploads keep their usual
+parameter conventions.
 
-## Failures and testing
+Request parsing also accepts `application/*+json`. Body values are merged with
+query parameters, then path parameters; later sources take precedence.
+Non-object JSON is available under `self.params["_json"]`. Malformed JSON returns
+400.
 
-Framework HTTP failures use JSON with `error` and `status` fields. HTTP headers
-such as Retry-After and WWW-Authenticate are preserved. Production errors do not
-expose internal exception details; configured exception propagation remains
-available for debugging. Application-rendered validation errors retain their own
-representation.
+For JSON database columns, scaffold fields such as `settings:json` use the
+explicit `JSONValue` parameter schema. This preserves nested objects, arrays,
+scalars, and null while other fields remain allowlisted independently. See
+[JSON-valued fields](../other/forms.md#json-valued-fields).
 
-Use the existing request helpers with JSON:
+## Test the API
 
-```python
-response = post("/posts", json={"post": {"title": "Hello"}})
-assert response.status_code == 201
-assert response.get_json()["title"] == "Hello"
+Run the generated request tests:
+
+```sh
+bin/flask test
 ```
 
-Run `bin/flask test`; no browser is required.
+No browser is required. Add behavior-focused tests using the same request helpers
+as a browser application, passing request bodies with `json=`:
 
-## Current boundaries
+```python
+from test.test_helper import IntegrationTest, post
 
-API requests are stateless by default: cookie sessions, flash, browser form
+
+class PostsAPITest(IntegrationTest):
+    def test_create_returns_saved_post(self):
+        response = post("/posts", json={"post": {"title": "Hello"}})
+
+        assert response.status_code == 201
+        assert response.get_json()["title"] == "Hello"
+```
+
+Framework HTTP errors return JSON with `error` and `status` fields, preserving
+headers such as `Retry-After` and `WWW-Authenticate`. Production errors do not
+expose internal exception details; configured exception propagation remains
+available for debugging. Validation errors rendered by your actions keep their
+own representation. See [Testing](../testing.md) for fixtures and request helpers.
+
+## Application defaults and authentication
+
+The generated app sets `config.api_only = True` in `config/application.py`.
+This selects application facilities, routing defaults, and generator output at
+initialization; controller inheritance determines response behavior.
+
+Models, migrations, jobs, mailers, translations, and file storage remain
+available, including mailer templates and helpers. Browser views, application
+helpers, assets, Turbo, and system tests are omitted. Generated CI does not
+install a browser, and Docker builds do not precompile assets.
+
+API requests are stateless by default. Cookie sessions, flash, browser form
 method override, and the session-bound rich-text editor upload endpoint are not
 installed. Stateless API controllers do not require browser CSRF tokens.
-Browser controllers retain CSRF protection, including inside an API-only app.
+Browser controllers retain CSRF protection, even inside an API-only app.
 
-Authentication generation and cookie-session opt-ins are deferred. The
-authentication generator rejects API-only applications before writing files.
-Do not implement cookie-authenticated API actions by merely disabling CSRF.
-JWT, OAuth, OpenAPI, and a new serializer/error-envelope standard are not
-provided by this feature.
+The authentication generator builds a browser login workflow and cannot be used
+in an API-only application. Cookie-session opt-ins, JWT, OAuth, and OpenAPI are
+not built in. Choose an authentication approach appropriate for your clients;
+do not enable cookie authentication by merely disabling CSRF protection.

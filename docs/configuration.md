@@ -35,13 +35,9 @@ class Application(FlaskteroidsApplication):
 Flaskteroids does not change this choice automatically. To adopt newer defaults,
 change the version passed to `load_defaults()`.
 
-## API-only applications
-
-`flaskteroids new inventory --api` sets `config.api_only = True` and generates an
-`ApplicationController` based on `APIController`. Application defaults are selected
-at initialization; controller inheritance determines response behavior. See
-[API-only applications](controllers/api.md) for JSON input, generators, and current
-authentication/session boundaries.
+The application generator selects browser defaults unless you pass `--api`,
+which sets `config.api_only = True`. See [Building an API](controllers/api.md)
+for API application setup and controller behavior.
 
 ## Template helpers
 

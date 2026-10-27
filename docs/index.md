@@ -11,21 +11,44 @@ Start with [Getting started](getting_started.md) to build a product catalog, lea
 
 ## Find a guide
 
-| I want to… | Read |
-| --- | --- |
-| Find the right file or change settings | [Project structure](project_structure.md), [Configuration](configuration.md) |
-| Store, query, or validate data | [Models](models/index.md), [Fields](other/fields.md) |
-| Encrypt sensitive database values | [Attribute encryption](models/encryption.md) |
-| Handle requests and define URLs | [Controllers](controllers/index.md), [Routing](controllers/routing.md) |
-| Build a JSON API without browser defaults | [API-only applications](controllers/api.md) |
-| Build pages and accept input | [Views](views/index.md), [Forms](other/forms.md) |
-| Navigate within frames or update page elements | [Turbo Frames and Streams](views/turbo.md) |
-| Translate messages and format dates | [Internationalization](other/internationalization.md) |
-| Add styles and images | [Assets](other/assets.md) |
-| Upload files or add a text editor | [Attachments](other/attachments.md), [Rich text](other/rich_text.md) |
-| Run work in the background or send email | [Jobs](other/jobs.md), [Mailers](other/mailers.md) |
-| Check application behavior | [Testing](testing.md) |
-| Look up a generator or command | [CLI reference](other/cli.md) |
+### Start here
+
+- [Getting started](getting_started.md) — Build a product catalog while learning the framework's everyday workflows.
+- [Project structure](project_structure.md) — Find where application code, configuration, migrations, and tests belong.
+
+### Models
+
+- [Model basics](models/index.md) — Create and query records, validate input, and work with associations, callbacks, and transactions.
+- [Fields](other/fields.md) — Choose field types and modifiers for models and migrations.
+- [Attribute encryption](models/encryption.md) — Encrypt sensitive model attributes.
+
+### Routing and controllers
+
+- [Routing](controllers/routing.md) — Connect URLs to actions and define resource routes.
+- [Controller basics](controllers/index.md) — Handle request parameters, callbacks, rendering, and redirects.
+- [Rate limits](controllers/advanced.md) — Limit requests and understand the cache boundaries.
+
+### Views
+
+- [Templates and helpers](views/index.md) — Render pages and share presentation logic through application helpers.
+- [Forms](other/forms.md) — Build model-backed forms and filter submitted parameters.
+- [Turbo Frames and Streams](views/turbo.md) — Add inline navigation and partial page updates.
+
+### Other components
+
+- [Mailers](other/mailers.md) — Compose and deliver email.
+- [Rich text](other/rich_text.md) — Add an editor and render rich-text content safely.
+- [Background jobs](other/jobs.md) — Enqueue work to run outside a request.
+- [Attachments](other/attachments.md) — Upload and store files.
+
+### Digging deeper
+
+- [Testing](testing.md) — Test models, requests, jobs, mailers, and browser workflows.
+- [Configuration](configuration.md) — Configure environments, databases, and encrypted credentials.
+- [Command-line interface](other/cli.md) — Look up generators and application commands.
+- [Assets](other/assets.md) — Serve source assets and build fingerprinted production files.
+- [Internationalization](other/internationalization.md) — Translate messages and localize dates and times.
+- [Building an API](controllers/api.md) — Build a JSON API without browser defaults.
 
 Unless a guide says otherwise, run application commands from the application
 root using `bin/flask`. You do not need to activate the virtual environment.

@@ -25,9 +25,9 @@ a fresh checkout, run `bin/setup` first.
 To generate files without installing, use `flaskteroids new my_app --skip-install`
 and run `bin/setup` later. Commit `uv.lock` so the team shares dependency versions.
 
-Use `flaskteroids new inventory --api` for API-only defaults. Later controller
-and scaffold generators select API output automatically, without browser views,
-assets, or system tests. See [API-only applications](../controllers/api.md).
+For an API instead of server-rendered pages, pass `--api` when creating the
+application. Controller and scaffold generators then produce API output. See
+[Building an API](../controllers/api.md) for a complete example.
 
 ## Database preparation
 

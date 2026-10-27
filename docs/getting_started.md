@@ -403,7 +403,7 @@ available as `products`.
 Replace `app/views/products/index.html` with:
 
 ```html
-{% extends "layouts/application.html" %}
+{% extends layout %}
 
 {% block body %}
   <h1>Products</h1>
@@ -419,6 +419,10 @@ Replace `app/views/products/index.html` with:
 
 Jinja's `{% ... %}` tags control the template, while `{{ ... }}` outputs a value.
 The layout supplies the surrounding HTML; this template fills its `body` block.
+`{% extends layout %}` uses the framework-provided `layout` variable: normally
+`layouts/application.html`, or a minimal layout for Turbo Frame requests. Use
+this in page templates so they respect controller layout overrides and
+[frame-aware layout selection](views/turbo.md#frames-and-layouts).
 
 Run `bin/flask run --debug` again and visit <http://127.0.0.1:5000>. You should see
 the products you created in the shell.
@@ -452,7 +456,7 @@ finds that product and makes it available to its template as `product`.
 Create `app/views/products/show.html`:
 
 ```html
-{% extends "layouts/application.html" %}
+{% extends layout %}
 
 {% block body %}
   <h1>{{ product.name }}</h1>
@@ -529,7 +533,7 @@ Add these methods inside `ProductsController`, keeping `index` and `show`:
 Create `app/views/products/new.html`:
 
 ```html
-{% extends "layouts/application.html" %}
+{% extends layout %}
 
 {% block body %}
   <h1>New product</h1>
@@ -610,7 +614,7 @@ through its `{% endcall %}`, from `new.html` into a new file:
 The underscore marks this as a reusable partial. Replace `new.html` with:
 
 ```html
-{% extends "layouts/application.html" %}
+{% extends layout %}
 
 {% block body %}
   <h1>New product</h1>
@@ -622,7 +626,7 @@ The underscore marks this as a reusable partial. Replace `new.html` with:
 Create `app/views/products/edit.html`:
 
 ```html
-{% extends "layouts/application.html" %}
+{% extends layout %}
 
 {% block body %}
   <h1>Edit product</h1>
@@ -1150,7 +1154,7 @@ The controller filters the child with `self.params.expect(subscriber=["email"])`
 Create `app/views/subscribers/new.html` for invalid submissions:
 
 ```html
-{% extends "layouts/application.html" %}
+{% extends layout %}
 
 {% block body %}
   <h1>Follow {{ product.name }}</h1>
@@ -1221,7 +1225,7 @@ class UnsubscribesController(ApplicationController):
 Create `app/views/unsubscribes/show.html`:
 
 ```html
-{% extends "layouts/application.html" %}
+{% extends layout %}
 
 {% block body %}
   <h1>Stop following {{ subscriber.product.name }}?</h1>
@@ -1461,7 +1465,9 @@ bin/flask assets:precompile
 Docker builds run this compilation automatically. Keep the generated output and
 manifest together; production has no fallback to source files.
 
-The generated layout also loads Turbo from a CDN. Flaskteroids' asset compiler
+The generated layout also loads Turbo from `app/assets/turbo/turbo.js` through
+`asset_path`, with no CDN connection required. Production precompilation
+fingerprints this local runtime like other assets. Flaskteroids' asset compiler
 does not install import maps, bundle JavaScript, or compile Sass. See
 [Assets](other/assets.md) when extending the frontend.
 

@@ -35,32 +35,34 @@ extra_css:
 
 nav:
   - Introduction: index.md
-  - Getting started:
-    - Overview: getting_started.md
-    - Project structure: project_structure.md
-    - Configuration: configuration.md
-    - Testing: testing.md
-  - Models:
-    - Overview: models/index.md
-    - Attribute encryption: models/encryption.md
-  - Views:
-    - Overview: views/index.md
-    - Turbo: views/turbo.md
-  - Controllers:
-    - Overview: controllers/index.md
-    - API-only applications: controllers/api.md
-    - Routing: controllers/routing.md
-    - Advanced topics: controllers/advanced.md
-  - Other components:
-    - CLI: other/cli.md
-    - Fields: other/fields.md
-    - Forms: other/forms.md
-    - Internationalization: other/internationalization.md
-    - Assets: other/assets.md
-    - Attachments: other/attachments.md
-    - Rich text: other/rich_text.md
-    - Background jobs: other/jobs.md
-    - Mailers: other/mailers.md
+  - Guides:
+    - Start here:
+      - Getting started: getting_started.md
+      - Project structure: project_structure.md
+    - Models:
+      - Model basics: models/index.md
+      - Fields: other/fields.md
+      - Attribute encryption: models/encryption.md
+    - Routing and controllers:
+      - Routing: controllers/routing.md
+      - Controller basics: controllers/index.md
+      - Rate limits: controllers/advanced.md
+    - Views:
+      - Templates and helpers: views/index.md
+      - Forms: other/forms.md
+      - Turbo Frames and Streams: views/turbo.md
+    - Other components:
+      - Mailers: other/mailers.md
+      - Rich text: other/rich_text.md
+      - Background jobs: other/jobs.md
+      - Attachments: other/attachments.md
+    - Digging deeper:
+      - Testing: testing.md
+      - Configuration: configuration.md
+      - Command-line interface: other/cli.md
+      - Assets: other/assets.md
+      - Internationalization: other/internationalization.md
+      - Building an API: controllers/api.md
 
 markdown_extensions:
   - pymdownx.highlight:

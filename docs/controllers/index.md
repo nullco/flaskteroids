@@ -4,6 +4,9 @@ Controllers handle HTTP requests. Each action is a public method on a controller
 class. Actions load or change model data, then render a page, return JSON, or
 redirect the browser.
 
+This guide uses browser controllers (`ActionController`). For an application
+that serves data without browser views, see [Building an API](api.md).
+
 ## Write an action
 
 If an action does not prepare a response, Flaskteroids renders its matching

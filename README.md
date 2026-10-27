@@ -37,7 +37,6 @@ control, without giving up the framework's everyday workflows.
 ## What's included
 
 - Resource routing with CRUD routes and path helpers.
-- [API-only applications](https://nullco.github.io/flaskteroids/controllers/api/) with JSON scaffolds and request tests.
 - Models with associations, validations, and lifecycle callbacks.
 - Jinja templates, form helpers, and HTML or JSON responses.
 - [Turbo Frames and HTTP Streams](https://nullco.github.io/flaskteroids/views/turbo/) with a locally bundled Turbo runtime.
@@ -48,6 +47,7 @@ control, without giving up the framework's everyday workflows.
 - Rich-text fields with an integrated Trix editor and safe HTML rendering.
 - Environment settings, `database.yml`, encrypted credentials, and boot-time initializers.
 - Pytest-based transactional tests, YAML fixtures, job and mail assertions, and Playwright browser tests.
+- API-only applications with JSON scaffolds and request tests.
 
 ## Installation
 
@@ -100,7 +100,8 @@ The scaffold generates a model, migration, controller, views, and routes. Visit
 
 For a step-by-step tutorial, follow [Getting started with Flaskteroids](https://nullco.github.io/flaskteroids/getting_started/).
 Build a product catalog while learning models, controllers, forms, authentication,
-uploads, email, and testing.
+uploads, email, and testing. For a mobile client or separate frontend, follow
+[Building an API](https://nullco.github.io/flaskteroids/controllers/api/) instead.
 
 - Run `bin/setup` for a fresh checkout or after changing dependencies. Commit `uv.lock`.
 - To defer installation, use `flaskteroids new my_app --skip-install`, then run `bin/setup` later.
