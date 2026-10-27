@@ -213,7 +213,8 @@ bin/flask generate mailer User welcome_email
 Creates `UserMailer`, text and HTML templates, a test, and preview scenarios in
 `test/mailers/previews/user_mailer_preview.py`. Supply the base name `User`, not
 `UserMailer`. Browse examples at `/flaskteroids/mailers` in development. See
-[Mailers](mailers.md) for previews and delivery configuration.
+[Preview emails](mailers.md#preview-emails) for the walkthrough and
+[Mailers](mailers.md#configure-delivery) for delivery configuration.
 
 ### Authentication
 

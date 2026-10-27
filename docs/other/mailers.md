@@ -40,98 +40,6 @@ Application mailers inherit from `ApplicationMailer`, whose base is the framewor
 Use `app/views/user_mailer/welcome_email.txt` for the plain-text part. Text and HTML
 parts can be included in the same email.
 
-## Preview emails
-
-The mailer generator also creates
-`test/mailers/previews/user_mailer_preview.py`. Preview methods return example
-messages without delivering them:
-
-```python
-from app.mailers.user_mailer import UserMailer
-from app.models.user import User
-from flaskteroids.mailer import MailerPreview
-
-
-class UserMailerPreview(MailerPreview):
-    def welcome_email(self):
-        user = User(name="Jane", email="jane@example.com")
-        return UserMailer.with_(user=user).welcome_email()
-
-    def welcome_email_with_long_name(self):
-        user = User(
-            name="A particularly long display name",
-            email="jane@example.com",
-        )
-        return UserMailer.with_(user=user).welcome_email()
-```
-
-Start the development server:
-
-```sh
-bin/flask run --debug
-```
-
-Open <http://localhost:5000/flaskteroids/mailers> to browse previews, or visit
-`/flaskteroids/mailers/user_mailer/welcome_email` directly. The browser shows
-message headers and HTML/plain-text alternatives. HTML is displayed in a
-sandboxed frame, independently of application layouts. API-only applications
-have the same preview browser.
-
-Preview files are discovered recursively, without route declarations or manual
-registration. A file under `previews/admin/` adds an `admin/` prefix to its preview
-URLs. Class names drop the `Preview` suffix and become snake case. Each public
-method defined directly on a preview class is a scenario; use underscore-prefixed
-methods for shared helpers. Inherited methods are not listed unless overridden.
-Methods take no arguments beyond `self` and must return a mailer's
-`MessageDelivery`, not call `deliver_now()` or `deliver_later()`.
-
-Query-string values are available as strings in `self.params`:
-
-```python
-def welcome_email(self):
-    user = User.find(self.params["user_id"])
-    return UserMailer.with_(user=user).welcome_email()
-```
-
-Visit `/flaskteroids/mailers/user_mailer/welcome_email?user_id=123`.
-The browser reserves `part=html` and `part=plain` for format selection and
-preserves the other query parameters when switching formats. Each request gets
-a fresh preview instance and parameter dictionary.
-
-Templates refresh when `config.enable_reloading` is enabled, as it is in generated
-development configuration. Flask's `--debug` reloader picks up Python changes,
-including preview source files; without it, restart after changing Python code.
-
-Previews use the normal mailer rendering pipeline, including callbacks, helpers,
-and the captured locale. They do not use SMTP, enqueue jobs, load test fixtures,
-or require delivery to be enabled. Use unsaved sample records when possible, or
-query existing development records when a scenario needs them. Preview files are
-support code, not automated tests.
-
-### Preview configuration
-
-Previews are enabled by default only in the `development` environment. Disable
-them explicitly, or configure additional directories relative to the application
-root (absolute paths also work):
-
-```python
-config.action_mailer.show_previews = False
-config.action_mailer.preview_paths = [
-    "test/mailers/previews",
-    "lib/mailer_previews",
-]
-```
-
-`show_previews = None` selects the environment default. Set it to `True` to
-explicitly enable previews in another environment, such as a test application.
-When disabled, preview files are not imported and the routes are absent.
-
-**Do not expose previews publicly or enable them in production.** Preview routes
-do not run application controller authentication. Preview methods and mailer
-callbacks are ordinary application code: avoid writes, delivery calls, and other
-side effects. The preview browser does not undo application-side effects or
-simulate how an email client will render your HTML.
-
 ## Send a message
 
 ```python
@@ -234,3 +142,142 @@ the view context. Those helpers can call exposed methods such as
 `self.greeting()`. Mailers select helper classes explicitly; they do not inherit
 request-controller helpers. See
 [mailer view helpers](../views/index.md#mailers-and-rendering-outside-requests).
+
+## Previewing and testing mailers
+
+Previews let you inspect an email in your browser without sending it. Automated
+tests check its content and delivery behavior. Both use the same mailer and
+templates as your application.
+
+### Preview emails
+
+The mailer generator creates
+`test/mailers/previews/user_mailer_preview.py` alongside your mailer and tests.
+Update that file to call the `UserMailer` from above with sample data:
+
+```python
+# test/mailers/previews/user_mailer_preview.py
+from app.mailers.user_mailer import UserMailer
+from app.models.user import User
+from flaskteroids.mailer import MailerPreview
+
+
+class UserMailerPreview(MailerPreview):
+    def welcome_email(self):
+        user = User(name="Jane", email="jane@example.com")
+        return UserMailer.with_(user=user).welcome_email()
+```
+
+A preview method returns the message; it does not call `deliver_now()` or
+`deliver_later()`. No SMTP server, job worker, or enabled delivery is needed.
+
+Start the development server:
+
+```sh
+bin/flask run --debug
+```
+
+Visit
+<http://localhost:5000/flaskteroids/mailers/user_mailer/welcome_email>
+to see the rendered message. Open
+<http://localhost:5000/flaskteroids/mailers> for a list of all previews.
+The browser shows the sender, recipient, and subject, and lets you switch between
+HTML and plain text. API-only applications have the same preview browser.
+
+Edit `app/views/user_mailer/welcome_email.html` and refresh to see the change.
+Generated development configuration enables template reloading; Flask's
+`--debug` reloader picks up changes to the mailer and preview Python files.
+Without `--debug`, restart the server after changing Python code.
+
+The example uses an unsaved record so it works without creating data. You can
+also query existing development records when a scenario needs them. Previews
+do not load test fixtures.
+
+### Preview scenarios
+
+Add another method to the same preview class to inspect a different case:
+
+```python
+def welcome_email_with_long_name(self):
+    user = User(
+        name="A particularly long display name",
+        email="jane@example.com",
+    )
+    return UserMailer.with_(user=user).welcome_email()
+```
+
+This scenario appears in the index and at
+`/flaskteroids/mailers/user_mailer/welcome_email_with_long_name`.
+Scenario names do not have to match mailer action names.
+
+### Preview parameters
+
+Query-string values are available as strings in `self.params`. For example,
+replace `welcome_email` with:
+
+```python
+def welcome_email(self):
+    user = User.find(self.params["user_id"])
+    return UserMailer.with_(user=user).welcome_email()
+```
+
+Visit `/flaskteroids/mailers/user_mailer/welcome_email?user_id=123`, using the ID
+of an existing development user. Each request gets a fresh preview instance and
+parameter dictionary. Switching formats preserves query parameters; `part=html`
+and `part=plain` are reserved for the browser's format selection.
+
+### Preview discovery
+
+Files ending in `_preview.py` are discovered recursively under
+`test/mailers/previews`. No routes or registration are needed. A file under
+`previews/admin/` adds an `admin/` prefix to its preview URLs. Class names drop
+the `Preview` suffix and become snake case.
+
+Each public method defined directly on a `MailerPreview` subclass is a scenario.
+Methods take no arguments beyond `self` and must return a mailer's
+`MessageDelivery`. Use underscore-prefixed methods for shared helpers; inherited
+methods are not listed unless overridden. Rendering uses the normal mailer
+callbacks, template helpers, and captured locale.
+
+### Preview configuration
+
+Previews are enabled by default only in the `development` environment. To add
+another preview directory, append it in your application configuration:
+
+```python
+config.action_mailer.preview_paths.append("lib/mailer_previews")
+```
+
+Paths are relative to the application root; absolute paths also work. Assign a
+new list to `preview_paths` to replace the default directories instead.
+
+To disable previews in an environment, set this in its `configure(config)`
+function:
+
+```python
+config.action_mailer.show_previews = False
+```
+
+`None` selects the environment default. Set `show_previews = True` to explicitly
+enable previews elsewhere, such as a test application. When disabled, preview
+files are not imported and the routes are absent.
+
+**Do not expose previews publicly or enable them in production.** Preview routes
+do not run application controller authentication. Preview methods and mailer
+callbacks are ordinary application code: avoid writes, delivery calls, and other
+side effects. The browser does not undo those effects. Email HTML is isolated in
+a sandboxed frame, but the preview is not an email-client compatibility test.
+
+### Test mailers
+
+Preview files are support code, not automated tests. The generator separately
+creates `test/mailers/user_mailer_test.py`, inheriting from `MailerTest`. Run it
+with:
+
+```sh
+bin/flask test test/mailers/user_mailer_test.py
+```
+
+Generated tests collect delivered messages in memory rather than using SMTP.
+See [jobs and mail assertions](../testing.md#jobs-and-mail) for delivery counts,
+queued jobs, and inspecting messages through `self.deliveries`.

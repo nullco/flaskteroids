@@ -130,7 +130,14 @@ with self.assert_emails(1):
 
 `assert_enqueued_with` checks that a job was scheduled. `perform_enqueued_jobs`
 runs jobs enqueued inside its block. `assert_emails` checks how many messages were
-delivered. No broker or SMTP server is required.
+delivered. Built messages are available through `self.deliveries` as
+`EmailMessage` objects, so tests can inspect headers and HTML/plain-text parts.
+No broker or SMTP server is required.
+
+To inspect email appearance interactively, use
+[mailer previews](other/mailers.md#preview-emails). Previews render example emails
+in the development browser without delivery; they complement automated tests
+rather than replacing them.
 
 ## System tests
 
