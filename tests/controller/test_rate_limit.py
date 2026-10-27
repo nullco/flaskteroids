@@ -1,7 +1,7 @@
 from http import HTTPStatus
 
 import pytest
-from werkzeug.exceptions import HTTPException
+from werkzeug.exceptions import HTTPException, TooManyRequests
 
 from flaskteroids.controller import ActionController, init
 from flaskteroids.exceptions import ProgrammerError
@@ -47,7 +47,7 @@ def test_rate_limit_calls_an_instance_handler_without_requiring_a_response_retur
     events = []
 
     class LimitedController(ActionController):
-        rate_limit(to=1, within=60, with_="_exceeded")
+        rate_limit(to=1, within=60, using="_exceeded")
 
         def index(self):
             events.append("action")
@@ -64,9 +64,27 @@ def test_rate_limit_calls_an_instance_handler_without_requiring_a_response_retur
     assert events == ["action"]
 
 
+@pytest.mark.usefixtures("app_ctx")
+def test_rate_limit_uses_a_callable_handler_when_the_limit_is_exceeded(mocker):
+    handler = mocker.Mock(side_effect=TooManyRequests("Slow down"))
+
+    class LimitedController(ActionController):
+        rate_limit(to=1, within=60, using=handler)
+
+        def index(self):
+            self.head(200)
+
+    controller = init(LimitedController)()
+    assert controller.index().status_code == 200
+    handler.assert_not_called()
+    with pytest.raises(TooManyRequests, match="Slow down"):
+        controller.index()
+    handler.assert_called_once_with()
+
+
 def test_rate_limit_rejects_unknown_instance_handlers():
     class LimitedController(ActionController):
-        rate_limit(to=1, within=60, with_="_missing")
+        rate_limit(to=1, within=60, using="_missing")
 
         def index(self):
             pass

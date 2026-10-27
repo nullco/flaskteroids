@@ -9,6 +9,8 @@
   the `with_` name is removed.
 - Browser test helpers `fill_in(...)` and `fill_in_rich_text_area(...)` now take
   `value=` instead of `with_=`. Update system tests; the old keyword is removed.
+- Rename the rate limiter's custom-handler keyword from `with_=` to `using=`.
+  Update controller declarations; the old keyword is removed.
 
 ## 0.10.0 - 2026-10-27
 

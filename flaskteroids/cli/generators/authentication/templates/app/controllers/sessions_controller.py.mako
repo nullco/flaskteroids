@@ -7,7 +7,7 @@ from app.controllers.application_controller import ApplicationController
 
 class SessionsController(ApplicationController):
     skip_before_action('_require_authentication', only=['new', 'create'])
-    rate_limit(to=10, within=3*60, only=['create'], with_='_rate_limit_exceeded')
+    rate_limit(to=10, within=3*60, only=['create'], using='_rate_limit_exceeded')
 
     def _rate_limit_exceeded(self):
         self.redirect_to(url_for('new_session'), alert='Try again later')

@@ -17,7 +17,8 @@ class MyController(ActionController):
 
 Declare the limit inside the controller class. Limits count by client IP unless
 you configure another key. Exceeding a limit returns **429 Too Many Requests**.
-Pass `with_="_rate_limit_exceeded"` to use a controller method as the handler.
+Pass `using="_rate_limit_exceeded"` to use a controller method as the handler,
+or pass a callable through `using`.
 
 Each application has its own counters. **The default cache is in memory and is
 not shared between worker processes**, so these are not deployment-wide limits.
