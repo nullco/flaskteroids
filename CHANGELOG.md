@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.11.0 - 2026-10-28
+
 ### Breaking changes
 
 - Rename the browser controller base from `ActionController` to `Controller`.
