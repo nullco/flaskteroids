@@ -259,10 +259,10 @@ These keys serve model `encrypts(...)`, encrypted rich text, and direct use of
 bin/flask turbo:install
 ```
 
-Configures the framework-provided Turbo 8.0.23 ESM asset through import maps,
-preserving application code. Layouts without script tags receive the module
-helper; customized script layouts receive instructions instead. Existing views are not rewritten and no
-runtime is copied or downloaded. New applications already include this setup.
+Configures Turbo 8.0.23 from `flaskteroids-turbo` through import maps, preserving
+application code. Layouts without script tags receive the module helper;
+customized script layouts receive instructions instead. No runtime is copied or
+downloaded. Generated browser applications include this setup.
 See [Turbo installation](../views/turbo.md#install-or-upgrade).
 
 ## Import maps
@@ -291,14 +291,14 @@ bin/flask rich_text:install
 bin/flask db:migrate
 ```
 
-Configures import-map pins and the entrypoint for the framework-provided Lexxy
-editor, adds its stylesheet helper to the layout, and creates rich-text and
-attachment migrations as needed. It does not copy runtime assets. Repeated runs
-preserve application code and avoid duplicate migrations.
+Configures import-map pins and the entrypoint for the Lexxy editor from
+`flaskteroids-lexxy`, adds its stylesheet helper to the layout, and creates
+rich-text and attachment migrations as needed. It does not copy runtime assets.
+Repeated runs preserve application code and avoid duplicate migrations.
 
-Upgrading the locked Flaskteroids dependency upgrades the supplied editor;
-precompile production assets and restart. Model, resource, and scaffold
-generators accept `content:rich_text`. See [Rich text](rich_text.md).
+Upgrade `flaskteroids-lexxy` independently, then precompile production assets and
+restart. Model, resource, and scaffold generators accept `content:rich_text`.
+See [Rich text](rich_text.md).
 
 ## Attachments
 

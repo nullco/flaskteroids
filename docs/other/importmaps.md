@@ -126,15 +126,14 @@ Individual file replacements are atomic; the whole operation is not a multi-file
 transaction. Automatic vulnerability audits and outdated-package reports are not
 included in this initial implementation.
 
-## Framework-provided Turbo
+## Packaged Turbo
 
-The installed Flaskteroids package supplies the pinned Turbo **8.0.23** ESM build.
-Applications reference it through the `@hotwired/turbo` pin, rather than copying or
-downloading it. Upgrading the locked Flaskteroids dependency upgrades the supplied
-runtime.
+`flaskteroids-turbo` supplies the pinned Turbo **8.0.23** ESM build. Applications
+reference it through the `@hotwired/turbo` pin, rather than copying or downloading
+it. Upgrade the locked `flaskteroids-turbo` dependency to update the runtime.
 
 An application can deliberately override `turbo.js` in `app/javascript` or
-`vendor/javascript`. Application assets take precedence over the framework
+`vendor/javascript`. Application assets take precedence over the packaged
 asset. Keep an override compatible with the framework's Turbo integration.
 
 `bin/flask turbo:install` configures this same import-map workflow; it does not
@@ -206,7 +205,7 @@ bin/importmap json --environment production
 ```
 
 Precompilation includes application JavaScript, downloaded modules, and the
-framework's Turbo asset. It is deterministic, offline, and does not boot the app.
+`flaskteroids-turbo` runtime. It is deterministic, offline, and does not boot the app.
 Deploy the output with its manifest; the rendered map resolves logical names to
 fingerprinted URLs. Changing a dependency updates its mapping without rewriting
 the importing JavaScript. See [Assets](assets.md) for custom paths and serving.

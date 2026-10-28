@@ -40,6 +40,4 @@ matching credentials key. `PORT` is for Procfile platforms, not Docker's port 80
 Procfile is a process example, not consumed by Docker.
 
 The demonstration env file is not a production secret manager. Remove it when finished.
-Kamal integration is deferred pending version/configuration/secret/release acceptance.
-The old malformed Kamal, unsafe SSH workflow, and duplicate release examples are no longer
-generated. Existing projects are not automatically changed; regeneration may overwrite files.
+Kamal integration is not included.

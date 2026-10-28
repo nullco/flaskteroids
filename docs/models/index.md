@@ -71,9 +71,6 @@ The snapshot describes tables, columns, keys, constraints, indexes, and server
 defaults, including tables with no model class. It does not contain validations,
 associations, or other model behavior.
 
-If an older application has `app/schema.py`, dump the snapshot to `db/schema.py`,
-remove the old file, and restart. This move does not require database changes.
-
 ## Queries
 
 ```python

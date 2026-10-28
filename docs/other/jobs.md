@@ -49,9 +49,6 @@ bin/jobs start --concurrency=2 --loglevel=debug
 
 The web process and worker must use the same environment and broker settings.
 See your generated `Procfile` and `deploy/README.md` for process examples.
-Existing applications are not automatically updated: add the
-[`bin/jobs` script](https://github.com/nullco/flaskteroids/blob/main/flaskteroids/cli/templates/bin/jobs.mako)
-without the template's `<%text>` / `</%text>` wrappers and run `chmod +x bin/jobs`.
 
 ## Configuration
 
