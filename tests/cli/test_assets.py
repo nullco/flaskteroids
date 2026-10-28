@@ -9,6 +9,8 @@ from click.testing import CliRunner
 
 from flaskteroids.cli.flaskteroids import cli
 
+pytestmark = pytest.mark.generated_app
+
 FRAMEWORK_ROOT = Path(__file__).parents[2]
 
 
@@ -103,6 +105,7 @@ def test_generated_docker_installs_runtime_and_precompiles_before_runtime_user(
         assert "public/assets/" in (root / name).read_text()
 
 
+@pytest.mark.system
 @pytest.mark.parametrize("environment", ["development", "production"])
 def test_generated_stylesheet_loads_in_browser(generated_assets_app, environment):
     if environment == "production":

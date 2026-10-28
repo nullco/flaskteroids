@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 import subprocess
@@ -8,6 +9,15 @@ import pytest
 from click.testing import CliRunner
 
 from flaskteroids.cli.flaskteroids import cli
+
+
+def cleanup_database(root, run):
+    # Default SQLite databases belong to each temporary app. An explicit URL may
+    # instead point at a shared SQLite file or server database used by later apps.
+    if os.environ.get("FLASKTEROIDS_DATABASE_URL"):
+        migrations = list((root / "db/migrate/versions").glob("*.py"))
+        if migrations:
+            run(commands=[("db:rollback",)] * len(migrations))
 
 
 @pytest.fixture(scope="module")
@@ -30,7 +40,11 @@ def generated_app_factory(tmp_path_factory):
             ),
         )
 
-        def run(*args, script=None):
+        def run(*args, script=None, commands=None):
+            if commands is not None:
+                assert not args and script is None
+                args = (json.dumps(commands),)
+                script = "commands.py"
             command = (
                 [
                     sys.executable,
@@ -65,22 +79,26 @@ def generated_scaffolds(generated_app_factory):
         "Fish": ("name:string",),
         "Equipment": ("name:string",),
     }
-    run("db:create")
-    for model, fields in scaffolds.items():
-        run("generate", "scaffold", model, *fields)
+    run(
+        commands=[
+            ("db:create",),
+            *(
+                ("generate", "scaffold", model, *fields)
+                for model, fields in scaffolds.items()
+            ),
+        ]
+    )
     run("db:prepare")
     try:
         yield root, run
     finally:
-        for _ in scaffolds:
-            run("db:rollback")
+        cleanup_database(root, run)
 
 
 @pytest.fixture(scope="module")
 def generated_api(generated_app_factory):
     root, run = generated_app_factory("inventory", "--api")
-    run("db:create")
-    for name, fields in (
+    scaffolds = (
         (
             "Post",
             (
@@ -96,12 +114,17 @@ def generated_api(generated_app_factory):
         ("Equipment", ("name:string",)),
         ("Document", ("name:string", "file:attachment")),
         ("Empty", ()),
-    ):
-        run("generate", "scaffold", name, *fields)
-    run("attachments:install")
-    run("generate", "controller", "Status", "index")
-    run("generate", "resource", "Widget", "name:string")
-    run("generate", "mailer", "Notifications", "welcome")
+    )
+    run(
+        commands=[
+            ("db:create",),
+            *(("generate", "scaffold", name, *fields) for name, fields in scaffolds),
+            ("attachments:install",),
+            ("generate", "controller", "Status", "index"),
+            ("generate", "resource", "Widget", "name:string"),
+            ("generate", "mailer", "Notifications", "welcome"),
+        ]
+    )
     source = Path(__file__).parent / "integration/application/api"
     for path in source.rglob("*"):
         if path.is_file() and "__pycache__" not in path.parts:
@@ -111,31 +134,35 @@ def generated_api(generated_app_factory):
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(path, destination)
     run("db:prepare")
-    migrations = list((root / "db/migrate/versions").glob("*.py"))
     try:
         yield root, run
     finally:
-        for _ in migrations:
-            run("db:rollback")
+        cleanup_database(root, run)
 
 
 @pytest.fixture(scope="module")
 def generated_store(generated_app_factory):
     root, run = generated_app_factory("store")
-    run("db:create")
-    run("generate", "scaffold", "Product", "name:string", "quantity:integer")
-    run("generate", "model", "Subscriber", "product:references", "email:string")
-    run("generate", "authentication")
+    run(
+        commands=[
+            ("db:create",),
+            ("generate", "scaffold", "Product", "name:string", "quantity:integer"),
+            ("generate", "model", "Subscriber", "product:references", "email:string"),
+            ("generate", "authentication"),
+        ]
+    )
     source = Path(__file__).parent / "integration/application/store"
     for path in source.rglob("*"):
         if path.is_file() and "__pycache__" not in path.parts:
             destination = root / path.relative_to(source)
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(path, destination)
+    shutil.copyfile(
+        Path(__file__).parent / "integration/application/session_routing.py",
+        root / "test/controllers/session_routing_test.py",
+    )
     run("db:prepare")
-    migrations = list((root / "db/migrate/versions").glob("*.py"))
     try:
         yield root, run
     finally:
-        for _ in migrations:
-            run("db:rollback")
+        cleanup_database(root, run)

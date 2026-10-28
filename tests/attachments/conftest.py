@@ -43,7 +43,11 @@ def app(tmp_path):
         def _configure_database(self):
             self.database_url = url
 
-    return StorageApplication.initialize(environment="test", root_path=tmp_path)
+    application = StorageApplication.initialize(environment="test", root_path=tmp_path)
+    try:
+        yield application
+    finally:
+        application.extensions["flaskteroids.db"].engine.dispose()
 
 
 @pytest.fixture

@@ -4,24 +4,35 @@ from pathlib import Path
 import pytest
 
 from tests.assertions import assert_pytest_passed
+from tests.generated_application import cleanup_database
 
 
 @pytest.fixture(scope="module")
 def restock_store(generated_app_factory):
     root, run = generated_app_factory("restock")
-    run("db:create")
-    run("generate", "scaffold", "Product", "name:string", "inventory_count:integer")
     run(
-        "generate",
-        "model",
-        "Subscriber",
-        "product:references",
-        "email:string",
-        "unsubscribe_token:string",
+        commands=[
+            ("db:create",),
+            (
+                "generate",
+                "scaffold",
+                "Product",
+                "name:string",
+                "inventory_count:integer",
+            ),
+            (
+                "generate",
+                "model",
+                "Subscriber",
+                "product:references",
+                "email:string",
+                "unsubscribe_token:string",
+            ),
+            ("generate", "authentication"),
+            ("generate", "mailer", "Product", "in_stock"),
+            ("attachments:install",),
+        ]
     )
-    run("generate", "authentication")
-    run("generate", "mailer", "Product", "in_stock")
-    run("attachments:install")
     source = Path(__file__).parent / "application/restock"
     for path in source.rglob("*"):
         if path.is_file() and "__pycache__" not in path.parts:
@@ -33,12 +44,10 @@ def restock_store(generated_app_factory):
         root / "test/mailers/model_assigns_test.py",
     )
     run("db:prepare")
-    migrations = list((root / "db/migrate/versions").glob("*.py"))
     try:
         yield run
     finally:
-        for _ in migrations:
-            run("db:rollback")
+        cleanup_database(root, run)
 
 
 def test_getting_started_subscriptions_and_restock_delivery(restock_store):

@@ -1,4 +1,3 @@
-import os
 from contextlib import ExitStack, contextmanager
 from threading import Thread
 from typing import ClassVar
@@ -6,7 +5,7 @@ from urllib.parse import urlsplit
 
 import pytest
 from flask import current_app
-from playwright.sync_api import expect, sync_playwright
+from playwright.sync_api import expect
 from werkzeug.serving import make_server
 
 from flaskteroids.testing.context import activate_test_context, current_response
@@ -18,7 +17,7 @@ class FlaskteroidsTest:
     fixtures: ClassVar[list[str]] = []
 
     @pytest.fixture(autouse=True)
-    def _flaskteroids_test_lifecycle(self, application):
+    def _flaskteroids_test_lifecycle(self, application, request):
         jobs = application.extensions["flaskteroids.jobs"].queue_adapter
         mail = application.extensions["flaskteroids.mail"].delivery_method
         jobs.clear()
@@ -29,7 +28,7 @@ class FlaskteroidsTest:
                 client = application.test_client()
                 with activate_test_context(client):
                     self._fixture_collection = load_fixtures(application, self.fixtures)
-                    self._before_test(application)
+                    self._before_test(application, request)
                     try:
                         self.setup()
                         yield
@@ -39,7 +38,7 @@ class FlaskteroidsTest:
                         finally:
                             self._after_test()
 
-    def _before_test(self, application):
+    def _before_test(self, application, request):
         pass
 
     def _after_test(self):
@@ -184,22 +183,21 @@ class MailerTest(FlaskteroidsTest):
 class SystemTest(IntegrationTest):
     pytestmark = pytest.mark.system
 
-    def _before_test(self, application):
+    def _before_test(self, application, request):
+        new_context = request.getfixturevalue("system_browser")
         with ExitStack() as resources:
             server = resources.enter_context(make_server("127.0.0.1", 0, application))
-            server_thread = Thread(target=server.serve_forever, daemon=True)
+            server_thread = Thread(
+                target=server.serve_forever,
+                kwargs={"poll_interval": 0.05},
+                daemon=True,
+            )
             server_thread.start()
             resources.callback(server_thread.join)
             resources.callback(server.shutdown)
             self._base_url = f"http://127.0.0.1:{server.server_port}"
-            playwright = resources.enter_context(sync_playwright())
-            executable_path = os.environ.get("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH")
-            browser = resources.enter_context(
-                playwright.chromium.launch(
-                    headless=True, executable_path=executable_path
-                )
-            )
-            self.page = browser.new_page()
+            context = resources.enter_context(new_context())
+            self.page = context.new_page()
             self._system_resources = resources.pop_all()
 
     def _after_test(self):

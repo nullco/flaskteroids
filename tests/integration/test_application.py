@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from tests.assertions import assert_pytest_passed
+from tests.generated_application import cleanup_database
 
 
 @pytest.fixture(scope="module")
@@ -15,12 +16,16 @@ def generated_application(generated_app_factory):
         "from app.models.application_model import ApplicationModel\n"
         "class DeferredRecord(ApplicationModel):\n    pass\n"
     )
-    run("db:create", "--help")
-    run("db:create")
-    run("generate", "scaffold", "Post", "title:string", "content:text")
-    run("generate", "model", "Writer", "name:string")
-    run("generate", "model", "Story", "title:string", "writer:references")
-    run("generate", "mailer", "Notices", "welcome")
+    run(
+        commands=[
+            ("db:create", "--help"),
+            ("db:create",),
+            ("generate", "scaffold", "Post", "title:string", "content:text"),
+            ("generate", "model", "Writer", "name:string"),
+            ("generate", "model", "Story", "title:string", "writer:references"),
+            ("generate", "mailer", "Notices", "welcome"),
+        ]
+    )
     source = Path(__file__).parent / "application"
     for name in ("writer.py", "story.py"):
         shutil.copyfile(source / name, root / "app/models" / name)
@@ -30,12 +35,10 @@ def generated_application(generated_app_factory):
         "one:\n  title: fixture story\n  writer: one\n"
     )
     run("db:prepare")
-    migrations = list((root / "db/migrate/versions").glob("*.py"))
     try:
         yield root, run
     finally:
-        for _ in migrations:
-            run("db:rollback")
+        cleanup_database(root, run)
 
 
 def test_normal_boot_declares_models_without_requiring_unmigrated_snapshots(

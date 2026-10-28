@@ -18,6 +18,8 @@ from flaskteroids.testing import TestDeliveryMethod, TestQueueAdapter
 
 @pytest.fixture
 def make_app(tmp_path):
+    applications = []
+
     def create(
         name,
         tables=("authors", "stories"),
@@ -73,9 +75,12 @@ def make_app(tmp_path):
                 self.database_url = url
 
         app = IsolatedApplication.initialize(environment="test", root_path=root)
+        applications.append(app)
         app.config["OWNER"] = name
         app.config["EVENTS"] = []
         app.jinja_loader = DictLoader({"notice_mailer/notice.txt": name})
         return app
 
-    return create
+    yield create
+    for app in applications:
+        app.extensions["flaskteroids.db"].engine.dispose()

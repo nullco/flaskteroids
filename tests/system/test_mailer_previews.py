@@ -1,5 +1,7 @@
 import pytest
 
+pytestmark = pytest.mark.system
+
 
 @pytest.mark.parametrize("options", [(), ("--api",)])
 def test_generated_mailer_browser_switches_formats_and_sandboxes_html(

@@ -9,6 +9,21 @@ from flask import has_app_context
 def main(first_import):
     with patch("sqlalchemy.create_engine") as database, patch("celery.Celery") as queue:
         importlib.import_module(first_import)
+        for module in (
+            "flaskteroids.extensions.db",
+            "flaskteroids.application",
+            "flaskteroids.encryption",
+            "flaskteroids.rich_text",
+            "flaskteroids.form",
+            "flaskteroids.routes",
+            "flaskteroids.mailer",
+            "flaskteroids._models.validation",
+            "flaskteroids._models.authentication",
+            "flaskteroids._models.mapping",
+            "flaskteroids._models.staging",
+            "flaskteroids._models.query",
+        ):
+            importlib.import_module(module)
         database.assert_not_called()
         queue.assert_not_called()
 

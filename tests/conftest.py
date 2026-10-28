@@ -7,10 +7,17 @@ import pytest
 
 from flaskteroids.application import Application
 from flaskteroids.testing import TestDeliveryMethod, TestQueueAdapter
+from flaskteroids.testing.browser import system_browser as system_browser
 from tests.generated_application import generated_api as generated_api
 from tests.generated_application import generated_app_factory as generated_app_factory
 from tests.generated_application import generated_scaffolds as generated_scaffolds
 from tests.generated_application import generated_store as generated_store
+
+
+def pytest_collection_modifyitems(items):
+    for item in items:
+        if "generated_app_factory" in item.fixturenames:
+            item.add_marker(pytest.mark.generated_app)
 
 
 @pytest.fixture

@@ -3,6 +3,7 @@ from flask import current_app
 from itsdangerous import URLSafeTimedSerializer
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import declarative_base
+from werkzeug.security import generate_password_hash
 
 from flaskteroids.controller import Controller
 from flaskteroids.helpers import form_with
@@ -45,7 +46,15 @@ class PasscodeAccount(model_base(Base), PasswordAuthenticator):
 
 
 @pytest.fixture(params=["password", "passcode"])
-def account_model(request, init_models):
+def account_model(request, init_models, mocker):
+    # Exercise credential assignment and filtering without paying the production
+    # KDF cost in every serialization case. Authentication tests use the default.
+    mocker.patch(
+        "flaskteroids._models.authentication.generate_password_hash",
+        side_effect=lambda value: generate_password_hash(
+            value, method="pbkdf2:sha256:1"
+        ),
+    )
     password_field = request.param
     table, model = (
         (AccountTable, Account)

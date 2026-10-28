@@ -3,12 +3,15 @@ import shutil
 import sqlite3
 import subprocess
 import sys
+from contextlib import closing
 from pathlib import Path
 
 import pytest
 from click.testing import CliRunner
 
 from flaskteroids.cli.flaskteroids import cli
+
+pytestmark = pytest.mark.generated_app
 
 
 def write_post_declaration(root):
@@ -54,11 +57,17 @@ def test_prepare_creates_database_and_retains_records_and_credentials(preparatio
     assert result.returncode == 0, result.stderr
     result = run("db:prepare")
     assert result.returncode == 0, result.stderr
-    with sqlite3.connect(root / "storage/development.sqlite3") as database:
+    with (
+        closing(sqlite3.connect(root / "storage/development.sqlite3")) as database,
+        database,
+    ):
         database.execute("INSERT INTO posts (title) VALUES ('retained')")
     result = run("db:prepare")
     assert result.returncode == 0, result.stderr
-    with sqlite3.connect(root / "storage/development.sqlite3") as database:
+    with (
+        closing(sqlite3.connect(root / "storage/development.sqlite3")) as database,
+        database,
+    ):
         assert database.execute("SELECT title FROM posts").fetchall() == [("retained",)]
     assert (root / "config/credentials.yml.enc").read_bytes() == credentials
 
@@ -103,12 +112,18 @@ def test_prepare_reports_missing_resources(preparation_app, resource):
 def test_prepare_propagates_unknown_revision_and_bad_scripts(preparation_app):
     root, run = preparation_app
     assert run("db:prepare").returncode == 0
-    with sqlite3.connect(root / "storage/development.sqlite3") as database:
+    with (
+        closing(sqlite3.connect(root / "storage/development.sqlite3")) as database,
+        database,
+    ):
         database.execute("INSERT INTO alembic_version VALUES ('unknown')")
     result = run("db:prepare")
     assert result.returncode != 0
     assert "unknown" in result.stderr
-    with sqlite3.connect(root / "storage/development.sqlite3") as database:
+    with (
+        closing(sqlite3.connect(root / "storage/development.sqlite3")) as database,
+        database,
+    ):
         database.execute("DELETE FROM alembic_version")
     (root / "db/migrate/versions/broken.py").write_text("invalid python syntax !!!\n")
     result = run("db:prepare")
@@ -177,7 +192,10 @@ def test_create_provisions_empty_database_independently_of_migrations(preparatio
     for _ in range(2):
         result = run("db:create")
         assert result.returncode == 0, result.stderr
-    with sqlite3.connect(root / "storage/development.sqlite3") as database:
+    with (
+        closing(sqlite3.connect(root / "storage/development.sqlite3")) as database,
+        database,
+    ):
         assert (
             database.execute(
                 "SELECT name FROM sqlite_master WHERE type='table'"

@@ -139,8 +139,22 @@ uv run ruff check .
 uv run ruff format --check .
 uv run mypy
 uv run playwright install chromium
-uv run pytest -q
+uv run pytest -n 2 --dist loadfile -q
 ```
+
+For a browser-free run, use `uv run pytest -m "not system"`. For fast framework
+feedback without generated applications, use
+`uv run pytest -m "not generated_app and not system"`. Run the complete suite before
+merging. The `generated_app` marker follows the shared application factory and is
+also declared on standalone generator workflows; browser wrappers are marked
+`system` even when they live under `tests/cli`.
+
+CI retains the browser-enabled Python 3.14–3.15 matrix and serial PostgreSQL/MySQL
+integration jobs. SQLite tests use two workers with file scheduling to keep
+module-scoped application setup together. Do not parallelize the server-database
+jobs against a shared database URL. CI measures framework coverage with
+`--cov=flaskteroids`; coverage also instruments Python subprocesses. Local test
+runs do not collect coverage unless requested.
 
 Ruff uses the Python 3.14 / 88-column policy in `pyproject.toml`. Mypy checks
 only declaration records, queue adapters, and a static contract probe, not the

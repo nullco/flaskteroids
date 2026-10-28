@@ -53,22 +53,7 @@ def test_model_exports_public_api_and_configuration_types():
 
 @pytest.mark.parametrize(
     "first_import",
-    [
-        "flaskteroids.model",
-        "flaskteroids.extensions.db",
-        "flaskteroids.application",
-        "flaskteroids.encryption",
-        "flaskteroids.rich_text",
-        "flaskteroids.form",
-        "flaskteroids.routes",
-        "flaskteroids.mailer",
-        "flaskteroids.testing",
-        "flaskteroids._models.validation",
-        "flaskteroids._models.authentication",
-        "flaskteroids._models.mapping",
-        "flaskteroids._models.staging",
-        "flaskteroids._models.query",
-    ],
+    ["flaskteroids.model", "flaskteroids.testing"],
 )
 def test_model_imports_and_preparation_work_in_standalone_processes(first_import):
     script = Path(__file__).parent / "fixtures/model_imports.py"

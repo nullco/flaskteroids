@@ -10,6 +10,8 @@ from sqlalchemy import create_engine, inspect
 from flaskteroids.cli.flaskteroids import cli
 from tests.assertions import assert_pytest_passed
 
+pytestmark = pytest.mark.generated_app
+
 
 @pytest.fixture
 def generated_app(tmp_path, monkeypatch):

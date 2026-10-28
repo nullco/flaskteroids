@@ -1,4 +1,8 @@
+import pytest
+
 from tests.assertions import assert_pytest_passed
+
+pytestmark = pytest.mark.system
 
 
 def test_generated_scaffold_system_tests_pass(generated_scaffolds):

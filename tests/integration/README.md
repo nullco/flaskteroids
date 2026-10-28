@@ -34,7 +34,13 @@ controllers/templates. It also covers automatically loaded presentation helpers,
 controller authentication delegates, and helper discovery after a process restart.
 Shared generation/subprocess fixtures live in
 `tests/generated_application.py`; executable scenarios and application edits are
-ordinary source files. No known-failure markers remain.
+ordinary source files. Setup-only CLI commands are batched in a builder process;
+runtime and restart contracts still run in fresh processes. The logout/CSRF
+matrix runs as independent cases in one generated pytest session. Default SQLite
+databases belong to temporary applications and need no downgrade cleanup. An
+explicit `FLASKTEROIDS_DATABASE_URL`, including a shared SQLite URL, retains
+migration cleanup, batched in one process. Dedicated reversal tests still check
+migration downgrade behavior. No known-failure markers remain.
 
 Browser workflows live separately in `tests/system/test_routing_workflows.py`,
 so the database-only integration job remains browser-free. They exercise generated

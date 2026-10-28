@@ -3,7 +3,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 from flaskteroids.cli.flaskteroids import cli
+
+pytestmark = pytest.mark.generated_app
 
 
 def test_generated_application_boots_in_development_and_production(

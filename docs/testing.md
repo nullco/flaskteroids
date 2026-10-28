@@ -153,7 +153,14 @@ rather than replacing them.
 
 ## System tests
 
-System tests use Playwright through helpers such as `visit` and `assert_selector`:
+System tests use Playwright through helpers such as `visit` and `assert_selector`.
+Chromium is started lazily and reused within each system-test class. Every test
+gets a fresh browser context and page, so cookies, local storage, and browser
+handlers do not carry over between tests. Playwright stops after the class so
+unrelated tests can use their own asyncio event loops. Database changes and
+uploaded files remain isolated by the normal test lifecycle.
+
+For example:
 
 ```python
 from test.test_helper import SystemTest

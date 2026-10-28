@@ -1,40 +1,22 @@
 """Public generated-application routing and form workflows."""
 
-import json
 import shutil
 from pathlib import Path
 
-import pytest
+from tests.assertions import assert_pytest_passed
 
 
-@pytest.fixture
-def logout_result(generated_store):
-    _, run = generated_store
-
-    def submit(transport, csrf):
-        result = run(transport, csrf, script="session_routing.py")
-        return json.loads(result.stdout.splitlines()[-1])
-
-    return submit
-
-
-@pytest.mark.parametrize(
-    "transport",
-    ["verb", "form", "header"],
-)
-def test_session_logout_destroys_the_session(logout_result, transport):
-    result = logout_result(transport, "valid")
-    assert result == {"status": 302, "remaining_sessions": 0, "signed_in": False}
-
-
-@pytest.mark.parametrize("transport", ["verb", "form", "header"])
-@pytest.mark.parametrize("csrf", ["missing", "invalid"])
-def test_session_logout_requires_a_valid_csrf_token(logout_result, transport, csrf):
-    assert logout_result(transport, csrf) == {
-        "status": 400,
-        "remaining_sessions": 1,
-        "signed_in": True,
-    }
+def test_generated_logout_handles_transports_and_requires_csrf(generated_store):
+    root, run = generated_store
+    report = root / "logout-tests.xml"
+    run(
+        "test",
+        "-q",
+        "--junitxml",
+        str(report),
+        "test/controllers/session_routing_test.py",
+    )
+    assert_pytest_passed(report)
 
 
 def test_authentication_helpers_resume_sessions_on_public_pages(generated_store):

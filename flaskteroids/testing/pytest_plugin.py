@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from flaskteroids.testing.browser import system_browser as system_browser
 from flaskteroids.testing.storage import temporary_storage
 
 
@@ -34,7 +35,10 @@ def application():
     application.config["TESTING"] = True
     if not application.config.get("SERVER_NAME"):
         application.config["SERVER_NAME"] = "localhost"
-    return application
+    try:
+        yield application
+    finally:
+        application.extensions["flaskteroids.db"].engine.dispose()
 
 
 @pytest.fixture

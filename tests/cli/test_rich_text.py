@@ -11,9 +11,13 @@ from tests.assertions import assert_pytest_passed
 @pytest.fixture(scope="module")
 def rich_text_application(generated_app_factory):
     root, run = generated_app_factory("writing")
-    run("db:create")
-    run("generate", "scaffold", "Post", "title:string", "content:rich_text")
-    run("rich_text:install")
+    run(
+        commands=[
+            ("db:create",),
+            ("generate", "scaffold", "Post", "title:string", "content:rich_text"),
+            ("rich_text:install",),
+        ]
+    )
     return root, run
 
 
@@ -58,10 +62,15 @@ def test_generated_rich_text_scaffold_passes_controller_and_model_tests(
     assert_pytest_passed(report)
 
 
+@pytest.mark.system
 def test_generated_rich_text_browser_workflow(generated_app_factory):
     root, run = generated_app_factory("writing_browser")
-    run("rich_text:install")
-    run("generate", "scaffold", "Post", "title:string", "content:rich_text")
+    run(
+        commands=[
+            ("rich_text:install",),
+            ("generate", "scaffold", "Post", "title:string", "content:rich_text"),
+        ]
+    )
     source = Path(__file__).parent / "fixtures/rich_text"
     shutil.copyfile(source / "post.py", root / "app/models/post.py")
     shutil.copyfile(source / "writing.py", root / "test/system/writing_test.py")
@@ -72,8 +81,12 @@ def test_generated_rich_text_browser_workflow(generated_app_factory):
 
 def test_encrypted_scaffold_fixtures_and_controller_workflows(generated_app_factory):
     root, run = generated_app_factory("writing_encrypted")
-    run("rich_text:install")
-    run("generate", "scaffold", "Post", "title:string", "content:rich_text")
+    run(
+        commands=[
+            ("rich_text:install",),
+            ("generate", "scaffold", "Post", "title:string", "content:rich_text"),
+        ]
+    )
     source = Path(__file__).parent / "fixtures/rich_text"
     shutil.copyfile(source / "encrypted_post.py", root / "app/models/post.py")
     shutil.copyfile(source / "requests.py", root / "test/controllers/rich_text_test.py")

@@ -1,5 +1,6 @@
 import sqlite3
 import traceback
+from contextlib import closing
 
 import click
 import pytest
@@ -30,11 +31,11 @@ def test_sqlite_creation_preserves_filename_uri_semantics_and_existing_records(
     url = urls[form]
     ensure_database(url)
     assert filename.exists()
-    with sqlite3.connect(filename) as connection:
+    with closing(sqlite3.connect(filename)) as connection, connection:
         connection.execute("CREATE TABLE records (name TEXT)")
         connection.execute("INSERT INTO records VALUES ('kept')")
     ensure_database(url)
-    with sqlite3.connect(filename) as connection:
+    with closing(sqlite3.connect(filename)) as connection, connection:
         assert connection.execute("SELECT name FROM records").fetchall() == [("kept",)]
 
 

@@ -5,6 +5,8 @@ import pytest
 
 from tests.assertions import assert_pytest_passed
 
+pytestmark = pytest.mark.system
+
 
 @pytest.fixture(scope="module")
 def turbo_application(generated_app_factory):

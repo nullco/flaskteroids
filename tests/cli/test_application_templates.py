@@ -9,6 +9,8 @@ from flaskteroids.cli.artifacts import ArtifactsBuilder
 from flaskteroids.cli.flaskteroids import cli
 from flaskteroids.credentials import decrypt
 
+pytestmark = pytest.mark.generated_app
+
 
 @pytest.fixture
 def generated_app(tmp_path, mocker):

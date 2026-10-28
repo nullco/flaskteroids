@@ -8,6 +8,8 @@ from click.testing import CliRunner
 
 from flaskteroids.cli.flaskteroids import cli
 
+pytestmark = pytest.mark.generated_app
+
 
 @pytest.mark.parametrize("name", ["my_app", "my-app", "My.App"])
 def test_destination_basename_is_project_name(tmp_path, name):

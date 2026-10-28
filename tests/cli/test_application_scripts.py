@@ -10,6 +10,8 @@ from click.testing import CliRunner
 
 from flaskteroids.cli.flaskteroids import cli
 
+pytestmark = pytest.mark.generated_app
+
 
 @pytest.fixture
 def scripts_app(tmp_path):
