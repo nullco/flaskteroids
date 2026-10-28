@@ -111,4 +111,4 @@ jobs:
         uv run playwright install --with-deps chromium
     - name: Test with pytest
       run: |
-        uv run pytest -n 2 --dist loadfile --cov=flaskteroids --durations=20
+        uv run pytest -n auto --dist loadfile --cov=flaskteroids --durations=20
