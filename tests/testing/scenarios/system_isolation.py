@@ -1,7 +1,7 @@
 import asyncio
 
 import pytest
-from flask import current_app
+from flask import current_app, url_for
 
 from flaskteroids.testing import SystemTest
 
@@ -32,8 +32,16 @@ def application(app, observations, failure, request):
     app.config["BROWSER_CLASS"] = request.cls
     app.config["OBSERVATIONS"] = observations
     app.config["BROWSER_FAILURE"] = failure
-    app.add_url_rule("/isolation", view_func=lambda: "<p>Ready</p>")
-    return app
+    original_server_name = app.config.get("SERVER_NAME")
+    app.add_url_rule(
+        "/isolation",
+        endpoint="isolation",
+        view_func=lambda: (
+            f'<p>Ready</p><a href="{url_for("isolation", _external=True)}">Reload</a>'
+        ),
+    )
+    yield app
+    assert app.config.get("SERVER_NAME") == original_server_name
 
 
 def observe_page(page):
@@ -65,6 +73,10 @@ class TestBrowserIsolation(SystemTest):
         observe_page(self.page)
         self.visit("/isolation")
         self.assert_text("Ready")
+        assert (
+            self.page.get_by_role("link", name="Reload").get_attribute("href")
+            == self.page.url
+        )
 
 
 class TestBrowserRecovery(SystemTest):

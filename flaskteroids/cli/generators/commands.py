@@ -130,7 +130,7 @@ def generate_scaffold(name, fields):
     required references before running tests. avatar:attachment and
     documents:attachments include file inputs and permitted upload parameters.
     Install their tables with flask attachments:install before migrating.
-    content:rich_text includes a Trix editor and safe display.
+    content:rich_text includes a Lexxy editor and safe display.
     Run flask rich_text:install before migrating.
     """
     generators = current_app.extensions["flaskteroids.stack"].generators

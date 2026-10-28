@@ -55,10 +55,10 @@ class RichTextTest(IntegrationTest):
 
     def test_partial_update_preserves_rich_text(self):
         record = self.posts("one")
-        original = record.content.to_trix_html()
+        original = record.content.to_editor_html()
         patch(post_path(record), params={"post": {"title": "Updated"}})
         self.assert_response("redirect")
-        assert record.reload().content.to_trix_html() == original
+        assert record.reload().content.to_editor_html() == original
 
     def test_structured_rich_text_parameters_are_rejected(self):
         post(

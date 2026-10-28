@@ -1,6 +1,5 @@
 import re
 from datetime import datetime
-from importlib.resources import files
 from pathlib import Path
 
 import click
@@ -12,45 +11,29 @@ from flask.cli import with_appcontext
 
 from flaskteroids.cli.attachments import install as attachments_install
 from flaskteroids.cli.db.config import get_config
+from flaskteroids.rich_text.installation import install_javascript
 from flaskteroids.rich_text.schema import metadata
 
 
 @click.command("rich_text:install")
-@click.option(
-    "--force",
-    is_flag=True,
-    help="Replace existing editor assets; review local customizations first.",
-)
 @with_appcontext
-def install(force):
-    """Install rich-text storage and the Trix editor.
+def install():
+    """Install rich-text storage and the Lexxy editor.
 
     Run flask db:migrate afterward to create the shared rich_texts table.
-    Preserves existing assets and layout content. Repeated runs do not generate
+    Preserves application code and layout content. Repeated runs do not generate
     duplicate migrations. Also installs attachment storage for embedded files.
-    Use --force to update application-owned editor assets after a framework upgrade.
     """
     config = get_config()
     if not Path(config.config_file_name).is_file():
         raise click.ClickException("Initialize migrations first with flask db:init")
     click.get_current_context().invoke(attachments_install)
     root = current_app.project_root
-    source = root / current_app.config.assets.source_path / "rich_text"
-    source.mkdir(parents=True, exist_ok=True)
-    resources = files("flaskteroids.rich_text").joinpath("assets")
-    for name in (
-        "trix.js",
-        "trix.css",
-        "rich_text.js",
-        "rich_text.css",
-        "TRIX-LICENSE",
-        "DOMPURIFY-LICENSE",
-        "README.md",
-    ):
-        target = source / name
-        if force or not target.exists():
-            target.write_bytes(resources.joinpath(name).read_bytes())
-            click.echo(f"    create  {target.relative_to(root)}")
+    result = install_javascript(root, views_path=current_app.config.paths.views)
+    for path in result.files:
+        click.echo(f"    write  {path.relative_to(root)}")
+    for instruction in result.instructions:
+        click.echo(instruction)
 
     layout = root / current_app.config.paths.views / "layouts/application.html"
     if layout.exists():

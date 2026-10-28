@@ -181,8 +181,8 @@ dependency internals or introduce a parallel implementation of a supported featu
   throwing the action exception into them. After callbacks require successful
   action execution and cleanup. Do not use after callbacks for failure cleanup.
 - Use `has_rich_text("content")` and `form.rich_text_area("content")` for rich text.
-  `bin/flask rich_text:install` installs shared storage and local Trix assets;
-  migrate afterward. Scaffolds accept `content:rich_text`. Render the attribute
+  `bin/flask rich_text:install` installs shared storage and configures packaged
+  Lexxy modules through import maps; migrate afterward. Editor assets are framework-owned. Scaffolds accept `content:rich_text`. Render the attribute
   directly, without `|safe` or `Markup`; use `to_plain_text()` for plain text.
   The attribute is a `RichText` record with an immutable `.body` value; assign
   through either and save the owner, or use the rich-text record\'s own `save()`.

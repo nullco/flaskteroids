@@ -42,7 +42,7 @@ APPLICATION_HELP = {
     ("generate", "resource"): ["NAME", "FIELDS"],
     ("generate", "authentication"): [],
     ("attachments:install",): ["config/storage.yml"],
-    ("rich_text:install",): ["db:migrate", "rich_texts", "--force"],
+    ("rich_text:install",): ["db:migrate", "rich_texts", "Lexxy"],
     ("turbo:install",): ["{% extends layout %}"],
     ("importmap:install",): ["config/importmap.py", "bin/importmap"],
     ("db:encryption:init",): ["credentials:edit"],

@@ -111,6 +111,21 @@ class PinFile:
                 result.append(PackagePin(name, filenames[name], version[1]))
         return tuple(result)
 
+    def render_local_pins(self, pins):
+        additions = [
+            f"{self.indentation}{self.register.args.args[0].arg}.pin("
+            f"{json.dumps(name)}, to={json.dumps(target)})\n"
+            for name, target in pins.items()
+            if name not in self.declarations
+        ]
+        if not additions:
+            return self.source
+        lines = list(self.lines)
+        position = self.register.body[-1].end_lineno
+        prefix = "" if lines[position - 1].endswith("\n") else "\n"
+        lines.insert(position, prefix + "".join(additions))
+        return "".join(lines)
+
     def render(self, packages=(), *, remove=(), preload=None):
         edits = []
         additions = []

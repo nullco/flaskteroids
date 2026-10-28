@@ -187,6 +187,11 @@ class SystemTest(IntegrationTest):
         new_context = request.getfixturevalue("system_browser")
         with ExitStack() as resources:
             server = resources.enter_context(make_server("127.0.0.1", 0, application))
+            previous_server_name = application.config.get("SERVER_NAME")
+            application.config["SERVER_NAME"] = f"127.0.0.1:{server.server_port}"
+            resources.callback(
+                application.config.__setitem__, "SERVER_NAME", previous_server_name
+            )
             server_thread = Thread(
                 target=server.serve_forever,
                 kwargs={"poll_interval": 0.05},
@@ -217,9 +222,11 @@ class SystemTest(IntegrationTest):
         self.page.get_by_label(label).fill(str(value))
 
     def fill_in_rich_text_area(self, label, *, value):
-        editor = self.page.get_by_label(label)
-        expect(editor).to_be_editable()
-        editor.evaluate("(element, html) => element.editor.loadHTML(html)", str(value))
+        control = self.page.locator("lexxy-editor").filter(
+            has=self.page.get_by_label(label)
+        )
+        expect(self.page.get_by_label(label)).to_be_editable()
+        control.evaluate("(element, html) => { element.value = html }", str(value))
 
     def attach_file(self, label, path):
         self.page.get_by_label(label).set_input_files(path)

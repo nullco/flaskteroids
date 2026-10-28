@@ -1,4 +1,3 @@
-import json
 import re
 from dataclasses import dataclass
 from html.parser import HTMLParser
@@ -7,6 +6,7 @@ from itsdangerous import BadSignature
 from markupsafe import escape
 from sqlalchemy import select
 
+from flaskteroids._html import attributes
 from flaskteroids.attachments.attached import AttachedMany
 from flaskteroids.attachments.blob import Attachment, Blob
 from flaskteroids.attachments.schema import attachments, blobs
@@ -22,6 +22,8 @@ _PREVIEW_TYPES = {"image/png", "image/jpeg", "image/gif", "image/webp", "image/a
 class Reference:
     sgid: str
     caption: str = ""
+    alt: str = ""
+    href: str = ""
 
 
 class Fragment(HTMLParser):
@@ -40,20 +42,16 @@ class Fragment(HTMLParser):
                 self.depth += 1
             return
         options = dict(attrs)
-        if tag in {"figure", "action-text-attachment"}:
-            sgid, caption = options.get("sgid"), options.get("caption", "")
-            if tag == "figure":
-                try:
-                    attachment = json.loads(options.get("data-trix-attachment", "{}"))
-                    extra = json.loads(options.get("data-trix-attributes", "{}"))
-                except ValueError, TypeError, RecursionError:
-                    attachment, extra = {}, {}
-                if isinstance(attachment, dict) and isinstance(extra, dict):
-                    sgid = attachment.get("sgid")
-                    caption = extra.get("caption", attachment.get("caption", ""))
-            if isinstance(sgid, str) and isinstance(caption, str):
-                caption = caption.encode("utf-8", errors="replace").decode()
-                self.parts.append(Reference(sgid, caption))
+        if tag == "action-text-attachment":
+            if sgid := options.get("sgid"):
+                self.parts.append(
+                    Reference(
+                        sgid,
+                        options.get("caption", ""),
+                        options.get("alt", ""),
+                        options.get("href", ""),
+                    )
+                )
             self.skipping, self.depth = tag, 1
             return
         self.parts.append(self.get_starttag_text())
@@ -125,7 +123,15 @@ def resolve(references, record=None):
 
 
 def canonical(reference):
-    return f'<action-text-attachment sgid="{escape(reference.sgid)}" caption="{escape(reference.caption)}"></action-text-attachment>'
+    attrs = attributes(
+        {
+            "sgid": reference.sgid,
+            "caption": reference.caption,
+            "alt": reference.alt,
+            **({"href": reference.href} if reference.href else {}),
+        }
+    )
+    return f"<action-text-attachment {attrs}></action-text-attachment>"
 
 
 def previewable(blob):
@@ -135,29 +141,40 @@ def previewable(blob):
     )
 
 
+def editor_content_type(blob):
+    if blob.content_type.startswith("image/") and not previewable(blob):
+        return "application/octet-stream"
+    return blob.serving_options()["content_type"]
+
+
 def render(reference, blob, *, editor=False):
     url = blob_path(blob)
     caption = reference.caption or blob.filename
     image = (
-        f'<img src="{escape(url)}" alt="{escape(caption)}" loading="lazy">'
+        f'<img src="{escape(url)}" alt="{escape(reference.alt or caption)}" loading="lazy">'
         if previewable(blob)
         else ""
     )
-    attrs = ""
     if editor:
-        metadata = {
-            "sgid": reference.sgid,
-            "filename": blob.filename,
-            "filesize": blob.byte_size,
-            "contentType": blob.content_type,
-            "url": url,
-            "href": url,
-        }
-        attrs = f' data-trix-attachment="{escape(json.dumps(metadata))}" data-trix-attributes="{escape(json.dumps({"caption": reference.caption}))}"'
+        attrs = attributes(
+            {
+                "sgid": reference.sgid,
+                "caption": reference.caption,
+                "alt": reference.alt,
+                "filename": blob.filename,
+                "filesize": blob.byte_size,
+                "content-type": editor_content_type(blob),
+                "previewable": str(previewable(blob)).lower(),
+                "url": url,
+                **({"href": reference.href} if reference.href else {}),
+            }
+        )
+        return f"<action-text-attachment {attrs}></action-text-attachment>"
     kind = "preview" if image else "file"
+    href = reference.href if image and reference.href else url
     return (
-        f'<figure class="attachment attachment--{kind}"{attrs}>'
-        f'<a href="{escape(url)}">{image or escape(blob.filename)}</a>'
+        f'<figure class="attachment attachment--{kind}">'
+        f'<a href="{escape(href)}">{image or escape(blob.filename)}</a>'
         f'<figcaption class="attachment__caption">{escape(caption)}</figcaption></figure>'
     )
 

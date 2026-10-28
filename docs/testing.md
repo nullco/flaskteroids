@@ -180,7 +180,7 @@ self.fill_in("Title", value="First post")
 self.fill_in_rich_text_area("Content", value="<div>Hello</div>")
 ```
 
-Rich-text values are HTML, loaded through Trix's editor API. See
+Rich-text values are HTML, loaded through Lexxy's public value property. See
 [Rich text](other/rich_text.md) for setup and model fixtures.
 
 ### Install the browser

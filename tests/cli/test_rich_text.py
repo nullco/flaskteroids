@@ -1,3 +1,4 @@
+import json
 import shutil
 from pathlib import Path
 
@@ -32,11 +33,17 @@ def test_install_preserves_customizations_and_generates_reversible_storage(
     installed = layout.read_text()
     migrations = set((root / "db/migrate/versions").glob("*.py"))
     assert marker in installed
-    asset = root / "app/assets/rich_text/rich_text.css"
+    asset = root / "app/assets/rich_text.css"
     asset.write_text("/* application styles */")
+    entrypoint = root / "app/javascript/application.js"
+    configured_javascript = entrypoint.read_text()
+    pins = (root / "config/importmap.py").read_text()
     run("rich_text:install")
     assert layout.read_text() == installed
     assert asset.read_text() == "/* application styles */"
+    assert entrypoint.read_text() == configured_javascript
+    assert (root / "config/importmap.py").read_text() == pins
+    assert not (root / "app/assets/lexxy.js").exists()
     assert set((root / "db/migrate/versions").glob("*.py")) == migrations
     run("db:migrate")
     engine = create_engine(f"sqlite:///{root / 'storage/test.sqlite3'}")
@@ -99,8 +106,23 @@ def test_encrypted_scaffold_fixtures_and_controller_workflows(generated_app_fact
     assert_pytest_passed(report)
 
 
+@pytest.mark.system
+@pytest.mark.parametrize("environment", ["development", "production"])
+def test_packaged_editor_and_uploads_work_without_external_assets(
+    rich_text_application, environment
+):
+    _, run = rich_text_application
+    run(commands=[("db:prepare",), ("assets:precompile",)])
+    script = Path(__file__).parent / "fixtures/rich_text/assets.py"
+    run(environment, script=str(script))
+
+
 def test_rich_text_assets_compile_without_a_javascript_toolchain(rich_text_application):
     root, run = rich_text_application
     run("assets:precompile")
-    assert list((root / "public/assets/rich_text").glob("trix-*.js"))
-    assert list((root / "public/assets/rich_text").glob("trix-*.css"))
+    manifest = json.loads((root / "public/assets/.manifest.json").read_text())
+    for name in ("lexxy.js", "lexxy.css", "rich_text.js", "rich_text_uploads.js"):
+        assert (root / "public/assets" / manifest[name]).is_file()
+    css = (root / "public/assets" / manifest["lexxy.css"]).read_text()
+    assert manifest["lexxy-content.css"] in css
+    assert manifest["lexxy-editor.css"] in css

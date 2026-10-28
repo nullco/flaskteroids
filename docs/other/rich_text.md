@@ -1,7 +1,7 @@
 # Rich text
 
 Add formatted text, images, and file attachments with a model declaration and a
-form field. Flaskteroids provides the Trix editor, storage integration, and safe
+form field. Flaskteroids provides the Lexxy editor, storage integration, and safe
 HTML rendering.
 
 ## Set up
@@ -16,10 +16,13 @@ Restart the server, then visit `/posts`. The scaffold includes the declaration,
 editor, permitted parameters, display templates, and fixtures.
 
 The installer generates shared `rich_texts` storage and, if not already installed,
-the attachment tables and `config/storage.yml`. It copies local Trix assets and
-adds `{{ rich_text_assets() }}` to `app/views/layouts/application.html`.
-No Node, npm, or editor CDN is required. Custom layouts should include that helper
-once in their `<head>`.
+the attachment tables and `config/storage.yml`. It configures import-map pins,
+imports `"flaskteroids/rich-text"` in `app/javascript/application.js`, and adds
+`{{ rich_text_assets() }}` to `app/views/layouts/application.html` for styles.
+The runtime and stylesheets come from the installed framework; they are not copied
+into the application. No Node, npm, or editor CDN is required. Custom layouts need
+that stylesheet helper, `{{ javascript_importmap_tags() }}`, and the CSRF token
+meta tag in their `<head>`. See [Import maps](importmaps.md).
 
 Repeated installation preserves existing files and avoids duplicate migrations.
 Production assets are built with `bin/flask assets:precompile`; generated Docker
@@ -129,8 +132,9 @@ record and its embeds without destroying the owner.
 {% endcall %}
 ```
 
-Trix uses an escaped hidden input, model prefixes, accessible labels, normal
-CSRF protection, and validation redisplay. Permit the body as a scalar:
+Lexxy is a native form-associated control with an escaped initial HTML value,
+model prefixes, accessible labels, normal CSRF protection, and validation
+redisplay. Permit the body as a scalar:
 
 ```python
 def _post_params(self):
@@ -141,7 +145,13 @@ Model-backed forms include a signed upload token tied to the browser session,
 plus a CSRF token. The editor supports file selection, drag-and-drop, and pasted
 images. Submission waits for uploads to finish, including when using Turbo. If an
 upload fails, an alert appears and submission is blocked until it is removed or
-retried. Standalone editors without the model-backed upload token are text-only.
+retried. Standalone editors without the model-backed upload token do not accept
+attachments.
+
+Lexxy supports semantic headings, lists, tables, inline formatting, code blocks
+with syntax highlighting, and color highlights. The server preserves these
+formats while rejecting executable markup and arbitrary layout styles. External
+images are disabled: upload images through the editor instead.
 
 ## Rendering and attachments
 
@@ -149,13 +159,14 @@ retried. Standalone editors without the model-backed upload token are text-only.
 {{ post.content }}
 ```
 
-This renders sanitized HTML inside `<div class="trix-content">`. Do not add
+This renders sanitized HTML inside `<div class="lexxy-content">`. Do not add
 `|safe` or wrap user input in `Markup`. The server sanitizes content
-regardless of whether it came from Trix or another request source.
+regardless of whether it came from Lexxy or another request source.
 
 Embedded attachments use verified, purpose-specific blob signatures. The server
 ignores client-supplied file URLs, filenames, types, sizes, and executable HTML;
 it resolves metadata from storage. Unverified or missing attachments are removed.
+Attachment captions, alternative text, and safe image links survive editing.
 Adjacent raster image previews render as a gallery. Other files render as
 download links. Active formats such as SVG and HTML use the existing attachment
 system's forced-download policy.
@@ -182,7 +193,7 @@ Body APIs include:
 
 ```python
 post.content.to_plain_text()       # Ordinary text, including attachment captions/names
-post.content.to_trix_html()        # Sanitized editor HTML
+post.content.to_editor_html()      # Sanitized editor HTML
 post.content.body.to_html()        # Canonical body with signed attachment references
 post.content.body.attachables      # Verified Blob objects
 post.content.blank()
@@ -316,27 +327,30 @@ use the normal rich-text persistence layer without running owner save callbacks.
 ```python
 self.fill_in_rich_text_area("Content", value="<div>Hello <strong>world</strong></div>")
 self.click_on("Save")
-self.assert_selector(".trix-content strong", text="world")
+self.assert_selector(".lexxy-content strong", text="world")
 ```
 
-The helper fills HTML through Trix's public editor API. Normal keyboard and file
+The helper fills HTML through Lexxy's public value property. Normal keyboard and file
 interaction remain available through the Playwright page.
 
 ## Upgrade the editor
 
-Repeated installation preserves existing files and avoids duplicate migrations.
-After upgrading Flaskteroids, **review application-owned asset customizations**,
-then refresh the integration with:
+The locked Flaskteroids dependency determines the packaged Lexxy version:
 
 ```sh
-bin/flask rich_text:install --force
-bin/flask db:migrate
+uv lock --upgrade-package flaskteroids
+uv sync --locked
+bin/flask assets:precompile
 ```
 
-`--force` replaces installed editor assets, including custom CSS/JavaScript, not
-the layout or storage configuration. This is required when upgrading from the
-text-only integration. Assets use normal production fingerprinting through
-`bin/flask assets:precompile`; generated Docker builds already run it.
+Commit the updated lockfile and deploy/restart the application. Generated Docker
+builds already precompile assets. Runtime upgrades do not require reinstalling
+rich text or changing its pins. Explicit application assets with the same logical
+names override framework assets and remain application-owned.
+
+The installer preserves application JavaScript, existing pins, layout content,
+and storage configuration. It reports manual setup instructions when pin
+configuration cannot be safely edited; it does not migrate older editor setups.
 
 ## Limitations
 

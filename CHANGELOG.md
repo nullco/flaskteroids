@@ -11,6 +11,13 @@
 
 ### Changed
 
+- Rich text now uses packaged Lexxy modules and stylesheets through import maps,
+  replacing Trix directly. Forms use native form-associated editor controls;
+  editor HTML is exposed through to_editor_html(). Uploads retain the existing
+  authorization and storage services, with cancellation, progress, validation
+  redisplay, alternative text, safe image links, and gallery rendering.
+  Sanitization preserves headings, tables, code languages, and safe highlights.
+  rich_text:install configures modules without copying assets; --force is removed.
 - Turbo is now a framework-provided ESM asset, consumed through import maps rather
   than copied into generated applications. Upgrading the locked framework updates
   its supplied runtime. Application turbo.js assets can override that default.

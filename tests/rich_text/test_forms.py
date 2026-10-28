@@ -20,20 +20,19 @@ class Elements(HTMLParser):
 @pytest.mark.parametrize(
     "value",
     [
-        "<div>Hello <strong>world</strong></div>",
-        Content("<div>Hello <strong>world</strong></div>"),
-        Markup("<div>Hello <strong>world</strong></div>"),
+        "<p>Hello <strong>world</strong></p>",
+        Content("<p>Hello <strong>world</strong></p>"),
+        Markup("<p>Hello <strong>world</strong></p>"),
     ],
 )
-def test_rich_text_area_links_named_hidden_input_to_labeled_editor(value):
+def test_rich_text_area_renders_a_named_and_labeled_form_control(value):
     form = Form("post", {"content": value})
     elements = Elements(form.rich_text_area("content"))
-    hidden, editor = elements.elements["input"], elements.elements["trix-editor"]
-    assert hidden["type"] == "hidden"
-    assert hidden["name"] == "post[content]"
-    assert hidden["id"] == editor["input"]
+    editor = elements.elements["lexxy-editor"]
+    assert editor["name"] == "post[content]"
     assert editor["id"] == Elements(form.label("content")).elements["label"]["for"]
-    assert hidden["value"] == "<div>Hello <strong>world</strong></div>"
+    assert editor["value"] == "<p>Hello <strong>world</strong></p>"
+    assert editor["attachments"] == "false"
 
 
 def test_rich_text_area_escapes_attributes_and_sanitizes_initial_content():
@@ -43,16 +42,17 @@ def test_rich_text_area_escapes_attributes_and_sanitizes_initial_content():
     elements = Elements(
         form.rich_text_area("content", placeholder='A "quoted" placeholder')
     )
-    assert elements.elements["input"]["value"] == "<strong>Safe</strong>"
-    assert elements.elements["trix-editor"]["placeholder"] == 'A "quoted" placeholder'
-    assert set(elements.elements) == {"input", "trix-editor"}
+    editor = elements.elements["lexxy-editor"]
+    assert editor["value"] == "<strong>Safe</strong>"
+    assert editor["placeholder"] == 'A "quoted" placeholder'
+    assert set(elements.elements) == {"lexxy-editor"}
 
 
 def test_rich_text_area_supports_custom_editor_id_and_explicit_value():
     elements = Elements(
         Form(None).rich_text_area("content", id="custom", value="<em>Body</em>")
     )
-    assert elements.elements["trix-editor"]["id"] == "custom"
-    assert elements.elements["trix-editor"]["input"] == elements.elements["input"]["id"]
-    assert elements.elements["input"]["name"] == "content"
-    assert elements.elements["input"]["value"] == "<em>Body</em>"
+    editor = elements.elements["lexxy-editor"]
+    assert editor["id"] == "custom"
+    assert editor["name"] == "content"
+    assert editor["value"] == "<em>Body</em>"

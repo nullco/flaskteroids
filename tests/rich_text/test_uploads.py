@@ -26,9 +26,9 @@ def editor(app):
         parsed = HTML(client.get("/upload-editor").text)
         csrf = parsed.forms[0]["fields"]["csrf_token"]
         url = next(
-            attrs["data-upload-url"]
+            attrs["data-direct-upload-url"]
             for tag, attrs in parsed.elements
-            if tag == "trix-editor"
+            if tag == "lexxy-editor"
         )
         return url, csrf
 
@@ -46,11 +46,34 @@ def test_upload_uses_storage_and_returns_an_unattached_signed_embed(editor, clie
     response = upload(client, url, csrf)
     assert response.status_code == 201
     attributes = response.json
-    blob = Blob.find_signed_or_raise(attributes["sgid"], purpose="rich_text_attachable")
+    blob = Blob.find_signed_or_raise(
+        attributes["attachable_sgid"], purpose="rich_text_attachable"
+    )
     assert blob.attachments == []
     assert blob.download() == b"file"
+    assert Blob.find_signed_or_raise(attributes["signed_id"]).id == blob.id
+    assert attributes["byte_size"] == 4
+    assert attributes["content_type"] == blob.content_type
+    assert attributes["previewable"] is False
     assert attributes["filename"] == "report.txt"
     assert response.cache_control.no_store
+
+
+@pytest.mark.parametrize(
+    ("data", "filename"),
+    [
+        (b"<svg><script>evil()</script></svg>", "image.svg"),
+        (b"<html><script>evil()</script></html>", "page.html"),
+    ],
+)
+def test_upload_advertises_active_content_as_nonpreviewable_files(
+    editor, client, data, filename
+):
+    url, csrf = editor(client)
+    response = upload(client, url, csrf, data=data, filename=filename)
+    assert response.status_code == 201
+    assert response.json["previewable"] is False
+    assert response.json["content_type"] == "application/octet-stream"
 
 
 def test_upload_requires_the_forms_browser_session(editor, app, client):

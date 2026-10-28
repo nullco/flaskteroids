@@ -291,13 +291,14 @@ bin/flask rich_text:install
 bin/flask db:migrate
 ```
 
-Installs local Trix assets, adds the asset helper to the application layout, and
-creates rich-text and attachment migrations as needed. Repeated runs preserve
-existing files and avoid duplicate migrations.
+Configures import-map pins and the entrypoint for the framework-provided Lexxy
+editor, adds its stylesheet helper to the layout, and creates rich-text and
+attachment migrations as needed. It does not copy runtime assets. Repeated runs
+preserve application code and avoid duplicate migrations.
 
-Use `--force` to refresh installed editor assets, **after reviewing local
-customizations**. Model, resource, and scaffold generators accept
-`content:rich_text`. See [Rich text](rich_text.md).
+Upgrading the locked Flaskteroids dependency upgrades the supplied editor;
+precompile production assets and restart. Model, resource, and scaffold
+generators accept `content:rich_text`. See [Rich text](rich_text.md).
 
 ## Attachments
 

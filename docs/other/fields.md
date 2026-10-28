@@ -81,7 +81,7 @@ does not necessarily match it. Primary-key generation remains native.
 ## Rich text
 
 Model, resource, and scaffold generators accept `content:rich_text`. This generates
-`has_rich_text("content")`, not a column on the owner. Scaffolds include a Trix
+`has_rich_text("content")`, not a column on the owner. Scaffolds include a Lexxy
 editor, safe rendering, and permitted parameters. Run `bin/flask rich_text:install`,
 then `bin/flask db:migrate`. See [Rich text](rich_text.md).
 

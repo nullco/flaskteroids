@@ -50,7 +50,7 @@ def test_validation_failure_keeps_submitted_content_for_correction(app):
     assert document.errors
     document.title = "Corrected"
     assert document.save()
-    assert document.reload().content.to_trix_html() == "<strong>Submitted</strong>"
+    assert document.reload().content.to_editor_html() == "<strong>Submitted</strong>"
     assert row_count(app) == 1
 
 
@@ -138,7 +138,7 @@ def test_eager_loading_reads_bodies_without_per_record_queries(app, scope):
 
 def test_content_assignment_accepts_content_values():
     document = Document.create(title="Example", content=Content("<em>Body</em>"))
-    assert document.reload().content.to_trix_html() == "<em>Body</em>"
+    assert document.reload().content.to_editor_html() == "<em>Body</em>"
 
 
 def test_owner_save_persists_new_associated_rich_text_bodies(app):

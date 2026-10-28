@@ -1,6 +1,5 @@
 import base64
 import io
-import json
 
 import pytest
 from sqlalchemy import event
@@ -43,10 +42,14 @@ def test_body_owns_signed_embeds_and_renders_safe_storage_urls(blob, app):
 
 
 def test_editor_html_roundtrips_only_verified_metadata(blob, app):
-    forged = f'<figure data-trix-attachment=\'{{"sgid":"{blob.attachable_sgid}","url":"javascript:evil()","filename":"fake","contentType":"text/html","content":"<script>evil()</script>"}}\' data-trix-attributes=\'{{"caption":"A caption"}}\'></figure>'
+    forged = (
+        f'<action-text-attachment sgid="{blob.attachable_sgid}" '
+        'url="javascript:evil()" filename="fake" content-type="text/html" '
+        'caption="A caption"><script>evil()</script></action-text-attachment>'
+    )
     owner = Note.create(content=forged)
     with app.test_request_context():
-        html = owner.content.to_trix_html()
+        html = owner.content.to_editor_html()
         assert "javascript:" not in html
         assert "<script>" not in html
         assert "fake" not in html
@@ -55,13 +58,61 @@ def test_editor_html_roundtrips_only_verified_metadata(blob, app):
         assert "A caption" in reloaded.to_plain_text()
 
 
-def test_attachment_captions_normalize_invalid_json_unicode(blob, app):
-    metadata = json.dumps({"sgid": blob.attachable_sgid})
-    extra = json.dumps({"caption": chr(0xD800)})
-    body = f"<figure data-trix-attachment='{metadata}' data-trix-attributes='{extra}'></figure>"
+def test_attachment_captions_normalize_invalid_unicode(blob, app):
+    body = (
+        f'<action-text-attachment sgid="{blob.attachable_sgid}" '
+        f'caption="{chr(0xD800)}"></action-text-attachment>'
+    )
     owner = Note.create(content=body)
     with app.test_request_context():
         assert "?" in HTML(str(owner.content)).text
+
+
+def test_attachment_captions_alternative_text_and_links_roundtrip(blob, app):
+    body = (
+        f'<action-text-attachment sgid="{blob.attachable_sgid}" '
+        'caption="A caption" alt="An alternative" href="https://example.com">'
+        "</action-text-attachment>"
+    )
+    owner = Note.create(content=body)
+    with app.test_request_context():
+        display = HTML(str(owner.content))
+        assert display.has("img", alt="An alternative")
+        assert display.has("a", href="https://example.com")
+        editor = HTML(owner.content.to_editor_html())
+        assert editor.has(
+            "action-text-attachment", alt="An alternative", caption="A caption"
+        )
+        assert (
+            Content(owner.content.to_editor_html()).to_html()
+            == owner.content.body.to_html()
+        )
+
+
+@pytest.mark.parametrize("url", ["javascript:alert(1)", "data:text/html,evil"])
+def test_attachment_links_reject_executable_urls(blob, app, url):
+    owner = Note.create(
+        content=f'<action-text-attachment sgid="{blob.attachable_sgid}" '
+        f'href="{url}"></action-text-attachment>'
+    )
+    with app.test_request_context():
+        assert url not in owner.content.body.to_html()
+        assert url not in str(owner.content)
+        assert url not in owner.content.to_editor_html()
+
+
+def test_attachment_markup_escapes_captions_and_alternative_text(blob, app):
+    owner = Note.create(
+        content=f'<action-text-attachment sgid="{blob.attachable_sgid}" '
+        'caption="&lt;script&gt;evil()&lt;/script&gt;" '
+        'alt="&quot; onerror=&quot;evil()"></action-text-attachment>'
+    )
+    with app.test_request_context():
+        display = HTML(str(owner.content))
+        assert not display.has("script")
+        image = next(attrs for tag, attrs in display.elements if tag == "img")
+        assert "onerror" not in image
+        assert image["alt"] == '" onerror="evil()'
 
 
 def test_rendering_groups_adjacent_images_into_a_gallery(blob, app):
@@ -81,6 +132,11 @@ def test_binary_content_is_a_download_link_instead_of_an_inline_image(app):
     with app.test_request_context():
         rendered = HTML(str(owner.content))
         assert not rendered.has("img")
+        editor = HTML(owner.content.to_editor_html())
+        assert editor.has(
+            "action-text-attachment",
+            **{"content-type": "application/octet-stream", "previewable": "false"},
+        )
         link = next(attrs["href"] for tag, attrs in rendered.elements if tag == "a")
     with app.test_client().get(link, follow_redirects=True) as response:
         assert response.headers["Content-Disposition"].startswith("attachment")

@@ -13,7 +13,8 @@ Flaskteroids serves assets at `/assets/` using Flask's `static` endpoint:
 
 Application sources are `app/assets`, `app/javascript`, and `vendor/javascript`.
 JavaScript paths are relative to their source root. The installed framework also
-supplies `turbo.js`; an application asset with that name takes precedence.
+supplies `turbo.js` and Lexxy's editor/integration assets. Application assets with
+the same logical names take precedence.
 Duplicate logical names across application sources fail explicitly.
 
 URLs keep the asset directory structure. Flask handles file delivery, content

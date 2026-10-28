@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass, field
 from functools import cached_property
 from html.parser import HTMLParser
@@ -23,6 +24,11 @@ _TAGS = {
     "div",
     "em",
     "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
     "hr",
     "li",
     "ol",
@@ -30,12 +36,38 @@ _TAGS = {
     "pre",
     "s",
     "strong",
+    "u",
+    "mark",
+    "span",
+    "table",
+    "thead",
+    "tbody",
+    "tfoot",
+    "tr",
+    "td",
+    "th",
     "ul",
     "figure",
     "figcaption",
     "action-text-attachment",
 }
-_BLOCKS = {"blockquote", "div", "h1", "li", "ol", "p", "pre", "ul"}
+_BLOCKS = {
+    "blockquote",
+    "div",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "li",
+    "ol",
+    "p",
+    "pre",
+    "ul",
+    "table",
+    "tr",
+}
 _CLEAN_CONTENT = {
     "script",
     "style",
@@ -44,8 +76,26 @@ _CLEAN_CONTENT = {
     "embed",
     "svg",
     "math",
-    "trix-attachment",
 }
+
+
+_COLOR = re.compile(
+    r"(?:#[0-9a-f]{3,8}|[a-z]+|var\(--[a-z0-9_-]+\)|"
+    r"(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\([a-z0-9.%+/, -]+\))",
+    re.I,
+)
+
+
+def _attribute(tag, name, value):
+    if name == "style":
+        declarations = []
+        for declaration in value.split(";"):
+            property, _, color = declaration.partition(":")
+            property, color = property.strip().lower(), color.strip()
+            if property in {"color", "background-color"} and _COLOR.fullmatch(color):
+                declarations.append(f"{property}: {color}")
+        return "; ".join(declarations) or None
+    return value
 
 
 class _PlainText(HTMLParser):
@@ -58,6 +108,8 @@ class _PlainText(HTMLParser):
             self.parts.append("\n")
         elif tag in _BLOCKS and self.parts and not self.parts[-1].endswith("\n"):
             self.parts.append("\n")
+        elif tag in {"td", "th"} and self.parts and not self.parts[-1].endswith("\n"):
+            self.parts.append("\t")
 
     def handle_endtag(self, tag):
         if tag in _BLOCKS and self.parts and not self.parts[-1].endswith("\n"):
@@ -81,9 +133,18 @@ class Content:
             tags=_TAGS,
             attributes={
                 "a": {"href", "title"},
-                "figure": {"data-trix-attachment", "data-trix-attributes"},
-                "action-text-attachment": {"sgid", "caption"},
+                "action-text-attachment": {"sgid", "caption", "alt", "href"},
+                "pre": {"data-language"},
+                "code": {"data-language"},
+                "ol": {"start"},
+                "li": {"value"},
+                "td": {"colspan", "rowspan"},
+                "th": {"colspan", "rowspan", "scope"},
+                "span": {"style"},
+                "mark": {"style"},
             },
+            allowed_classes={"figure": {"lexxy-content__table-wrapper"}},
+            attribute_filter=_attribute,
             clean_content_tags=_CLEAN_CONTENT,
             url_schemes={"http", "https", "mailto", "tel"},
             link_rel="noopener noreferrer",
@@ -148,7 +209,7 @@ class Content:
         finish_gallery()
         return "".join(output)
 
-    def to_trix_html(self):
+    def to_editor_html(self):
         return self._render(editor=True)
 
     def to_plain_text(self):
@@ -173,7 +234,7 @@ class Content:
         return self.present()
 
     def __str__(self):
-        return f'<div class="trix-content">{self._render()}</div>'
+        return f'<div class="lexxy-content">{self._render()}</div>'
 
     def __html__(self):
         return Markup(str(self))

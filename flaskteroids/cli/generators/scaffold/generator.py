@@ -46,7 +46,7 @@ class ScaffoldGenerator:
         singular = params["singular"]
         values = self._field_values(params)
         values.extend(
-            f'"{name}": self.{singular}.{name}.to_trix_html()'
+            f'"{name}": self.{singular}.{name}.to_editor_html()'
             for name in params["rich_texts"]
         )
         for attachment in params["attachments"]:

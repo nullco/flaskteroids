@@ -214,8 +214,8 @@ class RichText:
     def to_plain_text(self):
         return self.body.to_plain_text()
 
-    def to_trix_html(self):
-        return self.body.to_trix_html()
+    def to_editor_html(self):
+        return self.body.to_editor_html()
 
     def blank(self):
         return self.body.blank()
