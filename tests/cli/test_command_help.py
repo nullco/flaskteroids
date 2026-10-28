@@ -12,6 +12,13 @@ STANDALONE_HELP = {
     (): ["flask --help"],
     ("new",): ["APP_NAME", "--skip-install", "bin/setup"],
     ("assets:precompile",): ["--root", "--source", "--output"],
+    ("importmap",): ["--root"],
+    ("importmap", "pin"): ["PACKAGES", "--from", "--env", "--no-preload"],
+    ("importmap", "unpin"): ["PACKAGES"],
+    ("importmap", "update"): ["--from"],
+    ("importmap", "pristine"): ["--from"],
+    ("importmap", "packages"): [],
+    ("importmap", "json"): ["--environment", "--source", "--output", "--prefix"],
     ("agent-skills",): ["path"],
     ("agent-skills", "path"): [],
 }
@@ -36,7 +43,8 @@ APPLICATION_HELP = {
     ("generate", "authentication"): [],
     ("attachments:install",): ["config/storage.yml"],
     ("rich_text:install",): ["db:migrate", "rich_texts", "--force"],
-    ("turbo:install",): ["--force", "{% extends layout %}"],
+    ("turbo:install",): ["{% extends layout %}"],
+    ("importmap:install",): ["config/importmap.py", "bin/importmap"],
     ("db:encryption:init",): ["credentials:edit"],
     ("db:init",): ["db/migrate"],
     ("db:create",): [],
@@ -71,7 +79,7 @@ def test_application_help_exposes_command_interface(cli_runner, args, expected):
         assert text in output
 
 
-@pytest.mark.parametrize("args", [[], ["agent-skills"]])
+@pytest.mark.parametrize("args", [[], ["agent-skills"], ["importmap"]])
 def test_standalone_command_summaries_fit_terminal(args):
     result = CliRunner().invoke(cli, [*args, "--help"], terminal_width=80)
 
@@ -96,6 +104,9 @@ def test_application_command_summaries_fit_terminal(cli_runner, args):
 def test_help_covers_all_registered_commands(app):
     assert set(cli.commands) == {args[0] for args in STANDALONE_HELP if args}
     assert set(cli.commands["agent-skills"].commands) == {"path"}
+    assert set(cli.commands["importmap"].commands) == {
+        args[1] for args in STANDALONE_HELP if len(args) == 2 and args[0] == "importmap"
+    }
     assert set(app.cli.commands) == {args[0] for args in APPLICATION_HELP}
     assert set(generate.commands) == {
         args[1] for args in APPLICATION_HELP if len(args) == 2

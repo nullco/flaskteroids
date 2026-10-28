@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 import sys
@@ -23,11 +24,25 @@ try:
             or shutil.which("google-chrome"),
         )
         page = browser.new_page()
-        page.route("https://cdn.jsdelivr.net/**", lambda route: route.abort())
+        requests = []
+        page.on("request", lambda request: requests.append(request.url))
+        page.route(
+            "**/*",
+            lambda route: (
+                route.continue_()
+                if route.request.url.startswith("http://127.0.0.1:")
+                else route.abort()
+            ),
+        )
         page.goto(f"http://127.0.0.1:{server.server_port}/asset-test/")
         page.wait_for_function("!!window.Turbo && !!customElements.get('turbo-frame')")
-        turbo_src = page.locator('script[src*="/turbo/"]').get_attribute("src")
+        importmap = json.loads(page.locator('script[type="importmap"]').text_content())
+        turbo_src = importmap["imports"]["@hotwired/turbo"]
         assert ("turbo-" in turbo_src) == production
+        page.wait_for_function("window.importmapResult === 42")
+        assert not any("/optional" in url for url in requests)
+        assert page.evaluate("window.loadOptional()") == 43
+        assert any("/optional" in url for url in requests)
         href = page.locator('link[rel="stylesheet"]').get_attribute("href")
         assert href.startswith("/assets/stylesheets/application")
         assert ("application-" in href) == production

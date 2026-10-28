@@ -58,7 +58,10 @@ def run_script(root, name, environment, *args):
     )
 
 
-@pytest.mark.parametrize(("name", "args"), [("flask", ["--help"]), ("jobs", ["start"])])
+@pytest.mark.parametrize(
+    ("name", "args"),
+    [("flask", ["--help"]), ("jobs", ["start"]), ("importmap", ["--help"])],
+)
 def test_launcher_missing_environment_is_actionable(scripts_app, name, args):
     result = run_script(scripts_app, name, os.environ, *args)
     assert result.returncode != 0
@@ -72,6 +75,19 @@ def test_launcher_missing_environment_is_actionable(scripts_app, name, args):
             "flask",
             ["test", "-k", "title with spaces", ""],
             ["-m", "flask", "test", "-k", "title with spaces", ""],
+        ),
+        (
+            "importmap",
+            ["pin", "@scope/library@1.2.3", "--no-preload", ""],
+            [
+                "-m",
+                "flaskteroids",
+                "importmap",
+                "pin",
+                "@scope/library@1.2.3",
+                "--no-preload",
+                "",
+            ],
         ),
         (
             "jobs",
@@ -247,7 +263,7 @@ def test_release_delegates_and_rejects_unknown_tasks(scripts_app, script_environ
         assert result.returncode != 0
 
 
-@pytest.mark.parametrize("name", ["flask", "jobs", "docker-entrypoint"])
+@pytest.mark.parametrize("name", ["flask", "importmap", "jobs", "docker-entrypoint"])
 def test_launchers_replace_process_and_preserve_termination(
     scripts_app, script_environment, name
 ):

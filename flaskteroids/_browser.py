@@ -7,6 +7,7 @@ from flaskteroids._method_override import MethodOverrideMiddleware
 from flaskteroids.assets import init_assets
 from flaskteroids.csrf import CSRFToken
 from flaskteroids.flash import flash
+from flaskteroids.importmaps.extension import init_importmaps
 from flaskteroids.rich_text.extension import init_rich_text
 from flaskteroids.rich_text.helpers import rich_text_assets
 from flaskteroids.turbo import dom_class, dom_id, turbo_frame_tag, turbo_stream
@@ -25,11 +26,17 @@ def install_browser(app):
         form_with=helpers.form_with,
         csrf_token=CSRFToken(app.secret_key).generate,
         rich_text_assets=rich_text_assets,
+        javascript_importmap_tags=helpers.javascript_importmap_tags,
+        importmap_digest=helpers.importmap_digest,
+        javascript_import_module_tag=helpers.javascript_import_module_tag,
+        javascript_inline_importmap_tag=helpers.javascript_inline_importmap_tag,
+        javascript_module_preload_tag=helpers.javascript_module_preload_tag,
     )
 
     init_turbo(app)
     init_rich_text(app)
     init_assets(app)
+    init_importmaps(app)
 
 
 def browser_context():

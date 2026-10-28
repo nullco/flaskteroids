@@ -1,5 +1,6 @@
 import base64
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -28,6 +29,10 @@ def generated_assets_app(tmp_path):
             "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aK1sAAAAASUVORK5CYII="
         )
     )
+    fixtures = Path(__file__).parent / "fixtures/assets"
+    shutil.copytree(fixtures / "modules", root / "app/javascript", dirs_exist_ok=True)
+    shutil.copyfile(fixtures / "optional.js", root / "vendor/javascript/optional.js")
+    shutil.copyfile(fixtures / "importmap.py", root / "config/importmap.py")
     return root
 
 

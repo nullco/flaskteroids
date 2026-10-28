@@ -147,11 +147,16 @@ dependency internals or introduce a parallel implementation of a supported featu
   `format="turbo_stream"`; custom routes do not gain suffixes automatically.
   Links/forms accept nested `data`/`aria` attributes and `class_`; set
   `data={"turbo_frame": ...}` for a target or `data={"turbo": False}` to opt out.
-- Keep one Turbo runtime. New apps bundle 8.0.23 locally with CSRF meta markup;
-  use `bin/flask turbo:install` for existing apps, review custom layouts, and
-  do not load a second CDN/runtime. `--force` replaces app-owned assets; it does
-  not rewrite existing views. Frames and HTTP Streams are supported, not live
-  subscriptions/broadcasts, Action Cable, Stimulus, or Node/build tooling.
+- Keep one Turbo runtime. The framework supplies 8.0.23 ESM through the asset
+  pipeline; applications pin `@hotwired/turbo` to `turbo.js` and import it from
+  `app/javascript/application.js`. Layouts use `javascript_importmap_tags()` and
+  CSRF meta markup. `bin/flask turbo:install` configures existing apps without
+  replacing their code. Do not add another runtime or copy the framework asset.
+  Use logical module imports, `config/importmap.py` and `bin/importmap pin` for
+  application JavaScript; commit downloaded `vendor/javascript` modules.
+  Frames and HTTP Streams are supported, not live subscriptions/broadcasts,
+  Action Cable, Stimulus integration, or Node/build tooling. See
+  [Import maps](https://nullco.github.io/flaskteroids/other/importmaps/).
 - Keep authentication, authorization, strong parameters, and CSRF for Turbo
   requests; the frame header is not authorization. Framework response-class
   `set_etag`/`add_etag` validators are partitioned by final MIME and frame/page;

@@ -1,10 +1,9 @@
 """Application artifact strategies; templates never choose an application mode."""
 
-from importlib.resources import files
 from typing import ClassVar
 
 from flaskteroids.cli.generators.templates import template
-from flaskteroids.turbo.installation import ASSET_NAMES
+from flaskteroids.importmaps.installation import application_files
 
 
 class ApplicationGenerator:
@@ -33,9 +32,9 @@ class BrowserApplicationGenerator(ApplicationGenerator):
     def write_presentation(self, ab):
         ab.file("app/assets/stylesheets/application.css")
         ab.file("app/assets/images/.keep")
-        turbo_assets = files("flaskteroids.turbo").joinpath("assets")
-        for name in ASSET_NAMES:
-            ab.file(f"app/assets/turbo/{name}", turbo_assets.joinpath(name).read_text())
+        ab.file("vendor/javascript/.keep")
+        for destination, content in application_files().items():
+            ab.file(destination, content)
         for destination in (
             "app/helpers/application_helper.py",
             "app/views/layouts/application.html",

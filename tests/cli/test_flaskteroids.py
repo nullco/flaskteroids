@@ -25,9 +25,10 @@ def test_new_creates_application_and_runs_setup(cli_runner, artifacts_builder):
     )
     created_files = {args[0] for args, _ in artifacts_builder.file.call_args_list}
     assert {
-        "app/assets/turbo/turbo.js",
-        "app/assets/turbo/TURBO-LICENSE",
-        "app/assets/turbo/README.md",
+        "config/importmap.py",
+        "app/javascript/application.js",
+        "bin/importmap",
+        "vendor/javascript/.keep",
         "config/application.py",
         "config/environment.py",
         "config/environments/development.py",

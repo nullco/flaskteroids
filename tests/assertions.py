@@ -6,6 +6,8 @@ class HTML(HTMLParser):
     def __init__(self, source):
         super().__init__()
         self.elements = []
+        self.scripts = []
+        self._script = None
         self.forms = []
         self._form = None
         self.text = ""
@@ -14,6 +16,9 @@ class HTML(HTMLParser):
     def handle_starttag(self, tag, attrs):
         attrs = dict(attrs)
         self.elements.append((tag, attrs))
+        if tag == "script":
+            self._script = {"attributes": attrs, "content": ""}
+            self.scripts.append(self._script)
         if tag == "form":
             self._form = {"attributes": attrs, "fields": {}}
             self.forms.append(self._form)
@@ -21,11 +26,15 @@ class HTML(HTMLParser):
             self._form["fields"][attrs["name"]] = attrs.get("value", "")
 
     def handle_endtag(self, tag):
+        if tag == "script":
+            self._script = None
         if tag == "form":
             self._form = None
 
     def handle_data(self, data):
         self.text += data
+        if self._script is not None:
+            self._script["content"] += data
 
     def has(self, tag, **attributes):
         return any(

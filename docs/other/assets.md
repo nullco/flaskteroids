@@ -8,8 +8,13 @@ Flaskteroids serves assets at `/assets/` using Flask's `static` endpoint:
 
 | Environment | Served directory |
 | --- | --- |
-| Development/test | `app/assets` — source files, no build required |
+| Development/test | Application and framework source assets, no build required |
 | Other environments | `public/assets` — fingerprinted build output |
+
+Application sources are `app/assets`, `app/javascript`, and `vendor/javascript`.
+JavaScript paths are relative to their source root. The installed framework also
+supplies `turbo.js`; an application asset with that name takes precedence.
+Duplicate logical names across application sources fail explicitly.
 
 URLs keep the asset directory structure. Flask handles file delivery, content
 types, conditional requests, HEAD requests, and byte ranges.
@@ -40,16 +45,15 @@ Native `url_for("static", filename=...)` works, but does not look up fingerprint
 
 ## Local Turbo runtime
 
-New applications load pinned upstream Turbo **8.0.23** from
-`app/assets/turbo/turbo.js` using `asset_path("turbo/turbo.js")`. Its license and
-provenance are included alongside it. This is a local browser runtime, not a
-Node/build dependency; normal asset precompilation fingerprints it for production.
+The installed framework supplies upstream Turbo **8.0.23** as an ESM asset, with
+license and provenance in the distribution. New applications pin `@hotwired/turbo`
+to `turbo.js` and import it from `app/javascript/application.js`. The layout uses
+`javascript_importmap_tags()`; production precompilation fingerprints the runtime.
+There is no application-owned copy, download, CDN, or Node/build dependency.
 
-Existing applications can run `bin/flask turbo:install`. It preserves app-owned
-assets unless `--force` is supplied, migrates the known generated CDN URL while
-preserving script attributes, and prints instructions for custom layouts. Load
-only one runtime. See [Turbo setup](../views/turbo.md#install-or-upgrade) for the
-script and CSRF markup and view migration choices.
+Existing applications can run `bin/flask turbo:install`, which configures the
+import-map workflow without replacing application code. Load only one runtime.
+See [Import maps](importmaps.md) and [Turbo setup](../views/turbo.md#install-or-upgrade).
 
 ## CSS references
 
@@ -123,11 +127,14 @@ config.assets.serve = True
 
 Set these options in application configuration. Source and output paths are
 relative to the project root, must remain inside the project, and cannot overlap.
-One source directory holds every asset type. The URL prefix must be an absolute
+`source_path` configures the main asset directory; the conventional JavaScript
+sources and framework assets are also included. Source directories must not overlap.
+The URL prefix must be an absolute
 path with no query string; trailing slashes are normalized.
 
 Internally, these options configure Flask's `static_folder` and `static_url_path`
-before its static route is registered. Delivery uses `app.send_static_file`.
+before its static route is registered. Production uses `app.send_static_file`;
+development resolves the appropriate source directory and uses Flask file delivery.
 
 For example, use `source_path = "frontend"`, `output_path = "static"`, and
 `prefix = "/custom/assets"` to change the directories and URL independently.

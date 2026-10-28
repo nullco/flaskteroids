@@ -17,6 +17,7 @@ from flaskteroids.cli.attachments import install as attachments_install
 from flaskteroids.cli.db import commands as db_commands
 from flaskteroids.cli.db.snapshot import dump as schema_dump
 from flaskteroids.cli.generators import commands as generate_commands
+from flaskteroids.cli.importmap import install as importmap_install
 from flaskteroids.cli.rich_text import install as rich_text_install
 from flaskteroids.cli.turbo import install as turbo_install
 from flaskteroids.db import session
@@ -85,6 +86,7 @@ def _register_cli_commands(app):
     app.cli.add_command(attachments_install)
     app.cli.add_command(rich_text_install)
     app.cli.add_command(turbo_install)
+    app.cli.add_command(importmap_install)
     app.cli.add_command(db_commands.encryption_init)
     app.cli.add_command(assets_precompile)
 

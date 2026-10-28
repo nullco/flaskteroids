@@ -1,3 +1,4 @@
+import base64
 import hashlib
 import json
 import posixpath
@@ -6,44 +7,21 @@ import tempfile
 from pathlib import Path, PurePosixPath
 from urllib.parse import quote, unquote, urlsplit, urlunsplit
 
-from flask import abort, current_app, request, url_for
+from flask import abort, current_app, request, send_from_directory, url_for
 from markupsafe import Markup
-from werkzeug.security import safe_join
 
 from flaskteroids._assets.css import rewrite_urls
+from flaskteroids._assets.packages import packaged_assets
+from flaskteroids._assets.paths import AssetError as AssetError
+from flaskteroids._assets.paths import directory_path, url_prefix
+from flaskteroids._assets.paths import logical_name as _logical_name
+from flaskteroids._assets.paths import safe_path as _safe_path
 from flaskteroids._html import attributes
 
 SOURCE_PATH = "app/assets"
 OUTPUT_PATH = "public/assets"
 MANIFEST_NAME = ".manifest.json"
-
-
-class AssetError(ValueError):
-    pass
-
-
-def _logical_name(name):
-    if (
-        not isinstance(name, str)
-        or not name
-        or "\\" in name
-        or any(ord(char) < 32 or ord(char) == 127 for char in name)
-        or any(part.startswith(".") or not part for part in name.split("/"))
-    ):
-        raise AssetError(f"Invalid asset name: {name!r}")
-    return name
-
-
-def _safe_path(directory, name):
-    joined = safe_join(str(directory), name)
-    if joined is None:
-        raise AssetError(f"Asset path escapes its directory: {name!r}")
-    path = directory
-    for part in Path(joined).relative_to(directory).parts:
-        path = path / part
-        if path.is_symlink():
-            raise AssetError(f"Asset symlinks are not supported: {path}")
-    return path
+JAVASCRIPT_PATHS = ("app/javascript", "vendor/javascript")
 
 
 def _logical_match(name, names):
@@ -65,47 +43,85 @@ class AssetPipeline:
         self.root = Path(root).resolve()
         self.source = self._directory(source_path)
         self.output = self._directory(output_path)
-        if self.output.is_relative_to(self.source) or self.source.is_relative_to(
-            self.output
-        ):
-            raise AssetError("Asset source and output directories must not overlap")
+        self.sources = tuple(
+            dict.fromkeys(
+                (self.source, *(self._directory(p) for p in JAVASCRIPT_PATHS))
+            )
+        )
+        for source in self.sources:
+            if self.output.is_relative_to(source) or source.is_relative_to(self.output):
+                raise AssetError("Asset source and output directories must not overlap")
+        for index, source in enumerate(self.sources):
+            if any(
+                source.is_relative_to(other) or other.is_relative_to(source)
+                for other in self.sources[index + 1 :]
+            ):
+                raise AssetError("Asset source directories must not overlap")
 
     def _directory(self, name):
-        path = self.root / name
-        if not path.is_relative_to(self.root):
-            raise AssetError("Asset directories must be inside the application root")
-        path = _safe_path(self.root, path.relative_to(self.root).as_posix())
-        if path.resolve() == self.root or (path.exists() and not path.is_dir()):
-            raise AssetError(f"Invalid asset directory: {path}")
-        return path
+        return directory_path(self.root, name)
 
     def source_files(self):
-        self._directory(self.source)
         files = {}
-        for path in sorted(self.source.rglob("*")):
-            name = path.relative_to(self.source).as_posix()
-            if any(part.startswith(".") for part in name.split("/")):
-                continue
-            _logical_name(name)
-            path = _safe_path(self.source, name)
-            if path.is_file():
-                files[name] = path
+        for directory in self.sources:
+            self._directory(directory)
+            for path in sorted(directory.rglob("*")):
+                name = path.relative_to(directory).as_posix()
+                if any(part.startswith(".") for part in name.split("/")):
+                    continue
+                _logical_name(name)
+                path = _safe_path(directory, name)
+                if path.is_file():
+                    if name in files:
+                        raise AssetError(f"Duplicate asset name: {name}")
+                    files[name] = path
+        for name, path in packaged_assets().items():
+            files.setdefault(name, path)
         return files
 
-    def source_name(self, name):
-        self._directory(self.source)
+    def source_file(self, name):
         _logical_name(name)
-        if _safe_path(self.source, name).is_file():
-            return name
-        candidates = []
-        if self.source.is_dir():
-            candidates += [
-                f"{path.name}/{name}"
-                for path in self.source.iterdir()
-                if path.is_dir() and not path.name.startswith(".")
-            ]
-        names = [path for path in candidates if _safe_path(self.source, path).is_file()]
-        return _logical_match(name, names)
+        matches = []
+        for directory in self.sources:
+            self._directory(directory)
+            path = _safe_path(directory, name)
+            if path.is_file():
+                matches.append(path)
+        if len(matches) > 1:
+            raise AssetError(f"Duplicate asset name: {name}")
+        if matches:
+            return matches[0]
+        packaged = packaged_assets().get(name)
+        if packaged is None or not packaged.is_file():
+            raise AssetError(f"Asset not found: {name}")
+        return packaged
+
+    def source_name(self, name):
+        _logical_name(name)
+        names = set(packaged_assets())
+        for directory in self.sources:
+            self._directory(directory)
+            if _safe_path(directory, name).is_file():
+                names.add(name)
+            if directory.is_dir():
+                for path in directory.iterdir():
+                    if path.is_dir() and not path.name.startswith("."):
+                        candidate = f"{path.name}/{name}"
+                        if _safe_path(directory, candidate).is_file():
+                            names.add(candidate)
+        logical = _logical_match(name, names)
+        self.source_file(logical)
+        return logical
+
+    def asset_bytes(self, name, *, compiled=False):
+        if compiled:
+            return _safe_path(self.output, self.compiled_name(name)).read_bytes()
+        return self.source_file(self.source_name(name)).read_bytes()
+
+    def asset_integrity(self, name, *, compiled=False):
+        data = self.asset_bytes(name, compiled=compiled)
+        digest = base64.b64encode(hashlib.sha384(data).digest()).decode("ascii")
+        return f"sha384-{digest}"
 
     def manifest(self):
         self._directory(self.output)
@@ -219,21 +235,23 @@ def init_assets(app):
     app.static_folder = (
         pipeline.source if app.env.development or app.env.test else pipeline.output
     )
-    prefix = config.prefix
-    if (
-        not isinstance(prefix, str)
-        or not prefix.startswith("/")
-        or any(char in prefix for char in "?#%")
-    ):
-        raise AssetError(
-            "Asset URL prefix must be an absolute path without query strings"
+    app.static_url_path = url_prefix(config.prefix)
+
+    def serve_asset(filename):
+        if not (app.env.development or app.env.test):
+            return app.send_static_file(filename)
+        try:
+            path = pipeline.source_file(filename)
+        except AssetError:
+            abort(404)
+        return send_from_directory(
+            path.parent, path.name, max_age=app.get_send_file_max_age(filename)
         )
-    _logical_name(prefix.rstrip("/")[1:])
-    app.static_url_path = prefix
+
     app.add_url_rule(
         f"{app.static_url_path}/<path:filename>",
         endpoint="static",
-        view_func=app.send_static_file,
+        view_func=serve_asset,
         build_only=not config.serve,
     )
     app.jinja_env.globals.update(

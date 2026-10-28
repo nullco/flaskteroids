@@ -35,8 +35,11 @@ successful with a no-tests message; direct pytest retains its strict exit status
 <%block name="browser_guidance">Install browsers explicitly when adding system tests:
 `.venv/bin/playwright install chromium`.
 
-Assets live in `app/assets` and are linked by the generated layout.
-See [Assets](https://nullco.github.io/flaskteroids/other/assets/) for helpers,
+Stylesheets and images live in `app/assets`. JavaScript starts in
+`app/javascript/application.js`, with module pins in `config/importmap.py`.
+Add packages with `bin/importmap pin PACKAGE` and commit `vendor/javascript`.
+Turbo is supplied by the installed framework, not copied into the application.
+See [Import maps](https://nullco.github.io/flaskteroids/other/importmaps/) and [Assets](https://nullco.github.io/flaskteroids/other/assets/) for helpers,
 build commands, and configuration.</%block>
 
 Never commit `config/master.key` or plaintext secrets. Production requires the matching

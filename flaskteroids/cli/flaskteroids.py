@@ -18,6 +18,7 @@ from flaskteroids.cli.artifacts import ArtifactsBuilder, ArtifactsBuilderExcepti
 from flaskteroids.cli.assets import precompile as assets_precompile
 from flaskteroids.cli.attachments import STORAGE_YAML
 from flaskteroids.cli.db.config import initialize_migrations
+from flaskteroids.cli.importmap import importmap
 from flaskteroids.credentials import encrypt, generate_key
 
 
@@ -32,6 +33,7 @@ def cli():
 
 cli.add_command(agent_skills)
 cli.add_command(assets_precompile)
+cli.add_command(importmap)
 
 
 @cli.command("new")

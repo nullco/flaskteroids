@@ -257,16 +257,32 @@ These keys serve model `encrypts(...)`, encrypted rich text, and direct use of
 
 ```sh
 bin/flask turbo:install
-# Replace app-owned assets only after reviewing local customizations:
-bin/flask turbo:install --force
 ```
 
-Installs the bundled Turbo 8.0.23 runtime, license, and provenance into application
-assets. Existing files are preserved unless `--force` is supplied. The known
-generated CDN URL is migrated without replacing surrounding script attributes;
-custom layouts receive instructions to load one runtime and include the CSRF
-meta token. Existing views are not rewritten. New applications already include
-this setup. See [Turbo installation](../views/turbo.md#install-or-upgrade).
+Configures the framework-provided Turbo 8.0.23 ESM asset through import maps,
+preserving application code. Layouts without script tags receive the module
+helper; customized script layouts receive instructions instead. Existing views are not rewritten and no
+runtime is copied or downloaded. New applications already include this setup.
+See [Turbo installation](../views/turbo.md#install-or-upgrade).
+
+## Import maps
+
+```sh
+bin/flask importmap:install
+bin/importmap pin @github/hotkey
+bin/importmap pin @github/hotkey@3.1.1 --no-preload
+bin/importmap packages
+bin/importmap update
+bin/importmap pristine
+bin/importmap unpin @github/hotkey
+bin/importmap json --environment production
+```
+
+The installer creates `config/importmap.py`, `app/javascript/application.js`, and
+`bin/importmap` without replacing application code. Package commands resolve
+through JSPM and vendor returned modules, without booting the application.
+Use `flaskteroids importmap --root /path/to/app COMMAND` outside the application.
+See [Import maps](importmaps.md) for configuration, options, and package limits.
 
 ## Rich text
 

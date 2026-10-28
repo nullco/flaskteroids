@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+### Added
+
+- Rails-style import maps with explicit Python pin configuration, local directory
+  pins, Jinja module helpers, preloading, optional integrity, and bootless package
+  pin/unpin/update/pristine commands using JSPM. Generated browser applications
+  include the entrypoint and bin/importmap. See [Import maps](docs/other/importmaps.md).
+
+### Changed
+
+- Turbo is now a framework-provided ESM asset, consumed through import maps rather
+  than copied into generated applications. Upgrading the locked framework updates
+  its supplied runtime. Application turbo.js assets can override that default.
+- turbo:install configures import maps and preserves application code; its asset
+  replacement --force option is removed. Review custom runtime/layout changes when
+  upgrading. New importmap:install provides the same setup directly.
+- Asset discovery includes app/javascript and vendor/javascript, with application
+  overrides for explicitly exposed framework assets. Duplicate logical names
+  across application sources and overlapping source directories fail explicitly.
+
 ## 0.11.0 - 2026-10-28
 
 ### Breaking changes

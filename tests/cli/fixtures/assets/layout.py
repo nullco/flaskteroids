@@ -1,9 +1,11 @@
+import json
 import sys
 
 from flask import render_template
 from wsgi import app
 
 from flaskteroids.helpers import asset_path
+from tests.assertions import HTML
 
 production = sys.argv[1] == "production"
 
@@ -12,8 +14,12 @@ with app.test_request_context():
     url = asset_path("application.css")
     assert f'href="{url}"' in html
     assert 'data-turbo-track="reload"' in html
-    turbo_url = asset_path("turbo/turbo.js")
-    assert f'src="{turbo_url}"' in html
+    turbo_url = asset_path("turbo.js")
+    scripts = HTML(html).scripts
+    importmap = next(
+        script for script in scripts if script["attributes"].get("type") == "importmap"
+    )
+    assert json.loads(importmap["content"])["imports"]["@hotwired/turbo"] == turbo_url
 
 response = app.test_client().get(url)
 assert response.status_code == 200

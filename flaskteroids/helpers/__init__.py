@@ -8,6 +8,19 @@ from flaskteroids.assets import asset_path as asset_path
 from flaskteroids.assets import stylesheet_link_tag as stylesheet_link_tag
 from flaskteroids.csrf import CSRFToken
 from flaskteroids.form import Form
+from flaskteroids.importmaps.helpers import importmap_digest as importmap_digest
+from flaskteroids.importmaps.helpers import (
+    javascript_import_module_tag as javascript_import_module_tag,
+)
+from flaskteroids.importmaps.helpers import (
+    javascript_importmap_tags as javascript_importmap_tags,
+)
+from flaskteroids.importmaps.helpers import (
+    javascript_inline_importmap_tag as javascript_inline_importmap_tag,
+)
+from flaskteroids.importmaps.helpers import (
+    javascript_module_preload_tag as javascript_module_preload_tag,
+)
 from flaskteroids.inflector import inflector
 from flaskteroids.rich_text.helpers import rich_text_assets as rich_text_assets
 from flaskteroids.routes import _model_destination, _polymorphic_path

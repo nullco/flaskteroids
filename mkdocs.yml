@@ -61,6 +61,7 @@ nav:
       - Configuration: configuration.md
       - Command-line interface: other/cli.md
       - Assets: other/assets.md
+      - Import maps: other/importmaps.md
       - Internationalization: other/internationalization.md
       - Building an API: controllers/api.md
 

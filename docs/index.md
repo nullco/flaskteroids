@@ -47,6 +47,7 @@ Start with [Getting started](getting_started.md) to build a product catalog, lea
 - [Configuration](configuration.md) — Configure environments, databases, and encrypted credentials.
 - [Command-line interface](other/cli.md) — Look up generators and application commands.
 - [Assets](other/assets.md) — Serve source assets and build fingerprinted production files.
+- [Import maps](other/importmaps.md) — Use native JavaScript modules and pin packages without Node.
 - [Internationalization](other/internationalization.md) — Translate messages and localize dates and times.
 - [Building an API](controllers/api.md) — Build a JSON API without browser defaults.
 

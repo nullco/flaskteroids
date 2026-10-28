@@ -7,10 +7,11 @@ Action Cable, Stimulus, Node, or JavaScript build tooling are included.
 
 ## Install or upgrade
 
-New applications include upstream Turbo **8.0.23** at
-`app/assets/turbo/turbo.js`, with `TURBO-LICENSE` and provenance in that directory's
-`README.md`. The application layout loads it through the asset pipeline and
-includes a CSRF meta token. No CDN connection is needed.
+The installed framework supplies upstream Turbo **8.0.23** as a local ESM asset,
+with license and provenance included in the distribution. New applications pin
+`@hotwired/turbo` to `turbo.js`, import it from `app/javascript/application.js`,
+and load the entrypoint through [import maps](../other/importmaps.md).
+The layout includes a CSRF meta token. No runtime download or CDN is needed.
 
 For an existing application, run:
 
@@ -18,20 +19,22 @@ For an existing application, run:
 bin/flask turbo:install
 ```
 
-The command copies missing assets, preserving application-owned files. Use
-`bin/flask turbo:install --force` to replace them after reviewing customizations.
-It migrates the known generated jsDelivr Turbo URL, preserving surrounding script
-attributes, and adds the CSRF meta token when it recognizes the local runtime.
-For custom layouts it prints instructions; ensure your layout contains:
+The command creates missing import-map conventions without replacing application
+configuration or JavaScript. It adds the module helper to layouts without script
+tags; customized script layouts are left unchanged with setup instructions.
+An explicit application `turbo.js` asset overrides the framework version.
+Ensure the layout contains:
 
 ```html
 <meta name="csrf-token" content="{{ csrf_token() }}">
-<script defer src="{{ asset_path('turbo/turbo.js') }}" data-turbo-track="reload"></script>
+{{ javascript_importmap_tags() }}
 ```
 
 Load **one** Turbo runtime: replace an existing runtime rather than adding a
 second one. Run [asset precompilation](../other/assets.md#production-builds) for
-production. Installation does not rewrite existing page views.
+production. Installation does not rewrite existing page views. Upgrade the locked
+Flaskteroids dependency to update the supplied runtime; there is no `--force`
+asset-copy operation.
 
 ## Frames and layouts
 

@@ -1465,11 +1465,12 @@ bin/flask assets:precompile
 Docker builds run this compilation automatically. Keep the generated output and
 manifest together; production has no fallback to source files.
 
-The generated layout also loads Turbo from `app/assets/turbo/turbo.js` through
-`asset_path`, with no CDN connection required. Production precompilation
-fingerprints this local runtime like other assets. Flaskteroids' asset compiler
-does not install import maps, bundle JavaScript, or compile Sass. See
-[Assets](other/assets.md) when extending the frontend.
+The generated layout loads `app/javascript/application.js` through import maps.
+That entrypoint imports the local Turbo runtime supplied by the installed
+Flaskteroids package; no CDN or application-owned runtime copy is needed.
+Production precompilation fingerprints JavaScript like other assets. Add packages
+with `bin/importmap pin PACKAGE`; the compiler does not bundle JavaScript or
+compile Sass. See [Import maps](other/importmaps.md) and [Assets](other/assets.md).
 
 ## 12. Test the store's behavior
 

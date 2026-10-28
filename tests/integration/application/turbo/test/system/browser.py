@@ -144,12 +144,12 @@ class TurboTest(SystemTest):
         # layout omits it while retaining this view's head contribution.
         assert 'name="preview-head"' in response.text()
         assert "<script" not in response.text()
-        assert "turbo/turbo.js" not in response.text()
+        assert 'type="importmap"' not in response.text()
         full = self.page.request.get(urljoin(self.page.url, self.preview_path))
         assert full.status == 200
-        assert "turbo/turbo.js" in full.text()
+        assert 'type="importmap"' in full.text()
         assert 'data-is-frame="false"' in full.text()
-        assert any("/assets/turbo/turbo.js" in item.url for item in self.responses)
+        assert any("/assets/turbo.js" in item.url for item in self.responses)
         self._assert_workspace_preserved()
 
     def test_top_target_leaves_the_frame_and_renders_the_full_destination(self):

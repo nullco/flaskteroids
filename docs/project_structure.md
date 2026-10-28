@@ -12,11 +12,12 @@ my_project/
 │   ├── assets/
 │   ├── controllers/
 │   ├── helpers/
+│   ├── javascript/application.js
 │   ├── models/
 │   ├── mailers/
 │   ├── views/
 │   └── jobs/
-├── bin/                 # flask, jobs, setup, release, docker-entrypoint
+├── bin/                 # flask, importmap, jobs, setup, release, docker-entrypoint
 ├── deploy/README.md
 ├── Dockerfile
 ├── .dockerignore
@@ -27,6 +28,7 @@ my_project/
 │   │   └── production.py
 │   ├── locales/en.yml   # application translations
 │   ├── initializers/
+│   ├── importmap.py      # browser module pins
 │   ├── application.py
 │   ├── boot.py
 │   ├── credentials.yml.enc
@@ -38,6 +40,7 @@ my_project/
 │   └── migrate/
 ├── public/assets/       # fingerprinted build output and manifest; not committed
 ├── storage/
+├── vendor/javascript/   # downloaded modules; commit these
 ├── test/
 ├── pyproject.toml
 ├── uv.lock              # created by installation; commit this
@@ -51,6 +54,10 @@ my_project/
 | Path | Contents |
 | --- | --- |
 | `app/assets` | Source stylesheets/images, served automatically in development/test. |
+| `app/javascript` | Application JavaScript modules and entrypoints. |
+| `vendor/javascript` | Downloaded, versioned JavaScript modules. |
+| `config/importmap.py` | Logical JavaScript module mappings. |
+| `bin/importmap` | Resolve, pin, and maintain downloaded JavaScript modules. |
 | `public/assets` | Fingerprinted production assets and manifest, created by precompilation. |
 | `app/controllers` | Request-handling actions. |
 | `app/helpers` | Automatically loaded presentation helper classes. |
