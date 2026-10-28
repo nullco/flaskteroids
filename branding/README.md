@@ -3,7 +3,7 @@
 The official Flaskteroids logo is a silver-gray flask containing luminous green
 potion, with green bubbles and sparkles. No slogan is part of the logo.
 
-Open [preview.html](preview.html) for the asset gallery.
+Open the [brand preview](preview.md) for the GitHub-friendly asset gallery.
 
 This directory is the canonical logo kit for repository maintainers, not part
 of the framework user guide. `docs/assets/brand/` contains only the four image
@@ -63,6 +63,10 @@ touch icon, which use charcoal. All PNGs use the same artwork as their SVGs.
   Use the white wordmark and brighter silver treatment on dark backgrounds.
 
 ## Palette and typography
+
+![Flaskteroids brand palette with labeled green and silver gradients, accent, and background colors.](palette.svg)
+
+See [color swatches and gradient previews](preview.md#brand-color-palette) in the asset gallery.
 
 - Potion: `#EDFF9D` → `#B1FF53` → `#49CF87`
 - Bubbles and sparkles: `#C9FF80`

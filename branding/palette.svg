@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="572" viewBox="0 0 960 572" role="img" aria-labelledby="title description">
+  <title id="title">Flaskteroids brand color palette</title>
+  <desc id="description">Potion gradient: pale lime EDFF9D, luminous green B1FF53, mint green 49CF87. Silver glass gradient: light silver F0F1F3, silver gray B8BBC2, dark silver 737780. Bubbles and sparkles C9FF80. Charcoal background 100F1B.</desc>
+  <defs>
+    <linearGradient id="potion">
+      <stop stop-color="#EDFF9D"/>
+      <stop offset=".35" stop-color="#B1FF53"/>
+      <stop offset="1" stop-color="#49CF87"/>
+    </linearGradient>
+    <linearGradient id="silver">
+      <stop stop-color="#F0F1F3"/>
+      <stop offset=".55" stop-color="#B8BBC2"/>
+      <stop offset="1" stop-color="#737780"/>
+    </linearGradient>
+  </defs>
+  <rect x=".5" y=".5" width="959" height="571" rx="16" fill="#FFFFFF" stroke="#D9DAE0"/>
+  <g font-family="system-ui, -apple-system, Segoe UI, sans-serif" fill="#25282E">
+    <text x="32" y="50" font-size="28" font-weight="700">Brand color palette</text>
+    <text x="32" y="78" font-size="16" fill="#626773">Luminous potion greens, silver glass, and a charcoal backdrop.</text>
+
+    <g font-size="18" font-weight="700">
+      <text x="32" y="120">Potion gradient</text>
+      <text x="504" y="120">Silver glass gradient</text>
+    </g>
+    <g stroke="#D9DAE0">
+      <rect x="32" y="136" width="424" height="72" rx="10" fill="url(#potion)"/>
+      <rect x="504" y="136" width="424" height="72" rx="10" fill="url(#silver)"/>
+      <rect x="32" y="224" width="132" height="52" rx="8" fill="#EDFF9D"/>
+      <rect x="178" y="224" width="132" height="52" rx="8" fill="#B1FF53"/>
+      <rect x="324" y="224" width="132" height="52" rx="8" fill="#49CF87"/>
+      <rect x="504" y="224" width="132" height="52" rx="8" fill="#F0F1F3"/>
+      <rect x="650" y="224" width="132" height="52" rx="8" fill="#B8BBC2"/>
+      <rect x="796" y="224" width="132" height="52" rx="8" fill="#737780"/>
+    </g>
+    <g font-size="16" font-weight="600">
+      <text x="32" y="302">Pale lime</text>
+      <text x="178" y="302">Luminous green</text>
+      <text x="324" y="302">Mint green</text>
+      <text x="504" y="302">Light silver</text>
+      <text x="650" y="302">Silver gray</text>
+      <text x="796" y="302">Dark silver</text>
+    </g>
+    <g font-family="ui-monospace, monospace" font-size="16" fill="#626773">
+      <text x="32" y="326">#EDFF9D</text>
+      <text x="178" y="326">#B1FF53</text>
+      <text x="324" y="326">#49CF87</text>
+      <text x="504" y="326">#F0F1F3</text>
+      <text x="650" y="326">#B8BBC2</text>
+      <text x="796" y="326">#737780</text>
+    </g>
+
+    <text x="32" y="374" font-size="18" font-weight="700">Accent and backdrop</text>
+    <rect x="32" y="390" width="204" height="72" rx="10" fill="#C9FF80" stroke="#D9DAE0"/>
+    <rect x="252" y="390" width="204" height="72" rx="10" fill="#100F1B" stroke="#D9DAE0"/>
+    <g font-size="16" font-weight="600">
+      <text x="32" y="488">Bubbles &amp; sparkles</text>
+      <text x="252" y="488">Charcoal background</text>
+    </g>
+    <g font-family="ui-monospace, monospace" font-size="16" fill="#626773">
+      <text x="32" y="512">#C9FF80</text>
+      <text x="252" y="512">#100F1B</text>
+    </g>
+    <text x="504" y="408" font-size="18" font-weight="700">Logo colors, not a UI color system</text>
+    <g font-size="16" fill="#626773">
+      <text x="504" y="438">Preserve the supplied logo gradients.</text>
+      <text x="504" y="464">Check contrast separately for interface</text>
+      <text x="504" y="490">text and controls.</text>
+    </g>
+    <text x="32" y="548" font-size="14" fill="#626773">Flaskteroids · Palette reference</text>
+  </g>
+</svg>
