@@ -17,7 +17,7 @@ def test_new_application_pins_framework_turbo_without_copying_runtime(
     assert not runtime.is_relative_to(root)
     assert (
         runtime.read_bytes()
-        == files("flaskteroids.turbo").joinpath("assets/turbo.js").read_bytes()
+        == files("flaskteroids_turbo").joinpath("assets/turbo.js").read_bytes()
     )
     assert not list((root / "vendor/javascript").glob("*.js"))
     assert not (root / "app/assets/turbo").exists()

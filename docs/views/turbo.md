@@ -7,15 +7,14 @@ Action Cable, Stimulus, Node, or JavaScript build tooling are included.
 
 ## Install or upgrade
 
-The installed framework supplies upstream Turbo **8.0.23** as a local ESM asset,
-with license and provenance included in the distribution. New applications pin
-`@hotwired/turbo` to `turbo.js`, import it from `app/javascript/application.js`,
-and load the entrypoint through [import maps](../other/importmaps.md).
-The layout includes a CSRF meta token. No runtime download or CDN is needed.
+New browser applications include Turbo **8.0.23** through `flaskteroids-turbo`
+and load it through [import maps](../other/importmaps.md), without a CDN or runtime
+download. The layout includes a CSRF meta token.
 
-For an existing application, run:
+For an existing application:
 
 ```sh
+uv add 'flaskteroids-turbo>=0.1.0,<0.2'
 bin/flask turbo:install
 ```
 
@@ -32,9 +31,13 @@ Ensure the layout contains:
 
 Load **one** Turbo runtime: replace an existing runtime rather than adding a
 second one. Run [asset precompilation](../other/assets.md#production-builds) for
-production. Installation does not rewrite existing page views. Upgrade the locked
-Flaskteroids dependency to update the supplied runtime; there is no `--force`
-asset-copy operation.
+production. Installation does not rewrite existing page views. To upgrade Turbo:
+
+```sh
+uv lock --upgrade-package flaskteroids-turbo
+uv sync --locked
+bin/flask assets:precompile
+```
 
 ## Frames and layouts
 

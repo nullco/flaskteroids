@@ -6,6 +6,9 @@ readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     ${framework_dependency_toml},
+% for dependency in browser_dependencies:
+    "${dependency}",
+% endfor
     "gunicorn",
 ]
 

@@ -18,9 +18,9 @@
   redisplay, alternative text, safe image links, and gallery rendering.
   Sanitization preserves headings, tables, code languages, and safe highlights.
   rich_text:install configures modules without copying assets; --force is removed.
-- Turbo is now a framework-provided ESM asset, consumed through import maps rather
-  than copied into generated applications. Upgrading the locked framework updates
-  its supplied runtime. Application turbo.js assets can override that default.
+- Turbo now ships through flaskteroids-turbo and import maps without copying assets.
+  Existing browser apps must add that dependency when upgrading; application APIs
+  are unchanged. Application turbo.js assets can still override the packaged runtime.
 - turbo:install configures import maps and preserves application code; its asset
   replacement --force option is removed. Review custom runtime/layout changes when
   upgrading. New importmap:install provides the same setup directly.

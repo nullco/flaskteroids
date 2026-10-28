@@ -13,7 +13,6 @@ include = ["flaskteroids", "flaskteroids.*"]
 ]
 "flaskteroids" = [".agents/skills/*/SKILL.md"]
 "flaskteroids.rich_text" = ["assets/*"]
-"flaskteroids.turbo" = ["assets/*"]
 
 [project]
 name = "flaskteroids"
@@ -123,6 +122,7 @@ integration = [
     "PyMySQL[rsa]>=1.1",
 ]
 dev = [
+    "flaskteroids-turbo>=0.1.0,<0.2",
     "mypy>=2.4.0",
     "pytest-cov>=7.1.0",
     "pytest-mock>=3.16.0",
