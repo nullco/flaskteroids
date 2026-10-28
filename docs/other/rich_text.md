@@ -6,6 +6,8 @@ HTML rendering.
 
 ## Set up
 
+Browser applications include `flaskteroids-lexxy`. Install rich text:
+
 ```sh
 bin/flask generate scaffold Post title:string content:rich_text
 bin/flask rich_text:install
@@ -19,7 +21,7 @@ The installer generates shared `rich_texts` storage and, if not already installe
 the attachment tables and `config/storage.yml`. It configures import-map pins,
 imports `"flaskteroids/rich-text"` in `app/javascript/application.js`, and adds
 `{{ rich_text_assets() }}` to `app/views/layouts/application.html` for styles.
-The runtime and stylesheets come from the installed framework; they are not copied
+The runtime and stylesheets come from `flaskteroids-lexxy`; they are not copied
 into the application. No Node, npm, or editor CDN is required. Custom layouts need
 that stylesheet helper, `{{ javascript_importmap_tags() }}`, and the CSRF token
 meta tag in their `<head>`. See [Import maps](importmaps.md).
@@ -335,10 +337,10 @@ interaction remain available through the Playwright page.
 
 ## Upgrade the editor
 
-The locked Flaskteroids dependency determines the packaged Lexxy version:
+Upgrade the locked Lexxy asset package independently:
 
 ```sh
-uv lock --upgrade-package flaskteroids
+uv lock --upgrade-package flaskteroids-lexxy
 uv sync --locked
 bin/flask assets:precompile
 ```
@@ -346,11 +348,11 @@ bin/flask assets:precompile
 Commit the updated lockfile and deploy/restart the application. Generated Docker
 builds already precompile assets. Runtime upgrades do not require reinstalling
 rich text or changing its pins. Explicit application assets with the same logical
-names override framework assets and remain application-owned.
+names override packaged assets and remain application-owned.
 
 The installer preserves application JavaScript, existing pins, layout content,
 and storage configuration. It reports manual setup instructions when pin
-configuration cannot be safely edited; it does not migrate older editor setups.
+configuration cannot be safely edited.
 
 ## Limitations
 

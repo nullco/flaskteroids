@@ -1,9 +1,9 @@
 # Turbo Frames and Streams
 
-Turbo Drive handles browser navigation and form submissions; earlier generated
-apps already loaded Turbo from a CDN. Flaskteroids adds Rails-style **Frames**
-and **HTTP Stream responses** on the server. No subscriptions, broadcasts,
-Action Cable, Stimulus, Node, or JavaScript build tooling are included.
+Turbo Drive handles browser navigation and form submissions. Flaskteroids adds
+Rails-style **Frames** and **HTTP Stream responses** on the server. No
+subscriptions, broadcasts, Action Cable, Stimulus, Node, or JavaScript build
+tooling are included.
 
 ## Install or upgrade
 
@@ -11,16 +11,10 @@ New browser applications include Turbo **8.0.23** through `flaskteroids-turbo`
 and load it through [import maps](../other/importmaps.md), without a CDN or runtime
 download. The layout includes a CSRF meta token.
 
-For an existing application:
-
-```sh
-uv add 'flaskteroids-turbo>=0.1.0,<0.2'
-bin/flask turbo:install
-```
-
-The command creates missing import-map conventions without replacing application
-configuration or JavaScript. It adds the module helper to layouts without script
-tags; customized script layouts are left unchanged with setup instructions.
+`bin/flask turbo:install` restores missing import-map conventions without
+replacing application configuration or JavaScript. It adds the module helper to
+layouts without script tags; customized script layouts are left unchanged with
+setup instructions.
 An explicit application `turbo.js` asset overrides the framework version.
 Ensure the layout contains:
 

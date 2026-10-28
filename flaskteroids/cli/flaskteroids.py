@@ -81,7 +81,9 @@ def new(app_name, skip_install, api_only):
     )
     params = {
         "project_title": project_name.replace("_", " ").title(),
-        "browser_dependencies": [] if api_only else ["flaskteroids-turbo>=0.1.0,<0.2"],
+        "browser_dependencies": []
+        if api_only
+        else ["flaskteroids-turbo>=0.1.0,<0.2", "flaskteroids-lexxy>=0.1.0,<0.2"],
         "project_name_toml": json.dumps(project_name),
         "framework_dependency_toml": json.dumps(f"flaskteroids{constraint}"),
         "framework_path_toml": json.dumps(str(editable_path))

@@ -12,8 +12,9 @@ Flaskteroids serves assets at `/assets/` using Flask's `static` endpoint:
 | Other environments | `public/assets` — fingerprinted build output |
 
 Application sources are `app/assets`, `app/javascript`, and `vendor/javascript`.
-JavaScript paths are relative to their source root. The installed framework also
-supplies `turbo.js` and Lexxy's editor/integration assets. Application assets with
+JavaScript paths are relative to their source root. `flaskteroids-turbo` supplies
+`turbo.js`, and `flaskteroids-lexxy` supplies the editor runtime and stylesheets.
+Flaskteroids supplies the rich-text integration assets. Application assets with
 the same logical names take precedence.
 Duplicate logical names across application sources fail explicitly.
 
@@ -46,15 +47,14 @@ Native `url_for("static", filename=...)` works, but does not look up fingerprint
 
 ## Local Turbo runtime
 
-The installed framework supplies upstream Turbo **8.0.23** as an ESM asset, with
-license and provenance in the distribution. New applications pin `@hotwired/turbo`
+`flaskteroids-turbo` supplies upstream Turbo **8.0.23** as an ESM asset, with
+license and provenance in the package. New applications pin `@hotwired/turbo`
 to `turbo.js` and import it from `app/javascript/application.js`. The layout uses
 `javascript_importmap_tags()`; production precompilation fingerprints the runtime.
 There is no application-owned copy, download, CDN, or Node/build dependency.
 
-Existing applications can run `bin/flask turbo:install`, which configures the
-import-map workflow without replacing application code. Load only one runtime.
-See [Import maps](importmaps.md) and [Turbo setup](../views/turbo.md#install-or-upgrade).
+Load only one runtime. See [Import maps](importmaps.md) and
+[Turbo setup](../views/turbo.md#install-or-upgrade).
 
 ## CSS references
 

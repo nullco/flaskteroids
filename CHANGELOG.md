@@ -18,12 +18,14 @@
   redisplay, alternative text, safe image links, and gallery rendering.
   Sanitization preserves headings, tables, code languages, and safe highlights.
   rich_text:install configures modules without copying assets; --force is removed.
+- Lexxy now ships through flaskteroids-lexxy, independently of Flaskteroids.
+  Generated browser applications include it by default.
 - Turbo now ships through flaskteroids-turbo and import maps without copying assets.
-  Existing browser apps must add that dependency when upgrading; application APIs
-  are unchanged. Application turbo.js assets can still override the packaged runtime.
+  Generated browser applications include it by default. Application turbo.js assets
+  can override the packaged runtime.
 - turbo:install configures import maps and preserves application code; its asset
-  replacement --force option is removed. Review custom runtime/layout changes when
-  upgrading. New importmap:install provides the same setup directly.
+  replacement --force option is removed. New importmap:install provides the same
+  setup directly.
 - Asset discovery includes app/javascript and vendor/javascript, with application
   overrides for explicitly exposed framework assets. Duplicate logical names
   across application sources and overlapping source directories fail explicitly.

@@ -460,6 +460,7 @@ s3 = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "flaskteroids-lexxy" },
     { name = "flaskteroids-turbo" },
     { name = "mypy" },
     { name = "pytest-cov" },
@@ -491,6 +492,7 @@ provides-extras = ["s3"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "flaskteroids-lexxy", specifier = ">=0.1.0,<0.2" },
     { name = "flaskteroids-turbo", specifier = ">=0.1.0,<0.2" },
     { name = "mypy", specifier = ">=2.4.0" },
     { name = "pytest-cov", specifier = ">=7.1.0" },
@@ -501,6 +503,15 @@ dev = [
 integration = [
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3" },
     { name = "pymysql", extras = ["rsa"], specifier = ">=1.1" },
+]
+
+[[package]]
+name = "flaskteroids-lexxy"
+version = "0.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/3b/2b/c895b9ed19fecedea0826f6402b8e81f16fd355b4aab516ad84c4200097b/flaskteroids_lexxy-0.1.0.tar.gz", hash = "sha256:e8ffd568a1d1266e539ecca6181450754df7de22ef23253ab18baa091dbb8b4f", size = 230619, upload-time = "2026-10-28T23:15:14.912Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b4/e5/c7a8d5c843bd56ec87c54c5ab3e91bfc7fa2d0838ec609dd2f23fbd779d0/flaskteroids_lexxy-0.1.0-py3-none-any.whl", hash = "sha256:5eddb86aafcd9309bf405692a058155c8b87945fec430c90c4da2001170aa421", size = 242283, upload-time = "2026-10-28T23:15:13.12Z" },
 ]
 
 [[package]]

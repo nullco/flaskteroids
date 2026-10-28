@@ -5,13 +5,8 @@ or transpilation. Flaskteroids follows Rails' import-map workflow: declare logic
 module names, import them from JavaScript, and let the asset pipeline supply
 development or fingerprinted production URLs.
 
-New browser applications include this setup. For an existing application:
-
-```sh
-bin/flask importmap:install
-```
-
-The installer creates missing conventions without replacing application code.
+Browser applications include this setup. `bin/flask importmap:install` restores
+missing conventions without replacing application code.
 It adds the module helper to layouts without script tags; customized script layouts
 are left unchanged with setup instructions. Keep only one Turbo runtime.
 

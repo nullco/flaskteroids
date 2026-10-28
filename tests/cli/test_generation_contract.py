@@ -71,23 +71,25 @@ def test_new_pins_installed_generator_version_constraint(
     assert metadata["project"]["dependencies"] == [
         f"flaskteroids{constraint}",
         "flaskteroids-turbo>=0.1.0,<0.2",
+        "flaskteroids-lexxy>=0.1.0,<0.2",
         "gunicorn",
     ]
 
 
 @pytest.mark.parametrize("api_only", [False, True])
-def test_generated_application_owns_its_browser_dependencies(tmp_path, api_only):
+@pytest.mark.parametrize("package", ["flaskteroids-turbo", "flaskteroids-lexxy"])
+def test_generated_application_owns_its_browser_dependencies(
+    tmp_path, api_only, package
+):
     root = tmp_path / "weblog"
     options = ["--api"] if api_only else []
     result = CliRunner().invoke(cli, ["new", str(root), "--skip-install", *options])
     assert result.exit_code == 0, result.output
     metadata = tomllib.loads((root / "pyproject.toml").read_text())
     dependencies = metadata["project"]["dependencies"]
-    assert any(value.startswith("flaskteroids-turbo") for value in dependencies) is (
-        not api_only
-    )
+    assert (f"{package}>=0.1.0,<0.2" in dependencies) is (not api_only)
     sources = metadata.get("tool", {}).get("uv", {}).get("sources", {})
-    assert "flaskteroids-turbo" not in sources
+    assert package not in sources
 
 
 def test_invalid_version_rejected_before_writing(tmp_path, mocker):
