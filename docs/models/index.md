@@ -284,6 +284,101 @@ author.posts.where(title="Next").count()
 Find-then-create is not an atomic uniqueness guarantee. Add a database unique
 constraint when concurrent duplicates must be rejected.
 
+### Many-to-many relationships through a join model
+
+Use `through` when the relationship is itself a model—for example, a membership
+with a role:
+
+```python
+class Organization(ApplicationModel):
+    has_many("memberships", dependent="destroy")
+    has_many("users", through="memberships")
+
+
+class Membership(ApplicationModel):
+    belongs_to("organization")
+    belongs_to("user")
+    validates("role", presence=True)
+
+
+class User(ApplicationModel):
+    has_many("memberships", dependent="destroy")
+    has_many("organizations", through="memberships")
+```
+
+Generate all three models and migrate their tables. The `memberships` table needs
+its own primary key, `organization_id`, `user_id`, and `role`. Give `role` a
+database default in the migration if collection operations should create
+memberships without supplying it. Otherwise, create the membership explicitly:
+
+```python
+organization.memberships.create(user=user, role="administrator")
+organization.users.where(name="Ada").first()
+Organization.includes("users")
+Organization.includes("users.organizations")
+```
+
+The source association is inferred from the singular or plural collection name.
+For a different name, declare
+`has_many("members", through="memberships", source="user")`. Custom target classes
+and foreign keys belong on the join model's `belongs_to` declaration.
+
+#### Build, add, and remove targets
+
+```python
+user = organization.users.new(name="Ada")  # Build a target and its unsaved join
+organization.save()                       # Save both with the parent
+
+user = organization.users.create(name="Grace")
+organization.users.append(existing_user)
+organization.users = [user, existing_user]
+organization.users.remove(existing_user)
+organization.users.clear()
+```
+
+- `new()` defers persistence until the graph is saved. Appending or assigning on
+  an unsaved owner also builds joins for its later save.
+- For a saved owner, `create()`, append, removal, clear, and replacement write
+  immediately and commit before returning, or join the caller's explicit
+  transaction. `create()` requires a saved owner. Queries support
+  `where(...).first_or_create()` with the usual creation defaults.
+- New targets and joins run validations and save callbacks. Adding an existing
+  target also saves its staged scalar edits, but does not publish the owner's
+  pending scalar input. Replacement preserves retained joins and their attributes.
+- Invalid target creation returns the target with its input and errors.
+  Rejected append/replacement and invalid joins raise `RecordInvalid`, imported
+  from `flaskteroids.model`; its `record` holds the failing target or join and
+  its errors. A standalone exception rolls back the operation, including new
+  targets. **Let the exception escape an explicit transaction to roll back that
+  group**; catching it inside the block does not abort the transaction. Unhandled
+  `RecordInvalid` exceptions during requests produce a 422 response; catch the
+  error and re-render the form when the user needs to correct input.
+- Removal, clear, and replacement delete joins directly. They do **not** destroy
+  targets or run join destroy callbacks, matching Rails' default through-collection
+  removal. To run those callbacks, explicitly destroy the membership instead.
+  `dependent="destroy"` on the direct `memberships` association still runs join
+  destroy callbacks when the owner is destroyed.
+- Repeated targets represent separate join records. Replacement matches their
+  occurrences; `remove(user)` removes all joins to that user for this owner.
+  Add a database unique constraint on the foreign-key pair if duplicate
+  memberships must be rejected.
+- Collections read the native join-model storage, including unsaved joins and
+  direct association edits. There is no separate target collection to reset.
+  Query methods read persisted rows; use `includes()` to batch-load joins and
+  targets. Collection ordering is not persisted; use an explicitly ordered query.
+
+This first implementation supports one direct `has_many` join association and
+a direct `belongs_to` source, with single-column primary keys. Nested through
+paths, polymorphic sources, and `has_one`/`has_many` sources are not supported.
+Configure `class_name`, `foreign_key`, `inverse_of`, `dependent`, and `autosave`
+on the direct associations, not the through declaration; disabling new-record
+autosave on either leg is rejected. Declare nested attributes on `memberships`
+to edit relationship data in a form, rather than on `users`.
+
+Through collections are framework projections, not additional native SQLAlchemy
+relationships. Native queries/loaders can use the underlying join associations;
+framework `includes("users")` expands them automatically.
+
 ### Autosave and nested attributes
 
 By default, saving a record saves related **new** records, but not edits to

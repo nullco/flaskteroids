@@ -100,7 +100,16 @@ class AssociationCollection(MutableSequence):
 
 
 def _declare(
-    name, kind, class_name, foreign_key, dependent, inverse_of, optional, autosave
+    name,
+    kind,
+    class_name,
+    foreign_key,
+    dependent,
+    inverse_of,
+    optional,
+    autosave,
+    through=None,
+    source=None,
 ):
     if not isinstance(name, str) or not name.isidentifier() or name.startswith("_"):
         raise ProgrammerError("Association names must be public Python identifiers.")
@@ -115,6 +124,24 @@ def _declare(
 
     if autosave is not None and type(autosave) is not bool:
         raise ProgrammerError("Association autosave must be True, False, or None.")
+
+    for option, value in (("through", through), ("source", source)):
+        if value is not None and (
+            not isinstance(value, str)
+            or not value.isidentifier()
+            or value.startswith("_")
+        ):
+            raise ProgrammerError(f"Association {option} must be a public identifier.")
+    if source is not None and through is None:
+        raise ProgrammerError("source requires a through association.")
+    if through is not None and any(
+        value is not None
+        for value in (class_name, foreign_key, dependent, inverse_of, autosave)
+    ):
+        raise ProgrammerError(
+            "Configure class_name, foreign_key, dependent, inverse_of, and autosave "
+            "on the join associations, not the through collection."
+        )
 
     def bind(cls):
         target = class_name or inflector.camelize(
@@ -131,7 +158,16 @@ def _declare(
                 f"Association {cls.__name__}.{name} conflicts with a model attribute."
             )
         definition.associations[name] = AssociationDefinition(
-            name, kind, target, key, dependent, inverse_of, optional, autosave
+            name,
+            kind,
+            target,
+            key,
+            dependent,
+            inverse_of,
+            optional,
+            autosave,
+            through,
+            source,
         )
         if kind == "belongs_to" and not optional:
             definition.validators.append(
@@ -172,9 +208,20 @@ def has_many(
     *,
     inverse_of=None,
     autosave=None,
+    through=None,
+    source=None,
 ):
     return _declare(
-        name, "has_many", class_name, foreign_key, dependent, inverse_of, True, autosave
+        name,
+        "has_many",
+        class_name,
+        foreign_key,
+        dependent,
+        inverse_of,
+        True,
+        autosave,
+        through,
+        source,
     )
 
 
@@ -230,6 +277,8 @@ def relationship_properties(cls, catalog, table_for):
             raise ProgrammerError(
                 f"Association {cls.__name__}.{name} conflicts with a snapshot column."
             )
+        if definition.through is not None:
+            continue
         target = catalog[definition.target]
         target_table = table_for(target)
         fk_table, pk_table = (
@@ -250,7 +299,8 @@ def relationship_properties(cls, catalog, table_for):
         inverses = [
             other.name
             for other in model_for(target).associations.values()
-            if other.target == cls.__name__
+            if other.through is None
+            and other.target == cls.__name__
             and other.foreign_key == definition.foreign_key
             and (other.kind == "belongs_to") != (definition.kind == "belongs_to")
         ]

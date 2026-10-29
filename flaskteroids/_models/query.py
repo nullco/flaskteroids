@@ -72,7 +72,13 @@ class ModelQuery[QueryModel: "Model"]:
                     "includes() expects nonempty dotted relationship paths"
                 )
             model, option = self._model_cls, None
-            for name in path.split("."):
+            names = path.split(".")
+            while names:
+                name = names.pop(0)
+                association = model_for(model).associations.get(name)
+                if association is not None and association.through is not None:
+                    names[:0] = [association.through, association.source]
+                    continue
                 relationship = inspect(model).relationships.get(name)
                 if relationship is None:
                     raise AttributeError(

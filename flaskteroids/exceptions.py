@@ -23,6 +23,14 @@ class UserError(Exception):
         super().__init__(*args)
 
 
+class RecordInvalid(Exception):
+    """An association write rejected a target or join record."""
+
+    def __init__(self, record):
+        self.record = record
+        super().__init__(f"{type(record).__name__} could not be saved")
+
+
 class RecordNotFoundException(Exception):
     pass
 

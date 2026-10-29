@@ -10,6 +10,7 @@ from flaskteroids.exceptions import (
     InvalidParameter,
     MissingParameter,
     ProgrammerError,
+    RecordInvalid,
     UserError,
 )
 
@@ -88,6 +89,14 @@ def test_parameter_error_handlers_can_be_overridden(client, exception, data):
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert response.get_json() == {"error": exception.__name__}
+
+
+def test_invalid_record_errors_return_unprocessable_entity(app, client):
+    @app.get("/invalid-record/")
+    def invalid_record():
+        raise RecordInvalid(object())
+
+    assert client.get("/invalid-record/").status_code == HTTPStatus.UNPROCESSABLE_ENTITY
 
 
 @pytest.mark.parametrize("exception", [ProgrammerError, UserError, RuntimeError])

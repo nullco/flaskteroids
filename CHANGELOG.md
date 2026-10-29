@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Added
+
+- One-hop `has_many(..., through=...)` associations with inferred or explicit
+  sources, scoped queries, eager loading, join-model creation, collection
+  replacement/removal, validation errors through `RecordInvalid`, and
+  transaction-aware writes. Collections derive from native join storage;
+  default removal deletes joins without destroying targets or running join
+  destroy callbacks. See [Models](docs/models/index.md#many-to-many-relationships-through-a-join-model).
+
 ## 0.13.0 - 2026-10-29
 
 ### Added

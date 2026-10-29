@@ -61,7 +61,11 @@ from flaskteroids.callbacks import (
 )
 from flaskteroids.db import session, transaction, transactional
 from flaskteroids.declarations import model_for
-from flaskteroids.exceptions import ProgrammerError, RecordNotFoundException
+from flaskteroids.exceptions import (
+    ProgrammerError,
+    RecordInvalid,
+    RecordNotFoundException,
+)
 from flaskteroids.inflector import inflector
 from flaskteroids.rich_text import attribute as rich_text_storage
 from flaskteroids.rich_text import has_rich_text
@@ -74,6 +78,7 @@ __all__ = [
     "Model",
     "ModelQuery",
     "PasswordAuthenticator",
+    "RecordInvalid",
     "RecordNotFoundException",
     "TooManyRecords",
     "accepts_nested_attributes_for",
@@ -154,7 +159,11 @@ class Model(EncryptableRecord, StagedAttributes, SchemaModel):
             if definition.virtual_fields[name].get("read_only"):
                 raise AttributeError(f"{field_name} is read-only.")
             return
-        if name in definition.attachments or name in definition.rich_texts:
+        if (
+            name in definition.attachments
+            or name in definition.rich_texts
+            or name in definition.associations
+        ):
             return
         mapper = inspect(type(self))
         if name in mapper.attrs:

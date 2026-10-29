@@ -18,6 +18,7 @@ from sqlalchemy.orm import MappedColumn, RelationshipProperty, registry
 
 from flaskteroids._models.associations import relationship_properties
 from flaskteroids._models.encryption import column_types
+from flaskteroids._models.through import prepare_through_associations
 from flaskteroids.declarations import model_for
 from flaskteroids.exceptions import ProgrammerError
 from flaskteroids.inflector import inflector
@@ -167,6 +168,7 @@ def ensure_mapped(cls):
                 targets = [
                     association.target
                     for association in model_for(model).associations.values()
+                    if association.through is None
                 ]
                 for relationship in properties[model].values():
                     target = relationship.argument
@@ -185,6 +187,7 @@ def ensure_mapped(cls):
             # Check the entire graph before publishing a mapper. Missing tables
             # must not poison an otherwise reusable registry during app boot.
             for model in graph:
+                prepare_through_associations(model, catalog)
                 properties[model].update(
                     relationship_properties(model, catalog, _table)
                 )

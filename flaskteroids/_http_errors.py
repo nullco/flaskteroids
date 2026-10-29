@@ -9,6 +9,7 @@ from flaskteroids.attachments import UploadTooLarge
 from flaskteroids.exceptions import (
     InvalidParameter,
     MissingParameter,
+    RecordInvalid,
     RecordNotFoundException,
 )
 
@@ -27,6 +28,7 @@ def register_error_handlers(app, default_policy):
         (MissingParameter, HTTPStatus.BAD_REQUEST),
         (InvalidParameter, HTTPStatus.BAD_REQUEST),
         (RecordNotFoundException, HTTPStatus.NOT_FOUND),
+        (RecordInvalid, HTTPStatus.UNPROCESSABLE_ENTITY),
         (UploadTooLarge, HTTPStatus.REQUEST_ENTITY_TOO_LARGE),
     ):
         app.register_error_handler(exception, handle_error(code))

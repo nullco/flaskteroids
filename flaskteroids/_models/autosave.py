@@ -43,7 +43,7 @@ def changed_for_autosave(record, seen=None):
     ):
         return True
     for name, definition in model_for(type(record)).associations.items():
-        if definition.autosave is not True:
+        if definition.through is not None or definition.autosave is not True:
             continue
         relationship = inspect(type(record)).relationships[name]
         for related in _associated_records(record, relationship):

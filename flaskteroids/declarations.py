@@ -37,6 +37,8 @@ class AssociationDefinition:
     inverse_of: str | None = None
     optional: bool = False
     autosave: bool | None = None
+    through: str | None = None
+    source: str | None = None
 
 
 @dataclass(frozen=True)

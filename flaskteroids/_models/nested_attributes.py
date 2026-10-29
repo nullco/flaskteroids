@@ -48,6 +48,11 @@ def accepts_nested_attributes_for(
                 raise ProgrammerError(
                     f"Declare association {cls.__name__}.{name} first."
                 )
+            if definition.associations[name].through is not None:
+                raise ProgrammerError(
+                    "Declare nested attributes on the join association, "
+                    "not the through collection."
+                )
             writer = f"{name}_attributes"
             if any(writer in vars(base) for base in cls.__mro__):
                 raise ProgrammerError(

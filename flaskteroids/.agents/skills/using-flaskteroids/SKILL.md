@@ -130,6 +130,13 @@ dependency internals or introduce a parallel implementation of a supported featu
   mutations are not scalar staging; a rejected update retains input without
   undoing earlier collection edits. `apply_changes()` explicitly publishes staged
   scalars for native writes, bypassing validation/callbacks.
+- Use `has_many("users", through="memberships", source="user")` for one-hop
+  many-to-many associations through a join model. The source can be inferred.
+  New owners/builds defer persistence; saved-owner append/remove/replacement write
+  immediately. Removal deletes joins, not targets, without destroy callbacks.
+  Invalid writes raise `RecordInvalid` with the failing `record`; invalid target
+  `create()` returns its errors. Configure association options and nested attributes
+  on the direct joins. Framework `includes()` preloads through paths.
 - Use `accepts_nested_attributes_for("children", allow_destroy=True)` after an
   association declaration to edit children through the parent. It enables autosave;
   ordinary associations save new related records, not edits to existing children.
