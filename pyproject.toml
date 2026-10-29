@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=84.0.0", "wheel>=0.48.0"]
+requires = ["setuptools>=84.2.1", "wheel>=0.48.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
@@ -33,16 +33,16 @@ classifiers = [
   "Framework :: Flask",
 ]
 dependencies = [
-    "alembic>=1.20.0",
-    "nh3>=0.3.4",
+    "alembic>=1.20.1",
+    "nh3>=0.3.7",
     "Flask>=3.1.3",
-    "sqlalchemy>=2.1.4",
+    "sqlalchemy>=2.1.6",
     "celery>=5.6.3",
     "cryptography>=50.0.2",
     "PyYAML>=6.0.3",
-    "packaging>=24.2",
-    "playwright>=1.63.0",
-    "pytest>=9.1.1",
+    "packaging>=26.3",
+    "playwright>=1.64.1",
+    "pytest>=9.2.0",
     "pytest-xdist>=3.8.0",
 ]
 
@@ -116,15 +116,15 @@ ignore_missing_imports = true
 
 [dependency-groups]
 integration = [
-    "psycopg[binary]>=3.3",
-    "PyMySQL[rsa]>=1.1",
+    "psycopg[binary]>=3.3.6",
+    "PyMySQL[rsa]>=1.2.3",
 ]
 dev = [
     "flaskteroids-lexxy>=0.1.0,<0.2",
     "flaskteroids-turbo>=0.1.0,<0.2",
-    "mypy>=2.4.0",
+    "mypy>=2.4.1",
     "pytest-cov>=7.1.0",
-    "pytest-mock>=3.16.0",
-    "python-dotenv>=1.2",
-    "ruff>=0.17.0",
+    "pytest-mock>=3.17.0",
+    "python-dotenv>=1.2.4",
+    "ruff>=0.17.3",
 ]

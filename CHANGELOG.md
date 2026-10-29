@@ -14,6 +14,10 @@
   middleware. Inspect the read-only stack with `application.middleware` or
   `bin/flask middleware`. See [Middleware](docs/configuration.md#middleware).
 
+### Changed
+
+- Update Python dependency minimums and the lockfile to the latest stable releases.
+
 ## 0.12.0 - 2026-10-29
 
 ### Breaking changes
