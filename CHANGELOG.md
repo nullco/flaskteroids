@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.12.0 - 2026-10-29
+
 ### Breaking changes
 
 - Extract S3 storage into `flaskteroids-storage-s3`. Provider packages register
