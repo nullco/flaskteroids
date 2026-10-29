@@ -9,6 +9,7 @@ from sqlalchemy import event, inspect
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import NO_VALUE
 
+from flaskteroids._models.association_loading import reset_targets
 from flaskteroids._models.associations import (
     belongs_to,
     destroy_dependents,
@@ -536,6 +537,26 @@ class Model(EncryptableRecord, StagedAttributes, SchemaModel):
             elif isinstance(value, (date, time)):
                 values[name] = value.isoformat()
         return f"<{type(self).__name__}:{hex(id(self))} {values}>"
+
+
+@event.listens_for(Model, "expire", propagate=True)
+def _expired(record, attributes):
+    if record is not None:
+        reset_targets(record)
+
+
+@event.listens_for(Model, "refresh", propagate=True)
+def _refreshed(record, context, attributes):
+    # Eager loaders also emit refresh for newly populated relationships. Those
+    # are not reload boundaries for an independently loaded through target.
+    if (
+        context is None
+        or context.refresh_state is not None
+        or context.populate_existing
+        or attributes is None
+        or set(attributes).intersection(inspect(type(record)).column_attrs.keys())
+    ):
+        reset_targets(record)
 
 
 @event.listens_for(Model, "load", propagate=True)

@@ -6,9 +6,13 @@ from typing import TYPE_CHECKING, Self
 
 from flask import current_app
 from sqlalchemy import func, inspect, select
-from sqlalchemy.orm import selectinload
-from sqlalchemy.sql import visitors
+from sqlalchemy.sql import operators, visitors
+from sqlalchemy.sql.elements import ColumnElement, UnaryExpression
 
+from flaskteroids._models.association_loading import (
+    include_options,
+    preload_associations,
+)
 from flaskteroids._models.encryption import EncryptedAttribute
 from flaskteroids.db import session
 from flaskteroids.declarations import model_for
@@ -17,6 +21,25 @@ from flaskteroids.rich_text.embeds import preload
 
 if TYPE_CHECKING:
     from flaskteroids.model import Model
+
+
+def _reverse_order(clause):
+    if isinstance(clause, UnaryExpression):
+        if clause.modifier is operators.asc_op:
+            return clause.element.desc()
+        if clause.modifier is operators.desc_op:
+            return clause.element.asc()
+        if clause.modifier in (operators.nulls_first_op, operators.nulls_last_op):
+            reversed_clause = _reverse_order(clause.element)
+            if reversed_clause is None:
+                return None
+            return (
+                reversed_clause.nulls_last()
+                if clause.modifier is operators.nulls_first_op
+                else reversed_clause.nulls_first()
+            )
+        return None
+    return clause.desc() if isinstance(clause, ColumnElement) else None
 
 
 class ModelQuery[QueryModel: "Model"]:
@@ -29,6 +52,7 @@ class ModelQuery[QueryModel: "Model"]:
         self._limit = None
         self._creation_attributes = {}
         self._rich_text_embeds = ()
+        self._through_preloads = {}
 
     def _with(self, statement):
         result = copy(self)
@@ -61,38 +85,14 @@ class ModelQuery[QueryModel: "Model"]:
         return record if record is not None else self.create(**attributes)
 
     def includes(self, *paths: str) -> Self:
-        options = []
-        for path in paths:
-            if (
-                not isinstance(path, str)
-                or not path
-                or any(not part for part in path.split("."))
-            ):
-                raise ValueError(
-                    "includes() expects nonempty dotted relationship paths"
-                )
-            model, option = self._model_cls, None
-            names = path.split(".")
-            while names:
-                name = names.pop(0)
-                association = model_for(model).associations.get(name)
-                if association is not None and association.through is not None:
-                    names[:0] = [association.through, association.source]
-                    continue
-                relationship = inspect(model).relationships.get(name)
-                if relationship is None:
-                    raise AttributeError(
-                        f"Unknown relationship {model.__name__}.{name}"
-                    )
-                attribute = getattr(model, name)
-                option = (
-                    selectinload(attribute)
-                    if option is None
-                    else option.selectinload(attribute)
-                )
-                model = relationship.mapper.class_
-            options.append(option)
-        return self.options(*options)
+        options, plans = include_options(self._model_cls, paths)
+        result = self.options(*options)
+        result._through_preloads = dict(self._through_preloads)
+        for key, tails in plans.items():
+            result._through_preloads[key] = tuple(
+                dict.fromkeys((*result._through_preloads.get(key, ()), *tails))
+            )
+        return result
 
     def with_all_rich_text(self) -> Self:
         return self.with_rich_text_embeds(
@@ -163,13 +163,14 @@ class ModelQuery[QueryModel: "Model"]:
         """Return this scope without executing it."""
         return self
 
-    def _preload_rich_text(self, records):
+    def _preload_records(self, records):
         if self._rich_text_embeds:
             preload(records, self._rich_text_embeds)
+        preload_associations(records, self._through_preloads, ModelQuery)
         return records
 
     def _load_records(self) -> list[QueryModel]:
-        return self._preload_rich_text(
+        return self._preload_records(
             self._session().execute(self.statement).scalars().unique().all()
         )
 
@@ -180,11 +181,23 @@ class ModelQuery[QueryModel: "Model"]:
             self._session().execute(self.statement.limit(1)).scalars().unique().first()
         )
         if record is not None:
-            self._preload_rich_text([record])
+            self._preload_records([record])
         return record
 
     def last(self) -> QueryModel | None:
-        # Honor explicit ordering and pagination instead of silently replacing it.
+        # Inspect the actual Select so native ordering/pagination edits count too.
+        if (
+            self.statement._limit_clause is None
+            and self.statement._offset_clause is None
+            and self.statement._fetch_clause is None
+        ):
+            orders = [
+                _reverse_order(clause) for clause in self.statement._order_by_clauses
+            ]
+            if orders and all(clause is not None for clause in orders):
+                return self._with(
+                    self.statement.order_by(None).order_by(*orders)
+                ).first()
         records = self._load_records()
         return records[-1] if records else None
 
@@ -193,6 +206,9 @@ class ModelQuery[QueryModel: "Model"]:
             self.statement.order_by(None).subquery()
         )
         return self._session().execute(statement).scalar_one()
+
+    def find_by(self, **filters) -> QueryModel | None:
+        return self.where(**filters).first()
 
     def find(self, id) -> QueryModel:
         primary_key = inspect(self._model_cls).primary_key

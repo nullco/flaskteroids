@@ -8,6 +8,7 @@ from sqlalchemy import create_engine
 
 from flaskteroids.db import session as db_session
 from flaskteroids.extensions.db import SQLAlchemyExtension
+from tests.model.through_support import network as network
 
 
 @pytest.fixture

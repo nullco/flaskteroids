@@ -211,6 +211,44 @@ def test_query_consumers_execute_once(family, session, mocker, consumer):
     execute.assert_called_once()
 
 
+@pytest.mark.parametrize("direction, expected", [("asc", "Zulu"), ("desc", "Alpha")])
+def test_unpaginated_last_loads_only_the_last_record(
+    family, session, direction, expected
+):
+    _, Child, events = family
+    for name in ("Middle", "Zulu", "Alpha"):
+        Child.create(name=name)
+    session.expunge_all()
+    events.clear()
+    assert Child.order(name=direction).last().name == expected
+    assert events == [("find", expected), ("initialize", expected)]
+
+
+@pytest.mark.parametrize(
+    "nulls, expected", [("first", "Related"), ("last", "Unrelated")]
+)
+def test_last_reverses_explicit_null_ordering(family, nulls, expected):
+    Parent, Child, _ = family
+    parent = Parent.create(name="Parent")
+    Child.create(name="Related", parent=parent)
+    Child.create(name="Unrelated")
+    ordering = Child.parent_id.asc()
+    ordering = ordering.nulls_first() if nulls == "first" else ordering.nulls_last()
+    assert Child.order(ordering).last().name == expected
+
+
+def test_last_honors_native_statement_ordering_and_pagination(family):
+    _, Child, _ = family
+    for name in ("Alpha", "Middle", "Zulu"):
+        Child.create(name=name)
+    query = Child.all()
+    query.statement = query.statement.order_by(None).order_by(Child.name.desc())
+    assert query.last().name == "Alpha"
+    query.statement = query.statement.limit(2)
+    assert query.last().name == "Middle"
+    assert query.offset(1).last().name == "Alpha"
+
+
 def test_all_scopes_reflect_new_records_on_reuse(family, session, mocker):
     Parent, Child, _ = family
     parent = Parent.create(name="parent")

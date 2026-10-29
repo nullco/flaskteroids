@@ -1,7 +1,5 @@
-from types import SimpleNamespace
-
 import pytest
-from sqlalchemy import Column, ForeignKey, Integer, String, event, text
+from sqlalchemy import Column, ForeignKey, Integer, String, event
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import declarative_base
 
@@ -10,94 +8,12 @@ from flaskteroids.model import (
     RecordInvalid,
     RecordNotFoundException,
     accepts_nested_attributes_for,
-    after_commit,
-    before_destroy,
-    before_save,
     belongs_to,
     has_many,
     init,
-    validates,
 )
 from tests.model.schema_support import model_base
-
-Base = declarative_base()
-
-
-class OrganizationTable(Base):
-    __tablename__ = "organizations"
-    id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False)
-
-
-class UserTable(Base):
-    __tablename__ = "users"
-    id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False)
-
-
-class MembershipTable(Base):
-    __tablename__ = "memberships"
-    id = Column(Integer, primary_key=True)
-    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
-    person_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    role = Column(String, server_default=text("'member'"), nullable=False)
-
-
-@pytest.fixture
-def network(init_models, request):
-    options = getattr(request, "param", {})
-    events = []
-    ApplicationModel = model_base(Base)
-
-    class Organization(ApplicationModel):
-        validates("name", presence=True)
-        # Forward references to join declarations are resolved during mapping.
-        has_many("users", through="memberships", source="person")
-        has_many("memberships", dependent="destroy")
-        accepts_nested_attributes_for("memberships", allow_destroy=True)
-
-    class User(ApplicationModel):
-        validates("name", presence=True)
-        if not options.get("no_inverse"):
-            has_many("memberships", foreign_key="person_id", dependent="destroy")
-            has_many("organizations", through="memberships")
-
-    class Membership(ApplicationModel):
-        if not options.get("no_inverse"):
-            belongs_to("organization")
-        belongs_to("person", class_name="User", foreign_key="person_id")
-        validates("role", presence=True)
-        if options.get("validate_join"):
-            validates("role", length={"maximum": 2})
-        before_save("_saving")
-        after_commit("_committed", on="create")
-        before_destroy("_destroying")
-
-        def _saving(self):
-            events.append(("save", self.role))
-            if options.get("integrity_error"):
-                self.role = None
-            if options.get("raise"):
-                raise RuntimeError("Join callback failed")
-            return not options.get("halt")
-
-        def _committed(self):
-            events.append(("commit", self.role))
-
-        def _destroying(self):
-            events.append(("destroy", self.role))
-
-    init_models(
-        Base,
-        [
-            (OrganizationTable, Organization),
-            (UserTable, User),
-            (MembershipTable, Membership),
-        ],
-    )
-    return SimpleNamespace(
-        Organization=Organization, User=User, Membership=Membership, events=events
-    )
+from tests.model.through_support import Base
 
 
 def test_through_collection_reads_and_queries_its_own_targets(network):
@@ -205,7 +121,7 @@ def test_duplicate_targets_keep_distinct_join_records(network):
     organization.users.append(ada)
     assert organization.users == [ada, ada]
     assert list(organization.users.all()) == [ada, ada]
-    assert organization.users.all().count() == 2
+    assert organization.users.count() == organization.users.size() == 2
     organization.users = [ada]
     assert network.Membership.count() == 1
     organization.users.extend([ada, ada])
@@ -274,7 +190,7 @@ def test_through_removal_rolls_back_with_the_transaction(network):
     assert ada.organizations == [organization]
 
 
-def test_direct_join_updates_are_visible_in_loaded_through_collections(network):
+def test_owner_reload_refreshes_cached_targets_after_direct_join_updates(network):
     organization = network.Organization.create(name="One")
     other = network.Organization.create(name="Two")
     ada = organization.users.create(name="Ada")
@@ -284,9 +200,12 @@ def test_direct_join_updates_are_visible_in_loaded_through_collections(network):
     assert other.users == []
     membership = organization.memberships[0]
     assert membership.update(person=grace, organization=other)
-    assert organization.users == []
-    assert other.users == [grace]
-    assert ada.organizations == []
+    assert organization.users == [ada]
+    assert other.users == []
+    assert ada.organizations == [organization]
+    assert organization.reload().users == []
+    assert other.reload().users == [grace]
+    assert ada.reload().organizations == []
     assert grace.organizations == [other]
 
 
@@ -309,7 +228,7 @@ def test_includes_preloads_through_targets_and_nested_paths(network, session, en
             ["Two user"],
         ]
         assert len(statements) == loaded_queries
-        assert loaded_queries == 3
+        assert loaded_queries == 2
         session.expunge_all()
         organizations = list(network.Organization.includes("users.organizations"))
         loaded_queries = len(statements)
@@ -436,13 +355,14 @@ def test_through_writes_support_join_associations_without_inverses(network, pers
     assert network.User.count() == 1
 
 
-def test_direct_join_destruction_updates_through_collections(network):
+def test_owner_reload_refreshes_targets_after_direct_join_destruction(network):
     organization = network.Organization.create(name="One")
     user = organization.users.create(name="Ada")
     assert user.organizations == [organization]
     assert organization.memberships[0].destroy()
-    assert organization.users == []
-    assert user.organizations == []
+    assert user.organizations == [organization]
+    assert organization.reload().users == []
+    assert user.reload().organizations == []
 
 
 def test_owner_reload_discards_unsaved_through_targets(network):
@@ -543,7 +463,8 @@ def test_self_referential_through_paths_keep_owners_separate(init_models):
     assert list(ada.following.where(name="Grace")) == [grace]
     assert Person.includes("following.followers").find(ada.id).following[0] is grace
     grace.followers.remove(ada)
-    assert ada.following == []
+    assert grace.followers == []
+    assert ada.reload().following == []
     assert Person.count() == 2
 
 
@@ -602,7 +523,7 @@ def test_build_defers_its_join_while_another_target_is_added(network):
     assert built.is_new_record()
     assert added.is_persisted()
     assert network.Membership.count() == 1
-    assert organization.users == [built, added]
+    assert organization.users == [added, built]
     assert organization.save()
     assert network.Membership.count() == 2
     assert organization.reload().users.all().order(name="asc").first() is added
@@ -615,7 +536,7 @@ def test_reverse_preserves_the_original_join_models(network):
     joins = list(organization.memberships)
     organization.users.reverse()
     assert organization.users == [grace, ada]
-    assert list(organization.memberships) == list(reversed(joins))
+    assert list(organization.memberships) == joins
     assert network.Membership.count() == 2
 
 

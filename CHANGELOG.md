@@ -2,14 +2,33 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- Declared association collections now provide a database `count()` with no
+  arguments instead of the inherited sequence `count(record)`. Use
+  `list(collection).count(record)` for occurrence counting. Collections no
+  longer inherit `MutableSequence`; supported Python collection operations
+  remain explicit.
+- Loaded through associations now cache their target membership until owner
+  reload, rollback, expiration, or explicit refresh. Direct join edits and writes
+  through other associations no longer automatically update a loaded target.
+  Reload separately loaded inverse through collections through their owners too.
+
 ### Added
 
+- Direct and through collections expose lazy query methods without `all()`,
+  including ordering, pagination, eager loading, and association-scoped finders.
+  Loaded-aware `first()`, `last()`, `size()`, and `is_loaded()` distinguish
+  persisted queries from unsaved collection contents. Queries gain `find_by()`.
+- Unpaginated query `last()` reverses supported SQL ordering and selects one row;
+  complex ordering and paginated scopes retain the selected-scope fallback.
 - One-hop `has_many(..., through=...)` associations with inferred or explicit
   sources, scoped queries, eager loading, join-model creation, collection
   replacement/removal, validation errors through `RecordInvalid`, and
-  transaction-aware writes. Collections derive from native join storage;
-  default removal deletes joins without destroying targets or running join
-  destroy callbacks. See [Models](docs/models/index.md#many-to-many-relationships-through-a-join-model).
+  transaction-aware writes. Target arrays load directly through joined queries,
+  preserve duplicate joins, and support batched nested eager loading without
+  materializing join models. Default removal deletes joins without destroying
+  targets or running join destroy callbacks. See [Models](docs/models/index.md#many-to-many-relationships-through-a-join-model).
 
 ## 0.13.0 - 2026-10-29
 

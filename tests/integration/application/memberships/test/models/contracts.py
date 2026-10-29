@@ -29,7 +29,29 @@ class MembershipWorkflowTest(ModelTest):
         self.organization.members.remove(ada)
         assert Person.find(ada.id) is ada
         assert Membership.count() == 1
-        assert ada.organizations == []
+        assert ada.reload().organizations == []
+
+    def test_collection_queries_preserve_join_creation_and_loaded_reads(self):
+        members = self.organization.members
+        grace = members.order("name").create(name="Grace")
+        ada = members.order("name").where(name="Ada").first_or_create()
+        assert members.order("name").limit(1).first() is ada
+        assert members.order("name").offset(1).first() is grace
+        assert members.find(ada.id) is ada
+        assert members.find_by(name="Missing") is None
+        loaded = list(members.includes("organizations").order("name"))
+        assert loaded == [ada, grace]
+        assert loaded[0].organizations.first() is self.organization
+        assert list(members) == [grace, ada]
+
+        built = members.new(name="Built")
+        assert members.is_loaded()
+        assert members.count() == 2
+        assert members.size() == len(members) == 3
+        assert members.last() is built
+        assert members.order("name").find_by(name="Built") is None
+        assert self.organization.save()
+        assert members.count() == Membership.count() == 3
 
     def test_invalid_join_rejects_the_collection_write(self):
         with pytest.raises(RecordInvalid) as error:

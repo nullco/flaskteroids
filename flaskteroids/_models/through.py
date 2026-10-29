@@ -1,11 +1,17 @@
-"""Derived collections backed solely by the ordinary join-model associations."""
+"""Cached through targets, with writes delegated to ordinary join models."""
 
 from dataclasses import replace
 
-from sqlalchemy import false, inspect, select
-from sqlalchemy.orm import selectinload, with_parent
+from sqlalchemy import false, inspect
+from sqlalchemy.orm import with_parent
 from sqlalchemy.orm.attributes import NO_VALUE, set_committed_value
 
+from flaskteroids._models.association_loading import (
+    load_through,
+    pending_joins,
+    pending_targets,
+    targets_for,
+)
 from flaskteroids._models.associations import AssociationCollection
 from flaskteroids._models.query import ModelQuery
 from flaskteroids.db import session, transactional
@@ -86,7 +92,7 @@ class ThroughQuery(ModelQuery):
 
     def _load_records(self):
         # Repeated targets represent distinct join records, just as in Rails.
-        return self._preload_rich_text(
+        return self._preload_records(
             self._session().execute(self.statement).scalars().all()
         )
 
@@ -103,42 +109,29 @@ class ThroughCollection(AssociationCollection):
             inspect(self.join_model).relationships[self.source].mapper.class_
         )
 
+    @property
+    def _targets(self):
+        return targets_for(self.owner, self.name)
+
     def _joins(self):
-        state = inspect(self.owner)
-        if (
-            self.owner.is_persisted()
-            and state.attrs[self.through].loaded_value is NO_VALUE
-        ):
-            # Populate native join storage and its targets in bounded queries,
-            # merging pending inverse mutations through SQLAlchemy's loader.
-            statement = (
-                select(type(self.owner))
-                .where(
-                    *(
-                        column == value
-                        for column, value in zip(
-                            state.mapper.primary_key, state.identity, strict=True
-                        )
-                    )
-                )
-                .options(
-                    selectinload(getattr(type(self.owner), self.through)).joinedload(
-                        getattr(self.join_model, self.source)
-                    )
-                )
-            )
-            session.execute(statement).scalars().first()
         return getattr(self.owner, self.through)
 
     def _collection(self):
-        return [
-            target
-            for join in self._joins()
-            if not inspect(join).was_deleted
-            and (target := getattr(join, self.source)) is not None
-        ]
+        if not self._targets.loaded:
+            load_through([self.owner], self.name, (), ModelQuery)
+        return self._targets.records
 
-    def all(self):
+    def _loaded_collection(self):
+        state = self._targets
+        return state.records if state.loaded else NO_VALUE
+
+    def _pending_records(self):
+        return pending_joins(self.owner, self.definition)
+
+    def _pending_count(self):
+        return len(pending_targets(self.owner, self.definition))
+
+    def all(self) -> ThroughQuery:
         return ThroughQuery(self.owner, self.name)
 
     def _check_type(self, record):
@@ -148,7 +141,7 @@ class ThroughCollection(AssociationCollection):
                 f"{self.target_model.__name__} records."
             )
 
-    def build_join(self, record):
+    def build_join(self, record, *, add_to_target=True):
         self._check_type(record)
         joins = self._joins()
         # Load the native collection before linking, retaining unsaved joins even
@@ -157,6 +150,8 @@ class ThroughCollection(AssociationCollection):
         join = joins.new(**{self.source: record})
         if join not in joins:
             joins.append(join)
+        if add_to_target and self._targets.loaded:
+            self._targets.records.append(record)
         return join
 
     def _unlink(self, join):
@@ -182,7 +177,7 @@ class ThroughCollection(AssociationCollection):
                 raise RecordInvalid(record)
 
     def _save_join(self, record):
-        join = self.build_join(record)
+        join = self.build_join(record, add_to_target=False)
         try:
             if not join.save():
                 raise RecordInvalid(join)
@@ -205,19 +200,37 @@ class ThroughCollection(AssociationCollection):
         if not record.save():
             return
         self._save_join(record)
+        if self._targets.loaded:
+            self._targets.records.append(record)
+
+    def append(self, record):
+        self._insert(None, record)
 
     def insert(self, index, record):
+        self._collection()
+        self._insert(index, record)
+
+    def _insert(self, index, record):
         self._check_type(record)
         if self.owner.is_new_record():
-            join = self.build_join(record)
-            self._move_join(index, join)
+            join = self.build_join(record, add_to_target=False)
+            self._insert_target(index, record, join)
         else:
             self._insert_saved(index, record)
 
     @transactional
     def _insert_saved(self, index, record):
         self._save_target(record)
-        self._move_join(index, self._save_join(record))
+        self._insert_target(index, record, self._save_join(record))
+
+    def _insert_target(self, index, record, join):
+        if index is not None:
+            self._move_join(index, join)
+        if self._targets.loaded:
+            if index is None:
+                self._targets.records.append(record)
+            else:
+                self._targets.records.insert(index, record)
 
     def _move_join(self, index, join):
         joins = self._joins()
@@ -259,7 +272,7 @@ class ThroughCollection(AssociationCollection):
                     self._save_target(record)
                     built.append(self._save_join(record))
                 else:
-                    built.append(self.build_join(record))
+                    built.append(self.build_join(record, add_to_target=False))
             for join in remaining:
                 if join.is_persisted():
                     session.delete(join)
@@ -277,14 +290,15 @@ class ThroughCollection(AssociationCollection):
         pending = iter(built)
         ordered = [join if join is not None else next(pending) for join in desired]
         self._joins()[:] = ordered
+        self._targets.load(records)
 
     def __setitem__(self, index, value):
-        records = self._collection()
+        records = list(self._collection())
         records[index] = value
         self.replace(records)
 
     def __delitem__(self, index):
-        records = self._collection()
+        records = list(self._collection())
         del records[index]
         self.replace(records)
 
@@ -302,4 +316,4 @@ class ThroughCollection(AssociationCollection):
         self.replace([*self._collection(), *values])
 
     def reverse(self):
-        self.replace(reversed(self._collection()))
+        self._collection().reverse()

@@ -195,14 +195,19 @@ def test_owner_destroy_removes_embed_metadata_and_enqueues_purge(blob, app):
 @pytest.mark.parametrize(
     "scope",
     [
-        lambda: Note.with_rich_text_content_and_embeds(),
-        lambda: Note.where(title="Example").with_rich_text_content_and_embeds(),
-        lambda: Note.with_all_rich_text(),
+        lambda document: Note.with_rich_text_content_and_embeds(),
+        lambda document: Note.where(
+            title="Example"
+        ).with_rich_text_content_and_embeds(),
+        lambda document: Note.with_all_rich_text(),
+        lambda document: document.notes.with_rich_text_embeds("content"),
+        lambda document: document.notes.with_all_rich_text(),
     ],
 )
 def test_embed_preloading_avoids_per_record_and_per_blob_queries(blob, app, scope):
+    document = Document.create(title="Example", content="Document")
     for _ in range(3):
-        Note.create(title="Example", content=with_blob(blob))
+        Note.create(title="Example", document=document, content=with_blob(blob))
     session.expunge_all()
     queries = []
     engine = app.extensions["flaskteroids.db"].engine
@@ -212,7 +217,7 @@ def test_embed_preloading_avoids_per_record_and_per_blob_queries(blob, app, scop
 
     event.listen(engine, "before_cursor_execute", track)
     try:
-        owners = list(scope())
+        owners = list(scope(document))
         before = len(queries)
         with app.test_request_context():
             assert all(HTML(str(owner.content)).has("img") for owner in owners)

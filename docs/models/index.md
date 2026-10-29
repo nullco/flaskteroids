@@ -100,8 +100,9 @@ Other query behavior to keep in mind:
   ordering expressions.
 - Limits and offsets must be nonnegative or `None`.
 - `count()` counts the selected scope, including its limit and offset.
-- `first()` returns a record or `None`. `last()` loads the selected scope to
-  respect custom ordering and pagination.
+- `first()` returns a record or `None`. `last()` reverses SQL ordering and
+  selects one row where possible. Paginated scopes and ordering expressions
+  that cannot be reversed load the selected scope instead.
 
 ### Load associations together
 
@@ -271,6 +272,47 @@ post = author.posts.where(title="Next").first_or_create()
 author.posts.where(title="Next").count()
 ```
 
+Collections expose query methods directly; `all()` is optional:
+
+```python
+author.posts.order(title="asc").limit(20).offset(40)
+author.posts.includes("author")
+author.posts.find(identifier)           # Raises if absent from this association
+author.posts.find_by(title="Next")      # Returns None if absent
+author.posts.first()
+author.posts.last()
+author.posts.count()
+```
+
+Ordering, filtering, pagination, and eager loading return immutable, lazy queries.
+They do not load or sort the association's in-memory contents. Chaining retains
+ownership: `author.posts.order("title").where(title="Next").create()` still creates
+a post for this author. Queries also support `find_by()`.
+
+Collection reads distinguish persisted rows from the current collection:
+
+| Operation | Behavior |
+| --- | --- |
+| `count()` | Count persisted association rows, even if the collection is loaded; zero without SQL for a new owner |
+| `size()` | Use loaded contents when available; otherwise count rows plus pending new records without loading the collection |
+| `len(collection)` | Load and measure current contents, including unsaved additions |
+| `first()` / `last()` | Use loaded contents and their current order; also include pending additions or a new owner's unsaved records |
+| `find(id)` / `find_by(...)` | Query the persisted association, retaining its ownership restriction |
+| `is_loaded()` | Inspect loading state without issuing SQL |
+
+An unloaded `first()` or `last()` without pending additions uses a query without
+marking the collection loaded. An explicit query such as
+`author.posts.order("title").first()` always selects persisted rows rather than
+the loaded collection. `first_or_create()` uses the collection's `first()`;
+a built first record is returned without saving it.
+
+Collections provide explicit iteration, membership, indexing/slicing,
+append/extend/insert, remove/clear/pop, reverse, index, and augmented assignment
+operations. They are association proxies, not `MutableSequence` subclasses.
+`count()` takes no argument; use `list(collection).count(record)` to count
+occurrences in memory. Existing direct and through mutation persistence rules
+remain distinct as described below.
+
 - `create()` saves the record and returns it, including input and errors if invalid.
 - `first_or_create()` finds the first match or creates a record. Keyword equality
   filters supply creation values; SQL expressions do not. Additional creation
@@ -362,10 +404,27 @@ organization.users.clear()
   occurrences; `remove(user)` removes all joins to that user for this owner.
   Add a database unique constraint on the foreign-key pair if duplicate
   memberships must be rejected.
-- Collections read the native join-model storage, including unsaved joins and
-  direct association edits. There is no separate target collection to reset.
-  Query methods read persisted rows; use `includes()` to batch-load joins and
-  targets. Collection ordering is not persisted; use an explicitly ordered query.
+- Through targets load directly through a SQL join, without instantiating the
+  join models. Each owner keeps its loaded target array and loaded flag, so
+  repeated iteration, indexing, length, and loaded first/last/size reads reuse
+  that array. These are the same native SQLAlchemy model instances, not another
+  identity map. `includes("users")` batch-loads target arrays for multiple owners.
+- Collection mutations update that collection's loaded targets. Direct edits to
+  membership records, native/bulk writes, and mutations through another
+  association do **not** synchronize an already-loaded target array. This also
+  applies to separately loaded inverse through collections. Use
+  `organization.reload()` or `user.reload()` to refresh their membership.
+  `includes()` reuses loaded targets rather than refreshing them; `count()` and
+  explicit query scopes still read persisted rows.
+- Loading merges persisted targets with unsaved joins built through the
+  association, appending pending occurrences after persisted results. Once
+  loaded, new targets are added to that array without reloading it. Owner reload
+  discards pending input; rollback, expiration, and explicit native refresh
+  invalidate through target state. Savepoint rollback also invalidates the
+  session's loaded through targets, which are queried again on next access.
+- Collection ordering is not persisted. `reverse()` changes only the loaded
+  target array, not join records; use an explicitly ordered query for database
+  ordering.
 
 This first implementation supports one direct `has_many` join association and
 a direct `belongs_to` source, with single-column primary keys. Nested through
@@ -375,9 +434,10 @@ on the direct associations, not the through declaration; disabling new-record
 autosave on either leg is rejected. Declare nested attributes on `memberships`
 to edit relationship data in a form, rather than on `users`.
 
-Through collections are framework projections, not additional native SQLAlchemy
-relationships. Native queries/loaders can use the underlying join associations;
-framework `includes("users")` expands them automatically.
+Through collections are framework association caches, not additional native
+SQLAlchemy relationships. Native queries/loaders can use the underlying join
+associations; framework `includes("users")` populates target caches directly,
+including nested paths such as `users.organizations`.
 
 ### Autosave and nested attributes
 

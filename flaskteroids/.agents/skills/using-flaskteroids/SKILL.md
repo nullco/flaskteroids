@@ -120,6 +120,14 @@ dependency internals or introduce a parallel implementation of a supported featu
 - `Model.all()` and query-level `all()` return lazy scopes, never lists. Chain
   filters/order/pagination directly; use `list(query)` when a list is needed.
   Iteration executes the scope; repeated iteration queries again without caching.
+- Declared collections expose `order()`, `limit()`, `offset()`, `includes()`,
+  `find()`, and `find_by()` directly; `all()` is optional. Query builders stay
+  lazy and preserve association-scoped creation. Collection `count()` counts
+  persisted rows; `len()` materializes contents including unsaved records.
+  `size()` uses loaded contents or a count plus pending additions.
+  `first()`/`last()` use loaded/pending contents; explicit scopes query persisted
+  rows. `is_loaded()` inspects state without querying. These are association
+  proxies, not mutable sequences; count occurrences with `list(records).count(item)`.
 - Unknown public model attributes raise `AttributeError`. For temporary values,
   declare class defaults or properties with setters, or use private attributes.
   A type annotation alone isn't enough. Don't overwrite framework methods or state.
@@ -136,7 +144,13 @@ dependency internals or introduce a parallel implementation of a supported featu
   immediately. Removal deletes joins, not targets, without destroy callbacks.
   Invalid writes raise `RecordInvalid` with the failing `record`; invalid target
   `create()` returns its errors. Configure association options and nested attributes
-  on the direct joins. Framework `includes()` preloads through paths.
+  on the direct joins. Through targets use per-owner caches over native model
+  instances and joined target queries; framework `includes()` batches those
+  targets, including nested paths, without loading joins. Collection mutations
+  update their own targets. Direct join edits, native writes, or writes through
+  another association can leave loaded targets stale; reload their owners,
+  including owners of separately loaded inverse through collections. `includes()`
+  reuses loaded targets. Rollback/expiration/explicit refresh invalidate caches.
 - Use `accepts_nested_attributes_for("children", allow_destroy=True)` after an
   association declaration to edit children through the parent. It enables autosave;
   ordinary associations save new related records, not edits to existing children.
