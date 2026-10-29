@@ -2,7 +2,7 @@
 
 Most application work happens in three places: `app/` for behavior and templates,
 `config/` for settings and routes, and `db/` for database changes.
-`flaskteroids new` creates the layout below.
+`flask new` creates the layout below.
 
 ## Directory layout
 

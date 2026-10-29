@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- Replace the standalone `flaskteroids` CLI with Flask CLI plugins. Use `flask new`
+  and `flask agent-skills path`; asset and import-map commands also run through
+  `flask` without application boot. The `flaskteroids` executable and
+  `python -m flaskteroids` entry point are removed.
+
 ### Added
 
 - Rails-style import maps with explicit Python pin configuration, local directory

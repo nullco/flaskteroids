@@ -6,9 +6,11 @@ description: Use when building or modifying a Flaskteroids application.
 # Using Flaskteroids
 
 - Work in the application's environment and respect its local instructions.
-- Start with `flaskteroids --help` and, from the application root, `bin/flask --help`.
-  Follow the command groups and read `--help` for each command relevant to the
-  task. Installed command help is the source of truth for syntax and behavior.
+- From the application root, start with `bin/flask --help`. Outside an application,
+  use specific command help such as `flask new --help`; top-level Flask help
+  attempts application discovery. Follow the command groups and read `--help`
+  for each relevant command. Installed help is the source of truth for syntax
+  and behavior.
 - Prefer existing commands over building from scratch. Use generators for
   supported application components and framework commands for migrations,
   testing, and credentials. Write scaffolding or tooling manually only after
@@ -26,11 +28,11 @@ description: Use when building or modifying a Flaskteroids application.
 
 ## Generation, setup, and tests
 
-- `flaskteroids new` installs app dependencies, creates its lock, and prepares
+- `flask new` installs app dependencies, creates its lock, and prepares
   development SQLite by default. `--skip-install` explicitly defers this to
   `bin/setup`; it still writes Docker and migration resources. Requires Git,
   Bash/POSIX and (unless skipped) uv. Never claim skipped installation is runnable.
-- Use `flaskteroids new inventory --api` for API-only defaults and JSON scaffolds.
+- Use `flask new inventory --api` for API-only defaults and JSON scaffolds.
   Generated API controllers inherit from `APIController`, return implicit 204,
   and use `render(json=..., status=..., location=...)`. JSON input reaches
   `self.params` with conventional root wrapping; keep strong parameter allowlists.

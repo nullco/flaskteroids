@@ -7,8 +7,7 @@ from pathlib import Path
 
 import pytest
 from click.testing import CliRunner
-
-from flaskteroids.cli.flaskteroids import cli
+from flask.cli import cli
 
 pytestmark = pytest.mark.generated_app
 
@@ -52,8 +51,9 @@ def run(root, *args, environment="development"):
     )
 
 
-def test_generated_launcher_precompiles_without_boot_or_runtime_secrets(
-    generated_assets_app,
+@pytest.mark.parametrize("launcher", ["bin/flask", "flask"])
+def test_precompilation_runs_without_application_boot_or_runtime_secrets(
+    generated_assets_app, launcher
 ):
     root = generated_assets_app
     (root / "config/application.py").write_text(
@@ -63,9 +63,12 @@ def test_generated_launcher_precompiles_without_boot_or_runtime_secrets(
     (root / "config/initializers/fail.py").write_text(
         'raise AssertionError("initializer ran")'
     )
-    result = run(
-        root, str(root / "bin/flask"), "assets:precompile", environment="production"
+    command = (
+        [str(root / launcher), "assets:precompile"]
+        if launcher == "bin/flask"
+        else [sys.executable, "-m", "flask", "assets:precompile", "--root", str(root)]
     )
+    result = run(root, *command, environment="production")
     assert result.returncode == 0, result.stdout + result.stderr
     assert (root / "public/assets/.manifest.json").is_file()
     assert not list((root / "storage").glob("*.sqlite3"))

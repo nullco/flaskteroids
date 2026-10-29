@@ -62,7 +62,7 @@ pip install flaskteroids
 Create an application. Git, Bash, and [uv](https://docs.astral.sh/uv/getting-started/installation/) must be installed.
 
 ```sh
-flaskteroids new my_app
+flask new my_app
 cd my_app
 ```
 
@@ -104,7 +104,7 @@ uploads, email, and testing. For a mobile client or separate frontend, follow
 [Building an API](https://nullco.github.io/flaskteroids/controllers/api/) instead.
 
 - Run `bin/setup` for a fresh checkout or after changing dependencies. Commit `uv.lock`.
-- To defer installation, use `flaskteroids new my_app --skip-install`, then run `bin/setup` later.
+- To defer installation, use `flask new my_app --skip-install`, then run `bin/setup` later.
 - See [Testing](https://nullco.github.io/flaskteroids/testing/) for browser setup and [Configuration](https://nullco.github.io/flaskteroids/configuration/) for environments and secrets.
 - Your generated `deploy/README.md` explains Docker and deployment.
 
@@ -122,7 +122,7 @@ calling dependency internals.
 In your application's Python environment, locate the installed skills with:
 
 ```sh
-flaskteroids agent-skills path
+flask agent-skills path
 ```
 
 The command prints the absolute skills directory path. Read

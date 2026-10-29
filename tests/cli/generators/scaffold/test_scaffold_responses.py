@@ -5,8 +5,8 @@ import sys
 from pathlib import Path
 
 import pytest
+from flask.cli import cli
 
-from flaskteroids.cli.flaskteroids import cli
 from tests.assertions import assert_pytest_passed
 
 pytestmark = pytest.mark.generated_app

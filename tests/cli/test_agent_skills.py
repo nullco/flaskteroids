@@ -3,8 +3,7 @@ from pathlib import Path
 import pytest
 import yaml
 from click.testing import CliRunner
-
-from flaskteroids.cli.flaskteroids import cli
+from flask.cli import cli
 
 
 @pytest.fixture

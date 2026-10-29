@@ -7,8 +7,7 @@ from pathlib import Path
 
 import pytest
 from click.testing import CliRunner
-
-from flaskteroids.cli.flaskteroids import cli
+from flask.cli import cli
 
 pytestmark = pytest.mark.generated_app
 
@@ -81,7 +80,7 @@ def test_launcher_missing_environment_is_actionable(scripts_app, name, args):
             ["pin", "@scope/library@1.2.3", "--no-preload", ""],
             [
                 "-m",
-                "flaskteroids",
+                "flask",
                 "importmap",
                 "pin",
                 "@scope/library@1.2.3",
@@ -191,11 +190,11 @@ def test_setup_stops_remaining_steps_on_failure(
     assert ("db:prepare" in Path(env["TRACE"]).read_text()) is prepared
 
 
-def test_asset_launcher_uses_bootless_cli(scripts_app, script_environment):
+def test_asset_launcher_uses_flask_cli(scripts_app, script_environment):
     result = run_script(scripts_app, "flask", script_environment, "assets:precompile")
     assert result.returncode == 0, result.stderr
     trace = Path(script_environment["TRACE"]).read_text().splitlines()
-    assert trace[-3:] == ["-m", "flaskteroids", "assets:precompile"]
+    assert trace[-3:] == ["-m", "flask", "assets:precompile"]
 
 
 def test_setup_reports_missing_uv_before_installation(scripts_app, script_environment):

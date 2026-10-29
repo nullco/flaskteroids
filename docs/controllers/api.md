@@ -11,7 +11,7 @@ follow the [installation steps](../getting_started.md#prerequisites) first.
 ## Create the application
 
 ```sh
-flaskteroids new blog --api
+flask new blog --api
 cd blog
 ```
 

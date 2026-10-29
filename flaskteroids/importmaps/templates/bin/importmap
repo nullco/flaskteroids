@@ -5,4 +5,4 @@ if [[ ! -x .venv/bin/python ]]; then
   echo "Application environment missing. Run bin/setup first." >&2
   exit 1
 fi
-exec .venv/bin/python -m flaskteroids importmap "$@"
+exec .venv/bin/python -m flask importmap "$@"

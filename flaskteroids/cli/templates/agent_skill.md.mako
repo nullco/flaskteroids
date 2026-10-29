@@ -12,13 +12,13 @@ Before working on this application's Flaskteroids code:
 2. From the application root, run:
 
    ```sh
-   flaskteroids agent-skills path
+   flask agent-skills path
    ```
 
    For projects managed with uv, use:
 
    ```sh
-   uv run flaskteroids agent-skills path
+   uv run flask agent-skills path
    ```
 
 3. The command prints the absolute directory containing the installed package's

@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pytest
 from click.testing import CliRunner
+from flask.cli import cli
 
 from flaskteroids.assets import AssetPipeline
-from flaskteroids.cli.flaskteroids import cli
 from flaskteroids.importmaps import ImportMap
 from flaskteroids.importmaps.installation import install
 from flaskteroids.importmaps.packages import HTTPClient

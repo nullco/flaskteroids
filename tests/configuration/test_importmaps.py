@@ -3,10 +3,10 @@ import json
 import pytest
 from click.testing import CliRunner
 from flask import render_template_string
+from flask.cli import cli
 from markupsafe import Markup
 
 from flaskteroids.assets import AssetError, AssetPipeline
-from flaskteroids.cli.flaskteroids import cli
 from flaskteroids.helpers import (
     asset_path,
     importmap_digest,

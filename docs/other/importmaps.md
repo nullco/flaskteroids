@@ -112,7 +112,7 @@ Commands run without application boot, credentials, or database access. From out
 the application, use:
 
 ```sh
-flaskteroids importmap --root /path/to/app pin @github/hotkey
+flask importmap --root /path/to/app pin @github/hotkey
 ```
 
 Configuration edits are conservative and AST-guided. Commands preserve unrelated

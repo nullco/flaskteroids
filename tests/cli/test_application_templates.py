@@ -4,9 +4,9 @@ import tomllib
 import pytest
 import yaml
 from click.testing import CliRunner
+from flask.cli import cli
 
 from flaskteroids.cli.artifacts import ArtifactsBuilder
-from flaskteroids.cli.flaskteroids import cli
 from flaskteroids.credentials import decrypt
 
 pytestmark = pytest.mark.generated_app

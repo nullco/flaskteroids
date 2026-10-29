@@ -11,8 +11,6 @@ from flaskteroids.attachments import blob_path, blob_url
 from flaskteroids.attachments.extension import AttachmentsExtension
 from flaskteroids.cache.inmemory import InMemoryCache
 from flaskteroids.cli import credentials as credentials_commands
-from flaskteroids.cli import testing as testing_commands
-from flaskteroids.cli.assets import precompile as assets_precompile
 from flaskteroids.cli.attachments import install as attachments_install
 from flaskteroids.cli.db import commands as db_commands
 from flaskteroids.cli.db.snapshot import dump as schema_dump
@@ -81,14 +79,11 @@ def _register_cli_commands(app):
     app.cli.add_command(schema_dump)
     app.cli.add_command(credentials_commands.show)
     app.cli.add_command(credentials_commands.edit)
-    app.cli.add_command(testing_commands.test)
-    app.cli.add_command(testing_commands.test_system)
     app.cli.add_command(attachments_install)
     app.cli.add_command(rich_text_install)
     app.cli.add_command(turbo_install)
     app.cli.add_command(importmap_install)
     app.cli.add_command(db_commands.encryption_init)
-    app.cli.add_command(assets_precompile)
 
 
 def _prepare_shell_context(app):

@@ -13,31 +13,14 @@ import yaml
 from alembic.util import CommandError
 from packaging.version import InvalidVersion, Version
 
-from flaskteroids.cli.agent_skills import agent_skills
 from flaskteroids.cli.application import application_generator
 from flaskteroids.cli.artifacts import ArtifactsBuilder, ArtifactsBuilderException
-from flaskteroids.cli.assets import precompile as assets_precompile
 from flaskteroids.cli.attachments import STORAGE_YAML
 from flaskteroids.cli.db.config import initialize_migrations
-from flaskteroids.cli.importmap import importmap
 from flaskteroids.credentials import encrypt, generate_key
 
 
-@click.group()
-def cli():
-    """Create applications, compile assets, and locate agent skills.
-
-    For application commands, run bin/flask --help from the application root.
-    Use COMMAND --help for usage and examples.
-    """
-
-
-cli.add_command(agent_skills)
-cli.add_command(assets_precompile)
-cli.add_command(importmap)
-
-
-@cli.command("new")
+@click.command("new")
 @click.argument("app_name")
 @click.option(
     "--skip-install",
@@ -58,7 +41,7 @@ def new(app_name, skip_install, api_only):
 
     \b
     Example:
-      flaskteroids new my_app
+      flask new my_app
     """
     base_path = os.path.abspath(app_name)
     project_name = Path(base_path).name

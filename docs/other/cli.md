@@ -4,6 +4,13 @@ Run commands from your application directory with `bin/flask`; no environment
 activation is needed. You can also use `flask` in an activated environment or
 `uv run flask`.
 
+Flaskteroids extends Flask's CLI; install it in the Python environment providing
+`flask`. Commands `new`, `agent-skills`, `assets:precompile`, and `importmap` are
+available without loading an application. Test commands also defer application
+loading to the test suite. Other application commands use normal startup.
+Top-level `flask --help` attempts application discovery; use a specific command's
+`--help` outside an application.
+
 Use `bin/flask --help` to list commands, or add `--help` to a specific command:
 
 ```sh
@@ -14,7 +21,7 @@ bin/flask db:migrate --help
 ## Generation and setup
 
 ```sh
-flaskteroids new my_app
+flask new my_app
 cd my_app
 bin/flask run
 ```
@@ -22,7 +29,7 @@ bin/flask run
 A new app has its dependencies installed and development database prepared. For
 a fresh checkout, run `bin/setup` first.
 
-To generate files without installing, use `flaskteroids new my_app --skip-install`
+To generate files without installing, use `flask new my_app --skip-install`
 and run `bin/setup` later. Commit `uv.lock` so the team shares dependency versions.
 
 For an API instead of server-rendered pages, pass `--api` when creating the
@@ -281,7 +288,7 @@ bin/importmap json --environment production
 The installer creates `config/importmap.py`, `app/javascript/application.js`, and
 `bin/importmap` without replacing application code. Package commands resolve
 through JSPM and vendor returned modules, without booting the application.
-Use `flaskteroids importmap --root /path/to/app COMMAND` outside the application.
+Use `flask importmap --root /path/to/app COMMAND` outside the application.
 See [Import maps](importmaps.md) for configuration, options, and package limits.
 
 ## Rich text
@@ -316,7 +323,7 @@ See [Attachments](attachments.md).
 
 ```sh
 bin/flask assets:precompile
-flaskteroids assets:precompile --root /path/to/app
+flask assets:precompile --root /path/to/app
 ```
 
 Builds fingerprinted assets for production. Both commands work without application

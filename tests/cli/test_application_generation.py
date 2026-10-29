@@ -1,14 +1,14 @@
 import pytest
 import yaml
+from flask.cli import cli
 
 from flaskteroids.cli.artifacts import ArtifactsBuilder, ArtifactsBuilderException
-from flaskteroids.cli.flaskteroids import cli
 
 
 @pytest.fixture
 def artifacts_builder(mocker):
-    mocker.patch("flaskteroids.cli.flaskteroids.initialize_migrations")
-    mock_builder = mocker.patch("flaskteroids.cli.flaskteroids.ArtifactsBuilder")
+    mocker.patch("flaskteroids.cli.new.initialize_migrations")
+    mock_builder = mocker.patch("flaskteroids.cli.new.ArtifactsBuilder")
     mock_ab = mocker.Mock()
     mock_builder.return_value = mock_ab
     return mock_ab
@@ -60,7 +60,7 @@ def test_new_generates_agent_skill_loader(cli_runner, tmp_path, mocker):
     metadata = yaml.safe_load(frontmatter)
     assert metadata["name"] == "using-flaskteroids"
     assert metadata["description"]
-    assert "flaskteroids agent-skills path" in body
+    assert "flask agent-skills path" in body
     assert "using-flaskteroids/SKILL.md" in body
 
 

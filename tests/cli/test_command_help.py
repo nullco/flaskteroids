@@ -1,15 +1,15 @@
 import re
 import shlex
+from importlib.metadata import distribution
 
 import pytest
 from click.testing import CliRunner
+from flask.cli import cli
 
-from flaskteroids.cli.flaskteroids import cli
 from flaskteroids.cli.generators.commands import generate
 from flaskteroids.cli.generators.fields import fields
 
-STANDALONE_HELP = {
-    (): ["flask --help"],
+PLUGIN_HELP = {
     ("new",): ["APP_NAME", "--skip-install", "bin/setup"],
     ("assets:precompile",): ["--root", "--source", "--output"],
     ("importmap",): ["--root"],
@@ -21,10 +21,11 @@ STANDALONE_HELP = {
     ("importmap", "json"): ["--environment", "--source", "--output", "--prefix"],
     ("agent-skills",): ["path"],
     ("agent-skills", "path"): [],
+    ("test",): ["PYTEST_ARGS"],
+    ("test:system",): ["PYTEST_ARGS"],
 }
 
 APPLICATION_HELP = {
-    ("assets:precompile",): ["--root"],
     ("generate",): [],
     ("g",): [],
     ("generate", "migration"): [
@@ -54,14 +55,14 @@ APPLICATION_HELP = {
     ("db:rollback",): [],
     ("credentials:show",): ["--environment", "NAME"],
     ("credentials:edit",): ["--environment", "NAME"],
-    ("test",): ["PYTEST_ARGS"],
-    ("test:system",): ["PYTEST_ARGS"],
 }
 
 
-@pytest.mark.parametrize(("args", "expected"), STANDALONE_HELP.items())
-def test_standalone_help_exposes_command_interface(args, expected):
-    result = CliRunner().invoke(cli, [*args, "--help"])
+@pytest.mark.parametrize(("args", "expected"), PLUGIN_HELP.items())
+def test_plugin_help_is_available_without_application_boot(
+    bootless_cli, args, expected
+):
+    result = CliRunner().invoke(bootless_cli, [*args, "--help"])
 
     assert result.exit_code == 0
     output = " ".join(result.output.split())
@@ -80,8 +81,8 @@ def test_application_help_exposes_command_interface(cli_runner, args, expected):
 
 
 @pytest.mark.parametrize("args", [[], ["agent-skills"], ["importmap"]])
-def test_standalone_command_summaries_fit_terminal(args):
-    result = CliRunner().invoke(cli, [*args, "--help"], terminal_width=80)
+def test_flask_command_summaries_fit_terminal(cli_runner, args):
+    result = cli_runner.invoke(cli, [*args, "--help"], terminal_width=80)
 
     assert result.exit_code == 0
     commands = result.output.partition("Commands:\n")[2]
@@ -102,10 +103,15 @@ def test_application_command_summaries_fit_terminal(cli_runner, args):
 
 
 def test_help_covers_all_registered_commands(app):
-    assert set(cli.commands) == {args[0] for args in STANDALONE_HELP if args}
-    assert set(cli.commands["agent-skills"].commands) == {"path"}
-    assert set(cli.commands["importmap"].commands) == {
-        args[1] for args in STANDALONE_HELP if len(args) == 2 and args[0] == "importmap"
+    plugins = {
+        entry.name: entry.load()
+        for entry in distribution("flaskteroids").entry_points
+        if entry.group == "flask.commands"
+    }
+    assert set(plugins) == {args[0] for args in PLUGIN_HELP}
+    assert set(plugins["agent-skills"].commands) == {"path"}
+    assert set(plugins["importmap"].commands) == {
+        args[1] for args in PLUGIN_HELP if len(args) == 2 and args[0] == "importmap"
     }
     assert set(app.cli.commands) == {args[0] for args in APPLICATION_HELP}
     assert set(generate.commands) == {
@@ -230,7 +236,7 @@ def test_test_commands_forward_documented_pytest_help_arguments(
 ):
     pytest_main = mocker.patch("pytest.main", return_value=0)
 
-    result = cli_runner.invoke(args=[command, "--", "--help"])
+    result = cli_runner.invoke(cli, args=[command, "--", "--help"])
 
     assert result.exit_code == 0
     marker = "system" if command == "test:system" else "not system"

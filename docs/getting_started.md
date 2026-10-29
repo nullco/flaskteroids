@@ -60,7 +60,7 @@ pip install flaskteroids
 Generate your application in a new directory:
 
 ```sh
-flaskteroids new store
+flask new store
 cd store
 ```
 
@@ -77,7 +77,7 @@ bin/flask --help
 bin/flask generate --help
 ```
 
-If you used `flaskteroids new store --skip-install`, run `bin/setup` before
+If you used `flask new store --skip-install`, run `bin/setup` before
 continuing. Use that same setup command on a fresh checkout. Commit `uv.lock` so
 other developers and deployment builds use the same dependency versions. Never
 commit `config/master.key`.

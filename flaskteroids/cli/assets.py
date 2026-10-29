@@ -33,7 +33,7 @@ def precompile(root, source, output):
     \b
     Examples:
       bin/flask assets:precompile
-      flaskteroids assets:precompile --root /path/to/my_app
+      flask assets:precompile --root /path/to/my_app
     """
     try:
         pipeline = AssetPipeline(root, source_path=source, output_path=output)

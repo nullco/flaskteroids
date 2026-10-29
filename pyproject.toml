@@ -49,10 +49,11 @@ dependencies = [
 [project.optional-dependencies]
 s3 = ["boto3>=1.35"]
 
-[project.scripts]
-flaskteroids = "flaskteroids.cli.flaskteroids:cli"
-
 [project.entry-points."flask.commands"]
+new = "flaskteroids.cli.new:new"
+"agent-skills" = "flaskteroids.cli.agent_skills:agent_skills"
+"assets:precompile" = "flaskteroids.cli.assets:precompile"
+importmap = "flaskteroids.cli.importmap:importmap"
 test = "flaskteroids.cli.testing:test"
 "test:system" = "flaskteroids.cli.testing:test_system"
 

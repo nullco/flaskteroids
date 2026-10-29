@@ -5,10 +5,10 @@ from urllib.parse import quote, urljoin
 import pytest
 from click.testing import CliRunner
 from flask import url_for
+from flask.cli import cli
 from markupsafe import Markup
 
 from flaskteroids.assets import AssetError
-from flaskteroids.cli.flaskteroids import cli
 from flaskteroids.helpers import asset_path, stylesheet_link_tag
 from tests.assertions import HTML
 

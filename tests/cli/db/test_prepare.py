@@ -8,8 +8,7 @@ from pathlib import Path
 
 import pytest
 from click.testing import CliRunner
-
-from flaskteroids.cli.flaskteroids import cli
+from flask.cli import cli
 
 pytestmark = pytest.mark.generated_app
 

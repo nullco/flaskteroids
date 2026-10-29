@@ -4,8 +4,7 @@ import sys
 from pathlib import Path
 
 import pytest
-
-from flaskteroids.cli.flaskteroids import cli
+from flask.cli import cli
 
 pytestmark = pytest.mark.generated_app
 
@@ -16,7 +15,7 @@ def test_generated_application_boots_in_development_and_production(
     monkeypatch.chdir(tmp_path)
     result = cli.main(
         args=["new", "weblog", "--skip-install"],
-        prog_name="flaskteroids",
+        prog_name="flask",
         standalone_mode=False,
     )
     assert result is None
@@ -69,7 +68,7 @@ def test_generated_model_can_boot_migrate_and_use_fresh_mappings(tmp_path, monke
     monkeypatch.chdir(tmp_path)
     cli.main(
         args=["new", "weblog", "--skip-install"],
-        prog_name="flaskteroids",
+        prog_name="flask",
         standalone_mode=False,
     )
     root = tmp_path / "weblog"

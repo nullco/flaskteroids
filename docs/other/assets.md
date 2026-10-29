@@ -88,12 +88,12 @@ Sass/JavaScript compilation, bundling, or minification.
 ```sh
 bin/flask assets:precompile
 # From outside the application:
-flaskteroids assets:precompile --root /path/to/app
+flask assets:precompile --root /path/to/app
 ```
 
 Both commands build without starting the application, accessing the database,
-reading runtime keys, or running initializers. By contrast, plain
-`flask assets:precompile` loads the application first.
+reading runtime keys, or running initializers. The command is registered as a
+Flask CLI plugin, so plain `flask assets:precompile` is bootless too.
 
 Deploy `public/assets` **including its `.manifest.json` file**. Generated Docker
 builds already precompile assets and keep the output in the image; generated

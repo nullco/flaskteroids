@@ -46,7 +46,7 @@ jobs:
           export UV_FIND_LINKS="$GITHUB_WORKSPACE/dist"
           unset PYTHONPATH
           cd "$RUNNER_TEMP"
-          flaskteroids new release_app
+          flask new release_app
           cd release_app
           test -f db/migrate/env.py
           bin/flask generate scaffold Post title:string content:text

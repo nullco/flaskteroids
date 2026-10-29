@@ -5,8 +5,7 @@ from pathlib import Path
 
 import pytest
 from click.testing import CliRunner
-
-from flaskteroids.cli.flaskteroids import cli
+from flask.cli import cli
 
 pytestmark = pytest.mark.generated_app
 
@@ -37,7 +36,7 @@ def test_invalid_basename_rejected_before_writing(tmp_path, name):
 
 def test_unavailable_version_rejected_before_writing(tmp_path, mocker):
     mocker.patch(
-        "flaskteroids.cli.flaskteroids.version",
+        "flaskteroids.cli.new.version",
         side_effect=PackageNotFoundError("flaskteroids"),
     )
     root = tmp_path / "weblog"
@@ -63,7 +62,7 @@ def test_unavailable_version_rejected_before_writing(tmp_path, mocker):
 def test_new_pins_installed_generator_version_constraint(
     tmp_path, mocker, version, constraint
 ):
-    mocker.patch("flaskteroids.cli.flaskteroids.version", return_value=version)
+    mocker.patch("flaskteroids.cli.new.version", return_value=version)
     root = tmp_path / "weblog"
     result = CliRunner().invoke(cli, ["new", str(root), "--skip-install"])
     assert result.exit_code == 0, result.output
@@ -93,7 +92,7 @@ def test_generated_application_owns_its_browser_dependencies(
 
 
 def test_invalid_version_rejected_before_writing(tmp_path, mocker):
-    mocker.patch("flaskteroids.cli.flaskteroids.version", return_value="unknown")
+    mocker.patch("flaskteroids.cli.new.version", return_value="unknown")
     root = tmp_path / "weblog"
     result = CliRunner().invoke(cli, ["new", str(root), "--skip-install"])
     assert result.exit_code == 1

@@ -22,6 +22,6 @@ def skills_path():
 
     \b
     Example:
-      flaskteroids agent-skills path
+      flask agent-skills path
     """
     click.echo(Path(__file__).resolve().parents[1] / ".agents" / "skills")
