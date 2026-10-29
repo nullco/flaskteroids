@@ -36,6 +36,15 @@ class AssociationDefinition:
     dependent: str | None = None
     inverse_of: str | None = None
     optional: bool = False
+    autosave: bool | None = None
+
+
+@dataclass(frozen=True)
+class NestedAttributesDefinition:
+    allow_destroy: bool = False
+    reject_if: str | Callable[[dict], bool] | None = None
+    limit: int | None = None
+    update_only: bool = False
 
 
 @dataclass(frozen=True)
@@ -66,6 +75,9 @@ class ModelDefinition:
     password_field: str | None = None
     callbacks: dict[str, list[Callback]] = field(default_factory=dict)
     associations: dict[str, AssociationDefinition] = field(default_factory=dict)
+    nested_attributes: dict[str, NestedAttributesDefinition] = field(
+        default_factory=dict
+    )
     attachments: dict[str, Definition] = field(default_factory=dict)
     rich_texts: dict[str, RichTextDefinition] = field(default_factory=dict)
     encrypted_attributes: dict[str, EncryptedAttributeDefinition] = field(

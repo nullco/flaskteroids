@@ -1,0 +1,26 @@
+{% extends layout %}
+{% block body %}
+<h1>Edit family</h1>
+{% call(form) form_with(model=parent) %}
+  {{ form.label("name") }}
+  {{ form.text_field("name") }}
+  {% call(child) form.fields_for("children") %}
+    <fieldset data-child-id="{{ child.model.id or 'new' }}">
+      {{ child.label("name") }}
+      {{ child.text_field("name") }}
+      {{ child.label("quantity") }}
+      {{ child.text_field("quantity") }}
+      {{ child.label("_destroy") }}
+      {{ child.checkbox("_destroy") }}
+      {% if child.errors %}
+        <ul role="alert">
+          {% for message in child.errors.full_messages() %}
+            <li>{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </fieldset>
+  {% endcall %}
+  {{ form.submit("Save family") }}
+{% endcall %}
+{% endblock %}

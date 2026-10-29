@@ -71,6 +71,7 @@ def _wrap_json(controller, body):
             set(model.__table__.columns.keys())
             | definition.attachments.keys()
             | definition.rich_texts.keys()
+            | {f"{name}_attributes" for name in definition.nested_attributes}
             | {
                 name
                 for name, field in definition.virtual_fields.items()

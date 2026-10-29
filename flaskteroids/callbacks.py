@@ -1,4 +1,6 @@
 import logging
+from contextlib import contextmanager
+from dataclasses import dataclass
 from inspect import getattr_static
 from weakref import WeakKeyDictionary
 
@@ -151,31 +153,24 @@ after_initialize = _make_callback("after_initialize")
 after_find = _make_callback("after_find")
 
 
-def run_callbacks(instance, kind, operation, body, *args, **kwargs):
-    """
-    Run the callback chain for ``kind`` around ``body``.
+@dataclass
+class _CallbackRun:
+    result: object = _HALTED
 
-    Before callbacks run in registration order, around callbacks wrap the body
-    (generator-based, like the controller around_action pattern), and after
-    callbacks run in reverse registration order (LIFO).
 
-    Returns ``_HALTED`` if a before callback returns ``False`` or an around
-    callback fails to yield; otherwise returns the body's return value.
-    """
+@contextmanager
+def _callback_chain(instance, kind, operation):
     chains = model_for(instance.__class__).callbacks
     before_name, around_name, after_name = KIND_PARTS[kind]
-
     before = chains.get(before_name, []) if before_name else []
     around = chains.get(around_name, []) if around_name else []
     after = chains.get(after_name, []) if after_name else []
 
     for callback in before:
-        if not callback.applies(instance, operation):
-            continue
-        result = callback.call(instance)
-        if result is False:
+        if callback.applies(instance, operation) and callback.call(instance) is False:
             _logger.debug(f"{before_name} <{callback.method_name}> halted {instance!r}")
-            return _HALTED
+            yield None
+            return
 
     generators = []
     for callback in around:
@@ -187,25 +182,34 @@ def run_callbacks(instance, kind, operation, body, *args, **kwargs):
         except StopIteration:
             _logger.debug(f"{around_name} <{callback.method_name}> halted {instance!r}")
             _finalize_around(generators)
-            return _HALTED
+            yield None
+            return
         generators.append(gen)
 
+    execution = _CallbackRun()
     try:
-        result = body(*args, **kwargs)
+        yield execution
     except BaseException:
         _finalize_around(generators)
         raise
-
     _finalize_around(generators)
-    if result is _HALTED:
-        return _HALTED
+    if execution.result is not _HALTED:
+        for callback in reversed(after):
+            if callback.applies(instance, operation):
+                callback.call(instance)
 
-    for callback in reversed(after):
-        if not callback.applies(instance, operation):
-            continue
-        callback.call(instance)
 
-    return result
+def run_callbacks(instance, kind, operation, body, *args, **kwargs):
+    """Run before/around/after callbacks, returning _HALTED on rejection.
+
+    Before callbacks run in registration order; generator-based around callbacks
+    wrap the body; after callbacks run in reverse registration order.
+    """
+    with _callback_chain(instance, kind, operation) as execution:
+        if execution is None:
+            return _HALTED
+        execution.result = body(*args, **kwargs)
+    return execution.result
 
 
 def _finalize_around(generators):

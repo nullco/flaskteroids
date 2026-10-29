@@ -1,0 +1,9 @@
+{% extends layout %}
+{% block body %}
+<h1>{{ parent.name }}</h1>
+<ul id="children">
+{% for child in parent.children %}
+  <li>{{ child.name }}: {{ child.quantity }}</li>
+{% endfor %}
+</ul>
+{% endblock %}

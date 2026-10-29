@@ -123,12 +123,22 @@ dependency internals or introduce a parallel implementation of a supported featu
 - Unknown public model attributes raise `AttributeError`. For temporary values,
   declare class defaults or properties with setters, or use private attributes.
   A type annotation alone isn't enough. Don't overwrite framework methods or state.
-- Assign belongs-to associations their target model or `None`; framework saves
-  validate new associated objects. Collections are native: use append/remove or
-  replacement, and `Child.create(parent=parent, ...)`, not `parent.children.create()`.
-  Native relationship mutations are not scalar staging. A rejected scalar update
-  retains its input and does not undo a prior collection mutation. `apply_changes()`
-  explicitly publishes staged scalars for native writes, bypassing validation/callbacks.
+- Assign belongs-to associations their target model or `None`. Use
+  `parent.children.new(...)` to build an unsaved graph and
+  `parent.children.create(...)` to save a child for a saved parent. Collections
+  support scoped queries and native append/remove/replacement. Native relationship
+  mutations are not scalar staging; a rejected update retains input without
+  undoing earlier collection edits. `apply_changes()` explicitly publishes staged
+  scalars for native writes, bypassing validation/callbacks.
+- Use `accepts_nested_attributes_for("children", allow_destroy=True)` after an
+  association declaration to edit children through the parent. It enables autosave;
+  ordinary associations save new related records, not edits to existing children.
+  Permit `children_attributes` explicitly with
+  `("children_attributes", [["id", "name", "_destroy"]])` in `params.expect`.
+  Use `{% call(child) form.fields_for("children") %}` for nested forms, not manual
+  bracket names or application-written save loops. Builders expose `model` and
+  `errors`, preserve raw input, include saved IDs, and propagate multipart encoding.
+  Re-render the same parent on 422; `reload()` abandons loaded nested input.
 - Prefer public Turbo helpers (`dom_id`, `dom_class`, `turbo_frame_tag`, and
   `turbo_stream`, automatic in Jinja) over hand-built frame/stream tags or record
   IDs. Import them or `TurboStreamBuilder` from `flaskteroids.turbo` in Python.

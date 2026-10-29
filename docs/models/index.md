@@ -284,6 +284,85 @@ author.posts.where(title="Next").count()
 Find-then-create is not an atomic uniqueness guarantee. Add a database unique
 constraint when concurrent duplicates must be rejected.
 
+### Autosave and nested attributes
+
+By default, saving a record saves related **new** records, but not edits to
+existing children. Set `autosave=True` on `has_many`, `has_one`, or `belongs_to`
+to save changes to loaded associated records as well. `autosave=False` disables
+implicit associated saves; an explicit child `save()` still works. Building
+through a collection retains its children for a later parent save.
+
+To accept child attributes through a parent, opt in after declaring the
+association:
+
+```python
+from app.models.application_model import ApplicationModel
+from flaskteroids.model import accepts_nested_attributes_for, has_many
+
+
+class Order(ApplicationModel):
+    has_many("line_items", dependent="destroy")
+    accepts_nested_attributes_for(
+        "line_items", allow_destroy=True, reject_if="all_blank", limit=20
+    )
+```
+
+This automatically enables autosave for that association. Constructors,
+`assign_attributes()`, and `update()` accept the generated writer; direct
+assignment is also supported:
+
+```python
+order.line_items_attributes = [
+    {"id": existing_item.id, "quantity": "3"},
+    {"description": "New item", "quantity": "1"},
+    {"id": removed_item.id, "_destroy": "1"},
+]
+if not order.save():
+    messages = order.errors["line_items[0].quantity"]
+```
+
+Collection input accepts a list of mappings, an indexed mapping, or a single
+mapping containing `id`. An ID updates only a record in this association; an
+unrelated or missing ID raises `RecordNotFoundException`. Without an ID, input
+builds a new child. Parent foreign keys cannot redirect collection or `has_one`
+children to another owner.
+
+- `allow_destroy=True` permits `_destroy` to mark an existing child for deletion
+  when the parent saves. False flags such as `"0"` and `"false"` do not delete.
+  Destroy-marked new rows are ignored; deletion runs child destroy callbacks.
+- `reject_if="all_blank"` ignores rows whose values are blank, excluding
+  `_destroy`. A callable receives the attributes mapping; a method name calls a
+  parent method with that mapping. Rejection does not suppress an allowed
+  destruction request.
+- A nonnegative integer `limit` bounds collection input and raises
+  `TooManyRecords` before assigning rows. Callable limits are not supported.
+- Singular associations accept a mapping. An ID updates the current target;
+  without an ID, a saved target is replaced, while an unsaved target is reused.
+  `update_only=True` updates the current singular target without requiring its ID.
+- Nested attributes require a single primary key named `id`.
+
+Validation includes participating children and imports their errors into the
+parent. `errors["name"]` returns messages for an attribute;
+`errors["line_items[0].quantity"]` selects a nested attribute. Forms retain the
+original raw input and child errors after validation failure.
+
+Participating records run validation and save/create/update callbacks, maintain
+timestamps and saved changes, and persist attachments and rich text. Commit and
+rollback callbacks follow the enclosing transaction. Unchanged existing children
+do not run save callbacks. A standalone parent save commits the graph together;
+inside an explicit transaction, follow the usual rule: **raise on a rejected save
+if the group must roll back**.
+
+Graph save callbacks enter parent-first and unwind in reverse traversal order
+around a shared SQLAlchemy flush. This intentionally does not reproduce Rails'
+exact per-association callback interleaving: all participating before-save hooks
+can reject the operation before scalar publication. Use after-commit for external
+side effects, not assumptions about sibling callback order.
+
+Use `reload()` on the parent to abandon loaded nested input, errors, newly built
+children, and destruction marks. See [nested forms](../other/forms.md#nested-forms)
+for rendering and strong parameters.
+
 ### Association changes and validation failures
 
 Association edits are **not staged like scalar attributes**. A failed validation

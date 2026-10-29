@@ -67,6 +67,22 @@ def test_association_build_connects_an_unsaved_graph(records):
     assert post.is_persisted()
 
 
+def test_association_build_saves_a_new_child_without_loading_existing_children(records):
+    author = records.Author.create(name="Ada")
+    post = author.posts.new(title="First")
+    assert inspect(author).attrs.posts.loaded_value is NO_VALUE
+    assert author.save()
+    assert post.is_persisted()
+    assert post.reload().author_id == author.id
+
+
+def test_association_scoped_creation_keeps_the_collection_unloaded(records):
+    author = records.Author.create(name="Ada")
+    post = author.posts.where(title="First").first_or_create()
+    assert post.is_persisted()
+    assert inspect(author).attrs.posts.loaded_value is NO_VALUE
+
+
 def test_association_creation_requires_a_persisted_parent(records):
     author = records.Author.new(name="Ada")
     with pytest.raises(ProgrammerError, match="Save the parent"):

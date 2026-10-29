@@ -20,8 +20,15 @@ from flaskteroids._models.authentication import (
     PasswordAuthenticator,
     has_secure_password,
 )
+from flaskteroids._models.autosave import SaveGraph
 from flaskteroids._models.encryption import EncryptableRecord, encrypts
 from flaskteroids._models.mapping import SchemaModel
+from flaskteroids._models.nested_attributes import (
+    TooManyRecords,
+    accepts_nested_attributes_for,
+    association_for_writer,
+)
+from flaskteroids._models.nested_attributes import assign as assign_nested_attributes
 from flaskteroids._models.query import ModelQuery
 from flaskteroids._models.staging import StagedAttributes
 from flaskteroids._models.validation import ComparisonConfig as ComparisonConfig
@@ -68,6 +75,8 @@ __all__ = [
     "ModelQuery",
     "PasswordAuthenticator",
     "RecordNotFoundException",
+    "TooManyRecords",
+    "accepts_nested_attributes_for",
     "after_commit",
     "after_create",
     "after_destroy",
@@ -118,6 +127,7 @@ class Model(EncryptableRecord, StagedAttributes, SchemaModel):
         self._attachment_changes = {}
         self._attachment_cache = {}
         self._rich_text_changes = {}
+        self._marked_for_destruction = False
 
     def __init__(self, **kwargs):
         init(type(self))
@@ -138,6 +148,8 @@ class Model(EncryptableRecord, StagedAttributes, SchemaModel):
         if name.startswith("_"):
             raise AttributeError(f"{field_name} is reserved framework state or API.")
         definition = model_for(type(self))
+        if association_for_writer(self, name) is not None:
+            return
         if name in definition.virtual_fields:
             if definition.virtual_fields[name].get("read_only"):
                 raise AttributeError(f"{field_name} is read-only.")
@@ -170,6 +182,9 @@ class Model(EncryptableRecord, StagedAttributes, SchemaModel):
                 )
             return super().__setattr__(name, value)
         self._check_assignment(name)
+        if (association := association_for_writer(self, name)) is not None:
+            assign_nested_attributes(self, association, value)
+            return
         if rich_text_storage.assign(self, name, value):
             return
         if attached_storage.assign(self, name, value):
@@ -285,19 +300,47 @@ class Model(EncryptableRecord, StagedAttributes, SchemaModel):
     def find_by(cls, **filters) -> Self | None:
         return cls.where(**filters).first()
 
-    def update(self, **kwargs):
+    def assign_attributes(self, **kwargs):
         for name in kwargs:
             self._check_assignment(name)
         for name, value in kwargs.items():
             setattr(self, name, value)
+        return self
+
+    def update(self, **kwargs):
+        self.assign_attributes(**kwargs)
         return self.save()
+
+    def mark_for_destruction(self):
+        self._marked_for_destruction = True
+
+    def marked_for_destruction(self):
+        return self._marked_for_destruction
 
     def reload(self):
         current_app.extensions["flaskteroids.db"].require_model(type(self))
+        graph = SaveGraph(self)
+        related_records = graph.records[1:] + [
+            child for _, _, child in graph.destructions
+        ]
+        for record in related_records:
+            record.discard_changes()
+            record._saved_changes = {}
+            record._errors = Errors()
+            record._marked_for_destruction = False
+            record._attachment_changes.clear()
+            record._attachment_cache.clear()
+            rich_text_storage.discard(record)
+            if record in session:
+                if record.is_new_record():
+                    session.expunge(record)
+                else:
+                    session.expire(record)
         session.refresh(self)
         self.discard_changes()
         self._saved_changes = {}
         self._errors = Errors()
+        self._marked_for_destruction = False
         self._attachment_changes.clear()
         self._attachment_cache.clear()
         rich_text_storage.discard(self)
@@ -307,9 +350,17 @@ class Model(EncryptableRecord, StagedAttributes, SchemaModel):
         attached_storage.cache_for_commit(self)
 
     def is_valid(self):
+        return SaveGraph(self).validate()
+
+    def _validate_record(self, validate_associations):
         operation = "create" if self.is_new_record() else "update"
+
+        def validate():
+            self._validate()
+            validate_associations()
+
         return (
-            run_callbacks(self, "validation", operation, self._validate) is not _HALTED
+            run_callbacks(self, "validation", operation, validate) is not _HALTED
             and not self.errors
         )
 
@@ -320,56 +371,45 @@ class Model(EncryptableRecord, StagedAttributes, SchemaModel):
         attached_storage.validate(self)
         rich_text_storage.validate(self)
 
-    def _save_graph(self):
-        records, seen = [], set()
-
-        def visit(record):
-            if id(record) in seen:
-                return
-            seen.add(id(record))
-            records.append(record)
-            state = inspect(record)
-            for relationship in state.mapper.relationships:
-                if not relationship.cascade.save_update:
-                    continue
-                value = state.attrs[relationship.key].loaded_value
-                if value is NO_VALUE or value is None:
-                    continue
-                for related in value if relationship.uselist else [value]:
-                    if isinstance(related, Model) and related.is_new_record():
-                        visit(related)
-
-        visit(self)
-        return records
-
     @classmethod
     def transaction(cls, *, requires_new=False):
         return transaction(requires_new=requires_new)
 
     def save(self, validate=True):
-        state = inspect(self)
+        records = SaveGraph(self).records
+        inputs = [
+            (record, dict(record._changes), dict(record._raw_attributes))
+            for record in records
+        ]
         relationships = [
             (
+                record,
                 relationship,
                 list(value) if relationship.uselist else value,
             )
-            for relationship in state.mapper.relationships
-            if state.attrs[relationship.key].history.has_changes()
-            and (value := state.attrs[relationship.key].loaded_value) is not NO_VALUE
+            for record in records
+            for relationship in inspect(record).mapper.relationships
+            if (value := inspect(record).attrs[relationship.key].loaded_value)
+            is not NO_VALUE
         ]
         result = self._save(validate=validate)
         if not result:
             # Rollback expires native relationship edits. Retain submitted input
             # and its inverse links so a rejected save can be corrected/retried.
-            for relationship, value in relationships:
+            for record, relationship, value in relationships:
                 if relationship.back_populates:
                     for related in value if relationship.uselist else [value]:
                         if related is not None:
                             object.__getattribute__(
                                 related, relationship.back_populates
                             )
-                setattr(self, relationship.key, [] if relationship.uselist else None)
-                setattr(self, relationship.key, value)
+                setattr(record, relationship.key, [] if relationship.uselist else None)
+                setattr(record, relationship.key, value)
+            for record, changes, raw in inputs:
+                record._changes = changes | record._changes
+                record._raw_attributes = raw | record._raw_attributes
+                if record.is_new_record() and record in session:
+                    session.expunge(record)
         return result
 
     @transactional(rollback_on_false=True)
@@ -377,14 +417,9 @@ class Model(EncryptableRecord, StagedAttributes, SchemaModel):
         current_app.extensions["flaskteroids.db"].require_model(type(self))
         if inspect(self).was_deleted:
             raise ProgrammerError("A destroyed record cannot be saved.")
-        operation = "create" if self.is_new_record() else "update"
-        graph = self._save_graph()
-        if validate:
-            valid = [record.is_valid() for record in graph]
-            if not all(valid):
-                if valid[0]:
-                    self.errors.append(("associations", "Associated record is invalid"))
-                return False
+        graph = SaveGraph(self)
+        if validate and not graph.validate():
+            return False
 
         def persist():
             previous = {
@@ -392,10 +427,10 @@ class Model(EncryptableRecord, StagedAttributes, SchemaModel):
                     name: record.read_published_attribute(name)
                     for name in record.column_names
                 }
-                for record in graph
+                for record in graph.records
             }
             now = datetime.now(UTC)
-            for record in graph:
+            for record in graph.records:
                 if (
                     record.is_new_record()
                     and "created_at" in record.column_names
@@ -405,28 +440,25 @@ class Model(EncryptableRecord, StagedAttributes, SchemaModel):
                 if "updated_at" in record.column_names:
                     record.updated_at = now
                 record.apply_changes()
-            session.add(self)
+            graph.unlink_marked(session)
+            for record in graph.records:
+                session.add(record)
+            if not graph.destroy_marked():
+                return _HALTED
             session.flush()
-            for record in graph:
+            for record in graph.records:
                 rich_text_storage.persist(record)
-            for record in graph:
+            for record in graph.records:
                 record._saved_changes = {
                     name: (old, new)
                     for name, old in previous[id(record)].items()
                     if old != (new := record.read_published_attribute(name))
                 }
-            attached_storage.persist(self)
+            for record in graph.records:
+                attached_storage.persist(record)
+            return True
 
-        result = run_callbacks(
-            self,
-            "save",
-            operation,
-            lambda: run_callbacks(self, operation, None, persist),
-        )
-        if result is _HALTED:
-            return False
-        queue_after_commit(self, operation, session)
-        return True
+        return graph.run(persist, session) is not _HALTED
 
     def is_persisted(self):
         state = inspect(self)

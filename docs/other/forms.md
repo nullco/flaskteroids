@@ -101,6 +101,68 @@ Use `form.rich_text_area("content")` for declared rich-text attributes. Install
 Lexxy and storage with `bin/flask rich_text:install`, then migrate. See
 [Rich text](rich_text.md) for setup, rendering, and validation.
 
+## Nested forms
+
+Declare `accepts_nested_attributes_for()` on the parent model, then use
+`fields_for` inside `form_with`. It calls the block once per associated child:
+
+```html
+{% call(form) form_with(model=order) %}
+  {{ form.label("number") }}
+  {{ form.text_field("number") }}
+  {% call(item) form.fields_for("line_items") %}
+    <fieldset>
+      {{ item.label("description") }}
+      {{ item.text_field("description") }}
+      {{ item.label("quantity") }}
+      {{ item.number_field("quantity") }}
+      {{ item.label("_destroy") }}
+      {{ item.checkbox("_destroy") }}
+      {% for message in item.errors.full_messages() %}
+        <p role="alert">{{ message }}</p>
+      {% endfor %}
+    </fieldset>
+  {% endcall %}
+  {{ form.submit("Save order") }}
+{% endcall %}
+```
+
+Fields use names such as `order[line_items_attributes][0][quantity]`, with
+matching unique label/input IDs. Singular associations omit the collection
+index. Saved children receive a hidden `id`; use `include_id=False` only when
+you supply the identity yourself. `item.model` exposes the child and `item.errors`
+its validation errors. Raw rejected values and destruction checkboxes survive
+redisplay. Nested file fields make the outer form multipart, including at deeper
+nesting levels.
+
+An empty association renders no fields. Build an initial row in the `new` or
+`edit` action when appropriate:
+
+```python
+self.order.line_items.new()
+```
+
+Permit the nested fields explicitly; the declaration does not grant permission:
+
+```python
+attributes = self.params.expect(
+    order=[
+        "number",
+        ("line_items_attributes", [["id", "description", "quantity", "_destroy"]]),
+    ]
+)
+if self.order.update(**attributes):
+    return self.redirect_to(self.order, status=303)
+return self.render("edit", status=422)
+```
+
+For a singular association, use a single field list, for example
+`("profile_attributes", ["id", "name", "_destroy"])`. Re-render the submitted
+object on failure instead of replacing it with a fresh query or appending an
+extra blank row. See [nested attributes](../models/index.md#autosave-and-nested-attributes)
+for autosave, rejection, deletion, and transaction behavior. Dynamic add/remove
+JavaScript and automatic nested scaffold generation are not included.
+
 ## Buttons that submit forms
 
 ```html

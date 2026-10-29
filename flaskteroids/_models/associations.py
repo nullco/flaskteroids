@@ -27,6 +27,9 @@ class AssociationQuery(ModelQuery):
         )
 
     def new(self, **attributes):
+        if model_for(type(self.owner)).associations[self.name].autosave is True:
+            # Keep explicitly autosaved targets in native association storage.
+            object.__getattribute__(self.owner, self.name)
         record = super().new(**attributes)
         for local, remote in self.relationship.local_remote_pairs:
             setattr(record, remote.key, getattr(self.owner, local.key))
@@ -96,7 +99,9 @@ class AssociationCollection(MutableSequence):
         return repr(self._collection())
 
 
-def _declare(name, kind, class_name, foreign_key, dependent, inverse_of, optional):
+def _declare(
+    name, kind, class_name, foreign_key, dependent, inverse_of, optional, autosave
+):
     if not isinstance(name, str) or not name.isidentifier() or name.startswith("_"):
         raise ProgrammerError("Association names must be public Python identifiers.")
     if class_name is not None and (not isinstance(class_name, str) or not class_name):
@@ -107,6 +112,9 @@ def _declare(name, kind, class_name, foreign_key, dependent, inverse_of, optiona
         raise ProgrammerError("Association foreign keys must be nonempty strings.")
     if dependent not in (None, "destroy"):
         raise ProgrammerError("Association dependent must be 'destroy' or None.")
+
+    if autosave is not None and type(autosave) is not bool:
+        raise ProgrammerError("Association autosave must be True, False, or None.")
 
     def bind(cls):
         target = class_name or inflector.camelize(
@@ -123,7 +131,7 @@ def _declare(name, kind, class_name, foreign_key, dependent, inverse_of, optiona
                 f"Association {cls.__name__}.{name} conflicts with a model attribute."
             )
         definition.associations[name] = AssociationDefinition(
-            name, kind, target, key, dependent, inverse_of, optional
+            name, kind, target, key, dependent, inverse_of, optional, autosave
         )
         if kind == "belongs_to" and not optional:
             definition.validators.append(
@@ -135,28 +143,53 @@ def _declare(name, kind, class_name, foreign_key, dependent, inverse_of, optiona
 
 @declaration
 def belongs_to(
-    name, class_name=None, foreign_key=None, *, inverse_of=None, optional=False
+    name,
+    class_name=None,
+    foreign_key=None,
+    *,
+    inverse_of=None,
+    optional=False,
+    autosave=None,
 ):
     return _declare(
-        name, "belongs_to", class_name, foreign_key, None, inverse_of, optional
+        name,
+        "belongs_to",
+        class_name,
+        foreign_key,
+        None,
+        inverse_of,
+        optional,
+        autosave,
     )
 
 
 @declaration
 def has_many(
-    name, class_name=None, foreign_key=None, dependent=None, *, inverse_of=None
+    name,
+    class_name=None,
+    foreign_key=None,
+    dependent=None,
+    *,
+    inverse_of=None,
+    autosave=None,
 ):
     return _declare(
-        name, "has_many", class_name, foreign_key, dependent, inverse_of, True
+        name, "has_many", class_name, foreign_key, dependent, inverse_of, True, autosave
     )
 
 
 @declaration
 def has_one(
-    name, class_name=None, foreign_key=None, dependent=None, *, inverse_of=None
+    name,
+    class_name=None,
+    foreign_key=None,
+    dependent=None,
+    *,
+    inverse_of=None,
+    autosave=None,
 ):
     return _declare(
-        name, "has_one", class_name, foreign_key, dependent, inverse_of, True
+        name, "has_one", class_name, foreign_key, dependent, inverse_of, True, autosave
     )
 
 
@@ -179,6 +212,19 @@ def _validate_target(instance, name, target_name, key):
 def relationship_properties(cls, catalog, table_for):
     result = {}
     source = table_for(cls)
+    definition = model_for(cls)
+    attribute_names = (
+        set(source.columns.keys())
+        | definition.associations.keys()
+        | definition.virtual_fields.keys()
+        | definition.attachments.keys()
+        | definition.rich_texts.keys()
+    )
+    for name in definition.nested_attributes:
+        if f"{name}_attributes" in attribute_names:
+            raise ProgrammerError(
+                f"Nested writer {name}_attributes conflicts with a model attribute."
+            )
     for name, definition in model_for(cls).associations.items():
         if name in source.columns:
             raise ProgrammerError(
@@ -225,6 +271,7 @@ def relationship_properties(cls, catalog, table_for):
             primaryjoin=primary_key == key,
             foreign_keys=[key],
             back_populates=inverse,
+            cascade="merge" if definition.autosave is False else "save-update, merge",
             uselist=definition.kind == "has_many",
             remote_side=[primary_key]
             if cls is target and definition.kind == "belongs_to"

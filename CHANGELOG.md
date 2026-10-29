@@ -4,6 +4,11 @@
 
 ### Added
 
+- Association autosave, opt-in nested attributes, and model-backed `fields_for`
+  for editing associated records in one form, with nested validation errors,
+  deferred destruction, and child lifecycle callbacks. See
+  [Models](docs/models/index.md#autosave-and-nested-attributes) and
+  [Forms](docs/other/forms.md#nested-forms).
 - Configurable WSGI middleware through `config.middleware`, including
   insertion, replacement, removal, and reordering of framework defaults and custom
   middleware. Inspect the read-only stack with `application.middleware` or
