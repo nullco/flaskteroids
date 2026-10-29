@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.13.0 - 2026-10-29
+
 ### Added
 
 - Association autosave, opt-in nested attributes, and model-backed `fields_for`
