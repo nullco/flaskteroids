@@ -6,6 +6,7 @@ from flask.config import Config as FlaskConfig
 from flaskteroids.assets import OUTPUT_PATH, SOURCE_PATH
 from flaskteroids.jobs.adapters import CeleryQueueAdapter
 from flaskteroids.mail.delivery_methods import SMTPDeliveryMethod
+from flaskteroids.middleware import MiddlewareConfiguration
 
 
 class Options:
@@ -55,6 +56,7 @@ class Configuration(FlaskConfig):
     def __init__(self, root_path, defaults=None):
         super().__init__(root_path, defaults)
         self._defaults_version = None
+        self.middleware = MiddlewareConfiguration()
         self.paths = Options(
             {
                 "models": "app.models",

@@ -172,7 +172,7 @@ def _override(entries):
 
 
 class MethodOverrideMiddleware:
-    def __init__(self, application, app):
+    def __init__(self, app, *, application):
         self.application = application
         self.app = app
 

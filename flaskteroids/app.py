@@ -16,6 +16,7 @@ from flaskteroids.cli.db import commands as db_commands
 from flaskteroids.cli.db.snapshot import dump as schema_dump
 from flaskteroids.cli.generators import commands as generate_commands
 from flaskteroids.cli.importmap import install as importmap_install
+from flaskteroids.cli.middleware import middleware as middleware_command
 from flaskteroids.cli.rich_text import install as rich_text_install
 from flaskteroids.cli.turbo import install as turbo_install
 from flaskteroids.db import session
@@ -26,6 +27,7 @@ from flaskteroids.extensions.mail import MailExtension
 from flaskteroids.extensions.mail_previews import MailPreviewsExtension
 from flaskteroids.extensions.routes import RoutesExtension
 from flaskteroids.i18n import I18nExtension
+from flaskteroids.middleware import MethodOverrideMiddleware, Middleware
 
 _logger = logging.getLogger(__name__)
 
@@ -48,7 +50,6 @@ def initialize_app(app):
     _setup_mailers(app)
     AttachmentsExtension(app)
     stack.install(app)
-    app.wsgi_app = ProxyFix(app.wsgi_app)
     app._flaskteroids_initialized = True
 
 
@@ -57,6 +58,13 @@ def finalize_app(app):
         return
     _register_routes(app)
     MailPreviewsExtension(app)
+    defaults = [Middleware(ProxyFix)]
+    if not app.config.api_only:
+        defaults.append(
+            Middleware(MethodOverrideMiddleware, kwargs={"application": app})
+        )
+    app.middleware = app.config.middleware.build(app.wsgi_app, defaults=defaults)
+    app.wsgi_app = app.middleware
     app._flaskteroids_finalized = True
 
 
@@ -69,6 +77,7 @@ def _configure_orm(app):
 
 
 def _register_cli_commands(app):
+    app.cli.add_command(middleware_command)
     app.cli.add_command(generate_commands.generate, name="generate")
     app.cli.add_command(generate_commands.generate, name="g")
     app.cli.add_command(db_commands.init)

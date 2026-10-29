@@ -3,7 +3,6 @@
 from flask import has_request_context
 
 from flaskteroids import helpers
-from flaskteroids._method_override import MethodOverrideMiddleware
 from flaskteroids.assets import init_assets
 from flaskteroids.csrf import CSRFToken
 from flaskteroids.flash import flash
@@ -16,7 +15,6 @@ from flaskteroids.turbo.extension import template_context as turbo_template_cont
 
 
 def install_browser(app):
-    app.wsgi_app = MethodOverrideMiddleware(app, app.wsgi_app)
     app.jinja_env.globals.update(
         dom_id=dom_id,
         dom_class=dom_class,

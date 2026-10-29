@@ -26,6 +26,7 @@ PLUGIN_HELP = {
 }
 
 APPLICATION_HELP = {
+    ("middleware",): ["incoming-request order"],
     ("generate",): [],
     ("g",): [],
     ("generate", "migration"): [

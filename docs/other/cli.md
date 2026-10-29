@@ -36,6 +36,16 @@ For an API instead of server-rendered pages, pass `--api` when creating the
 application. Controller and scaffold generators then produce API output. See
 [Building an API](../controllers/api.md) for a complete example.
 
+## Middleware
+
+```sh
+bin/flask middleware
+```
+
+Loads the application and lists the effective WSGI middleware in incoming-request
+order, followed by Flask dispatch. Configure it with `config.middleware`; see
+[Middleware](../configuration.md#middleware) for registration and ordering.
+
 ## Database preparation
 
 Migrations describe changes to database tables. To create a database if necessary

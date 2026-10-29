@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Added
+
+- Configurable WSGI middleware through `config.middleware`, including
+  insertion, replacement, removal, and reordering of framework defaults and custom
+  middleware. Inspect the read-only stack with `application.middleware` or
+  `bin/flask middleware`. See [Middleware](docs/configuration.md#middleware).
+
 ## 0.12.0 - 2026-10-29
 
 ### Breaking changes

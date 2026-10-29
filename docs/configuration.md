@@ -39,6 +39,128 @@ The application generator selects browser defaults unless you pass `--api`,
 which sets `config.api_only = True`. See [Building an API](controllers/api.md)
 for API application setup and controller behavior.
 
+## Middleware
+
+Middleware wraps the whole application, before Flask routing and controller
+callbacks. Use it for request logging, response headers, proxy handling, or
+returning an early response. Flaskteroids uses standard WSGI middleware, including
+existing Werkzeug and third-party middleware; no base class is required.
+
+### Write and register middleware
+
+For example, create `app/middleware/security_headers.py`:
+
+```python
+class SecurityHeaders:
+    def __init__(self, app, *, policy="nosniff"):
+        self.app = app
+        self.policy = policy
+
+    def __call__(self, environ, start_response):
+        def secured_response(status, headers, exc_info=None):
+            headers = [*headers, ("X-Content-Type-Options", self.policy)]
+            return start_response(status, headers, exc_info)
+
+        return self.app(environ, secured_response)
+```
+
+Register it in your application's `configure(self, config)` method:
+
+```python
+from app.middleware.security_headers import SecurityHeaders
+
+# Inside configure:
+config.middleware.use(SecurityHeaders, policy="nosniff")
+```
+
+The constructor receives the next WSGI application, followed by your positional
+and keyword arguments. `__call__(environ, start_response)` returns an iterable of
+byte chunks. Delegate unchanged unless intentionally transforming the response;
+do not consume or buffer the body just to inspect headers. If you wrap the body,
+preserve its `close()` cleanup.
+
+Middleware instances are shared across requests: keep request-specific state in
+local variables or `environ`, not instance attributes. Middleware does not
+automatically get a Flask application or request context. Use controller
+callbacks for concerns needing controller state or sessions. Errors raised outside
+Flask dispatch are not handled by Flask's error handlers.
+
+### Configure the stack
+
+The default incoming-request order is:
+
+1. Werkzeug's `ProxyFix`.
+2. `MethodOverrideMiddleware` (browser applications only).
+3. Flask dispatch.
+
+`use` appends middleware immediately before Flask dispatch. Requests enter the
+stack from first to last; response calls unwind in reverse. A streaming body's
+iteration happens separately, after the application has returned its iterable.
+
+Configure the stack using middleware classes (or callable factories), not strings:
+
+```python
+from werkzeug.middleware.proxy_fix import ProxyFix
+
+from app.middleware.security_headers import SecurityHeaders
+from flaskteroids.middleware import MethodOverrideMiddleware
+
+# Inside configure:
+config.middleware.use(SecurityHeaders)
+config.middleware.insert_before(MethodOverrideMiddleware, RequestLogging)
+config.middleware.insert_after(ProxyFix, RequestTiming)
+config.middleware.swap(ProxyFix, ProxyFix, x_for=2, x_proto=1)
+config.middleware.move_before(SecurityHeaders, RequestTiming)
+config.middleware.move_after(ProxyFix, RequestLogging)
+config.middleware.delete(UnwantedMiddleware)
+```
+
+Here `RequestLogging`, `RequestTiming`, and `UnwantedMiddleware` stand for your
+own middleware classes. Move methods take the **target first, then the middleware
+to move**. `unshift(Middleware, ...)` prepends to the stack; `insert` and `move`
+are aliases for `insert_before` and `move_before`.
+
+Additions, insertions, and swaps apply first, in registration order;
+deletions and moves then apply in their registration order. This lets environment
+settings remove middleware added by a later initializer. Insertions, swaps, and
+moves fail at startup if a target is missing. Deleting a missing target is a no-op.
+Targets match by Python factory identity; relative operations select the first
+match, while deletion removes every match. Integer positions and string targets
+are not supported.
+
+Environment files can use the same `config.middleware` API. Initializers can use
+`application.config.middleware`:
+
+```python
+# config/initializers/middleware.py
+from flaskteroids import application
+from app.middleware.security_headers import SecurityHeaders
+
+application.config.middleware.use(SecurityHeaders)
+```
+
+The stack is built once after initializers. Later configuration changes raise
+`RuntimeError`; restart the application to change middleware. Removing method
+override disables browser `_method` transport normalization. API applications do
+not include it by default, so targeting it there requires adding it first.
+
+`ProxyFix` preserves its existing Werkzeug defaults. Only trust forwarding headers
+when the application is behind the corresponding trusted proxies; configure its
+hop counts for your deployment, or remove it with
+`config.middleware.delete(ProxyFix)` when it is not appropriate.
+
+### Inspect the stack
+
+```sh
+bin/flask middleware
+```
+
+The command loads the application normally and lists middleware in incoming-request
+order, followed by Flask dispatch. In Python, `application.middleware` is a
+read-only sequence of entries with `klass`, `name`, `args`, and `kwargs`.
+Argument containers are read-only, but application objects passed as arguments
+are not deep-frozen.
+
 ## Template helpers
 
 Application helpers are discovered in `app.helpers` and included in controller
