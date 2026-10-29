@@ -27,49 +27,47 @@ def test_unknown_services_raise_a_configuration_error(storage):
 
 
 def test_storage_resolves_credentials_and_environment_references(
-    storage, app, monkeypatch, mocker
+    storage, app, monkeypatch, mocker, memory_provider
 ):
-    storage.configurations["amazon"] = {
-        "service": "S3",
-        "bucket": {"env": "TEST_STORAGE_BUCKET"},
-        "access_key_id": {"credential": "aws.access_key_id"},
-        "secret_access_key": {"credential": "aws.secret_access_key"},
+    storage.configurations["remote"] = {
+        "service": "Memory",
+        "endpoint": {"env": "TEST_STORAGE_ENDPOINT"},
+        "token": {"credential": "storage.token"},
+        "secret": {"credential": "storage.secret"},
     }
-    monkeypatch.setenv("TEST_STORAGE_BUCKET", "private-bucket")
+    monkeypatch.setenv("TEST_STORAGE_ENDPOINT", "https://storage.example")
     mocker.patch.object(
         app.credentials,
         "to_dict",
         return_value={
-            "aws": {"access_key_id": "key", "secret_access_key": "secret"},
+            "storage": {"token": "token-value", "secret": "secret-value"},
         },
     )
-    service = mocker.patch("flaskteroids.attachments.extension.S3Service")
-    storage.service("amazon")
-    service.assert_called_once_with(
-        bucket="private-bucket",
-        access_key_id="key",
-        secret_access_key="secret",
-    )
+    service = storage.service("remote")
+    assert service.options == {
+        "endpoint": "https://storage.example",
+        "token": "token-value",
+        "secret": "secret-value",
+    }
 
 
 def test_missing_environment_references_fail_closed(storage):
-    storage.configurations["amazon"] = {
-        "service": "S3",
-        "bucket": {"env": "MISSING_BUCKET"},
+    storage.configurations["remote"] = {
+        "service": "Memory",
+        "endpoint": {"env": "MISSING_STORAGE_ENDPOINT"},
     }
     with pytest.raises(StorageError, match="Missing storage environment variable"):
-        storage.service("amazon")
+        storage.service("remote")
 
 
 def test_missing_credentials_fail_closed(storage, app, mocker):
     mocker.patch.object(app.credentials, "to_dict", return_value={})
-    storage.configurations["amazon"] = {
-        "service": "S3",
-        "bucket": "bucket",
-        "access_key_id": {"credential": "aws.key"},
+    storage.configurations["remote"] = {
+        "service": "Memory",
+        "token": {"credential": "storage.token"},
     }
     with pytest.raises(StorageError, match="Missing storage credential"):
-        storage.service("amazon")
+        storage.service("remote")
 
 
 def test_fixture_upload_and_temporary_storage_are_isolated(app, storage):
@@ -90,7 +88,10 @@ def test_fixture_upload_and_temporary_storage_are_isolated(app, storage):
 def test_temporary_storage_replaces_remote_services_without_contacting_them(
     app, storage
 ):
-    storage.configurations["remote"] = {"service": "S3", "bucket": "private"}
+    storage.configurations["remote"] = {
+        "service": "Memory",
+        "endpoint": "https://storage.example",
+    }
     with temporary_storage(app):
         blob = Blob.create_and_upload(
             io=io.BytesIO(b"test"), filename="test.txt", service_name="remote"

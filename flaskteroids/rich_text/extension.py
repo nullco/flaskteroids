@@ -4,12 +4,12 @@ from flask import Blueprint, abort, current_app, jsonify, request, session, url_
 from itsdangerous import BadSignature
 
 from flaskteroids.attachments import Blob
-from flaskteroids.attachments.services import StorageError, UploadTooLarge
 from flaskteroids.attachments.signatures import signed_token, verified_token
 from flaskteroids.attachments.urls import blob_path
 from flaskteroids.csrf import CSRFToken
 from flaskteroids.declarations import model_for
 from flaskteroids.rich_text.embeds import editor_content_type, previewable
+from flaskteroids.storage import StorageError, UploadTooLarge
 
 
 def upload_attributes(record, name):

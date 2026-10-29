@@ -10,13 +10,13 @@ from werkzeug.datastructures import FileStorage
 from flaskteroids.attachments.blob import Attachment, Blob, Upload, storage
 from flaskteroids.attachments.operations import purge_blob_after_commit, upload_blob
 from flaskteroids.attachments.schema import attachments
-from flaskteroids.attachments.services import StorageError
 from flaskteroids.attachments.transactions import after_commit, defer_uploads
 from flaskteroids.callbacks import _COMMIT_CALLBACKS
 from flaskteroids.db import session, transactional
 from flaskteroids.declarations import model_for
 from flaskteroids.exceptions import ProgrammerError
 from flaskteroids.rules import declaration
+from flaskteroids.storage import StorageError
 
 
 @dataclass(frozen=True)

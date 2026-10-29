@@ -1,7 +1,7 @@
 # Attachments
 
 Use attachments to give a model one file, such as an avatar, or a collection of
-files, such as documents. File bytes live on disk or in S3-compatible storage;
+files, such as documents. File bytes live in a configured storage service;
 the database keeps attachment records and metadata.
 
 ## Set up
@@ -150,10 +150,9 @@ test:
   service: Disk
   root: tmp/storage
 
-amazon:
-  service: S3
-  bucket: {env: S3_BUCKET}
-  region: {env: AWS_REGION}
+archive:
+  service: Disk
+  root: storage/archive
 ```
 
 Relative disk paths start at the application root. Keep the storage directory
@@ -162,24 +161,64 @@ persistent when deploying containers. Generated Docker applications use writable
 Host bind mounts must be writable by the image user. `bin/setup` and default web
 startup create only conventional storage, not arbitrary configured directories.
 
-For S3, install the optional dependency:
+Disk storage is built in. Additional providers are installed separately and
+register through the `flaskteroids.storage` entry point group. No application
+import or initializer is needed. Installation makes a provider available; it
+does not change the selected service. Follow the provider package's documentation
+for its configuration and credentials.
 
-```sh
-uv add "flaskteroids[s3]"
-```
-
-S3 uses your AWS credentials or IAM role. It also accepts `endpoint` and
-`force_path_style` for compatible providers.
+For example, `flaskteroids-storage-s3` provides S3-compatible storage; its setup
+and provider-specific options are documented in that package.
 
 Select a service in your environment configuration:
 
 ```python
-config.attachments.service = "amazon"
+config.attachments.service = "archive"
 ```
 
 Generated applications use `local` in development and `test` in tests. Production
 uses `FLASKTEROIDS_ATTACHMENTS_SERVICE`, defaulting to `local`. A declaration can override the
-default with `service="amazon"`. Changing services does not move existing files.
+default with `service="archive"`. Changing services does not move existing files.
+
+### Custom storage providers
+
+Subclass `flaskteroids.storage.StorageService` and register the class in your
+package metadata:
+
+```toml
+[project.entry-points."flaskteroids.storage"]
+Example = "example_storage:ExampleService"
+```
+
+Applications then select `service: Example` in `config/storage.yml`. Provider
+names must be unique, including the reserved built-in `Disk` name. Only the
+selected provider is imported, and service instances are cached per application
+and service configuration. Missing or invalid providers fail explicitly; there
+is no fallback to local storage.
+
+Implement `upload`, `open`, `delete`, `exist`, and `url`. The base class supplies
+bounded callback downloads and closes streams even if reading or callbacks fail.
+`open(key, start=None, end=None)` returns an owned binary stream with `read` and
+`close`; ranges are inclusive, and the caller closes the stream. Missing objects
+raise `FileNotFoundError`; deleting missing objects succeeds. Permission and
+connection failures must not be treated as missing files. Validate storage keys
+and checksums with the public helpers in `flaskteroids.storage`.
+
+The framework calls `from_config(project_root, **options)` with environment and
+credential references already resolved. Its default implementation forwards the
+options to the constructor. Override it for application-relative configuration;
+do not create clients or contact remote services during package discovery.
+The framework assigns the service's configured `name` after construction.
+
+`url` returns an absolute public or expiring URL, honoring the requested filename,
+content type, and disposition. `content_disposition` is available for safe header
+encoding. Remote providers use the default `local_path` result of `None`;
+local providers may return a validated path for optimized HTTP delivery.
+HTTP authorization, cache headers, HEAD and range handling remain in Flaskteroids.
+
+Provider packages can subclass `flaskteroids.testing.StorageServiceContract`
+in their pytest suite and supply a fresh `storage_service` fixture. Include
+provider-specific SDK tests alongside the shared contract.
 
 ## Download links
 
@@ -260,6 +299,7 @@ from test.test_helper import fixture_file_upload
 user.avatar.attach(fixture_file_upload("avatar.png"))
 ```
 
-Tests use temporary local storage, even when the application uses S3. Browser
-tests can use `self.attach_file("Avatar", "test/fixtures/files/avatar.png")`.
+Tests use temporary local storage, even when the application uses a remote
+provider. Browser tests can use
+`self.attach_file("Avatar", "test/fixtures/files/avatar.png")`.
 See [Testing](../testing.md) for test setup.

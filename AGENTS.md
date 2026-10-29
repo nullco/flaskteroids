@@ -44,7 +44,7 @@ This framework provides a collection of tools and a cohesive ecosystem with a cl
   boundaries instead: extract shared types or services into lower-level modules
   and keep dependencies flowing in one direction.
 * Function-local imports are allowed only for genuinely optional dependencies
-  (such as the S3 extra) or tests specifically exercising import timing/order.
+  or tests specifically exercising import timing/order.
   Keep these exceptions narrow and explain why they are necessary. A lint
   exemption is not permission to use local imports elsewhere.
 * Module-level `TYPE_CHECKING` imports are appropriate for type-only dependencies;

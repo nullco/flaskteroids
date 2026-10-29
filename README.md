@@ -42,7 +42,8 @@ control, without giving up the framework's everyday workflows.
 - Jinja templates, form helpers, and HTML or JSON responses.
 - Turbo Frames and HTTP Streams with a locally bundled Turbo runtime.
 - Rich-text fields with an integrated Trix editor and safe HTML rendering.
-- File attachments with disk and S3-compatible storage.
+- File attachments with built-in disk storage and optional S3-compatible storage
+  through `flaskteroids-storage-s3`.
 - YAML translations, scoped locales, pluralization, and localized date/time formats.
 - Background jobs and email delivery.
 - Environment settings, `database.yml`, encrypted credentials, and boot-time initializers.

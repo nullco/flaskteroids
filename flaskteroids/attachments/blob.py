@@ -14,19 +14,19 @@ from flask import current_app
 from itsdangerous import BadSignature
 from sqlalchemy import delete, insert, select
 
-from flaskteroids.attachments.filenames import sanitize_filename
 from flaskteroids.attachments.jobs import PurgeJob
 from flaskteroids.attachments.operations import purge_blob, upload_blob
 from flaskteroids.attachments.schema import attachments, blobs
-from flaskteroids.attachments.services import (
-    StorageError,
-    UploadTooLarge,
-    verify_checksum,
-)
 from flaskteroids.attachments.signatures import signed_token, verified_token
 from flaskteroids.attachments.transactions import after_commit
 from flaskteroids.db import session, transactional
 from flaskteroids.exceptions import RecordNotFoundException
+from flaskteroids.storage import (
+    StorageError,
+    UploadTooLarge,
+    sanitize_filename,
+    verify_checksum,
+)
 
 
 def storage():

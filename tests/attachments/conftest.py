@@ -1,4 +1,5 @@
 import io
+from importlib.metadata import EntryPoint
 
 import pytest
 from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table, create_engine
@@ -58,6 +59,22 @@ def pending_transaction(app_ctx):
 @pytest.fixture
 def storage(app):
     return app.extensions["flaskteroids.attachments"]
+
+
+@pytest.fixture
+def memory_provider(mocker):
+    entry = EntryPoint(
+        name="Memory",
+        value="tests.attachments.fake_storage:MemoryService",
+        group="flaskteroids.storage",
+    )
+    mocker.patch("flaskteroids.attachments.adapters.entry_points", return_value=[entry])
+
+
+@pytest.fixture
+def remote_service(storage, memory_provider):
+    storage.configurations["remote"] = {"service": "Memory"}
+    return storage.service("remote")
 
 
 @pytest.fixture

@@ -4,6 +4,11 @@
 
 ### Breaking changes
 
+- Extract S3 storage into `flaskteroids-storage-s3`. Provider packages register
+  through `flaskteroids.storage` and implement the public `StorageService`
+  contract. Disk storage remains built in; AWS dependencies and SDK tests belong
+  to the S3 package.
+
 - Replace the standalone `flaskteroids` CLI with Flask CLI plugins. Use `flask new`
   and `flask agent-skills path`; asset and import-map commands also run through
   `flask` without application boot. The `flaskteroids` executable and

@@ -1,16 +1,16 @@
 import os
-from pathlib import Path
 
 import yaml
 from flask import Blueprint, abort, current_app, redirect, request, send_file
 from itsdangerous import BadSignature
 from werkzeug.wsgi import wrap_file
 
+from flaskteroids.attachments.adapters import build_service
 from flaskteroids.attachments.blob import Blob
-from flaskteroids.attachments.filenames import content_disposition
-from flaskteroids.attachments.services import DiskService, S3Service, StorageError
+from flaskteroids.attachments.services import DiskService
 from flaskteroids.attachments.signatures import verified_token
 from flaskteroids.exceptions import ProgrammerError, RecordNotFoundException
+from flaskteroids.storage import StorageError, content_disposition
 
 
 class AttachmentsExtension:
@@ -56,14 +56,9 @@ class AttachmentsExtension:
                 key: self._resolve(value) for key, value in configuration.items()
             }
             adapter = options.pop("service", None)
-            if adapter == "Disk":
-                root = Path(options.pop("root"))
-                self.services[name] = DiskService(self.root / root, **options)
-            elif adapter == "S3":
-                self.services[name] = S3Service(**options)
-            else:
-                raise StorageError(f"Unknown storage adapter {adapter!r}")
-            self.services[name].name = name
+            service = build_service(adapter, self.root, **options)
+            service.name = name
+            self.services[name] = service
         return self.services[name]
 
     @staticmethod
@@ -131,9 +126,10 @@ class AttachmentsExtension:
             try:
                 options = blob.serving_options(disposition())
                 service = blob.service
-                if isinstance(service, DiskService):
+                path = service.local_path(blob.key)
+                if path is not None:
                     response = send_file(
-                        service.path_for(blob.key),
+                        path,
                         mimetype=options["content_type"],
                         as_attachment=options["disposition"] == "attachment",
                         download_name=blob.filename,

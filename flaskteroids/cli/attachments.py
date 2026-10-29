@@ -20,13 +20,6 @@ STORAGE_YAML = """test:
 local:
   service: Disk
   root: storage
-
-# amazon:
-#   service: S3
-#   bucket: {env: S3_BUCKET}
-#   region: {env: AWS_REGION}
-#   access_key_id: {credential: aws.access_key_id}
-#   secret_access_key: {credential: aws.secret_access_key}
 """
 
 

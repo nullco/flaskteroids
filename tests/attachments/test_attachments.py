@@ -354,3 +354,31 @@ def test_purge_job_is_idempotent_and_cleans_up_after_metadata_was_deleted(storag
     session.commit()
     job.perform(blob.id, blob.key, blob.service_name)
     assert not storage.service().exist(blob.key)
+
+
+def test_large_uploads_use_streams_and_default_to_unlimited_size(app, storage, mocker):
+    assert app.config.attachments.max_upload_size is None
+    write = mocker.spy(storage.service(), "upload")
+    data = b"x" * (11 * 1024 * 1024)
+    document = Document.create(
+        title="Large", files=[{"io": io.BytesIO(data), "filename": "large.txt"}]
+    )
+    session.commit()
+    stream = write.call_args.args[1]
+    assert not isinstance(stream, bytes)
+    assert stream.closed
+    assert document.files.blobs[0].byte_size == len(data)
+    assert document.files.blobs[0].download() == data
+
+
+def test_attachments_report_blank_state_and_delegate_blob_attributes(upload):
+    document = Document.new(title="Example")
+    assert document.avatar.blank()
+    assert not document.avatar
+    document.avatar.attach(upload())
+    assert not document.avatar.blank()
+    assert document.save()
+    session.commit()
+    attachment = document.avatar.attachment
+    assert attachment.filename == "avatar.png"
+    assert attachment.download() == b"\x89PNG\r\n\x1a\nimage"

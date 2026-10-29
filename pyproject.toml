@@ -46,9 +46,6 @@ dependencies = [
     "pytest-xdist>=3.8.0",
 ]
 
-[project.optional-dependencies]
-s3 = ["boto3>=1.35"]
-
 [project.entry-points."flask.commands"]
 new = "flaskteroids.cli.new:new"
 "agent-skills" = "flaskteroids.cli.agent_skills:agent_skills"
