@@ -13,7 +13,9 @@ from sqlalchemy.exc import DBAPIError
 
 from flaskteroids.cli.db.config import get_config
 from flaskteroids.cli.db.lifecycle import _error_code, ensure_database
+from flaskteroids.cli.db.output import migration_output
 from flaskteroids.cli.db.snapshot import dump_schema
+from flaskteroids.cli.output import status
 from flaskteroids.encryption import generate_encryption_key
 
 
@@ -47,7 +49,13 @@ def init():
     config = get_config()
     directory = config.get_main_option("script_location")
     assert directory
-    command.init(config, directory, template="default", package=False)
+    with migration_output():
+        command.init(config, directory, template="default", package=False)
+    root = Path(current_app.project_root)
+    directory = Path(directory)
+    status("create", directory.relative_to(root))
+    for path in sorted(directory.rglob("*")):
+        status("create", path.relative_to(root))
 
 
 @click.command("db:migrate")
@@ -79,7 +87,7 @@ def create():
       flask db:create
     """
     ensure_selected_database()
-    click.echo("Database is available.")
+    status("ready", "Database is available.")
 
 
 def ensure_selected_database():

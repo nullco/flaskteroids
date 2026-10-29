@@ -3,6 +3,7 @@ from pathlib import Path
 import click
 
 from flaskteroids.assets import OUTPUT_PATH, SOURCE_PATH, AssetError, AssetPipeline
+from flaskteroids.cli.output import status
 
 
 @click.command(
@@ -39,4 +40,4 @@ def precompile(root, source, output):
         manifest = pipeline.precompile()
     except (AssetError, OSError) as error:
         raise click.ClickException(f"Asset precompilation failed: {error}") from error
-    click.echo(f"Precompiled {len(manifest)} assets into {pipeline.output}")
+    status("compile", f"{len(manifest)} assets into {pipeline.output}")

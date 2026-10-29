@@ -3,6 +3,7 @@ from datetime import datetime
 from alembic import command
 
 from flaskteroids.cli.db.config import get_config
+from flaskteroids.cli.db.output import migration_output, report_revision
 from flaskteroids.cli.generators.migrations import cmd_parser
 
 
@@ -11,12 +12,16 @@ def generate(cmd, args):
     res = cmd_parser.parse(cmd, args)
     up_ops = res["parsed"]["ops"]["up"]
     down_ops = res["parsed"]["ops"]["down"]
-    command.revision(
-        config,
-        message=res["normalized_cmd"].replace("_", " "),
-        rev_id=datetime.now().strftime("%Y%m%d%H%M%S%f"),
-        process_revision_directives=_gen_process_revision_directives(up_ops, down_ops),
-    )
+    with migration_output():
+        revision = command.revision(
+            config,
+            message=res["normalized_cmd"].replace("_", " "),
+            rev_id=datetime.now().strftime("%Y%m%d%H%M%S%f"),
+            process_revision_directives=_gen_process_revision_directives(
+                up_ops, down_ops
+            ),
+        )
+    report_revision(revision, ".")
 
 
 def _gen_process_revision_directives(upgrade_ops, downgrade_ops):

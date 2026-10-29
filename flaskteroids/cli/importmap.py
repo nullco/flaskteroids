@@ -10,6 +10,7 @@ from werkzeug.routing import Map, Rule
 
 from flaskteroids._assets.paths import url_prefix
 from flaskteroids.assets import OUTPUT_PATH, SOURCE_PATH, AssetPipeline
+from flaskteroids.cli.output import status
 from flaskteroids.importmaps.installation import install as install_application
 from flaskteroids.importmaps.map import ImportMap
 from flaskteroids.importmaps.packages import PROVIDERS, Packager
@@ -33,7 +34,7 @@ def importmap(ctx, root):
 
 def _report(pins):
     for pin in pins:
-        click.echo(f'Pinned "{pin.name}" to vendor/javascript/{pin.filename}')
+        status("pin", f"{pin.name} to vendor/javascript/{pin.filename}")
 
 
 @importmap.command(short_help="Resolve and download packages.")
@@ -59,7 +60,7 @@ def pin(root, packages, provider, env, preload):
 def unpin(root, packages):
     """Remove named pins and their owned downloads; retain shared dependencies."""
     for name in Packager(root).unpin(*packages):
-        click.echo(f'Unpinned "{name}"')
+        status("unpin", name)
 
 
 @importmap.command(short_help="Restore downloaded package versions.")
@@ -124,6 +125,6 @@ def install():
         current_app.project_root, views_path=current_app.config.paths.views
     )
     for path in result.files:
-        click.echo(f"    write  {path.relative_to(current_app.project_root)}")
+        status("write", path.relative_to(current_app.project_root))
     for instruction in result.instructions:
-        click.echo(instruction)
+        status("next", instruction)

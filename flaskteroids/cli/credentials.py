@@ -5,6 +5,7 @@ import yaml
 from flask import current_app
 from flask.cli import with_appcontext
 
+from flaskteroids.cli.output import status
 from flaskteroids.credentials import Credentials, encrypt, generate_key
 
 
@@ -55,7 +56,7 @@ def edit(environment):
         key = generate_key()
         store.key_path.parent.mkdir(parents=True, exist_ok=True)
         store.key_path.write_text(f"{key}\n")
-        click.echo(f"Adding {store.key_path} to store the encryption key.")
+        status("create", store.key_path.relative_to(current_app.project_root))
 
     if store.content_path.exists():
         contents = yaml.safe_dump(store.to_dict(), sort_keys=False)
@@ -63,7 +64,7 @@ def edit(environment):
         contents = "{}\n"
     edited = click.edit(contents, extension=".yml")
     if edited is None:
-        click.echo("Credentials were not changed.")
+        status("skip", "Credentials were not changed.")
         return
 
     data = yaml.safe_load(edited) or {}
@@ -72,7 +73,7 @@ def edit(environment):
     store.content_path.parent.mkdir(parents=True, exist_ok=True)
     plaintext = yaml.safe_dump(data, sort_keys=False)
     store.content_path.write_text(encrypt(plaintext, key))
-    click.echo(f"Encrypted and saved {store.content_path}.")
+    status("write", store.content_path.relative_to(current_app.project_root))
 
 
 def _credentials(environment):

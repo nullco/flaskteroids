@@ -57,8 +57,6 @@ def generate(model, args):
         ),
     )
     if rich_texts:
-        click.echo("Rich text requires flask rich_text:install, then flask db:migrate.")
+        ab.say("next", "Run flask rich_text:install, then flask db:migrate.")
     if attachments:
-        click.echo(
-            "Attachments require flask attachments:install, then flask db:migrate."
-        )
+        ab.say("next", "Run flask attachments:install, then flask db:migrate.")

@@ -10,6 +10,8 @@ from flask.cli import with_appcontext
 
 from flaskteroids.attachments.schema import metadata
 from flaskteroids.cli.db.config import get_config
+from flaskteroids.cli.db.output import migration_output, report_revision
+from flaskteroids.cli.output import status
 
 STORAGE_YAML = """test:
   service: Disk
@@ -50,9 +52,9 @@ def install():
     if not path.exists():
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(STORAGE_YAML)
-        click.echo("    create  config/storage.yml")
+        status("create", "config/storage.yml")
     if any(revision.doc == message for revision in scripts.walk_revisions()):
-        click.echo("Attachment migration already exists.")
+        status("skip", "Attachment migration already exists.")
         return
 
     def directives(context, revision, entries):
@@ -65,10 +67,12 @@ def install():
             ops.DropTableOp(table.name) for table in reversed(metadata.sorted_tables)
         )
 
-    command.revision(
-        config,
-        message=message,
-        rev_id=datetime.now().strftime("%Y%m%d%H%M%S%f"),
-        process_revision_directives=directives,
-    )
-    click.echo("Run flask db:migrate to create the attachment tables.")
+    with migration_output():
+        revision = command.revision(
+            config,
+            message=message,
+            rev_id=datetime.now().strftime("%Y%m%d%H%M%S%f"),
+            process_revision_directives=directives,
+        )
+    report_revision(revision, current_app.project_root)
+    status("next", "Run flask db:migrate to create the attachment tables.")

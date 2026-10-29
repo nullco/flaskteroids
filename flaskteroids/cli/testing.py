@@ -3,6 +3,8 @@ import os
 import click
 import pytest
 
+from flaskteroids.cli.output import status
+
 
 @click.command("test", context_settings={"ignore_unknown_options": True})
 @click.argument("pytest_args", nargs=-1, type=click.UNPROCESSED)
@@ -55,6 +57,6 @@ def _run_tests(pytest_args):
         else:
             os.environ["FLASKTEROIDS_ENV"] = previous_environment
     if exit_code == pytest.ExitCode.NO_TESTS_COLLECTED:
-        click.echo("No tests collected; nothing to run.")
+        status("skip", "No tests collected; nothing to run.")
         exit_code = 0
     raise SystemExit(exit_code)

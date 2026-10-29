@@ -9,5 +9,8 @@ export FLASKTEROIDS_ENV="${FLASKTEROIDS_ENV-development}"
 mkdir -p storage
 uv sync
 bin/flask db:prepare
-echo "Setup complete. Run bin/flask run, bin/flask test, and bin/flask test:system."
+printf "%10s  %s\n" ready "Setup complete." next "bin/flask run" next "bin/flask test"
+if [[ -d test/system ]]; then
+  printf "%10s  %s\n" next "bin/flask test:system"
+fi
 </%text>

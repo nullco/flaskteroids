@@ -5,6 +5,8 @@ import sys
 import textwrap
 from pathlib import Path
 
+from flaskteroids.cli.output import format_status
+
 
 class ArtifactsBuilderException(Exception):
     pass
@@ -15,6 +17,9 @@ class ArtifactsBuilder:
         self._base_path = base_path
         self._notify = notify_fn or (lambda txt: None)
 
+    def say(self, action, message):
+        self._notify(format_status(action, message))
+
     def _join(self, name):
         if not name:
             return Path(self._base_path)
@@ -22,7 +27,7 @@ class ArtifactsBuilder:
 
     def dir(self, name=None):
         os.makedirs(self._join(name), exist_ok=True)
-        self._notify(f"    create  {name}")
+        self.say("create", name or self._base_path)
 
     def file(self, name, contents=None):
         file_path = self._join(name)
@@ -37,7 +42,7 @@ class ArtifactsBuilder:
                 raise ArtifactsBuilderException(
                     f"Cannot make script {name} executable: {error}"
                 ) from error
-        self._notify(f"    create  {name}")
+        self.say("create", name)
 
     def modify_py_file(self, name, contents):
         with open(self._join(name)) as source:
@@ -45,7 +50,7 @@ class ArtifactsBuilder:
         tree = contents().visit(tree)
         with open(self._join(name), "w") as target:
             target.write(ast.unparse(tree))
-        self._notify(f"    modify  {name}")
+        self.say("modify", name)
 
     def run(self, cmd: str) -> None:
         self._execute(cmd.split(), cmd)
@@ -62,7 +67,7 @@ class ArtifactsBuilder:
             raise ArtifactsBuilderException(
                 f"command {cmd} returned {res.returncode}:\n{res.stderr}"
             )
-        self._notify(f"    run  {cmd}")
+        self.say("run", cmd)
 
     def _clean(self, txt: str):
         return textwrap.dedent(txt).lstrip()

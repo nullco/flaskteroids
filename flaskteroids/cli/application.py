@@ -9,7 +9,7 @@ from flaskteroids.importmaps.installation import application_files
 class ApplicationGenerator:
     template_overrides: ClassVar[dict[str, str]] = {}
     test_directories = ("fixtures", "models", "controllers", "mailers", "jobs")
-    next_commands = "bin/flask run and bin/flask test"
+    next_commands = ("bin/flask run", "bin/flask test")
 
     def __init__(self, params):
         self.params = params
@@ -27,7 +27,7 @@ class ApplicationGenerator:
 
 class BrowserApplicationGenerator(ApplicationGenerator):
     test_directories = (*ApplicationGenerator.test_directories, "system")
-    next_commands = "bin/flask run, bin/flask test, and bin/flask test:system"
+    next_commands = (*ApplicationGenerator.next_commands, "bin/flask test:system")
 
     def write_presentation(self, ab):
         ab.file("app/assets/stylesheets/application.css")

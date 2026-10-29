@@ -2,6 +2,7 @@ import json
 import os
 import re
 import secrets
+import shlex
 from importlib.metadata import PackageNotFoundError, distribution, version
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -190,7 +191,11 @@ def new(app_name, skip_install, api_only):
             generator.render(path=".github/workflows/test.yml.mako", params=params),
         )
         # Copy canonical Alembic assets before app dependencies or database are available.
-        initialize_migrations(Path(base_path) / "db/migrate")
+        migrations_path = Path(base_path) / "db/migrate"
+        initialize_migrations(migrations_path)
+        ab.say("create", "db/migrate")
+        for path in sorted(migrations_path.rglob("*")):
+            ab.say("create", path.relative_to(base_path))
         ab.file("db/migrate/versions/.keep")
         try:
             ab.run("git init")
@@ -200,10 +205,8 @@ def new(app_name, skip_install, api_only):
                 "Git is required to create an application; install Git and retry."
             ) from error
         if editable_path:
-            click.echo(
-                f"Using editable Flaskteroids checkout: {editable_path}. "
-                "The generated uv source requires this local path."
-            )
+            ab.say("info", f"Using editable Flaskteroids checkout: {editable_path}")
+            ab.say("info", "The generated uv source requires this local path.")
         if not skip_install:
             # Relative argv uses the builder's app cwd, including destinations with spaces.
             ab.run("bin/setup")
@@ -212,12 +215,14 @@ def new(app_name, skip_install, api_only):
             f"Error creating new Flaskteroids app: {error}"
         ) from error
     if skip_install:
-        click.echo(
-            "Application generated; installation and database preparation skipped. Run bin/setup."
-        )
+        ab.say("skip", "Dependency installation and database preparation")
     else:
-        click.echo(f"Application ready. Run {generator.next_commands}.")
-    click.echo(f"Next: cd {app_name!r}")
+        ab.say("ready", "Application ready.")
+    ab.say("next", f"cd {shlex.quote(app_name)}")
+    if skip_install:
+        ab.say("next", "bin/setup")
+    for command in generator.next_commands:
+        ab.say("next", command)
 
 
 def _editable_framework_path():

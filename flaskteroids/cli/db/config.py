@@ -5,6 +5,8 @@ from alembic import command
 from alembic.config import Config as AlembicConfig
 from flask import current_app
 
+from flaskteroids.cli.db.output import migration_output
+
 _directory = os.path.join("db", "migrate")
 
 
@@ -15,10 +17,13 @@ class Config(AlembicConfig):
 
 
 def initialize_migrations(directory):
-    """Initialize canonical migration resources without booting an application."""
+    """Initialize canonical resources silently; the generator owns user-facing output."""
     config = Config()
     config.config_file_name = os.path.join(directory, "alembic.ini")
-    command.init(config, str(directory), template="default", package=False)
+    # Alembic emits its own progress and a configuration prompt that does not
+    # apply to generated apps, whose database settings live in config/database.yml.
+    with migration_output():
+        command.init(config, str(directory), template="default", package=False)
 
 
 def get_config():

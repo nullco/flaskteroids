@@ -11,6 +11,8 @@ from flask.cli import with_appcontext
 
 from flaskteroids.cli.attachments import install as attachments_install
 from flaskteroids.cli.db.config import get_config
+from flaskteroids.cli.db.output import migration_output, report_revision
+from flaskteroids.cli.output import status
 from flaskteroids.rich_text.installation import install_javascript
 from flaskteroids.rich_text.schema import metadata
 
@@ -31,9 +33,9 @@ def install():
     root = current_app.project_root
     result = install_javascript(root, views_path=current_app.config.paths.views)
     for path in result.files:
-        click.echo(f"    write  {path.relative_to(root)}")
+        status("write", path.relative_to(root))
     for instruction in result.instructions:
-        click.echo(instruction)
+        status("next", instruction)
 
     layout = root / current_app.config.paths.views / "layouts/application.html"
     if layout.exists():
@@ -48,16 +50,16 @@ def install():
             )
             if count:
                 layout.write_text(updated)
-                click.echo(f"    modify  {layout.relative_to(root)}")
+                status("modify", layout.relative_to(root))
             else:
-                click.echo("Add {{ rich_text_assets() }} to your layout's head.")
+                status("next", "Add {{ rich_text_assets() }} to your layout's head.")
     else:
-        click.echo("Add {{ rich_text_assets() }} to your layout's head.")
+        status("next", "Add {{ rich_text_assets() }} to your layout's head.")
 
     scripts = ScriptDirectory.from_config(config)
     message = "create rich text table"
     if any(revision.doc == message for revision in scripts.walk_revisions()):
-        click.echo("Rich-text migration already exists.")
+        status("skip", "Rich-text migration already exists.")
         return
 
     def directives(context, revision, entries):
@@ -70,10 +72,12 @@ def install():
             ops.DropTableOp(table.name) for table in reversed(metadata.sorted_tables)
         )
 
-    command.revision(
-        config,
-        message=message,
-        rev_id=datetime.now().strftime("%Y%m%d%H%M%S%f"),
-        process_revision_directives=directives,
-    )
-    click.echo("Run flask db:migrate to create the rich-text table.")
+    with migration_output():
+        revision = command.revision(
+            config,
+            message=message,
+            rev_id=datetime.now().strftime("%Y%m%d%H%M%S%f"),
+            process_revision_directives=directives,
+        )
+    report_revision(revision, root)
+    status("next", "Run flask db:migrate to create the rich-text table.")

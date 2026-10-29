@@ -15,6 +15,8 @@ from alembic.operations import ops
 from flask import current_app
 from flask.cli import with_appcontext
 
+from flaskteroids.cli.output import status
+
 
 def snapshot_source(connection):
     metadata = sa.MetaData()
@@ -102,4 +104,4 @@ def dump():
       flask db:schema:dump
     """
     path = dump_schema()
-    click.echo(f"Schema snapshot written to {path}.")
+    status("write", path.relative_to(current_app.project_root))
