@@ -50,6 +50,9 @@ blocked: remote/Turbo behavior is outside this correctness package.
 
 `tests/system/test_turbo_workflows.py` covers generated Turbo Frame and HTTP Stream
 browser workflows using the fixture in `tests/integration/application/turbo`.
+`tests/system/test_nested_attributes.py` covers nested-form validation redisplay
+and saving corrected parent/child records, sharing the generated application
+fixture with the browser-free nested request contracts.
 These browser tests run in the Python-version matrix, not the database-only jobs.
 
 `tests/routing/` covers method override behavior, native route boundaries,
