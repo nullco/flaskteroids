@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.14.0 - 2026-10-30
+
 ### Breaking changes
 
 - Declared association collections now provide a database `count()` with no
