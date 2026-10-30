@@ -115,6 +115,10 @@ module = ["celery", "celery.*"]
 ignore_missing_imports = true
 
 [dependency-groups]
+docs = [
+    "ghp-import==2.1.0",
+    "zensical==0.0.74",
+]
 integration = [
     "psycopg[binary]>=3.3.6",
     "PyMySQL[rsa]>=1.2.3",

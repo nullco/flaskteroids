@@ -2,7 +2,7 @@ site_name: Flaskteroids
 site_url: https://nullco.github.io/flaskteroids
 repo_url: https://github.com/nullco/flaskteroids
 theme:
-  name: material
+  variant: classic
   logo: assets/brand/icon-small.svg
   favicon: assets/brand/favicon.png
   font:

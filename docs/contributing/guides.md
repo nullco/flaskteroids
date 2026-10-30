@@ -96,4 +96,27 @@ Before publishing, check:
 - Do moved sections have updated links and navigation?
 - Does the page end with a useful next step rather than another option list?
 
-Build the site with `mkdocs build --strict` after editing links or navigation.
+## Preview and build the site
+
+The guides use [Zensical](https://zensical.org/) with its classic theme.
+From the repository root, install the locked documentation tools:
+
+```sh
+uv sync --locked --group docs
+```
+
+Preview changes locally:
+
+```sh
+uv run --locked --group docs zensical serve
+```
+
+After editing links or navigation in `mkdocs.yml`, run the same strict build as CI:
+
+```sh
+uv run --locked --group docs zensical build --strict --clean
+```
+
+The generated site is written to `site/`. The documentation workflow publishes
+it to the existing `gh-pages` branch after a release or a manual run. GitHub Pages
+should continue serving the root of that branch.
