@@ -294,6 +294,203 @@ def test_partial_through_loading_keeps_query_and_loaded_state_separate(
     execute.assert_not_called()
 
 
+@pytest.mark.parametrize("loaded", [False, True])
+def test_reload_loads_saved_contents_and_returns_the_collection(
+    association, statements, loaded
+):
+    collection = association.collection
+    first = collection.create(**association.attributes("First"))
+    second = collection.create(**association.attributes("Second"))
+    association.owner.reload()
+    if loaded:
+        collection.reverse()
+    association.owner.name = ""
+    assert not association.owner.is_valid()
+    statements.clear()
+    assert collection.reload() is collection
+    assert collection.is_loaded()
+    assert len(statements) == 1
+    statements.clear()
+    assert [record.id for record in collection] == [first.id, second.id]
+    assert collection.first() is collection[0]
+    assert collection.last() is collection[-1]
+    assert collection.size() == 2
+    assert getattr(association.owner, association.name).is_loaded()
+    assert association.owner.name == ""
+    assert association.owner.errors["name"]
+    assert statements == []
+
+
+@pytest.mark.parametrize("new_owner", [False, True])
+def test_reload_resets_visible_unsaved_additions_without_saving_them(
+    association, statements, new_owner
+):
+    owner = association.owner_model.new(name="New") if new_owner else association.owner
+    collection = getattr(owner, association.name)
+    built = collection.new(**association.attributes("Built"))
+    assert list(collection) == [built]
+    statements.clear()
+    assert collection.reload() is collection
+    assert list(collection) == []
+    if new_owner:
+        assert statements == []
+    assert built.is_new_record()
+    assert getattr(built, association.field) == "Built"
+    assert association.target_model.count() == 0
+
+
+@pytest.mark.parametrize("new_owner", [False, True])
+def test_direct_reload_excludes_built_records_from_owner_save(records, new_owner):
+    author = (
+        records.Author.new(name="One")
+        if new_owner
+        else records.Author.create(name="One")
+    )
+    built = author.posts.new(title="Built")
+    author.posts.reload()
+    assert author.save()
+    assert records.Post.count() == 0
+    assert built.is_new_record()
+    assert built.title == "Built"
+    assert built.save()
+    assert author.posts.reload() == [built]
+
+
+@pytest.mark.parametrize("loaded", [False, True])
+def test_direct_reload_preserves_existing_reference_relationship_edits(records, loaded):
+    author = records.Author.create(name="One")
+    post = author.posts.create(title="First")
+    author.reload()
+    if loaded:
+        assert list(author.posts) == [post]
+    post.author = None
+    refreshed = author.posts.reload().first()
+    assert refreshed.id == post.id
+    assert refreshed is not post
+    assert refreshed.author is author
+    assert post.author is None
+
+
+def test_direct_reload_keeps_reassigned_references_saveable(records):
+    original = records.Author.create(name="Original")
+    other = records.Author.create(name="Other")
+    post = original.posts.create(title="First")
+    other.posts.append(post)
+    assert list(other.posts.reload()) == []
+    assert post.author is other
+    assert post.save()
+    assert list(original.posts.reload()) == []
+    assert other.posts.reload() == [post]
+
+
+def test_reload_loads_fresh_targets_and_preserves_existing_reference_input(
+    association, session
+):
+    collection = association.collection
+    record = collection.create(**association.attributes("First"))
+    assert list(collection) == [record]
+    record.assign_attributes(**association.attributes(""))
+    assert not record.is_valid()
+    record.mark_for_destruction()
+    table = association.target_model.__table__
+    session.execute(
+        table.update()
+        .where(table.c.id == record.id)
+        .values(**association.attributes("Updated"))
+    )
+    refreshed = collection.reload().first()
+    assert refreshed is not record
+    assert refreshed.id == record.id
+    assert getattr(refreshed, association.field) == "Updated"
+    assert refreshed.changes == {}
+    assert not refreshed.errors
+    assert not refreshed.marked_for_destruction()
+    assert getattr(record, association.field) == ""
+    assert record.changes == association.attributes("")
+    assert record.errors
+    assert record.marked_for_destruction()
+
+
+def test_reloaded_and_existing_references_save_independently(association):
+    collection = association.collection
+    original = collection.create(**association.attributes("Original"))
+    refreshed = collection.reload().first()
+    refreshed.assign_attributes(**association.attributes("Refreshed edit"))
+    assert refreshed.save()
+    assert getattr(original, association.field) == "Original"
+    original.assign_attributes(**association.attributes("Original edit"))
+    assert original.save()
+    assert getattr(refreshed, association.field) == "Refreshed edit"
+    latest = collection.reload().first()
+    assert latest is not original
+    assert latest is not refreshed
+    assert getattr(latest, association.field) == "Original edit"
+
+
+@pytest.mark.parametrize("reference", ["original", "refreshed"])
+def test_reloaded_collections_resolve_members_by_saved_identity(association, reference):
+    collection = association.collection
+    original = collection.create(**association.attributes("First"))
+    other = association.owner_model.create(name="Other")
+    unrelated = getattr(other, association.name).create(
+        **association.attributes("Other")
+    )
+    refreshed = collection.reload().first()
+    selected = original if reference == "original" else refreshed
+    assert selected in collection
+    assert unrelated not in collection
+    assert collection.index(selected) == 0
+    assert collection == [selected]
+    collection.remove(selected)
+    assert list(collection) == []
+
+
+def test_reloaded_target_saves_follow_transaction_rollback(association):
+    collection = association.collection
+    original = collection.create(**association.attributes("Original"))
+    refreshed = collection.reload().first()
+    original.assign_attributes(**association.attributes("Pending original"))
+    with pytest.raises(RuntimeError, match="abort"):
+        with association.owner_model.transaction():
+            refreshed.assign_attributes(**association.attributes("Changed"))
+            assert refreshed.save()
+            raise RuntimeError("abort")
+    assert getattr(original, association.field) == "Pending original"
+    assert getattr(refreshed, association.field) == "Original"
+    assert getattr(collection.reload().first(), association.field) == "Original"
+
+
+def test_reloaded_targets_support_destroy(association):
+    collection = association.collection
+    original = collection.create(**association.attributes("Original"))
+    refreshed = collection.reload().first()
+    assert refreshed.destroy()
+    assert association.target_model.count() == 0
+    assert list(collection.reload()) == []
+    assert getattr(original, association.field) == "Original"
+
+
+def test_direct_reload_reads_native_membership_changes(records, session):
+    author = records.Author.create(name="One")
+    other = records.Author.create(name="Other")
+    removed = author.posts.create(title="Removed")
+    added = other.posts.create(title="Added")
+    assert list(author.posts) == [removed]
+    assert list(other.posts) == [added]
+    table = records.Post.__table__
+    session.execute(
+        table.update().where(table.c.id == removed.id).values(author_id=other.id)
+    )
+    session.execute(
+        table.update().where(table.c.id == added.id).values(author_id=author.id)
+    )
+    author.name = "Unsaved"
+    assert author.posts.reload() == [added]
+    assert author.name == "Unsaved"
+    assert other.posts.is_loaded()
+    assert list(other.posts) == [added]
+
+
 def test_augmented_assignment_preserves_association_writes(association):
     first = association.target_model.new(**association.attributes("First"))
     collection = association.collection

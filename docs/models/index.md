@@ -299,12 +299,38 @@ Collection reads distinguish persisted rows from the current collection:
 | `first()` / `last()` | Use loaded contents and their current order; also include pending additions or a new owner's unsaved records |
 | `find(id)` / `find_by(...)` | Query the persisted association, retaining its ownership restriction |
 | `is_loaded()` | Inspect loading state without issuing SQL |
+| `reload()` | Replace visible contents with fresh saved records in database order and return the loaded collection |
 
 An unloaded `first()` or `last()` without pending additions uses a query without
 marking the collection loaded. An explicit query such as
 `author.posts.order("title").first()` always selects persisted rows rather than
 the loaded collection. `first_or_create()` uses the collection's `first()`;
 a built first record is returned without saving it.
+
+Refresh just one collection without reloading its owner:
+
+```python
+organization.users.reload()
+author.posts.reload().first()
+```
+
+Collection reload replaces the visible collection with saved records in database
+order. It returns fresh target instances without changing older references:
+those keep their unsaved input, errors, and loaded associations, and remain
+saveable. Both sets of objects are managed by the normal database session.
+Collection membership, `index()`, removal, and through replacement recognize
+saved records by model and primary key, even across reloads.
+
+Reload does not save or delete database rows. A new owner's reloaded collection
+is empty and loaded, without issuing SQL. For a through collection, only the
+target list is reset: pending join records remain in the separate join
+association, retain their input and errors, and can still be persisted by
+`owner.save()`. Saving the owner does not add those targets to the already-loaded
+list; reload it to see saved membership changes.
+
+The owner's pending fields, errors, and unrelated collections are left alone,
+including when a self-referential collection contains a fresh instance of the
+owner's row. Use `owner.reload()` to abandon the owner's loaded input graph.
 
 Collections provide explicit iteration, membership, indexing/slicing,
 append/extend/insert, remove/clear/pop, reverse, index, and augmented assignment
@@ -396,8 +422,8 @@ organization.users.clear()
   `RecordInvalid` exceptions during requests produce a 422 response; catch the
   error and re-render the form when the user needs to correct input.
 - Removal, clear, and replacement delete joins directly. They do **not** destroy
-  targets or run join destroy callbacks, matching Rails' default through-collection
-  removal. To run those callbacks, explicitly destroy the membership instead.
+  targets or run join destroy callbacks. To run those callbacks, explicitly
+  destroy the membership instead.
   `dependent="destroy"` on the direct `memberships` association still runs join
   destroy callbacks when the owner is destroyed.
 - Repeated targets represent separate join records. Replacement matches their
@@ -407,20 +433,23 @@ organization.users.clear()
 - Through targets load directly through a SQL join, without instantiating the
   join models. Each owner keeps its loaded target array and loaded flag, so
   repeated iteration, indexing, length, and loaded first/last/size reads reuse
-  that array. These are the same native SQLAlchemy model instances, not another
-  identity map. `includes("users")` batch-loads target arrays for multiple owners.
+  that array. Targets are native SQLAlchemy model instances; explicit collection
+  reload creates fresh instances without modifying older references.
+  `includes("users")` batch-loads target arrays for multiple owners.
 - Collection mutations update that collection's loaded targets. Direct edits to
   membership records, native/bulk writes, and mutations through another
   association do **not** synchronize an already-loaded target array. This also
   applies to separately loaded inverse through collections. Use
-  `organization.reload()` or `user.reload()` to refresh their membership.
+  `organization.users.reload()` or `user.organizations.reload()` to refresh
+  just that collection, or reload the owner to discard its loaded input graph.
   `includes()` reuses loaded targets rather than refreshing them; `count()` and
   explicit query scopes still read persisted rows.
 - Loading merges persisted targets with unsaved joins built through the
   association, appending pending occurrences after persisted results. Once
-  loaded, new targets are added to that array without reloading it. Owner reload
-  discards pending input; rollback, expiration, and explicit native refresh
-  invalidate through target state. Savepoint rollback also invalidates the
+  loaded, new targets are added to that array without reloading it. Collection
+  reload resets the target list but preserves pending joins in the join
+  association; owner reload discards the loaded input graph. Rollback, expiration,
+  and explicit native refresh invalidate through target state. Savepoint rollback also invalidates the
   session's loaded through targets, which are queried again on next access.
 - Collection ordering is not persisted. `reverse()` changes only the loaded
   target array, not join records; use an explicitly ordered query for database
@@ -509,10 +538,9 @@ inside an explicit transaction, follow the usual rule: **raise on a rejected sav
 if the group must roll back**.
 
 Graph save callbacks enter parent-first and unwind in reverse traversal order
-around a shared SQLAlchemy flush. This intentionally does not reproduce Rails'
-exact per-association callback interleaving: all participating before-save hooks
-can reject the operation before scalar publication. Use after-commit for external
-side effects, not assumptions about sibling callback order.
+around a shared SQLAlchemy flush. All participating before-save hooks can reject
+the operation before scalar publication. Use after-commit for external side
+effects, not assumptions about sibling callback order.
 
 Use `reload()` on the parent to abandon loaded nested input, errors, newly built
 children, and destruction marks. See [nested forms](../other/forms.md#nested-forms)

@@ -428,7 +428,8 @@ def test_mapping_rejects_invalid_through_paths(through, source, join_kind):
         Organization.prepare()
 
 
-def test_self_referential_through_paths_keep_owners_separate(init_models):
+@pytest.fixture
+def following_model(init_models):
     Schema = declarative_base()
 
     class PersonTable(Schema):
@@ -455,6 +456,11 @@ def test_self_referential_through_paths_keep_owners_separate(init_models):
         belongs_to("followed", class_name="Person", foreign_key="followed_id")
 
     init_models(Schema, [(PersonTable, Person), (FollowTable, Follow)])
+    return Person
+
+
+def test_self_referential_through_paths_keep_owners_separate(following_model):
+    Person = following_model
     ada = Person.create(name="Ada")
     grace = Person.create(name="Grace")
     ada.following.append(grace)
@@ -466,6 +472,32 @@ def test_self_referential_through_paths_keep_owners_separate(init_models):
     assert grace.followers == []
     assert ada.reload().following == []
     assert Person.count() == 2
+
+
+def test_self_target_reload_preserves_owner_input_and_other_collections(
+    following_model, session
+):
+    Person = following_model
+    ada = Person.create(name="Ada")
+    grace = Person.create(name="Grace")
+    ada.following.extend([ada, grace])
+    assert list(ada.followers) == [ada]
+    outgoing = list(ada.outgoing)
+    table = Person.__table__
+    session.execute(table.update().where(table.c.id == grace.id).values(name="Updated"))
+    ada.name = "Unsaved"
+    refreshed = ada.following.reload()
+    assert refreshed == [ada, grace]
+    assert refreshed[0] is not ada
+    assert refreshed[0].name == "Ada"
+    assert refreshed[1] is not grace
+    assert refreshed[1].name == "Updated"
+    assert grace.name == "Grace"
+    assert ada.name == "Unsaved"
+    assert ada.followers.is_loaded()
+    assert list(ada.followers) == [ada]
+    assert ada.outgoing.is_loaded()
+    assert list(ada.outgoing) == outgoing
 
 
 def test_through_paths_support_custom_single_column_primary_keys(init_models):

@@ -126,8 +126,14 @@ dependency internals or introduce a parallel implementation of a supported featu
   persisted rows; `len()` materializes contents including unsaved records.
   `size()` uses loaded contents or a count plus pending additions.
   `first()`/`last()` use loaded/pending contents; explicit scopes query persisted
-  rows. `is_loaded()` inspects state without querying. These are association
-  proxies, not mutable sequences; count occurrences with `list(records).count(item)`.
+  rows. `is_loaded()` inspects state without querying. `collection.reload()`
+  immediately replaces visible contents with fresh saved target instances in
+  database order and returns the collection, without modifying older references'
+  input/errors or owner fields and other owner collections. Pending through joins
+  remain in the join association and can still be saved via the owner; reload
+  only resets the target list. Collection operations match saved records by model
+  and primary key across reloads. These are association proxies, not mutable
+  sequences; count occurrences with `list(records).count(item)`.
 - Unknown public model attributes raise `AttributeError`. For temporary values,
   declare class defaults or properties with setters, or use private attributes.
   A type annotation alone isn't enough. Don't overwrite framework methods or state.
@@ -148,8 +154,8 @@ dependency internals or introduce a parallel implementation of a supported featu
   instances and joined target queries; framework `includes()` batches those
   targets, including nested paths, without loading joins. Collection mutations
   update their own targets. Direct join edits, native writes, or writes through
-  another association can leave loaded targets stale; reload their owners,
-  including owners of separately loaded inverse through collections. `includes()`
+  another association can leave loaded targets stale; reload the collection or
+  its owner, including separately loaded inverse through collections. `includes()`
   reuses loaded targets. Rollback/expiration/explicit refresh invalidate caches.
 - Use `accepts_nested_attributes_for("children", allow_destroy=True)` after an
   association declaration to edit children through the parent. It enables autosave;

@@ -189,6 +189,149 @@ def test_includes_keeps_a_loaded_target_until_owner_reload(network, graph, queri
     assert len(organization.reload().users) == 4
 
 
+def test_collection_reload_refreshes_membership_without_reloading_other_collections(
+    network, graph, session, queries
+):
+    organization = network.Organization.includes("users", "memberships").find(
+        graph.first
+    )
+    other = network.Organization.includes("users").find(graph.second)
+    memberships = list(organization.memberships)
+    before = list(organization.users)
+    table = network.Membership.__table__
+    session.execute(
+        delete(table).where(
+            table.c.organization_id == graph.first,
+            table.c.person_id == graph.ada,
+        )
+    )
+    session.execute(
+        insert(table).values(
+            organization_id=graph.first, person_id=graph.grace, role="member"
+        )
+    )
+    assert list(organization.users) == before
+    organization.name = "Unsaved"
+    users = organization.users
+    queries.clear()
+    assert users.reload() is users
+    assert users.is_loaded()
+    assert len(queries) == 1
+    queries.clear()
+    assert [user.id for user in users] == [graph.grace, graph.grace]
+    assert users[0] is users[1]
+    assert organization.name == "Unsaved"
+    assert organization.memberships.is_loaded()
+    assert list(organization.memberships) == memberships
+    assert other.users.is_loaded()
+    assert [user.id for user in other.users] == [graph.ada]
+    network.Organization.includes("users").find(graph.first)
+    assert len(queries) == 1
+
+
+@pytest.mark.parametrize("network", [{}, {"no_inverse": True}], indirect=True)
+@pytest.mark.parametrize("new_owner", [False, True])
+def test_collection_reload_retains_pending_joins_for_owner_save(network, new_owner):
+    organization = (
+        network.Organization.new(name="One")
+        if new_owner
+        else network.Organization.create(name="One")
+    )
+    saved = network.User.create(name="Saved")
+    built = organization.users.new(name="Built")
+    direct = network.Membership.new(person=saved, role="admin")
+    organization.memberships.append(direct)
+    before = list(organization.memberships)
+    assert organization.users.size() == 2
+    assert list(organization.users.reload()) == []
+    assert list(organization.memberships) == before
+    assert direct.role == "admin"
+    assert built.is_new_record()
+    assert network.Membership.count() == 0
+    assert organization.save()
+    assert network.User.count() == network.Membership.count() == 2
+    assert not built.is_new_record()
+    assert organization.users.size() == 0
+    assert [user.id for user in organization.users.reload()] == [saved.id, built.id]
+
+
+def test_new_owner_reload_retains_foreign_key_joins_without_queries(network, queries):
+    saved = network.User.create(name="Saved")
+    organization = network.Organization.new(name="New")
+    organization.memberships.append(network.Membership.new(person_id=saved.id))
+    queries.clear()
+    assert list(organization.users.reload()) == []
+    assert queries == []
+    assert organization.save()
+    assert network.Membership.count() == 1
+    assert organization.users.reload().first().id == saved.id
+
+
+def test_collection_reload_preserves_pending_join_errors_and_input(network):
+    organization = network.Organization.create(name="One")
+    saved = network.User.create(name="Saved")
+    pending = network.Membership.new(person=saved, role="")
+    organization.memberships.append(pending)
+    assert not organization.save()
+    assert pending.errors["role"]
+    assert list(organization.users.reload()) == []
+    assert pending in organization.memberships
+    assert pending.role == ""
+    assert pending.errors["role"]
+    pending.role = "member"
+    assert organization.save()
+    assert organization.users.reload().first().id == saved.id
+
+
+def test_reloaded_collection_replacement_retains_existing_join_records(network):
+    organization = network.Organization.create(name="One")
+    saved = network.User.create(name="Saved")
+    membership = organization.memberships.create(person=saved, role="admin")
+    organization.users.reload()
+    organization.users = list(organization.users)
+    assert [join.id for join in organization.memberships] == [membership.id]
+    assert organization.memberships.first().role == "admin"
+    assert organization.users.count() == 1
+
+
+@pytest.mark.parametrize("new_owner", [False, True])
+def test_direct_join_reload_excludes_unsaved_graph_from_owner_save(network, new_owner):
+    organization = (
+        network.Organization.new(name="One")
+        if new_owner
+        else network.Organization.create(name="One")
+    )
+    built = network.User.new(name="Built")
+    membership = network.Membership.new(person=built)
+    organization.memberships.append(membership)
+    assert list(organization.memberships.reload()) == []
+    assert organization.save()
+    assert network.User.count() == network.Membership.count() == 0
+    assert built.is_new_record()
+    assert built.name == "Built"
+    assert membership.is_new_record()
+    assert membership.save()
+    assert network.User.count() == network.Membership.count() == 1
+    assert organization.users.reload() == [built]
+
+
+def test_reloaded_targets_support_association_writes(network):
+    organization = network.Organization.create(name="One")
+    original = organization.users.create(name="Ada")
+    user = organization.users.reload().first()
+    other = network.Organization.create(name="Other")
+    user.organizations.append(other)
+    assert [owner.id for owner in user.organizations.order("id")] == [
+        organization.id,
+        other.id,
+    ]
+    user.organizations.remove(organization)
+    assert [owner.id for owner in user.organizations] == [other.id]
+    assert list(organization.users.reload()) == []
+    assert original.name == "Ada"
+    assert network.User.count() == 1
+
+
 def test_commit_callbacks_observe_updated_loaded_targets(network):
     observed = []
 

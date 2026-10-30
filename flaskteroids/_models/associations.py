@@ -7,6 +7,7 @@ from sqlalchemy.orm.attributes import (
     NO_VALUE,
     PASSIVE_NO_INITIALIZE,
     get_history,
+    set_committed_value,
 )
 
 from flaskteroids._models.query import ModelQuery
@@ -15,6 +16,21 @@ from flaskteroids.declarations import AssociationDefinition, model_for
 from flaskteroids.exceptions import ProgrammerError
 from flaskteroids.inflector import inflector
 from flaskteroids.rules import declaration
+
+
+def same_record(left, right):
+    if left is right:
+        return True
+    if type(left) is not type(right):
+        return False
+    left_state = inspect(left, raiseerr=False)
+    right_state = inspect(right, raiseerr=False)
+    return (
+        left_state is not None
+        and right_state is not None
+        and left_state.identity is not None
+        and left_state.identity == right_state.identity
+    )
 
 
 class AssociationQuery(ModelQuery):
@@ -65,12 +81,15 @@ class AssociationCollection:
     def _loaded_collection(self):
         return inspect(self.owner).attrs[self.name].loaded_value
 
-    def _pending_records(self):
+    def _collection_history(self):
         return get_history(
             self.owner,
             self.name,
             passive=PASSIVE_NO_INITIALIZE | INCLUDE_PENDING_MUTATIONS,
-        ).added
+        )
+
+    def _pending_records(self):
+        return self._collection_history().added
 
     def _pending_count(self):
         return sum(record.is_new_record() for record in self._pending_records())
@@ -85,6 +104,46 @@ class AssociationCollection:
 
     def is_loaded(self) -> bool:
         return self._loaded_collection() is not NO_VALUE
+
+    def reload(self):
+        """Replace the loaded collection with its saved database contents."""
+        self._prepare_reload()
+        records = []
+        if not self.owner.is_new_record():
+            query = self.all()
+            # A fresh native identity partition preserves edits on older references
+            # without detaching them or introducing a separate persistence engine.
+            query.statement = query.statement.execution_options(identity_token=object())
+            records = list(query)
+        self._load_reloaded(records)
+        return self
+
+    def _prepare_reload(self):
+        # Consume native inverse-side mutations before replacing the collection;
+        # otherwise SQLAlchemy merges those additions back into the saved rows.
+        if not self.is_loaded() and self._collection_history().has_changes():
+            self._collection()
+        pending = list(self._pending_records())
+        seen = {id(self.owner)}
+        while pending:
+            record = pending.pop()
+            state = inspect(record)
+            if id(record) in seen or not (state.transient or state.pending):
+                continue
+            seen.add(id(record))
+            for relation in state.mapper.relationships:
+                value = state.attrs[relation.key].loaded_value
+                if value is not NO_VALUE and value is not None:
+                    pending.extend(value if relation.uselist else [value])
+            if state.session is not None:
+                state.session.expunge(record)
+
+    def _load_reloaded(self, records):
+        set_committed_value(self.owner, self.name, records)
+        inverse = inspect(type(self.owner)).relationships[self.name].back_populates
+        if inverse:
+            for record in records:
+                set_committed_value(record, inverse, self.owner)
 
     def all(self) -> ModelQuery:
         return AssociationQuery(self.owner, self.name)
@@ -162,7 +221,7 @@ class AssociationCollection:
         return iter(self._collection())
 
     def __contains__(self, record):
-        return record in self._collection()
+        return any(same_record(candidate, record) for candidate in self._collection())
 
     def __reversed__(self):
         return reversed(self._collection())
@@ -190,7 +249,7 @@ class AssociationCollection:
         self._collection().extend(records)
 
     def remove(self, record):
-        self._collection().remove(record)
+        del self[self.index(record)]
 
     def clear(self):
         self._collection().clear()
@@ -202,13 +261,23 @@ class AssociationCollection:
 
     def index(self, record, start=0, stop=None):
         records = self._collection()
-        return records.index(record, start, len(records) if stop is None else stop)
+        for index in range(*slice(start, stop).indices(len(records))):
+            if same_record(records[index], record):
+                return index
+        raise ValueError("Record is not in this association.")
 
     def reverse(self):
         self._collection().reverse()
 
     def __eq__(self, other):
-        return self._collection() == other
+        if isinstance(other, AssociationCollection):
+            other = other._collection()
+        if not isinstance(other, list):
+            return NotImplemented
+        records = self._collection()
+        return len(records) == len(other) and all(
+            same_record(left, right) for left, right in zip(records, other, strict=True)
+        )
 
     def __repr__(self):
         return repr(self._collection())

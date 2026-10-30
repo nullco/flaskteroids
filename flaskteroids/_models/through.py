@@ -12,7 +12,7 @@ from flaskteroids._models.association_loading import (
     pending_targets,
     targets_for,
 )
-from flaskteroids._models.associations import AssociationCollection
+from flaskteroids._models.associations import AssociationCollection, same_record
 from flaskteroids._models.query import ModelQuery
 from flaskteroids.db import session, transactional
 from flaskteroids.declarations import model_for
@@ -130,6 +130,12 @@ class ThroughCollection(AssociationCollection):
 
     def _pending_count(self):
         return len(pending_targets(self.owner, self.definition))
+
+    def _prepare_reload(self):
+        """Reset only the target collection, retaining the join association's input."""
+
+    def _load_reloaded(self, records):
+        self._targets.load(records)
 
     def all(self) -> ThroughQuery:
         return ThroughQuery(self.owner, self.name)
@@ -256,7 +262,11 @@ class ThroughCollection(AssociationCollection):
         desired = []
         for record in records:
             match = next(
-                (join for join in remaining if getattr(join, self.source) is record),
+                (
+                    join
+                    for join in remaining
+                    if same_record(getattr(join, self.source), record)
+                ),
                 None,
             )
             if match is not None:
@@ -304,10 +314,10 @@ class ThroughCollection(AssociationCollection):
 
     def remove(self, value):
         records = self._collection()
-        if value not in records:
+        if value not in self:
             raise ValueError("Record is not in this association.")
         # Rails deletes all matching joins, without destroying the targets.
-        self.replace([record for record in records if record is not value])
+        self.replace([record for record in records if not same_record(record, value)])
 
     def clear(self):
         self.replace([])

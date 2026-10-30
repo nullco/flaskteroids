@@ -9,13 +9,18 @@
   `list(collection).count(record)` for occurrence counting. Collections no
   longer inherit `MutableSequence`; supported Python collection operations
   remain explicit.
-- Loaded through associations now cache their target membership until owner
-  reload, rollback, expiration, or explicit refresh. Direct join edits and writes
-  through other associations no longer automatically update a loaded target.
-  Reload separately loaded inverse through collections through their owners too.
+- Loaded through associations now cache their target membership until collection
+  or owner reload, rollback, expiration, or explicit refresh. Direct join edits
+  and writes through other associations no longer automatically update a loaded
+  target. Reload separately loaded inverse through collections too.
 
 ### Added
 
+- Direct and through collections support `reload()`: immediately replace visible
+  contents with fresh saved targets in database order and return the loaded
+  collection, preserving older references' input and errors. Owner fields and
+  other collections are untouched; pending through joins remain independently
+  saveable. Collection operations recognize saved records across reloads.
 - Direct and through collections expose lazy query methods without `all()`,
   including ordering, pagination, eager loading, and association-scoped finders.
   Loaded-aware `first()`, `last()`, `size()`, and `is_loaded()` distinguish
