@@ -1,0 +1,94 @@
+[project]
+site_name = "Flaskteroids"
+site_url = "https://nullco.github.io/flaskteroids"
+repo_url = "https://github.com/nullco/flaskteroids"
+extra_css = ["assets/stylesheets/brand.css"]
+
+nav = [
+  { "Introduction" = "index.md" },
+  { "Store tutorial" = [
+    { "Getting started" = "getting_started.md" },
+    { "Login and product images" = "tutorial/authentication_and_uploads.md" },
+    { "Restock notifications" = "tutorial/restock_notifications.md" },
+    { "Test the store" = "tutorial/testing.md" },
+    { "Prepare for deployment" = "tutorial/deployment.md" },
+  ] },
+  { "Guides" = [
+    { "Models" = [
+      { "Model basics" = "models/index.md" },
+      { "Associations" = "models/associations.md" },
+      { "Callbacks" = "models/callbacks.md" },
+      { "Fields" = "other/fields.md" },
+      { "Attribute encryption" = "models/encryption.md" },
+    ] },
+    { "Routing and controllers" = [
+      { "Routing" = "controllers/routing.md" },
+      { "Controller basics" = "controllers/index.md" },
+      { "Rate limits" = "controllers/advanced.md" },
+      { "Building an API" = "controllers/api.md" },
+    ] },
+    { "Views and frontend" = [
+      { "Templates and helpers" = "views/index.md" },
+      { "Forms" = "other/forms.md" },
+      { "Turbo Frames and Streams" = "views/turbo.md" },
+      { "Assets" = "other/assets.md" },
+      { "JavaScript with import maps" = "other/importmaps.md" },
+    ] },
+    { "Background work and email" = [
+      { "Background jobs" = "other/jobs.md" },
+      { "Mailers" = "other/mailers.md" },
+    ] },
+    { "Files and rich text" = [
+      { "Attachments" = "other/attachments.md" },
+      { "Rich text" = "other/rich_text.md" },
+    ] },
+    { "Application setup" = [
+      { "Project structure" = "project_structure.md" },
+      { "Configuration" = "configuration.md" },
+      { "Using the command line" = "other/cli.md" },
+      { "Middleware" = "other/middleware.md" },
+      { "Internationalization" = "other/internationalization.md" },
+    ] },
+    { "Testing" = "testing.md" },
+  ] },
+  { "Contributing" = [
+    { "Writing guides" = "contributing/guides.md" },
+  ] },
+]
+
+[project.theme]
+variant = "classic"
+logo = "assets/brand/icon-small.svg"
+favicon = "assets/brand/favicon.png"
+features = ["content.code.copy"]
+
+[project.theme.font]
+text = "Lato"
+code = "JetBrains Mono"
+
+[project.theme.icon]
+repo = "fontawesome/brands/github-alt"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+primary = "custom"
+accent = "custom"
+toggle.icon = "material/weather-night"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+primary = "custom"
+accent = "custom"
+toggle.icon = "material/weather-sunny"
+toggle.name = "Switch to light mode"
+
+[project.markdown_extensions]
+pymdownx.highlight.anchor_linenums = true
+pymdownx.highlight.line_spans = "__span"
+pymdownx.highlight.pygments_lang_class = true
+pymdownx.inlinehilite = {}
+pymdownx.snippets = {}
+pymdownx.superfences = {}

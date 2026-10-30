@@ -111,7 +111,7 @@ Preview changes locally:
 uv run --locked --group docs zensical serve
 ```
 
-After editing links or navigation in `mkdocs.yml`, run the same strict build as CI:
+After editing links or navigation in `zensical.toml`, run the strict build used by CI:
 
 ```sh
 uv run --locked --group docs zensical build --strict --clean
