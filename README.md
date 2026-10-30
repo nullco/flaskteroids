@@ -26,147 +26,147 @@
 
 ---
 
-Build web applications with a consistent layout and tools that work together.
-Flaskteroids provides models, controllers, templates, forms, jobs, and email, with
-generators to create the starting code.
+## What is Flaskteroids?
 
-Flask handles HTTP requests, SQLAlchemy and Alembic handle the database, and
-Celery runs background jobs. You can use their native APIs when you need more
-control, without giving up the framework's everyday workflows.
+Flaskteroids—**Flask on steroids**—is a Python framework for building
+database-backed web applications. It brings Flask, SQLAlchemy, and Celery into a
+shared workflow, with conventions for where code belongs and tools for the tasks
+applications need every day.
 
-## What's included
+Instead of assembling a stack and connecting its pieces yourself, you start with
+models, routing, templates, forms, background jobs, email, and testing that work
+together. Generators create ordinary application code that you can read and change.
 
-- Generators for models, migrations, controllers, scaffolds, mailers, and authentication.
-- Models with associations, validations, and lifecycle callbacks.
-- Resource routing with CRUD routes and path helpers.
-- Jinja templates, form helpers, and HTML or JSON responses.
-- Turbo Frames and HTTP Streams with a locally bundled Turbo runtime.
-- Rich-text fields with an integrated Trix editor and safe HTML rendering.
-- File attachments with built-in disk storage and optional S3-compatible storage
-  through `flaskteroids-storage-s3`.
-- YAML translations, scoped locales, pluralization, and localized date/time formats.
-- Background jobs and email delivery.
-- Environment settings, `database.yml`, encrypted credentials, and boot-time initializers.
-- Pytest-based transactional tests, YAML fixtures, job and mail assertions, and Playwright browser tests.
-- API-only applications with JSON scaffolds and request tests.
+Applications follow the **Model-View-Controller (MVC)** pattern. Each layer has a
+clear responsibility.
 
-## Installation
+### Models
 
-Requires Python 3.14 or newer. Install Flaskteroids in your Python environment:
+Models represent your application's data and business rules: a product, an
+account, or a subscription. Migrations describe the database structure; model
+classes define validations, associations, and behavior.
 
-```sh
-pip install flaskteroids
-```
+You can create, query, and save records without managing database sessions.
+See [Model basics](https://nullco.github.io/flaskteroids/models/).
+
+### Views
+
+Views are Jinja templates that turn application data into HTML. Layouts and
+partials share markup, helpers share presentation logic, and model-backed forms
+display values and validation errors.
+
+Use Turbo Frames and Streams when a page needs inline navigation or partial
+updates. See [Templates and helpers](https://nullco.github.io/flaskteroids/views/).
+
+### Controllers
+
+Controllers handle requests, work with models, and choose a response. Routes
+connect URLs to controller actions; actions can render a page, return JSON, or
+redirect the browser.
+
+You can also generate an API-only application for a mobile client or a separate
+frontend. See [Controller basics](https://nullco.github.io/flaskteroids/controllers/)
+and [Building an API](https://nullco.github.io/flaskteroids/controllers/api/).
+
+## Beyond requests and pages
+
+The same application structure supports:
+
+- [Background jobs](https://nullco.github.io/flaskteroids/other/jobs/) for work
+  outside a request.
+- [Mailers](https://nullco.github.io/flaskteroids/other/mailers/) for composing,
+  previewing, and delivering email.
+- [Attachments](https://nullco.github.io/flaskteroids/other/attachments/) for file
+  uploads, local storage, and optional storage providers.
+- [Rich text](https://nullco.github.io/flaskteroids/other/rich_text/) with the
+  Lexxy editor and safe HTML rendering.
+- [Internationalization](https://nullco.github.io/flaskteroids/other/internationalization/)
+  for translated messages and localized dates and times.
+- [Configuration](https://nullco.github.io/flaskteroids/configuration/) for
+  environments, database connections, and encrypted credentials.
+- [Testing](https://nullco.github.io/flaskteroids/testing/) with pytest-based
+  tests, fixtures, job and mail assertions, and Playwright browser tests.
 
 ## Getting started
 
-Create an application. Git, Bash, and [uv](https://docs.astral.sh/uv/getting-started/installation/) must be installed.
+You will need Python 3.14 or newer, Git, Bash, and
+[uv](https://docs.astral.sh/uv/getting-started/installation/).
+The commands below assume Linux, macOS, or Windows through WSL. SQLite is
+included with Python, so you do not need a separate database server to get started.
+
+### Create an application
+
+Install Flaskteroids in a Python virtual environment:
+
+```sh
+python3 -m venv flaskteroids-env
+source flaskteroids-env/bin/activate
+pip install flaskteroids
+```
+
+Create your application and start its server:
 
 ```sh
 flask new my_app
 cd my_app
-```
-
-Generation installs dependencies and prepares your development database.
-Run application commands with `bin/flask`; no environment activation is needed.
-Start the server:
-
-```sh
 bin/flask run
 ```
 
 Open <http://127.0.0.1:5000> to see the welcome page.
 
-```sh
-bin/flask test
-bin/flask test:system
-```
+The generator installs the application's dependencies into its own `.venv` and
+prepares the development database. From now on, run commands from the application
+root with `bin/flask`; it uses that environment automatically.
 
-The app includes a health test. An empty system suite succeeds without a browser.
+### Add your first resource
 
-## Add a posts resource
-
-Stop the server and run these commands inside `my_app`:
+Stop the server and generate a posts interface:
 
 ```sh
 bin/flask generate scaffold Post title:string content:text
-bin/flask db:prepare
+bin/flask db:migrate
 bin/flask run
 ```
 
-The scaffold generates a model, migration, controller, views, and routes. Visit
-`http://127.0.0.1:5000/posts` to create, view, edit, and delete posts.
+Visit <http://127.0.0.1:5000/posts> to create, view, edit, and delete posts.
+The scaffold creates a model, migration, controller, templates, routes, and tests.
+These are your application's files, ready to customize.
 
-## Next steps
-
-For a step-by-step tutorial, follow [Getting started with Flaskteroids](https://nullco.github.io/flaskteroids/getting_started/).
-Build a product catalog while learning models, controllers, forms, authentication,
-uploads, email, and testing. For a mobile client or separate frontend, follow
-[Building an API](https://nullco.github.io/flaskteroids/controllers/api/) instead.
-
-- Run `bin/setup` for a fresh checkout or after changing dependencies. Commit `uv.lock`.
-- To defer installation, use `flask new my_app --skip-install`, then run `bin/setup` later.
-- See [Testing](https://nullco.github.io/flaskteroids/testing/) for browser setup and [Configuration](https://nullco.github.io/flaskteroids/configuration/) for environments and secrets.
-- Your generated `deploy/README.md` explains Docker and deployment.
-
-Use the [guide index](https://nullco.github.io/flaskteroids/#find-a-guide) to find
-help with models, routes, forms, encryption, background jobs, and other tasks.
-
-## Agent skills
-
-Flaskteroids bundles coding guidance for agents with each release. New applications
-include `.agents/skills/using-flaskteroids/SKILL.md`, which points agents to
-instructions for the installed framework version. These instructions require
-agents to use public Flaskteroids APIs when they cover the task, rather than
-calling dependency internals.
-
-In your application's Python environment, locate the installed skills with:
+In another terminal, run the generated tests from `my_app`:
 
 ```sh
-flask agent-skills path
+bin/flask test
 ```
 
-The command prints the absolute skills directory path. Read
-`using-flaskteroids/SKILL.md` inside that directory for version-matched guidance.
-No application configuration or initialization is required.
+### Keep learning
 
-## Development
+Follow the [store tutorial](https://nullco.github.io/flaskteroids/getting_started/)
+to build a product catalog step by step, then add login, images, restock emails,
+and tests. Use the [component guides](https://nullco.github.io/flaskteroids/#find-a-guide)
+when you want to explore one feature.
 
-Use the committed lock and the same check-only commands as CI:
+On a fresh checkout of an application, run `bin/setup` to install dependencies
+and prepare the database. Commit `uv.lock` to share dependency versions, but
+never commit `config/master.key`. Your generated `deploy/README.md` explains
+Docker and deployment.
+
+## Coding agents
+
+Generated applications include `.agents/skills/using-flaskteroids/SKILL.md`,
+which points coding agents to guidance for the installed framework version.
+You can also locate that guidance from the application's Python environment:
 
 ```sh
-uv sync --locked --dev
-uv run ruff check .
-uv run ruff format --check .
-uv run mypy
-uv run playwright install chromium
-uv run pytest -n auto --dist loadfile -q
+bin/flask agent-skills path
 ```
 
-For a browser-free run, use `uv run pytest -m "not system"`. For fast framework
-feedback without generated applications, use
-`uv run pytest -m "not generated_app and not system"`. Run the complete suite before
-merging. The `generated_app` marker follows the shared application factory and is
-also declared on standalone generator workflows; browser wrappers are marked
-`system` even when they live under `tests/cli`.
+Read `using-flaskteroids/SKILL.md` in the printed directory. The guidance directs
+agents to use public framework APIs for supported tasks.
 
-CI retains the browser-enabled Python 3.14–3.15 matrix and serial PostgreSQL/MySQL
-integration jobs. SQLite tests choose the worker count automatically, with file
-scheduling to keep module-scoped application setup together. Do not parallelize
-the server-database jobs against a shared database URL. CI measures framework coverage with
-`--cov=flaskteroids`; coverage also instruments Python subprocesses. Local test
-runs do not collect coverage unless requested.
+## Contributing
 
-Ruff uses the Python 3.14 / 88-column policy in `pyproject.toml`. Mypy checks
-only declaration records, queue adapters, and a static contract probe, not the
-whole ORM or generated applications. Raw Mako templates are excluded; generated
-samples are validated separately and are not promised Ruff-clean.
-See [AGENTS.md](AGENTS.md) for scope and contributor-only fixing commands.
-Repository logos and usage guidance are in [branding/](branding/README.md).
-
-## Releasing
-
-See [the release guide](RELEASING.md) for release PRs and PyPI publishing.
+Contributions to code, tests, and guides are welcome.
+See [Contributing to Flaskteroids](CONTRIBUTING.md) to get started.
 
 ## License
 
