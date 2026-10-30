@@ -4,6 +4,12 @@ Keep application text in YAML catalogs and select a locale around each request o
 operation. Flaskteroids provides Rails-style translation keys and helpers without
 additional dependencies. This translates application messages, not database content.
 
+After reading this guide, you will know how to:
+
+- Translate application text with YAML catalogs.
+- Choose a locale for each request.
+- Translate plural messages and format dates and times.
+
 ## Configure locales
 
 New applications include `config/locales/en.yml`:
@@ -44,17 +50,11 @@ es:
       notice: "Producto creado"
 ```
 
-Files merge in sorted path order, with later values overriding earlier values.
-Use nested string keys rather than dots in YAML keys. Translation values are
-strings; string/null lists are supported for calendar names. Quote keys such as
+Use nested string keys rather than dots in YAML keys. Quote keys such as
 `"on"`, `"off"`, `"yes"`, and `"no"`, which YAML otherwise interprets as booleans.
-YAML is loaded safely, without executable objects.
+Files merge in sorted path order, so prefer unique keys across catalogs.
 
-Change the directory with `config.paths.locales`. Catalogs load on first use and
-are cached per application/process. Restart after editing, or call
-`reload_translations()` from `flaskteroids.i18n` inside an application context.
-A failed reload raises `TranslationError` and leaves the previous catalog intact.
-Configuration changes require an application restart.
+Restart the application after editing catalogs or locale configuration.
 
 ## Translate text
 
@@ -295,20 +295,15 @@ time-only object, provide a time-only format such as `format="%H:%M"` or a match
 named format; the default English time formats include dates. A `format=` containing
 `%` is used directly instead of looking up a named format.
 
-Supported directives are `%Y`, `%y`, `%m`, `%d`, `%e`, `%j`, `%H`, `%I`, `%M`, `%S`,
-`%f`, `%z`, `%Z`, `%w`, `%u`, `%%`, and these catalog-backed names:
+Use familiar directives such as `%Y`, `%m`, `%d`, `%H`, and `%M`.
+Month and day names come from `date.month_names`, `date.abbr_month_names`,
+`date.day_names`, and `date.abbr_day_names` in the catalog. Month arrays start
+with null; day arrays start with Sunday.
 
-| Directive | Catalog entry |
-| --- | --- |
-| `%A`, `%a` | `date.day_names`, `date.abbr_day_names` (seven entries, Sunday first) |
-| `%B`, `%b`, `%h` | `date.month_names`, `date.abbr_month_names` (13 entries, starting with null) |
-| `%p`, `%P` | `time.am`, `time.pm` (upper/lower case respectively) |
-
-A `-` flag removes numeric zero padding, as in `%-d`. Locale-dependent composite
-formats such as `%c`, `%x`, and `%X` are rejected rather than consulting Python's
-process-global locale. Missing formats/names always raise `MissingTranslation`;
-malformed catalog data raises `TranslationError`. Formatting preserves the value's
-timezone; it does not perform timezone conversion.
+Formatting preserves the value's timezone; it does not convert timezones.
+Missing names or formats raise `MissingTranslation`. Process-locale formats
+such as `%c`, `%x`, and `%X` are not supported; define a named format in the
+catalog instead.
 
 ## Mail and jobs
 
@@ -330,11 +325,9 @@ General jobs do not yet capture locale automatically. Pass it as an ordinary job
 argument and use `with_locale(locale)` inside `perform`. Do not assume a worker
 inherits the request's locale.
 
-## Current boundary
+## What is translated
 
-This foundation does not yet translate built-in validation messages, model or
-attribute names, form labels, or generated scaffold prose. It does not select
-localized template variants or format numbers/currencies. Existing custom
-validation messages and error serialization are unchanged. Additional Rails I18n
-features, such as namespace lookup, translation-key aliases, and fallback chains,
-are not implied by the shared helper names.
+The helpers translate application messages and format dates and times. They do
+not yet translate built-in validation messages, model or attribute names, form
+labels, or generated scaffold text. Localized template variants and number or
+currency formatting are not included.

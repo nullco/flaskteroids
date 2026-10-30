@@ -8,6 +8,12 @@ This is different from [encrypted credentials](../configuration.md#encrypted-cre
 credentials protect application secrets in a file, while attribute encryption
 protects model data in database columns. The two features use separate keys.
 
+After reading this guide, you will know how to:
+
+- Set up dedicated encryption keys.
+- Encrypt model attributes and choose an appropriate query mode.
+- Migrate existing values and rotate randomized-encryption keys.
+
 ## Setup
 
 From your application directory, generate keys and open the credentials editor:

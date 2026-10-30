@@ -1,9 +1,19 @@
 # Turbo Frames and Streams
 
-Turbo Drive handles browser navigation and form submissions. Flaskteroids adds
-Rails-style **Frames** and **HTTP Stream responses** on the server. No
-subscriptions, broadcasts, Action Cable, Stimulus, Node, or JavaScript build
-tooling are included.
+Turbo lets you update a page without writing JavaScript for each interaction.
+Use a **Frame** to replace one region during navigation, or an **HTTP Stream
+response** to change several elements after a request.
+
+This guide starts with an inline post editor, then adds a form that appends a
+post to a list. It assumes a `Post` model with a `title` attribute and
+`route.resources("posts")`. Updates here are request-driven, not broadcasts or
+live subscriptions.
+
+After reading this guide, you will know how to:
+
+- Edit a record inside a Turbo Frame.
+- Update several page elements with an HTTP Stream response.
+- Handle validation failures and cache responses safely.
 
 ## Install or upgrade
 
@@ -254,56 +264,29 @@ The non-Turbo HTML request redirects normally. A normal Turbo form can redisplay
 
 ### Builder and partials
 
-`turbo_stream` in templates and `self.turbo_stream` in controllers provide:
-
-- `append`, `prepend`, `before`, `after`, `replace`, `update`, and `remove`.
-  Each accepts an element ID or record target. Their `*_all` variants accept a
-  CSS selector instead, for example `remove_all(".expired")`.
-- `replace` and `update` support `method="morph"`.
-- `action(name, target, ...)` and `action_all(name, selector, ...)` build generic
-  actions; custom browser actions still need application JavaScript.
-- `refresh()` emits a page-refresh action, forwarding `X-Turbo-Request-Id` when
-  present. Use `refresh(request_id="...")` to override it, or `request_id=None`
-  to omit it. `remove` and `refresh` emit no `<template>` content.
+Use `replace` to redraw a record, `update` to change an element's contents, or
+`remove` to delete an element:
 
 ```html
 {{ turbo_stream.replace(post) }}
 {{ turbo_stream.update("notice", partial="shared/notice", locals={"message": "Saved"}) }}
-{{ turbo_stream.replace(post, method="morph") }}
-{% call turbo_stream.update("notice") %}
-  <strong>Saved {{ post.title }}</strong>
-{% endcall %}
+{{ turbo_stream.remove(post) }}
 ```
 
-Omitted content on a record target infers its conventional partial. Explicit
-record content, as in `append("posts", post)`, does the same. Ordinary string
-content is escaped; rendered partials and Jinja call blocks supply trusted HTML.
+A record target supplies its conventional DOM ID and partial. In the first
+example, `post` renders through `posts/_post.html`. Ordinary string content is
+escaped; rendered partials supply HTML.
 
-The template/helper `render` API supports all of these forms:
-
-```html
-{{ render(post) }}
-{{ render(partial="posts/post", locals={"post": post}) }}
-{{ render("exact/file.html", post=post) }}
-```
-
-`render(post)` uses `post.to_partial_path()` (normally `posts/post`) and assigns
-`post` inside `posts/_post.html`. Explicit locals override inferred values.
-These calls share the current view's helper context. They render HTML, **not a
-controller response**; application helpers can call them as `self.render(...)`.
-
-Build a response directly when a separate Stream template is unnecessary:
+You can also build a response directly in an action:
 
 ```python
-return self.render(turbo_stream=self.turbo_stream.remove(self.post))
-# Or multiple operations in order (a list or tuple):
 return self.render(turbo_stream=[
     self.turbo_stream.remove(self.post),
     self.turbo_stream.update("notice", "Post removed"),
 ])
 ```
 
-Choose one return above, not both: the usual single-response lifecycle applies.
+For reusable template fragments, see [Render a partial](index.md#render-a-partial).
 
 ### Negotiation and routes
 

@@ -35,35 +35,45 @@ extra_css:
 
 nav:
   - Introduction: index.md
+  - Store tutorial:
+    - Getting started: getting_started.md
+    - Login and product images: tutorial/authentication_and_uploads.md
+    - Restock notifications: tutorial/restock_notifications.md
+    - Test the store: tutorial/testing.md
+    - Prepare for deployment: tutorial/deployment.md
   - Guides:
-    - Start here:
-      - Getting started: getting_started.md
-      - Project structure: project_structure.md
     - Models:
       - Model basics: models/index.md
+      - Associations: models/associations.md
+      - Callbacks: models/callbacks.md
       - Fields: other/fields.md
       - Attribute encryption: models/encryption.md
     - Routing and controllers:
       - Routing: controllers/routing.md
       - Controller basics: controllers/index.md
       - Rate limits: controllers/advanced.md
-    - Views:
+      - Building an API: controllers/api.md
+    - Views and frontend:
       - Templates and helpers: views/index.md
       - Forms: other/forms.md
       - Turbo Frames and Streams: views/turbo.md
-    - Other components:
-      - Mailers: other/mailers.md
-      - Rich text: other/rich_text.md
-      - Background jobs: other/jobs.md
-      - Attachments: other/attachments.md
-    - Digging deeper:
-      - Testing: testing.md
-      - Configuration: configuration.md
-      - Command-line interface: other/cli.md
       - Assets: other/assets.md
-      - Import maps: other/importmaps.md
+      - JavaScript with import maps: other/importmaps.md
+    - Background work and email:
+      - Background jobs: other/jobs.md
+      - Mailers: other/mailers.md
+    - Files and rich text:
+      - Attachments: other/attachments.md
+      - Rich text: other/rich_text.md
+    - Application setup:
+      - Project structure: project_structure.md
+      - Configuration: configuration.md
+      - Using the command line: other/cli.md
+      - Middleware: other/middleware.md
       - Internationalization: other/internationalization.md
-      - Building an API: controllers/api.md
+    - Testing: testing.md
+  - Contributing:
+    - Writing guides: contributing/guides.md
 
 markdown_extensions:
   - pymdownx.highlight:

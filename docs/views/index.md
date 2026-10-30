@@ -3,11 +3,18 @@
 Views are Jinja templates in `app/views`. They turn the data prepared by a
 controller into HTML.
 
-By default, the controller and action names choose the template:
-`PostsController.index` renders `app/views/posts/index.html`. An action's instance
-variables become template variables, so `self.posts` is available as `posts`:
+After reading this guide, you will know how to:
+
+- Render a page and extract reusable partials.
+- Share presentation logic through helper classes.
+- Keep template output escaped.
 
 ## Render a page
+
+By default, controller and action names choose the template.
+`PostsController.index` renders `app/views/posts/index.html`. Values assigned
+by the action become template variables, so `self.posts` is available as
+`posts`.
 
 ```html
 <!-- app/views/posts/index.html -->
@@ -24,18 +31,32 @@ variables become template variables, so `self.posts` is available as `posts`:
 {% endblock %}
 ```
 
+## Render a partial
+
+A partial is a template you can reuse inside another template. Put a post's
+display markup in `app/views/posts/_post.html`:
+
+```html
+<article>
+  <h2>{{ post.title }}</h2>
+</article>
+```
+
+Render it with a local value:
+
+```html
+{{ render(partial="posts/post", locals={"post": post}) }}
+```
+
+With conventional names, `{{ render(post) }}` selects the same partial and
+supplies `post` automatically. The template helper returns HTML; it is different
+from a controller's `self.render(...)`, which prepares an HTTP response.
+
 ## Turbo Frames and Streams
 
-Use [Turbo Frames and HTTP Streams](turbo.md) for inline navigation, partial page
-updates, and responses that change several elements at once. New page templates
-use `{% extends layout %}` to select the application layout or a minimal frame
-layout. Existing literal layout inheritance still works through Turbo's full-page
-frame extraction; existing views are not rewritten automatically.
-
-The template/helper `render` function accepts a record (`render(post)`), an
-explicit partial (`render(partial="posts/post", locals={"post": post})`), or an
-exact template path (`render("exact/file.html", post=post)`). It returns rendered
-HTML, not a controller response.
+Use [Turbo Frames and Streams](turbo.md) to navigate within a page or update
+several elements after a form submission. Page templates use
+`{% extends layout %}` so the controller can select a full-page or frame layout.
 
 ## Translations and dates
 
@@ -70,38 +91,17 @@ views. No import, callback, or `helper_method` declaration is needed.
 
 ### Discovery and the view context
 
-A helper runs on a **view context**: the object that holds the current render's
-variables and helper methods. You do not need to construct this object yourself.
+Helper files follow a naming convention: `products_helper.py` defines
+`ProductsHelper`. Put shared methods in `ApplicationHelper`. All conventional
+helper classes are included in controller views by default.
 
-`config.paths.helpers` defaults to the Python package `"app.helpers"`. Each
-`*_helper.py` file must define its matching class: `products_helper.py` defines
-`ProductsHelper`, and `admin/money_helper.py` defines `MoneyHelper`. Nested
-directories can be namespace packages without `__init__.py`.
+A helper runs on a **view context**, not the controller. Within a helper, use
+`self` to call other helpers, route helpers, or explicitly exposed controller
+methods. Pass template-local values as arguments.
 
-Only these conventional files are automatically imported. Private paths
-(starting with `_`) are skipped. A missing helper package is allowed; syntax
-errors, missing dependencies, and incorrectly named classes in existing helper
-files stop application startup.
-
-Helper classes share this context rather than getting separate instances:
-
-- Public methods are callable from templates.
-- Private `_methods` can be called by other helpers through `self`, but are not
-  exported to templates.
-- Do not define `__init__`. Initialize render-local state when it is needed.
-
-Within a helper, `self` can access:
-- Other included helper methods.
-- Framework and route helpers, such as `self.link_to(...)` and
-  `self.product_path(product)`.
-- Explicitly exposed methods on the current controller or delivery-time mailer.
-- Controller or mailer instance variables, such as `self.product`. Controller
-  views can also use request facilities such as `self.params` and `self.request`.
-
-Pass template-local values as arguments. Helpers are not controller methods or
-actions. Their state is shared by the current view, layout, and partials, but not
-by separate renders or requests. Use `self.render(...)` to render a partial from
-a helper.
+Public methods are available in templates; underscore-prefixed methods remain
+private to helpers. Do not define `__init__`. Any state you create is shared by
+the current view, layout, and partials, but not by separate renders or requests.
 
 ### Restricting automatic inclusion
 
@@ -139,18 +139,9 @@ delegates a particular method to the current controller or delivery-time mailer.
 
 ### Method precedence
 
-Prefer unique method names unless you intend to override another helper. When
-names overlap, these rules apply:
-
-1. At each controller level, conventional helpers come before explicit includes.
-2. With automatic inclusion enabled, the root controller includes
-   `ApplicationHelper` first, then the others in sorted helper-path order.
-3. Later includes win. Including the same class again does not change its order.
-4. `helper_method` wins over helper mixins at the same level.
-5. A child's helper layer can override inherited methods.
-
-Ordinary Python `super()` works between helper mixins. Application helpers can
-also override framework helpers.
+Prefer unique helper method names. When names overlap, later includes override
+earlier ones, and a child controller's helpers can override inherited helpers.
+Use ordinary Python `super()` when extending an inherited helper method.
 
 ### Mailers and rendering outside requests
 
@@ -176,12 +167,7 @@ queued delivery. Mailers can also expose their own private methods with
 inherited, honor overridden methods, and accept arguments just like controller
 helper methods. They delegate to the mailer, never to a request controller.
 
-Mail delivery captures the instance variables set by the action. At delivery,
-one mailer instance is restored from those values and shared by the text and HTML
-parts. Its constructor, actions, and callbacks do not run again. Queued values
-must meet the queue adapter's serialization rules. See
-[mailer delivery](../other/mailers.md#delivery) and
-[mailer helpers](../other/mailers.md#mailer-helper-methods).
+See [Mailers](../other/mailers.md) for delivery-time values and helper methods.
 
 ### Rendering without a controller
 
@@ -220,7 +206,6 @@ as `class="button"`, nested `data={"turbo_frame": "editor"}` /
 `aria={"label": "Edit"}` dictionaries, and
 boolean HTML attributes. For example, `disabled=True` includes the boolean
 attribute; `False` omits it. Data/ARIA booleans instead emit `"true"` or `"false"`.
-The `class_` normalization intentionally replaces the old literal `class_` output.
 
 These checks do not restrict destination hosts. Applications must validate
 user-supplied destinations when links or forms should stay on a particular site.

@@ -1,12 +1,14 @@
 # Mailers
 
-Mail captures the locale when `mail()` is called and uses it for immediate or
-queued template rendering. See [Internationalization](internationalization.md#mail-and-jobs)
-for locale selection and translated subjects.
-
 Mailers build and send email. Each action chooses a recipient and subject, and
 sets the values its templates need. You can deliver the message immediately or
 send it through a background job.
+
+After reading this guide, you will know how to:
+
+- Create an email with text and HTML templates.
+- Preview it locally and deliver it in a background job.
+- Configure delivery and test the message.
 
 ## Create a mailer
 
@@ -39,120 +41,6 @@ Application mailers inherit from `ApplicationMailer`, whose base is the framewor
 
 Use `app/views/user_mailer/welcome_email.txt` for the plain-text part. Text and HTML
 parts can be included in the same email.
-
-## Send a message
-
-```python
-from app.mailers.user_mailer import UserMailer
-
-UserMailer.with_params(user=user).welcome_email().deliver_now()
-UserMailer.with_params(user=user).welcome_email().deliver_later()
-```
-
-`deliver_now()` sends in the current process. `deliver_later()` enqueues work;
-a [job worker](jobs.md#start-a-worker) must be running to deliver it.
-
-## Configure delivery
-
-Sending is disabled by default. Set delivery options in application or environment
-configuration. For an SMTP server that supports STARTTLS and authentication:
-
-```python
-config.mailer.perform_deliveries = True
-config.mailer.default_options = {"by": "hello@example.com"}
-config.mailer.smtp_settings = {
-    "host": "smtp.example.com",
-    "port": 587,
-    "username": "your-username",
-    "password": "your-password",
-}
-```
-
-These credentials are placeholders. Keep real secrets in
-[encrypted credentials](../configuration.md#encrypted-credentials) or your
-deployment's secret management, not source control. SMTP is the default delivery
-method; `config.mailer.delivery_method` can select another adapter.
-
-The `by` option sets the email's From header. Pass it to `mail()` to override
-the configured default for an individual message:
-
-```python
-return self.mail(
-    to=self.user.email,
-    by="team@example.com",
-    subject="Welcome to My App!",
-)
-```
-
-Generated tests use an in-memory mail adapter instead of SMTP. See
-[mail assertions](../testing.md#jobs-and-mail).
-
-## Parameterized mailers
-
-`with_params(...)` supplies values through `self.params`. It does not need an HTTP
-request. Each action gets a fresh mailer instance and a shallow copy of the
-parameters. Actions can also accept ordinary arguments.
-
-Parameters do not automatically become template variables. Assign them explicitly
-as instance variables, such as `self.user` in the example above.
-
-## Delivery
-
-For queued messages, understand what is captured now and what is loaded later:
-
-| When | What happens |
-| --- | --- |
-| The action is called | Actions and callbacks run; the recipient, subject, and template values are captured |
-| `deliver_now()` | Templates render using the supplied objects |
-| `deliver_later()` | Saved model values are serialized as record references |
-| The worker delivers | Model references are reloaded and templates render; the action does not run again |
-
-Model references also work inside lists, tuples, and dictionaries. Other queued
-values must be serializable by the queue adapter.
-
-**Enqueue after commit** so the worker can see the records. Unsaved models raise
-`SerializationError` on enqueue. A referenced record missing at delivery raises
-`DeserializationError`. Both exceptions are in `flaskteroids.exceptions`.
-
-Queued rendering ignores unsaved edits without changing the caller's objects.
-Model-backed template content can therefore change before delivery, while the
-captured recipient and subject stay fixed. Text and HTML parts share one
-restored delivery-time mailer instance.
-
-## Mailer helper methods
-
-Use `helper_method` to expose a private method to mailer templates:
-
-```python
-from app.mailers.application_mailer import ApplicationMailer
-from flaskteroids.mailer import helper_method
-
-
-class NoticesMailer(ApplicationMailer):
-    helper_method("_greeting")
-
-    def welcome(self, name, email):
-        self.name = name
-        return self.mail(to=email, subject="Welcome")
-
-    def _greeting(self, punctuation="!"):
-        return f"Hello, {self.name}{punctuation}"
-```
-
-```html
-<!-- app/views/notices_mailer/welcome.html -->
-<p>{{ greeting() }}</p>
-```
-
-The declaration is inherited, honors child overrides, and forwards positional and
-keyword arguments. Private methods are not actions or template helpers unless
-explicitly exposed. Ordinary returned text is HTML-escaped.
-
-Use `helper(...)` for a different task: including presentation helper classes in
-the view context. Those helpers can call exposed methods such as
-`self.greeting()`. Mailers select helper classes explicitly; they do not inherit
-request-controller helpers. See
-[mailer view helpers](../views/index.md#mailers-and-rendering-outside-requests).
 
 ## Previewing and testing mailers
 
@@ -292,3 +180,122 @@ bin/flask test test/mailers/user_mailer_test.py
 Generated tests collect delivered messages in memory rather than using SMTP.
 See [jobs and mail assertions](../testing.md#jobs-and-mail) for delivery counts,
 queued jobs, and inspecting messages through `self.deliveries`.
+
+## Configure delivery
+
+Sending is disabled by default. Set delivery options in application or environment
+configuration. For an SMTP server that supports STARTTLS and authentication:
+
+```python
+config.mailer.perform_deliveries = True
+config.mailer.default_options = {"by": "hello@example.com"}
+config.mailer.smtp_settings = {
+    "host": "smtp.example.com",
+    "port": 587,
+    "username": "your-username",
+    "password": "your-password",
+}
+```
+
+These credentials are placeholders. Keep real secrets in
+[encrypted credentials](../configuration.md#encrypted-credentials) or your
+deployment's secret management, not source control. SMTP is the default delivery
+method; `config.mailer.delivery_method` can select another adapter.
+
+The `by` option sets the email's From header. Pass it to `mail()` to override
+the configured default for an individual message:
+
+```python
+return self.mail(
+    to=self.user.email,
+    by="team@example.com",
+    subject="Welcome to My App!",
+)
+```
+
+Generated tests use an in-memory mail adapter instead of SMTP. See
+[mail assertions](../testing.md#jobs-and-mail).
+
+## Send a message
+
+```python
+from app.mailers.user_mailer import UserMailer
+
+UserMailer.with_params(user=user).welcome_email().deliver_now()
+UserMailer.with_params(user=user).welcome_email().deliver_later()
+```
+
+`deliver_now()` sends in the current process. `deliver_later()` enqueues work;
+a [job worker](jobs.md#start-a-worker) must be running to deliver it.
+
+## Pass data to a mailer
+
+`with_params(...)` supplies values through `self.params`. It does not need an HTTP
+request. Each action gets a fresh mailer instance and a shallow copy of the
+parameters. Actions can also accept ordinary arguments.
+
+Parameters do not automatically become template variables. Assign them explicitly
+as instance variables, such as `self.user` in the example above.
+
+## Understand queued delivery
+
+Mail captures the locale when `mail()` is called and uses it for immediate or
+queued template rendering. See [Internationalization](internationalization.md#mail-and-jobs)
+for locale selection and translated subjects.
+
+
+For queued messages, understand what is captured now and what is loaded later:
+
+| When | What happens |
+| --- | --- |
+| The action is called | Actions and callbacks run; the recipient, subject, and template values are captured |
+| `deliver_now()` | Templates render using the supplied objects |
+| `deliver_later()` | Saved model values are serialized as record references |
+| The worker delivers | Model references are reloaded and templates render; the action does not run again |
+
+Model references also work inside lists, tuples, and dictionaries. Other queued
+values must be serializable by the queue adapter.
+
+**Enqueue after commit** so the worker can see the records. Unsaved models raise
+`SerializationError` on enqueue. A referenced record missing at delivery raises
+`DeserializationError`. Both exceptions are in `flaskteroids.exceptions`.
+
+Queued rendering ignores unsaved edits without changing the caller's objects.
+Model-backed template content can therefore change before delivery, while the
+captured recipient and subject stay fixed. Text and HTML parts share one
+restored delivery-time mailer instance.
+
+## Mailer helper methods
+
+Use `helper_method` to expose a private method to mailer templates:
+
+```python
+from app.mailers.application_mailer import ApplicationMailer
+from flaskteroids.mailer import helper_method
+
+
+class NoticesMailer(ApplicationMailer):
+    helper_method("_greeting")
+
+    def welcome(self, name, email):
+        self.name = name
+        return self.mail(to=email, subject="Welcome")
+
+    def _greeting(self, punctuation="!"):
+        return f"Hello, {self.name}{punctuation}"
+```
+
+```html
+<!-- app/views/notices_mailer/welcome.html -->
+<p>{{ greeting() }}</p>
+```
+
+The declaration is inherited, honors child overrides, and forwards positional and
+keyword arguments. Private methods are not actions or template helpers unless
+explicitly exposed. Ordinary returned text is HTML-escaped.
+
+Use `helper(...)` for a different task: including presentation helper classes in
+the view context. Those helpers can call exposed methods such as
+`self.greeting()`. Mailers select helper classes explicitly; they do not inherit
+request-controller helpers. See
+[mailer view helpers](../views/index.md#mailers-and-rendering-outside-requests).

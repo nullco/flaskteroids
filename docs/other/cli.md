@@ -1,15 +1,8 @@
-# Command-line interface
+# Using the command line
 
 Run commands from your application directory with `bin/flask`; no environment
 activation is needed. You can also use `flask` in an activated environment or
 `uv run flask`.
-
-Flaskteroids extends Flask's CLI; install it in the Python environment providing
-`flask`. Commands `new`, `agent-skills`, `assets:precompile`, and `importmap` are
-available without loading an application. Test commands also defer application
-loading to the test suite. Other application commands use normal startup.
-Top-level `flask --help` attempts application discovery; use a specific command's
-`--help` outside an application.
 
 Use `bin/flask --help` to list commands, or add `--help` to a specific command:
 
@@ -17,6 +10,12 @@ Use `bin/flask --help` to list commands, or add `--help` to a specific command:
 bin/flask generate --help
 bin/flask db:migrate --help
 ```
+
+After reading this guide, you will know how to:
+
+- Create an application and generate its components.
+- Prepare the database and work in the application shell.
+- Find commands for testing and other framework features.
 
 ## Generation and setup
 
@@ -35,16 +34,6 @@ and run `bin/setup` later. Commit `uv.lock` so the team shares dependency versio
 For an API instead of server-rendered pages, pass `--api` when creating the
 application. Controller and scaffold generators then produce API output. See
 [Building an API](../controllers/api.md) for a complete example.
-
-## Middleware
-
-```sh
-bin/flask middleware
-```
-
-Loads the application and lists the effective WSGI middleware in incoming-request
-order, followed by Flask dispatch. Configure it with `config.middleware`; see
-[Middleware](../configuration.md#middleware) for registration and ordering.
 
 ## Database preparation
 
@@ -254,91 +243,19 @@ Create an account in the shell; no public sign-up form is generated. To allow a
 public action, declare `skip_before_action("_require_authentication", only=[...])`
 inside its controller class. Templates can call `is_authenticated()` on public
 and protected pages without an extra callback. See
-[the authentication walkthrough](../getting_started.md#8-require-login-to-change-products).
+[the authentication walkthrough](../tutorial/authentication_and_uploads.md#require-login-to-change-products).
 
-## Attribute encryption
+## Work with other components
 
-```sh
-bin/flask db:encryption:init
-bin/flask credentials:edit
-```
+Each component guide introduces its setup commands as part of a working example:
 
-The first command prints dedicated primary and deterministic keys. Copy its
-`encryption` YAML into the credentials editor; it does not save keys itself.
-Do not commit or log the plaintext output.
-
-These keys serve model `encrypts(...)`, encrypted rich text, and direct use of
-`flaskteroids.encryption`. See [Attribute encryption](../models/encryption.md).
-
-## Turbo
-
-```sh
-bin/flask turbo:install
-```
-
-Configures Turbo 8.0.23 from `flaskteroids-turbo` through import maps, preserving
-application code. Layouts without script tags receive the module helper;
-customized script layouts receive instructions instead. No runtime is copied or
-downloaded. Generated browser applications include this setup.
-See [Turbo installation](../views/turbo.md#install-or-upgrade).
-
-## Import maps
-
-```sh
-bin/flask importmap:install
-bin/importmap pin @github/hotkey
-bin/importmap pin @github/hotkey@3.1.1 --no-preload
-bin/importmap packages
-bin/importmap update
-bin/importmap pristine
-bin/importmap unpin @github/hotkey
-bin/importmap json --environment production
-```
-
-The installer creates `config/importmap.py`, `app/javascript/application.js`, and
-`bin/importmap` without replacing application code. Package commands resolve
-through JSPM and vendor returned modules, without booting the application.
-Use `flask importmap --root /path/to/app COMMAND` outside the application.
-See [Import maps](importmaps.md) for configuration, options, and package limits.
-
-## Rich text
-
-```sh
-bin/flask rich_text:install
-bin/flask db:migrate
-```
-
-Configures import-map pins and the entrypoint for the Lexxy editor from
-`flaskteroids-lexxy`, adds its stylesheet helper to the layout, and creates
-rich-text and attachment migrations as needed. It does not copy runtime assets.
-Repeated runs preserve application code and avoid duplicate migrations.
-
-Upgrade `flaskteroids-lexxy` independently, then precompile production assets and
-restart. Model, resource, and scaffold generators accept `content:rich_text`.
-See [Rich text](rich_text.md).
-
-## Attachments
-
-```sh
-bin/flask attachments:install
-bin/flask db:migrate
-```
-
-Creates attachment migrations and storage configuration without replacing
-existing configuration or duplicating migrations. Generators accept
-`avatar:attachment` for one file and `documents:attachments` for several.
-See [Attachments](attachments.md).
-
-## Asset precompilation
-
-```sh
-bin/flask assets:precompile
-flask assets:precompile --root /path/to/app
-```
-
-Builds fingerprinted assets for production. Both commands work without application
-startup or database access. Generated Docker builds already precompile assets.
-See [Assets](assets.md).
+- [Attribute encryption](../models/encryption.md) — generate keys and encrypt attributes.
+- [Turbo](../views/turbo.md) — install or upgrade the browser runtime.
+- [Import maps](importmaps.md) — pin and maintain JavaScript packages.
+- [Rich text](rich_text.md) — install the editor and its storage tables.
+- [Attachments](attachments.md) — install file storage.
+- [Assets](assets.md) — precompile production files.
+- [Middleware](middleware.md) — inspect the request stack.
 
 ## Tests
 
@@ -351,3 +268,13 @@ bin/flask test test/models/post_test.py
 `test` runs model, integration, job, and mailer tests. `test:system` runs browser
 tests. Both accept pytest arguments. See [Testing](../testing.md) for fixtures,
 assertions, and browser installation.
+
+## Commands outside an application
+
+`flask new`, `flask agent-skills`, `flask assets:precompile`, and
+`flask importmap` can run without loading an application. Install Flaskteroids
+in the Python environment that provides `flask`.
+
+Outside an application, use a specific command's `--help`, such as
+`flask new --help`. Top-level `flask --help` attempts application discovery.
+Other application commands use normal startup, including initializers.

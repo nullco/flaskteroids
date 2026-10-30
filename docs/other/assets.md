@@ -4,24 +4,22 @@ Put stylesheets, images, and fonts in `app/assets`. They work without a build in
 development. For production, precompile them into files with content hashes in
 their names, so browsers can cache them safely.
 
-Flaskteroids serves assets at `/assets/` using Flask's `static` endpoint:
+After reading this guide, you will know how to:
 
-| Environment | Served directory |
-| --- | --- |
-| Development/test | Application and framework source assets, no build required |
-| Other environments | `public/assets` — fingerprinted build output |
+- Add stylesheets, images, and fonts to your application.
+- Reference them from templates and CSS.
+- Build and serve fingerprinted assets in production.
 
-Application sources are `app/assets`, `app/javascript`, and `vendor/javascript`.
-JavaScript paths are relative to their source root. `flaskteroids-turbo` supplies
-`turbo.js`, and `flaskteroids-lexxy` supplies the editor runtime and stylesheets.
-Flaskteroids supplies the rich-text integration assets. Application assets with
-the same logical names take precedence.
-Duplicate logical names across application sources fail explicitly.
+## Add source assets
 
-URLs keep the asset directory structure. Flask handles file delivery, content
-types, conditional requests, HEAD requests, and byte ranges.
+Put stylesheets in `app/assets/stylesheets`, images in `app/assets/images`,
+and fonts in `app/assets/fonts`. JavaScript belongs in `app/javascript`;
+see [Import maps](importmaps.md) to load modules.
 
-## Helpers
+Development serves source files directly at `/assets/`; no build command is
+needed. Keep these files public: assets are not private attachment storage.
+
+## Link assets from templates
 
 Generated layouts already link `app/assets/stylesheets/application.css`:
 
@@ -47,14 +45,9 @@ Native `url_for("static", filename=...)` works, but does not look up fingerprint
 
 ## Local Turbo runtime
 
-`flaskteroids-turbo` supplies upstream Turbo **8.0.23** as an ESM asset, with
-license and provenance in the package. New applications pin `@hotwired/turbo`
-to `turbo.js` and import it from `app/javascript/application.js`. The layout uses
-`javascript_importmap_tags()`; production precompilation fingerprints the runtime.
-There is no application-owned copy, download, CDN, or Node/build dependency.
-
-Load only one runtime. See [Import maps](importmaps.md) and
-[Turbo setup](../views/turbo.md#install-or-upgrade).
+New browser applications load Turbo from the installed `flaskteroids-turbo`
+package. Do not add a second runtime. See
+[Turbo setup](../views/turbo.md#install-or-upgrade) to install or upgrade it.
 
 ## CSS references
 

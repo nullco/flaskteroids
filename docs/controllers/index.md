@@ -7,6 +7,12 @@ redirect the browser.
 This guide uses browser controllers (`Controller`). For an application
 that serves data without browser views, see [Building an API](api.md).
 
+After reading this guide, you will know how to:
+
+- Write an action and pass data to its view.
+- Render responses, redirect, and accept permitted input.
+- Share request behavior with controller callbacks.
+
 ## Write an action
 
 If an action does not prepare a response, Flaskteroids renders its matching
@@ -57,13 +63,9 @@ partial, or exact template to HTML, not a controller response. See
 
 ### JSON values
 
-JSON rendering accepts dictionaries, lists, strings, numbers, booleans, and
-`None`. Empty values remain empty JSON values; `None` becomes `null`, and tuples
-become arrays.
-
-Models, queries, and other objects with a callable `__json__()` use that method,
-even when nested in containers. Its result is processed recursively. Other types
-are passed to Flask's JSON provider, including custom serialization:
+Pass a model, query, or ordinary JSON value to `render(json=...)`. Models use
+their `__json__()` method to choose the attributes in the response. You can also
+combine records and queries inside a dictionary:
 
 ```python
 return self.render(json={"posts": Post.all(), "featured": post})
@@ -97,12 +99,15 @@ conventional `<action>.turbo_stream.html` name. See
 
 ### Headers and response state
 
-Use `self.response` to set headers or status before preparing the body. These
-metadata changes carry into the final response unless explicitly replaced; they
-do not mark the response as performed.
+Set response headers before rendering:
 
-Rendering sets `self.performed`. This tracks whether a response has been prepared,
-not whether the action has finished executing.
+```python
+self.response.headers["X-Report-Version"] = "1"
+return self.render(json={"ready": True})
+```
+
+Setting a header does not prepare a response body. You can still render, redirect,
+or return an empty response afterward.
 
 ## Redirects and empty responses
 
@@ -143,10 +148,8 @@ A resource URL's `.json` or `.turbo_stream` suffix takes precedence over the
 `Accept` header. Without either, HTML is selected. A requested format you do not
 offer returns **406 Not Acceptable**.
 
-Add a `turbo_stream=lambda: self.render()` handler to use the conventional Stream
-template. Accept quality values are honored; equal-quality requests explicitly
-listing Streams follow client order, while wildcard-only requests default to
-HTML. Ordinary Turbo forms can fall back to offered HTML. See
+Add a `turbo_stream=lambda: self.render()` handler to use a conventional Stream
+template. Ordinary Turbo forms can fall back to offered HTML. See
 [Stream negotiation](../views/turbo.md#negotiation-and-routes) for template fallback
 and forced-format URLs.
 
@@ -223,20 +226,13 @@ After callbacks can edit `self.response`, but cannot prepare a second response.
 
 ### Stopping callbacks and handling failures
 
-- A before callback that prepares or returns a response skips the action and the
-  remaining before, around, and after callbacks.
-- An around generator that returns before `yield` skips the action, later around
-  callbacks, and after callbacks. Its return value is the response; `None` leaves
-  implicit rendering in place. Earlier around callbacks still clean up.
-- A second yield raises `ProgrammerError` and closes the generator.
-- Entered around generators resume and close even if the action or later setup
-  fails. Cleanup resumes normally; the action exception is not thrown into the
-  generator. After callbacks run only if the action and cleanup succeed.
+A before callback that prepares or returns a response stops the chain. Use this
+for checks such as requiring login: redirecting to the login page prevents the
+protected action from running.
 
-A cleanup failure does not prevent other cleanup from running. If an action or
-setup exception is already being raised, it remains the primary exception;
-cleanup failures are logged and added to its notes. Otherwise, the first cleanup
-failure is raised, with later failures logged and added as notes.
+An around callback must yield exactly once to run the action. Returning before
+the yield skips it. Entered around callbacks still clean up if the action fails;
+after callbacks run only when the action and cleanup succeed.
 
 ## Controller helpers
 

@@ -3,6 +3,12 @@
 Use `name:type` arguments when generating a migration, model, resource, or
 scaffold. For example, `title:string` creates a string column named `title`.
 
+After reading this guide, you will know how to:
+
+- Choose field types when generating models and migrations.
+- Add required columns and references.
+- Understand how submitted values are cast and validated.
+
 ## Column types
 
 | Type | Generator argument |

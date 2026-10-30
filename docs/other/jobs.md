@@ -3,6 +3,12 @@
 Use a job for work that should happen outside an HTTP request, such as processing
 an upload. The web process enqueues the job; a separate worker runs it.
 
+After reading this guide, you will know how to:
+
+- Define a job and enqueue it from your application.
+- Start a worker and configure its broker.
+- Test scheduling without running a worker.
+
 ## Define and enqueue a job
 
 Jobs inherit from `Job` and define `perform`. Put the class under `app/jobs` so

@@ -1,55 +1,80 @@
 # ![Flaskteroids](assets/brand/logo-horizontal-light.svg#only-light) ![Flaskteroids](assets/brand/logo-horizontal-dark.svg#only-dark)
 
 Flaskteroids is a Python MVC framework built on Flask, SQLAlchemy, and Celery.
+It brings models, routes, templates, forms, background jobs, and email into a
+shared application workflow.
 
-Build web applications with a consistent project layout and tools that work
-together: models, routes, templates, forms, background jobs, and email. Generators
-create the starting code so you can focus on your application's behavior. Flask
-APIs and extensions remain available when you need them.
+These guides teach you how to build with Flaskteroids. Start with the tutorial
+if you are new, or choose a component guide for the feature you are working on.
 
-Start with [Getting started](getting_started.md) to build a product catalog, learn the MVC workflow, and add authentication, uploads, email, and tests.
+## Build your first application
+
+[Getting started](getting_started.md) walks you through a product catalog.
+You will create a model, display products, and build forms to add, edit, and
+delete them. You need basic Python and HTML knowledge, but no experience with
+the underlying libraries.
+
+The rest of the store tutorial adds one feature at a time:
+
+1. [Login and product images](tutorial/authentication_and_uploads.md) — protect
+   catalog changes and upload a photo.
+2. [Restock notifications](tutorial/restock_notifications.md) — connect
+   subscriptions, inventory changes, background jobs, and email.
+3. [Test the store](tutorial/testing.md) — check the workflows you have built.
+4. [Prepare for deployment](tutorial/deployment.md) — review security and try
+   the generated Docker setup.
+
+Each part continues in the same application. You can stop after the first part
+with a working catalog.
 
 ## Find a guide
 
-### Start here
-
-- [Getting started](getting_started.md) — Build a product catalog while learning the framework's everyday workflows.
-- [Project structure](project_structure.md) — Find where application code, configuration, migrations, and tests belong.
+Component guides explain a feature through focused examples. They assume you
+have a generated application, but do not require completing the store tutorial.
 
 ### Models
 
-- [Model basics](models/index.md) — Create and query records, validate input, and work with associations, callbacks, and transactions.
-- [Fields](other/fields.md) — Choose field types and modifiers for models and migrations.
-- [Attribute encryption](models/encryption.md) — Encrypt sensitive model attributes.
+- [Model basics](models/index.md) — create, query, validate, and save records.
+- [Associations](models/associations.md) — connect models and work with related records.
+- [Callbacks](models/callbacks.md) — run shared behavior during a record's lifecycle.
+- [Fields](other/fields.md) — choose column types and understand submitted values.
+- [Attribute encryption](models/encryption.md) — protect sensitive model data.
 
 ### Routing and controllers
 
-- [Routing](controllers/routing.md) — Connect URLs to actions and define resource routes.
-- [Controller basics](controllers/index.md) — Handle request parameters, callbacks, rendering, and redirects.
-- [Rate limits](controllers/advanced.md) — Limit requests and understand the cache boundaries.
+- [Routing](controllers/routing.md) — connect URLs to actions.
+- [Controller basics](controllers/index.md) — handle input and choose a response.
+- [Rate limits](controllers/advanced.md) — limit repeated requests.
+- [Building an API](controllers/api.md) — build and test a JSON API.
 
-### Views
+### Views and frontend
 
-- [Templates and helpers](views/index.md) — Render pages and share presentation logic through application helpers.
-- [Forms](other/forms.md) — Build model-backed forms and filter submitted parameters.
-- [Turbo Frames and Streams](views/turbo.md) — Add inline navigation and partial page updates.
+- [Templates and helpers](views/index.md) — render pages and share presentation logic.
+- [Forms](other/forms.md) — accept input and help users correct mistakes.
+- [Turbo Frames and Streams](views/turbo.md) — add inline navigation and page updates.
+- [Assets](other/assets.md) — add styles and images, then build production files.
+- [JavaScript with import maps](other/importmaps.md) — load modules without a build step.
 
-### Other components
+### Background work and email
 
-- [Mailers](other/mailers.md) — Compose and deliver email.
-- [Rich text](other/rich_text.md) — Add an editor and render rich-text content safely.
-- [Background jobs](other/jobs.md) — Enqueue work to run outside a request.
-- [Attachments](other/attachments.md) — Upload and store files.
+- [Background jobs](other/jobs.md) — move work outside a request.
+- [Mailers](other/mailers.md) — compose, preview, test, and deliver email.
 
-### Digging deeper
+### Files and rich text
 
-- [Testing](testing.md) — Test models, requests, jobs, mailers, and browser workflows.
-- [Configuration](configuration.md) — Configure environments, databases, and encrypted credentials.
-- [Command-line interface](other/cli.md) — Look up generators and application commands.
-- [Assets](other/assets.md) — Serve source assets and build fingerprinted production files.
-- [Import maps](other/importmaps.md) — Use native JavaScript modules and pin packages without Node.
-- [Internationalization](other/internationalization.md) — Translate messages and localize dates and times.
-- [Building an API](controllers/api.md) — Build a JSON API without browser defaults.
+- [Attachments](other/attachments.md) — upload files and control download access.
+- [Rich text](other/rich_text.md) — edit and display formatted content safely.
 
-Unless a guide says otherwise, run application commands from the application
-root using `bin/flask`. You do not need to activate the virtual environment.
+### Application setup and testing
+
+- [Project structure](project_structure.md) — find where code and configuration belong.
+- [Configuration](configuration.md) — choose settings and manage secrets.
+- [Using the command line](other/cli.md) — generate components and run application tasks.
+- [Middleware](other/middleware.md) — wrap requests before controller dispatch.
+- [Internationalization](other/internationalization.md) — translate text and localize dates.
+- [Testing](testing.md) — test models, requests, jobs, mail, and browser workflows.
+
+Unless a guide says otherwise, run commands from your application root with
+`bin/flask`. You do not need to activate the virtual environment.
+
+To help improve these pages, see [Writing guides](contributing/guides.md).

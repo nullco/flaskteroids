@@ -6,6 +6,12 @@ Routes connect URLs and HTTP methods to controller actions. Define them in
 A destination such as `"products#show"` means: call `show` on
 `ProductsController` in `app/controllers/products_controller.py`.
 
+After reading this guide, you will know how to:
+
+- Connect a URL to a controller action.
+- Declare resource routes and nested resources.
+- Generate paths in Python and templates.
+
 ## Individual routes
 
 ```python
@@ -172,15 +178,14 @@ Every `_path` helper has a `_url` counterpart that includes the scheme and host.
 Helpers use the active application's routes and deployment prefix. They do not
 query records or fill missing parameters from the current request.
 
-- Missing parameters raise `ValueError`.
-- Extra positional arguments or duplicate parameters raise `TypeError`.
-- Ambiguous route/helper names or collisions with template globals are
-  configuration errors.
+Supply each path parameter explicitly, using a saved record or its identifier.
+Missing or duplicate parameters raise an error rather than producing an
+incomplete URL.
 
-Outside a request, use an application context and configure Flask's `SERVER_NAME`
-and, where needed, `APPLICATION_ROOT` and `PREFERRED_URL_SCHEME`. Explicit callers
-control query values; do not forward unfiltered request parameters to URL helpers.
-Native Flask `url_for` remains available for advanced endpoint-based routing.
+For absolute links outside a request, such as links in email, use an application
+context and configure Flask's `SERVER_NAME`. Deployments with a URL prefix or a
+specific scheme may also need `APPLICATION_ROOT` and `PREFERRED_URL_SCHEME`.
+Do not forward unfiltered request parameters to URL helpers.
 
 An individual route's `aka` declares its public helper name:
 

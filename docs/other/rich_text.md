@@ -4,6 +4,12 @@ Add formatted text, images, and file attachments with a model declaration and a
 form field. Flaskteroids provides the Lexxy editor, storage integration, and safe
 HTML rendering.
 
+After reading this guide, you will know how to:
+
+- Add a rich-text editor to a model-backed form.
+- Save and render formatted content safely.
+- Manage embedded files and test the editor.
+
 ## Set up
 
 Browser applications include `flaskteroids-lexxy`. Install rich text:
@@ -50,23 +56,6 @@ data migration and column removal before switching to a rich-text declaration.
 Owners require a single integer `id` primary key. Renaming a model also requires
 migrating its `rich_texts.record_type` values.
 
-### Declaration options
-
-- `store_if_blank=True` (default): explicit blank assignment stores an empty body.
-  With `False`, assigning `None` or blank HTML avoids creating an empty row. If a
-  row already exists, it is removed on the model's next successful save. Omitting
-  the attribute leaves it unchanged.
-- `strict_loading=True`: require content to be preloaded rather than issuing an
-  extra query when accessed. Otherwise, `StrictLoadingViolationError` is raised.
-  Use an [eager-loading scope](#eager-loading). New records and assigned bodies
-  remain usable. The default comes from the model's `strict_loading_by_default`,
-  normally `False`; it currently applies to rich text, not all ORM associations.
-- `encrypted=True`: transparently encrypts the stored body using a dedicated key;
-  see [Encryption](#encryption).
-
-Presence validation checks visible text and verified attachments. Formatting-only
-markup such as `<div><br></div>` is blank.
-
 ## Assignment and rich-text records
 
 ```python
@@ -97,30 +86,6 @@ schedules dependent attachment cleanup.
 Reading an unset attribute builds an empty rich-text record in memory. Reading
 alone does not write to the database. `post.reload()` discards submitted body
 changes and reloads persisted content.
-
-### Independent persistence
-
-```python
-from flaskteroids.rich_text import RichText
-
-post.content.update(body="<div>Saved independently</div>")
-post.content.body = "<div>A second revision</div>"
-post.content.save()
-post.content.reload()
-
-content = RichText.find(post.content.id)
-content.record
-content.body
-content.errors
-content.is_new_record()
-content.is_persisted()
-```
-
-Independent saves of persisted owners **do not validate or save their other
-pending attributes**; they touch the owner's `updated_at`. They still join an
-explicit framework transaction. Saving a rich-text record whose owner is new
-saves and validates that owner first. `content.destroy()` removes the rich-text
-record and its embeds without destroying the owner.
 
 ## Forms and parameters
 
@@ -191,20 +156,8 @@ an embed by editing the body and saving it. Removed embeds and destroyed owners
 schedule purging **after commit**. Shared blobs remain until their final
 attachment is removed. Run the job worker to process purge jobs.
 
-Body APIs include:
-
-```python
-post.content.to_plain_text()       # Ordinary text, including attachment captions/names
-post.content.to_editor_html()      # Sanitized editor HTML
-post.content.body.to_html()        # Canonical body with signed attachment references
-post.content.body.attachables      # Verified Blob objects
-post.content.blank()
-post.content.present()
-```
-
-These string-returning methods are not marked HTML-safe. Use the attribute itself
-for HTML display. Model JSON responses do not automatically include associations;
-select body fields explicitly in your model's `__json__()`.
+For a plain-text excerpt, use `post.content.to_plain_text()`. For HTML display,
+render the attribute itself so the sanitized output is marked safe correctly.
 
 ### Upload permissions, limits, and private files
 
@@ -255,6 +208,23 @@ This queues cleanup of **all storage blobs** that are unattached and older than
 two days, not only rich-text uploads. Set a positive `older_than=timedelta(...)`
 for another grace period. Purge jobs recheck attachments before deleting, so a
 file attached after the sweep is retained. Cleanup is not scheduled automatically.
+
+## Optional model behavior
+
+- `store_if_blank=True` (default): explicit blank assignment stores an empty body.
+  With `False`, assigning `None` or blank HTML avoids creating an empty row. If a
+  row already exists, it is removed on the model's next successful save. Omitting
+  the attribute leaves it unchanged.
+- `strict_loading=True`: require content to be preloaded rather than issuing an
+  extra query when accessed. Otherwise, `StrictLoadingViolationError` is raised.
+  Use an [eager-loading scope](#eager-loading). New records and assigned bodies
+  remain usable. The default comes from the model's `strict_loading_by_default`,
+  normally `False`; it currently applies to rich text, not all ORM associations.
+- `encrypted=True`: transparently encrypts the stored body using a dedicated key;
+  see [Encryption](#encryption).
+
+Presence validation checks visible text and verified attachments. Formatting-only
+markup such as `<div><br></div>` is blank.
 
 ## Eager loading
 

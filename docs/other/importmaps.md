@@ -10,6 +10,12 @@ missing conventions without replacing application code.
 It adds the module helper to layouts without script tags; customized script layouts
 are left unchanged with setup instructions. Keep only one Turbo runtime.
 
+After reading this guide, you will know how to:
+
+- Load application JavaScript and local modules.
+- Pin a third-party package without a JavaScript build step.
+- Deploy modules using fingerprinted asset URLs.
+
 ## Application entrypoint
 
 `app/javascript/application.js` starts with:
@@ -115,16 +121,9 @@ the application, use:
 flask importmap --root /path/to/app pin @github/hotkey
 ```
 
-Configuration edits are conservative and AST-guided. Commands preserve unrelated
-Python and existing pin options, but require literal `importmap.pin("name", ...)`
-statements directly inside a multiline `register(importmap)`. Computed, nested,
-or compound pin declarations must be edited manually. Arbitrary Python remains
-supported at runtime.
-
-Resolution, validation, and downloads complete before files are changed.
-Individual file replacements are atomic; the whole operation is not a multi-file
-transaction. Automatic vulnerability audits and outdated-package reports are not
-included in this initial implementation.
+Package commands preserve unrelated configuration. If pins are computed by
+custom Python rather than declared as literal `importmap.pin(...)` calls, edit
+them manually.
 
 ## Packaged Turbo
 
@@ -197,7 +196,7 @@ alongside the page's own cache key. Otherwise an unchanged page validator could
 hide changed JavaScript mappings. This helper does not create validators or invoke
 conditional handling automatically.
 
-## Production and boundaries
+## Deploy JavaScript
 
 ```sh
 bin/flask assets:precompile
@@ -212,6 +211,8 @@ the importing JavaScript. See [Assets](assets.md) for custom paths and serving.
 
 `json` accepts `--source`, `--output`, and `--prefix` when inspecting customized
 asset configurations; it does not load application settings automatically.
+
+## Choose compatible packages
 
 Import maps support modern browsers' native ES modules. They do not compile
 TypeScript/JSX, convert arbitrary CommonJS packages, supply Node APIs, rewrite

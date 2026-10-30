@@ -15,6 +15,12 @@ Use browser tests to check the journey a person takes through your app:
 bin/flask test:system
 ```
 
+After reading this guide, you will know how to:
+
+- Choose the right kind of test for a behavior.
+- Create fixture data and make requests in tests.
+- Check background work, email, and browser journeys.
+
 ## Run a focused test
 
 Both commands use pytest, so you can select a file or run tests in parallel:

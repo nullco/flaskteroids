@@ -4,6 +4,12 @@ A form has two parts: the template that builds inputs, and the controller that
 accepts their values. Use `form_with` to build the form and `self.params.expect`
 to choose which submitted attributes may reach your model.
 
+After reading this guide, you will know how to:
+
+- Build a model-backed form and choose its fields.
+- Permit submitted attributes and redisplay invalid input.
+- Edit associated records with nested forms.
+
 ## Building forms
 
 Pass a model to `form_with`. It chooses the destination and HTTP method, supplies
@@ -52,9 +58,6 @@ errors, and default method inference:
 ```
 
 With a persisted `post`, omitting `method="POST"` here would infer PATCH, not POST.
-`url=None` (or omission) permits inference; `url=False` omits `action`; `url=""`
-keeps an explicit empty action targeting the current page.
-
 Ordinary nested model destinations accept a list or tuple:
 
 ```html
@@ -101,123 +104,6 @@ Use `form.rich_text_area("content")` for declared rich-text attributes. Install
 Lexxy and storage with `bin/flask rich_text:install`, then migrate. See
 [Rich text](rich_text.md) for setup, rendering, and validation.
 
-## Nested forms
-
-Declare `accepts_nested_attributes_for()` on the parent model, then use
-`fields_for` inside `form_with`. It calls the block once per associated child:
-
-```html
-{% call(form) form_with(model=order) %}
-  {{ form.label("number") }}
-  {{ form.text_field("number") }}
-  {% call(item) form.fields_for("line_items") %}
-    <fieldset>
-      {{ item.label("description") }}
-      {{ item.text_field("description") }}
-      {{ item.label("quantity") }}
-      {{ item.number_field("quantity") }}
-      {{ item.label("_destroy") }}
-      {{ item.checkbox("_destroy") }}
-      {% for message in item.errors.full_messages() %}
-        <p role="alert">{{ message }}</p>
-      {% endfor %}
-    </fieldset>
-  {% endcall %}
-  {{ form.submit("Save order") }}
-{% endcall %}
-```
-
-Fields use names such as `order[line_items_attributes][0][quantity]`, with
-matching unique label/input IDs. Singular associations omit the collection
-index. Saved children receive a hidden `id`; use `include_id=False` only when
-you supply the identity yourself. `item.model` exposes the child and `item.errors`
-its validation errors. Raw rejected values and destruction checkboxes survive
-redisplay. Nested file fields make the outer form multipart, including at deeper
-nesting levels.
-
-An empty association renders no fields. Build an initial row in the `new` or
-`edit` action when appropriate:
-
-```python
-self.order.line_items.new()
-```
-
-Permit the nested fields explicitly; the declaration does not grant permission:
-
-```python
-attributes = self.params.expect(
-    order=[
-        "number",
-        ("line_items_attributes", [["id", "description", "quantity", "_destroy"]]),
-    ]
-)
-if self.order.update(**attributes):
-    return self.redirect_to(self.order, status=303)
-return self.render("edit", status=422)
-```
-
-For a singular association, use a single field list, for example
-`("profile_attributes", ["id", "name", "_destroy"])`. Re-render the submitted
-object on failure instead of replacing it with a fresh query or appending an
-extra blank row. See [nested attributes](../models/index.md#autosave-and-nested-attributes)
-for autosave, rejection, deletion, and transaction behavior. Dynamic add/remove
-JavaScript and automatic nested scaffold generation are not included.
-
-## Buttons that submit forms
-
-```html
-{{ button_to("Create", "/products") }}
-{{ button_to("Save", product) }}
-{{ button_to("Delete", product, method="DELETE") }}
-{{ button_to("Log out", session_path(), method="DELETE") }}
-```
-
-The default is POST for an explicit URL or new record and PATCH for a persisted
-record. Nested model sequences infer from the final record, just like forms.
-Deletion is always explicit. GET and POST render native HTML methods;
-PUT/PATCH/DELETE render POST plus the corresponding hidden override. GET forms
-include neither CSRF tokens nor method overrides, preventing tokens in query
-strings. Unsafe forms include a CSRF token.
-
-Button attributes and form attributes are separate:
-
-```html
-{{ button_to("Save", product, id="save-button", form={"id": "save-form", "class": "inline"}) }}
-```
-
-Labels and attributes are escaped; trusted `Markup` is permitted for labels,
-not unescaped attributes. Unsupported/executable destination schemes are rejected.
-Put Turbo data on the form with, for example,
-`button_to("Delete", post, method="DELETE", form={"data": {"turbo_frame": "_top"}})`.
-`button_to` does not support omitting the action, adding arbitrary extra hidden
-parameters, or a separate remote-submission API.
-
-## Form values and escaping
-
-Forms show the original submitted scalar input before type conversion, plus
-assigned writable virtual fields. If there is no pending input, they use saved
-values. A failed validation therefore redisplays what the user entered, even if
-type conversion would otherwise lose information.
-
-Authentication secrets, digests, confirmations, and reset tokens are excluded by
-default. Forms do not use JSON response serialization or evaluate read-only virtual
-fields such as reset tokens. Re-enter passwords after an unsuccessful submission.
-
-Field names, prefixes, attribute values, input values, and textarea values are
-escaped. Keep field names and attribute names application-defined. Invalid HTML
-attribute names raise `ValueError`. Do not construct field attributes from
-unfiltered request data.
-
-`collection_select()` escapes ordinary option labels and prompts. Explicit
-`markupsafe.Markup` is accepted for trusted labels and prompts, but option values
-and other field values are always escaped, even when supplied as `Markup`.
-
-Form actions accept relative URLs, including protocol-relative URLs, and
-HTTP(S) URLs. Other schemes and URLs containing control characters raise
-`ValueError`. This policy prevents executable schemes; it does not restrict
-which hosts a form may submit to. Check destinations separately if they come
-from user input.
-
 ## Strong parameters
 
 Strong parameters are an allowlist of attributes a controller may pass to a
@@ -241,13 +127,13 @@ class PostsController(Controller):
     def create(self):
         self.post = Post.new(**self._post_params())
         if self.post.save():
-            return self.redirect_to(post_path(self.post))
+            return self.redirect_to(post_path(self.post), status=303)
         return self.render("new", status=422)
 
     def update(self):
         self.post = Post.find(self.params["id"])
         if self.post.update(**self._post_params()):
-            return self.redirect_to(post_path(self.post))
+            return self.redirect_to(post_path(self.post), status=303)
         return self.render("edit", status=422)
 
     def _post_params(self):
@@ -314,6 +200,23 @@ either response with Flask's
 Direct calls outside request dispatch still raise these exceptions. Programmer
 errors and unrelated exceptions are not translated into 400 responses.
 
+## Redisplay validation errors
+
+When saving fails, render the form with the submitted model and status **422**.
+Do not redirect or load a fresh copy: the submitted object holds the values and
+errors the user needs to correct.
+
+Add error messages to the form partial before its fields:
+
+```html
+{% for message in post.errors.full_messages() %}
+  <p role="alert">{{ message }}</p>
+{% endfor %}
+```
+
+Fields show the original input, even when type conversion failed. Passwords
+must be entered again after a failed submission.
+
 ## CSRF protection
 
 Cross-site request forgery (CSRF) is an attempt to make someone's browser submit
@@ -342,3 +245,118 @@ Include the token yourself in manual forms:
   <!-- ... form fields -->
 </form>
 ```
+
+## Buttons that submit forms
+
+```html
+{{ button_to("Create", "/products") }}
+{{ button_to("Save", product) }}
+{{ button_to("Delete", product, method="DELETE") }}
+{{ button_to("Log out", session_path(), method="DELETE") }}
+```
+
+The default is POST for an explicit URL or new record and PATCH for a persisted
+record. Nested model sequences infer from the final record, just like forms.
+Deletion is always explicit. GET and POST render native HTML methods;
+PUT/PATCH/DELETE render POST plus the corresponding hidden override. GET forms
+include neither CSRF tokens nor method overrides, preventing tokens in query
+strings. Unsafe forms include a CSRF token.
+
+Button attributes and form attributes are separate:
+
+```html
+{{ button_to("Save", product, id="save-button", form={"id": "save-form", "class": "inline"}) }}
+```
+
+Labels and attributes are escaped; trusted `Markup` is permitted for labels,
+not unescaped attributes. Unsupported/executable destination schemes are rejected.
+Put Turbo data on the form with, for example,
+`button_to("Delete", post, method="DELETE", form={"data": {"turbo_frame": "_top"}})`.
+
+## Nested forms
+
+Declare `accepts_nested_attributes_for()` on the parent model, then use
+`fields_for` inside `form_with`. It calls the block once per associated child:
+
+```html
+{% call(form) form_with(model=order) %}
+  {{ form.label("number") }}
+  {{ form.text_field("number") }}
+  {% call(item) form.fields_for("line_items") %}
+    <fieldset>
+      {{ item.label("description") }}
+      {{ item.text_field("description") }}
+      {{ item.label("quantity") }}
+      {{ item.number_field("quantity") }}
+      {{ item.label("_destroy") }}
+      {{ item.checkbox("_destroy") }}
+      {% for message in item.errors.full_messages() %}
+        <p role="alert">{{ message }}</p>
+      {% endfor %}
+    </fieldset>
+  {% endcall %}
+  {{ form.submit("Save order") }}
+{% endcall %}
+```
+
+Fields use names such as `order[line_items_attributes][0][quantity]`, with
+matching unique label/input IDs. Singular associations omit the collection
+index. Saved children receive a hidden `id`; use `include_id=False` only when
+you supply the identity yourself. `item.model` exposes the child and `item.errors`
+its validation errors. Raw rejected values and destruction checkboxes survive
+redisplay. Nested file fields make the outer form multipart, including at deeper
+nesting levels.
+
+An empty association renders no fields. Build an initial row in the `new` or
+`edit` action when appropriate:
+
+```python
+self.order.line_items.new()
+```
+
+Permit the nested fields explicitly; the declaration does not grant permission:
+
+```python
+attributes = self.params.expect(
+    order=[
+        "number",
+        ("line_items_attributes", [["id", "description", "quantity", "_destroy"]]),
+    ]
+)
+if self.order.update(**attributes):
+    return self.redirect_to(self.order, status=303)
+return self.render("edit", status=422)
+```
+
+For a singular association, use a single field list, for example
+`("profile_attributes", ["id", "name", "_destroy"])`. Re-render the submitted
+object on failure instead of replacing it with a fresh query or appending an
+extra blank row. See [nested attributes](../models/associations.md#autosave-and-nested-attributes)
+for autosave, rejection, deletion, and transaction behavior. Dynamic add/remove
+JavaScript and automatic nested scaffold generation are not included.
+
+## Form values and escaping
+
+Forms show the original submitted scalar input before type conversion, plus
+assigned writable virtual fields. If there is no pending input, they use saved
+values. A failed validation therefore redisplays what the user entered, even if
+type conversion would otherwise lose information.
+
+Authentication secrets, digests, confirmations, and reset tokens are excluded by
+default. Forms do not use JSON response serialization or evaluate read-only virtual
+fields such as reset tokens. Re-enter passwords after an unsuccessful submission.
+
+Field names, prefixes, attribute values, input values, and textarea values are
+escaped. Keep field names and attribute names application-defined. Invalid HTML
+attribute names raise `ValueError`. Do not construct field attributes from
+unfiltered request data.
+
+`collection_select()` escapes ordinary option labels and prompts. Explicit
+`markupsafe.Markup` is accepted for trusted labels and prompts, but option values
+and other field values are always escaped, even when supplied as `Markup`.
+
+Form actions accept relative URLs, including protocol-relative URLs, and
+HTTP(S) URLs. Other schemes and URLs containing control characters raise
+`ValueError`. This policy prevents executable schemes; it does not restrict
+which hosts a form may submit to. Check destinations separately if they come
+from user input.

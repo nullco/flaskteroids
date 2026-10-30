@@ -8,6 +8,12 @@ of rendering browser views.
 This guide builds a small posts API. If you have not installed Flaskteroids yet,
 follow the [installation steps](../getting_started.md#prerequisites) first.
 
+After reading this guide, you will know how to:
+
+- Generate an API-only application.
+- Accept JSON input and return records or validation errors.
+- Test requests without a browser.
+
 ## Create the application
 
 ```sh

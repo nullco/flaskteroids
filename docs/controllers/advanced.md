@@ -1,42 +1,48 @@
 # Rate limits
 
 Use a rate limit to reject requests when a client sends too many in a short
-period. This example allows five requests per client IP within 60 seconds:
+period. For example, you can limit repeated requests to a public endpoint.
+
+After reading this guide, you will know how to:
+
+- Add a request limit to a controller.
+- Recognize the response when the limit is exceeded.
+- Account for process-local counters in a deployment.
+
+## Add a limit
+
+Declare the limit inside the controller class:
 
 ```python
 from flaskteroids.controller import Controller
 from flaskteroids.rate_limit import rate_limit
 
 
-class MyController(Controller):
+class StatusController(Controller):
     rate_limit(to=5, within=60)
 
     def index(self):
-        pass
+        return self.head(200)
 ```
 
-Declare the limit inside the controller class. Limits count by client IP unless
-you configure another key. Exceeding a limit returns **429 Too Many Requests**.
-Pass `using="_rate_limit_exceeded"` to use a controller method as the handler,
-or pass a callable through `using`.
+This allows five requests per client IP within 60 seconds. Exceeding the limit
+returns **429 Too Many Requests**. Use `only=["index"]` to apply a limit to
+selected actions rather than the whole controller.
 
-Each application has its own counters. **The default cache is in memory and is
-not shared between worker processes**, so these are not deployment-wide limits.
-Account for that boundary when using them to protect a multi-process application.
+To customize the rejection response, pass a controller method name through
+`using`, for example `using="_rate_limit_exceeded"`, and return a response
+from that method.
 
 ## Default cache
 
-Rate limits use the framework cache. You can also use it directly through
-`flaskteroids.cache`:
+Each application has its own counters. **The default cache is in memory and is
+not shared between worker processes.** Values disappear when the process ends.
 
-| Operation | API |
-| --- | --- |
-| Store a value with an expiry | `cache.store(key, value, ttl=seconds)` |
-| Read a value | `cache.fetch(key)` |
-| Increment a counter and reset its expiry | `cache.increment(key, ttl=seconds)` |
+These are not deployment-wide limits. For a multi-process deployment, choose
+an appropriate shared rate-limiting solution at your proxy or infrastructure
+layer rather than assuming these counters protect all workers together.
 
-`fetch` returns `cache.MISSING` for a missing or expired entry.
+## Next steps
 
-Cache values are separate for each application. Calls outside an application
-context use another cache. Values are not shared across processes and are lost
-when the process ends.
+See [Controller callbacks](index.md#controller-callbacks) to share other request
+checks across actions.

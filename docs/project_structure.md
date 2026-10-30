@@ -4,6 +4,12 @@ Most application work happens in three places: `app/` for behavior and templates
 `config/` for settings and routes, and `db/` for database changes.
 `flask new` creates the layout below.
 
+After reading this guide, you will know how to:
+
+- Find the files used by models, controllers, and views.
+- Recognize generated files and files you should commit.
+- Set up an existing application checkout.
+
 ## Directory layout
 
 ```text
